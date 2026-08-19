@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from webpent.agents.crawler import agent as crawler_agent
 from webpent.agents.cvss_engine.agent import _score_finding
+from webpent.agents.planner import agent as planner_agent
 from webpent.memory.lessons import LessonsManager
 from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.shared.llm import TaskType
@@ -21,6 +22,20 @@ class _RecordingLLM:
                 "| 8.1 | observed authorization differential"
             )
         )
+
+
+def test_planner_patch_point_routes_through_cached_llm(monkeypatch) -> None:
+    sentinel = object()
+    calls = []
+
+    def fake_cached(task_type: TaskType):
+        calls.append(task_type)
+        return sentinel
+
+    monkeypatch.setattr(planner_agent, "get_cached_llm", fake_cached)
+
+    assert planner_agent.get_llm(TaskType.AUTOMATION) is sentinel
+    assert calls == [TaskType.AUTOMATION]
 
 
 def test_cvss_role_context_is_bounded_and_data_only() -> None:

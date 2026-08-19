@@ -18,7 +18,7 @@ from webpent.models.targets import Target
 from webpent.shared.knowledge_retrieval import retrieve_knowledge_context
 from webpent.shared.llm import (
     TaskType,
-    get_llm,  # legacy monkeypatch point; guarded by llm_enabled below
+    get_cached_llm,
     get_safety_system_instruction,
     safe_prompt_format,
     try_get_llm,
@@ -30,6 +30,12 @@ from webpent.shared.planner_decisions import (
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
+
+
+def get_llm(task_type: TaskType) -> Any:
+    """Preserve the planner patch point while routing through the shared cache."""
+    return get_cached_llm(task_type)
+
 
 _SYSTEM_PROMPT = (
     "You are a Senior Penetration Tester. Create a brief, 3-step recon "
