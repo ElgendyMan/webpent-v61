@@ -17,6 +17,7 @@ from urllib.parse import quote, urlsplit
 from webpent.config.settings import ScanMode, get_settings
 from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+from webpent.models.research import ResearchContext
 from webpent.shared.action_authority import ActionAuthority, ActionRisk
 from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.campaign_executor import (
@@ -33,6 +34,11 @@ from webpent.shared.engagement_scope import (
     set_engagement_target_hosts,
 )
 from webpent.shared.http import make_safe_httpx_client
+from webpent.shared.llm_reliability import LLMReliabilityGate, ReliabilityPolicy
+from webpent.shared.research_contracts import (
+    ResearchDecisionEngine,
+    candidate_from_information_action,
+)
 from webpent.shared.research_intelligence import (
     ActionClass,
     KnowledgeGapEngine,
@@ -51,6 +57,45 @@ def _target_url(state: Mapping[str, Any]) -> str:
         value = getattr(target, "url", None) or getattr(target, "target_url", None)
     clean, _ = redact_sensitive(str(value or ""))
     return clean[:500]
+
+
+def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Validate optional LLM advice without granting execution authority."""
+    advisory = state.get("llm_advisory")
+    if not isinstance(advisory, Mapping):
+        return []
+    target = _target_url(state)
+    capability_manifest = state.get("capability_manifest") or {}
+    raw_capabilities = (
+        capability_manifest.get("capabilities", {})
+        if isinstance(capability_manifest, Mapping)
+        else {}
+    )
+    available = (
+        frozenset(str(key) for key in raw_capabilities)
+        if isinstance(raw_capabilities, Mapping)
+        else frozenset()
+    )
+    budget = state.get("action_budget") or {}
+    max_cost = float(budget.get("limit", 100.0)) if isinstance(budget, Mapping) else 100.0
+    used_cost = float(budget.get("used_cost", 0.0)) if isinstance(budget, Mapping) else 0.0
+    result = LLMReliabilityGate().evaluate(
+        advisory,
+        ReliabilityPolicy(
+            allowed_origin=target,
+            available_capabilities=available,
+            max_cost=max_cost,
+            used_cost=used_cost,
+            allow_active=str(state.get("scan_mode", "legacy")) == "authorized-active",
+        ),
+    )
+    return [{
+        "status": result.status,
+        "reasons": list(result.reasons),
+        "stages": list(result.stages),
+        "sanitized": result.sanitized,
+        "decision_id": result.envelope.decision_id if result.envelope else "",
+    }]
 
 
 def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -441,6 +486,7 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "smart_replanning": {"status": "disabled", "round": 0},
         }
 
+    llm_reliability_trace = _llm_reliability_projection(state)
     campaign_plan = _campaign_plan_for_state(state)
     task_state = {**state, "campaign_plan": campaign_plan}
     tasks, outcomes = build_smart_campaign_tasks(task_state)
@@ -449,6 +495,12 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     research_session = ResearchSession.from_state(state)
     research_session.coverage_gaps = [gap.gap_id for gap in knowledge_gaps]
     information_actions = []
+    research_candidate_actions: list[dict[str, Any]] = []
+    research_unified_decision_trace: list[dict[str, Any]] = []
+    research_context = ResearchContext.from_state(dict(state))
+    research_context.target_ref = _target_url(state)
+    research_context.open_gap_ids = [gap.gap_id for gap in knowledge_gaps]
+    research_context.unknowns = [gap.unknown for gap in knowledge_gaps]
     selected_gap = gap_engine.choose(knowledge_gaps)
     if selected_gap is not None:
         attempted_information = {
@@ -463,6 +515,37 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             evidence_potential=0.8,
         )
         information_actions = [item.as_dict() for item in ranked_information[:3]]
+        candidates = [
+            candidate_from_information_action(
+                action,
+                gap_id=selected_gap.gap_id,
+                coverage_value=1.0,
+                evidence_potential=0.8,
+            )
+            for action in selected_gap.candidate_actions
+        ]
+        failed_fingerprints = {
+            str(item.get("action_fingerprint"))
+            for item in state.get("negative_evidence_ledger", [])
+            if isinstance(item, Mapping) and item.get("action_fingerprint")
+        }
+        capability_manifest = state.get("capability_manifest") or {}
+        available_capabilities = (
+            capability_manifest.get("capabilities", {})
+            if isinstance(capability_manifest, Mapping)
+            else {}
+        )
+        unified_decisions = ResearchDecisionEngine().rank(
+            candidates,
+            available_capabilities=available_capabilities,
+            attempted_fingerprints=attempted_information,
+            failed_path_fingerprints=failed_fingerprints,
+            budget_remaining=(state.get("action_budget") or {}).get("remaining_cost")
+            if isinstance(state.get("action_budget"), Mapping)
+            else None,
+        )
+        research_candidate_actions = [item.candidate.as_dict() for item in unified_decisions]
+        research_unified_decision_trace = [item.as_dict() for item in unified_decisions]
         if ranked_information:
             research_session.record_action(ranked_information[0], outcome="planned")
     attempted = {
@@ -527,6 +610,10 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         "negative_evidence_ledger": list(research_session.negative_evidence_ledger),
         "research_decision_trace": information_actions,
         "smart_information_actions": information_actions,
+        "research_context": research_context.as_dict(),
+        "research_candidate_actions": research_candidate_actions,
+        "research_unified_decision_trace": research_unified_decision_trace,
+        "llm_reliability_trace": llm_reliability_trace,
         "smart_next_actions": planned,
         "smart_replanning": {
             "status": "planned",

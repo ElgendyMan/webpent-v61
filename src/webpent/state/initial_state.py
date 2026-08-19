@@ -50,6 +50,9 @@ def build_initial_state(
     jwt_weak_secret_candidates: list[str] | None = None,
     jwt_public_key_available: bool = False,
     disclosed_report_corpus: list[Any] | None = None,
+    llm_override: bool | None = None,
+    custom_payloads: list[str] | None = None,
+    report_formats: list[str] | None = None,
     playwright_enabled: bool = True,
     skip_recon: bool = False,
     stealth_mode: bool = False,
@@ -76,6 +79,16 @@ def build_initial_state(
         settings = settings.model_copy(update={"scan_mode": resolved_scan_mode})
     capability_manifest = build_capability_manifest(settings)
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
+    normalized_payloads = [
+        str(item).strip()
+        for item in list(custom_payloads or [])
+        if str(item).strip()
+    ]
+    normalized_formats = [
+        str(item).strip().lower()
+        for item in list(report_formats or [])
+        if str(item).strip()
+    ]
 
     return {
         "target": target,
@@ -84,7 +97,8 @@ def build_initial_state(
         "current_phase": "init",
         "hypotheses": [],
         "lessons": [],
-        "payloads_to_test": {},
+        "payloads_to_test": ({"custom": normalized_payloads} if normalized_payloads else {}),
+        "custom_payloads": normalized_payloads,
         "crawled_data": {},
         "auth_state": {},
         "optimization_retries": {},
@@ -146,6 +160,9 @@ def build_initial_state(
         "risk_score": "",
         "playwright_enabled": bool(playwright_enabled),
         "stealth_mode": bool(stealth_mode),
+        "stealth_telemetry": {},
+        "llm_enabled_override": llm_override,
+        "report_formats": normalized_formats,
         "auto_approve": bool(auto_approve),
         "enable_autonomous_controller": bool(enable_autonomous_controller),
         "skip_recon": bool(skip_recon),

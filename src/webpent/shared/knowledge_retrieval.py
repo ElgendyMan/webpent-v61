@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from webpent.memory.vectorstore import get_vector_store_manager
 
@@ -94,4 +96,75 @@ def retrieve_knowledge_context(
     return context
 
 
-__all__ = ["DEFAULT_ADVISORY_TYPES", "retrieve_knowledge_context"]
+@dataclass(frozen=True)
+class DecisionRetrievalRequest:
+    """Bounded retrieval inputs derived from the current research decision."""
+
+    gap_kind: str = "unknown"
+    gap_id: str = ""
+    action_class: str = ""
+    objective: str = ""
+    target_ref: str = ""
+    identity_context: str = "anonymous"
+    workflow_state: str = "unknown"
+    stack: str | None = None
+
+    def query(self) -> str:
+        """Build a redacted semantic query without raw query strings or secrets."""
+        target = ""
+        try:
+            parsed = urlsplit(self.target_ref.strip())
+            if parsed.scheme in {"http", "https"} and parsed.netloc:
+                target = f"{parsed.netloc.lower()} {parsed.path or '/'}"
+        except ValueError:
+            target = ""
+        values = (
+            self.gap_kind,
+            self.gap_id,
+            self.action_class,
+            self.objective,
+            target,
+            self.identity_context,
+            self.workflow_state,
+        )
+        return " ".join(str(value).strip()[:160] for value in values if str(value).strip())[:900]
+
+
+def _decision_doc_types(request: DecisionRetrievalRequest) -> tuple[str, ...]:
+    kind = request.gap_kind.strip().lower()
+    action = request.action_class.strip().lower()
+    if "authorization" in kind or "ownership" in kind or "access" in action:
+        return ("methodology", "writeup", "scenario", "report")
+    if "workflow" in kind or "state" in request.workflow_state.lower():
+        return ("methodology", "scenario", "writeup", "repository")
+    if "identity" in kind or "identity" in action:
+        return ("methodology", "scenario", "writeup")
+    return ("methodology", "repository", "report", "writeup", "scenario")
+
+
+def retrieve_decision_context(
+    request: DecisionRetrievalRequest,
+    *,
+    max_chars: int = 3200,
+) -> str:
+    """Retrieve advisory context for one decision, never for generic planning."""
+    if not isinstance(request, DecisionRetrievalRequest) or max_chars <= 0:
+        return ""
+    query = request.query()
+    if not query:
+        return ""
+    return retrieve_knowledge_context(
+        query,
+        doc_types=_decision_doc_types(request),
+        stack=request.stack,
+        per_type_k=2,
+        max_chars=min(max_chars, 5000),
+    )
+
+
+__all__ = [
+    "DEFAULT_ADVISORY_TYPES",
+    "DecisionRetrievalRequest",
+    "retrieve_decision_context",
+    "retrieve_knowledge_context",
+]

@@ -132,6 +132,7 @@ webpent = ["templates/**/*.j2"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["src", "."]
 addopts = "-ra --strict-markers --strict-config"
 asyncio_mode = "auto"
 

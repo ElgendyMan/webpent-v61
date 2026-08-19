@@ -38,6 +38,8 @@ import re
 import threading
 import time
 import unicodedata
+from contextlib import contextmanager
+from contextvars import ContextVar
 from enum import Enum
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -73,6 +75,26 @@ _DEAD_PROVIDERS: dict[str, float] = {}
 _DEAD_PROVIDER_TTL_SECONDS: float = 600.0
 
 _DEAD_PROVIDERS_LOCK = threading.Lock()
+_LLM_ENABLED_OVERRIDE: ContextVar[bool | None] = ContextVar(
+    "webpent_llm_enabled_override", default=None
+)
+
+
+@contextmanager
+def llm_enabled_override(enabled: bool | None):
+    """Temporarily override LLM availability for the current scan context."""
+    token = _LLM_ENABLED_OVERRIDE.set(enabled)
+    try:
+        yield
+    finally:
+        _LLM_ENABLED_OVERRIDE.reset(token)
+
+
+def is_llm_enabled(settings: Settings | None = None) -> bool:
+    """Return effective LLM availability, honoring a per-run fail-closed override."""
+    settings = settings or get_settings()
+    override = _LLM_ENABLED_OVERRIDE.get()
+    return bool(getattr(settings, "llm_enabled", True)) if override is None else bool(override)
 
 
 def _mark_provider_dead(provider: str, reason: str = "") -> None:
@@ -700,11 +722,11 @@ def get_llm_diagnostics(
         }
     )
     return {
-        "enabled": bool(getattr(settings, "llm_enabled", True)),
+        "enabled": is_llm_enabled(settings),
         "configured_providers": configured,
         "dead_providers": sorted(get_dead_providers()),
         "fallback_mode": (
-            "ai_assisted" if getattr(settings, "llm_enabled", True) and configured
+            "ai_assisted" if is_llm_enabled(settings) and configured
             else "deterministic"
         ),
         "tasks": {
@@ -748,7 +770,7 @@ def get_llm(
             configured for the requested ``task_type``.
     """
     settings = settings or get_settings()
-    if not getattr(settings, "llm_enabled", True):
+    if not is_llm_enabled(settings):
         logger.info(
             "LLM disabled by WEBPENT_LLM_ENABLED=false; task=%s will use "
             "the caller's deterministic fallback.",
@@ -856,7 +878,7 @@ def supports_prompt_caching(task_type: TaskType = TaskType.GENERAL) -> bool:
         Anthropic-style ephemeral prompt caching. ``False`` otherwise.
     """
     settings = get_settings()
-    if not getattr(settings, "llm_enabled", True):
+    if not is_llm_enabled(settings):
         return False
     preference_chain = _TASK_PREFERENCE_ORDER.get(task_type, [])
     for provider, _model_name in preference_chain:
@@ -900,7 +922,7 @@ def get_cached_llm(task_type: TaskType = TaskType.GENERAL) -> Runnable:
         transparently removed from the chain within seconds of
         being marked dead, with no manual ``cache_clear()`` needed.
     """
-    if not getattr(get_settings(), "llm_enabled", True):
+    if not is_llm_enabled(get_settings()):
         logger.info(
             "LLM cache bypassed because WEBPENT_LLM_ENABLED=false; task=%s.",
             task_type.value,

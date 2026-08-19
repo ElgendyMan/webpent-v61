@@ -29,6 +29,7 @@ from webpent.api.scan_registry import (
     get_thread_ids_by_engagement_id,
     register_scan,
 )
+from webpent.cli.loaders import load_cookie_file, load_creds_file, load_payload_file
 from webpent.config.settings import ScanMode, get_settings
 from webpent.graph.builder import build_graph
 from webpent.graph.checkpoints import get_checkpointer
@@ -113,6 +114,22 @@ def _load_json_list(path: str | None, *, label: str, max_items: int) -> list[Any
         err_console.print(f"[red]Error:[/red] {label} file exceeds {max_items} entries")
         raise typer.Exit(1)
     return payload
+
+
+def _parse_report_formats(value: str | None) -> list[str] | None:
+    """Normalize a comma-separated report selection without accepting unknown formats."""
+    if value is None:
+        return None
+    allowed = {"json", "html", "pdf", "md", "all"}
+    selected = [item.strip().lower() for item in value.split(",") if item.strip()]
+    if not selected or any(item not in allowed for item in selected):
+        err_console.print(
+            "[red]Error:[/red] --report-format accepts json, html, pdf, md, or all"
+        )
+        raise typer.Exit(1)
+    if "all" in selected:
+        return ["all"]
+    return list(dict.fromkeys(selected))
 
 
 def _perform_preflight_check() -> bool:
@@ -241,6 +258,31 @@ def scan(
         "--disclosed-reports-file",
         help="Local JSON array of disclosed report text/records used only as advisory context.",
     ),
+    report_format: str | None = typer.Option(
+        None,
+        "--report-format",
+        help="Report output: json, html, pdf, md, or all; comma-separated values are supported.",
+    ),
+    no_llm: bool = typer.Option(
+        False,
+        "--no-llm",
+        help="Disable LLM assistance for this run without changing .env.",
+    ),
+    payload_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--payload-file",
+        help="Bounded text file of custom payloads, one payload per line.",
+    ),
+    creds_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--creds-file",
+        help="JSON file containing one credential object or named credential profiles.",
+    ),
+    cookie_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--cookie-file",
+        help="JSON or Netscape cookie-jar file for authenticated scanning.",
+    ),
 ) -> None:
     """Trigger a full pentest engagement against a target."""
 
@@ -259,6 +301,32 @@ def scan(
     # --- Parse credentials / session cookies / bounded identities ---
     credentials = _parse_credentials(creds)
     operator_cookies = _parse_cookies(cookies)
+    custom_payloads: list[str] = []
+    if payload_file is not None:
+        try:
+            custom_payloads = load_payload_file(payload_file)
+        except ValueError as exc:
+            err_console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(1) from exc
+    if cookie_file is not None:
+        try:
+            file_cookies = load_cookie_file(cookie_file)
+        except ValueError as exc:
+            err_console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(1) from exc
+        operator_cookies = {**file_cookies, **operator_cookies}
+    file_profiles: dict[str, Any] = {}
+    if creds_file is not None:
+        try:
+            loaded_creds = load_creds_file(creds_file)
+        except ValueError as exc:
+            err_console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(1) from exc
+        if {"username", "password"}.issubset(loaded_creds):
+            credentials = {**loaded_creds, **credentials}
+        else:
+            file_profiles = loaded_creds
+    selected_report_formats = _parse_report_formats(report_format)
     if len(second_creds) > 7:
         err_console.print("[red]Error:[/red] at most 7 --second-creds identities are allowed")
         raise typer.Exit(1)
@@ -272,6 +340,12 @@ def scan(
             "name": f"identity-{index}",
             "role": "secondary",
             "credentials": parsed_identity,
+        }
+    for name, profile in file_profiles.items():
+        identity_profiles[str(name)] = {
+            "name": str(name),
+            "role": str(profile.get("role", "secondary")),
+            "credentials": dict(profile),
         }
     jwt_candidates = _load_json_list(jwt_weak_secrets_file, label="JWT candidates", max_items=64)
     disclosed_report_corpus = _load_json_list(
@@ -315,6 +389,12 @@ def scan(
     )
     header.add_row("Playwright", "Available" if playwright_enabled else "Disabled")
     header.add_row("Stealth Mode", "ON (jitter + rate-limit)" if stealth else "Off")
+    header.add_row("LLM", "Disabled for this run" if no_llm else "Configured setting")
+    header.add_row("Custom Payloads", str(len(custom_payloads)) if custom_payloads else "None")
+    header.add_row(
+        "Credential Profiles", str(len(identity_profiles)) if identity_profiles else "None"
+    )
+    header.add_row("Report Format", report_format or "all (default)")
     header.add_row("Skip Recon", "Yes (bypass recon/crawler/scope/waf)" if skip_recon else "No")
     header.add_row(
         "JWT Candidates",
@@ -401,6 +481,9 @@ def scan(
                 jwt_weak_secret_candidates=jwt_candidates,
                 jwt_public_key_available=jwt_public_key_available,
                 disclosed_report_corpus=disclosed_report_corpus,
+                llm_override=False if no_llm else None,
+                custom_payloads=custom_payloads,
+                report_formats=selected_report_formats,
                 playwright_enabled=playwright_enabled,
                 skip_recon=skip_recon,
                 stealth_mode=stealth,
@@ -428,8 +511,14 @@ def scan(
                 engagement_id=resolved_engagement_id,
             )
             console.print("\n[bold blue][*] Invoking LangGraph orchestrator...[/bold blue]\n")
+            from webpent.shared.llm import llm_enabled_override
 
-            final_state = graph.invoke(initial_state, config=config)
+            if stealth:
+                from webpent.shared.stealth import reset_stealth_telemetry
+
+                reset_stealth_telemetry()
+            with llm_enabled_override(False if no_llm else None):
+                final_state = graph.invoke(initial_state, config=config)
 
     except Exception as exc:
         err_console.print(f"[red]ERROR: Engagement failed — {exc}[/red]")
@@ -487,6 +576,16 @@ def scan(
         console.print(f"[yellow]⚠ Cumulative findings unavailable: {exc}[/yellow]")
 
     # --- Display results ---
+    if stealth:
+        from webpent.shared.stealth import get_stealth_summary
+
+        telemetry = get_stealth_summary()
+        console.print(
+            "[cyan]Stealth telemetry:[/cyan] "
+            f"jitter={telemetry['jitter_calls']} calls, "
+            f"rate-limit={telemetry['rate_limit_calls']} calls, "
+            f"sleep={telemetry['total_sleep_seconds']:.3f}s"
+        )
 
     if findings:
         table = Table(
@@ -521,12 +620,16 @@ def scan(
 
     # --- Summary panel ---
     output_dir = settings.ensure_output_dir()
+    report_names = ["json", "html", "pdf", "md"]
+    if selected_report_formats and "all" not in selected_report_formats:
+        report_names = selected_report_formats
+    report_label = ", ".join(report_names)
     console.print(
         Panel(
             f"[bold green]Engagement Completed[/bold green]\n\n"
             f"  [dim]Thread ID[/dim]    {resolved_thread_id}\n"
             f"  [dim]Findings[/dim]     {len(findings)}\n"
-            f"  [dim]Report[/dim]       {output_dir / 'report.html'}\n"
+            f"  [dim]Reports[/dim]      {report_label} in {output_dir}\n"
             f"  [dim]Database[/dim]     {settings.database_url}\n"
             f"  [dim]Release[/dim]      {current_release_id()}\n"
             f"  [dim]Ledger[/dim]       {settings.findings_ledger_path}\n",
@@ -560,6 +663,31 @@ def preflight() -> None:
             table.add_row(tool, "[red]✗ Missing[/red]")
 
     console.print(table)
+
+    try:
+        from webpent.shared.preflight import _check_llm_providers
+
+        llm_status = _check_llm_providers()
+        llm_table = Table(
+            title="LLM Provider Status", border_style="grey50", header_style="bold cyan"
+        )
+        llm_table.add_column("Setting", width=24)
+        llm_table.add_column("Value")
+        llm_table.add_row("LLM enabled", str(llm_status.get("enabled", False)))
+        llm_table.add_row("Status", str(llm_status.get("status", "unknown")))
+        providers = llm_status.get("configured_providers") or []
+        llm_table.add_row("Configured providers", ", ".join(map(str, providers)) or "None")
+        dead = llm_status.get("dead_providers") or []
+        llm_table.add_row("Circuit-breaker dead", ", ".join(map(str, dead)) or "None")
+        chains = llm_status.get("fallback_chains") or {}
+        chain_text = "; ".join(
+            f"{task}: {' -> '.join(models) if models else 'deterministic'}"
+            for task, models in chains.items()
+        )
+        llm_table.add_row("Fallback chains", chain_text or "deterministic")
+        console.print(llm_table)
+    except Exception as exc:
+        console.print(f"[yellow]LLM diagnostics unavailable: {type(exc).__name__}[/yellow]")
 
     if not pw_ok:
         console.print("\n[yellow]⚠ Playwright is disabled — sandbox will skip gracefully.[/yellow]")

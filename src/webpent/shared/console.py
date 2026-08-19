@@ -33,6 +33,7 @@ from collections.abc import Sequence
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeRemainingColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -68,6 +69,40 @@ def _severity_style(severity: str) -> str:
 # border uses a muted blue to distinguish phase markers from log output
 # without being visually loud.
 _PHASE_BORDER = "steel_blue"
+
+
+def print_phase_start(phase_name: str, description: str | None = None) -> None:
+    """Print a compact, color-coded phase start event."""
+    detail = description or "phase started"
+    console.print(
+        f"[bold steel_blue][START][/bold steel_blue] "
+        f"[bold white]{phase_name}[/bold white] [dim]{detail}[/dim]"
+    )
+
+
+def print_phase_end(phase_name: str, duration: float, status: str = "success") -> None:
+    """Print a color-coded phase completion event with duration."""
+    normalized = str(status).strip().lower()
+    style = {"success": "green", "warning": "yellow", "error": "red"}.get(
+        normalized, "cyan"
+    )
+    console.print(
+        f"[{style}][{normalized.upper()}][/{style}] "
+        f"[bold white]{phase_name}[/bold white] "
+        f"[dim]{max(0.0, float(duration)):.2f}s[/dim]"
+    )
+
+
+def create_progress() -> Progress:
+    """Create a reusable Rich progress bar for long-running operations."""
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        console=console,
+    )
 
 
 def render_phase(phase_name: str, detail: str | None = None) -> None:

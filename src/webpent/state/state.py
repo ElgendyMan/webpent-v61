@@ -140,6 +140,12 @@ class PentestState(TypedDict, total=False):
 
     # V5 Sprint 6 addition
     stealth_mode: bool  # When True, insert jitter + rate-limit delays
+    # Operations UX additions. These remain optional for legacy checkpoints
+    # because the TypedDict is declared with total=False.
+    stealth_telemetry: Annotated[dict[str, Any], merge_dicts]
+    custom_payloads: list[str]
+    report_formats: list[str]
+    llm_enabled_override: bool | None
 
     # Optional durable runtime ledger; absent in legacy/tests means in-memory only.
     action_ledger_path: str | None
@@ -166,6 +172,9 @@ class PentestState(TypedDict, total=False):
     enable_autonomous_controller: bool
     capability_manifest: Annotated[dict[str, Any], merge_dicts]
     action_budget: Annotated[dict[str, Any], merge_dicts]
+    # Optional LLM advisory validation trace. It is report-safe and never
+    # grants execution authority; absent in legacy checkpoints.
+    llm_reliability_trace: Annotated[list[dict[str, Any]], merge_lists]
 
     # V7 Cognitive Upgrade — Phase 2: Mental Model / Knowledge Graph.
     #
@@ -302,6 +311,19 @@ class PentestState(TypedDict, total=False):
     research_session: Annotated[dict[str, Any], merge_dicts]
     research_decision_trace: Annotated[list[dict[str, Any]], merge_lists]
     smart_information_actions: Annotated[list[dict[str, Any]], merge_lists]
+    # Typed research contracts are additive planning telemetry only. They never
+    # authorize execution, promote hypotheses, or replace proof validation.
+    research_context: Annotated[dict[str, Any], merge_dicts]
+    research_candidate_actions: Annotated[list[dict[str, Any]], merge_lists]
+    research_unified_decision_trace: Annotated[list[dict[str, Any]], merge_lists]
+    research_active_observations: Annotated[list[dict[str, Any]], merge_lists]
+    surface_coverage: Annotated[dict[str, Any], merge_dicts]
+    research_failed_paths: Annotated[list[dict[str, Any]], merge_lists]
+    # Phase 4 evidence-only behavior and causal projections. They never create
+    # findings, authorize transport, or replace proof validation.
+    novel_behavior_observations: Annotated[list[dict[str, Any]], merge_lists]
+    causal_attack_edges: Annotated[list[dict[str, Any]], merge_lists]
+    causal_attack_graph: Annotated[dict[str, Any], merge_dicts]
     # Read-only HTTP observations from the bounded Smart Hunter executor.
     # Bodies, cookies, and raw headers are intentionally excluded.
     smart_http_observations: Annotated[list[dict[str, Any]], merge_lists]
