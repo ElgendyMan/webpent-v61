@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة v60 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG. آخر بوابة تحقق موثقة: **764 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff على `src` و`tests` ناجح. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف.
+> **الحالة الحالية:** نسخة v60 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG. آخر بوابة تحقق موثقة: **865 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff على `src` و`tests` و`scripts` ناجح. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -143,7 +143,9 @@ make dev-logs
 make close
 ```
 
-الـdevelopment stack يعرض API عادةً على `http://localhost:8000`. قبل تعريض API خارج localhost، استخدم secrets قوية، واضبط `AUTH_ENABLED=true` و`CORS_ORIGINS` صريحة و`ALLOW_INSECURE_TLS=false`، واستخدم Redis خارجيًا مع TLS عند الحاجة.
+الـdevelopment stack يعرض API عادةً على `http://localhost:8000`. اضبط `ENVIRONMENT_PROFILE=lab` للتشغيل المحلي؛ أما `staging` و`production` فيفرضان `AUTH_ENABLED=true` وsecrets قوية، بالإضافة إلى `LANGGRAPH_STRICT_MSGPACK=true` قبل تشغيل persistence الخاصة بالـcheckpoints. قبل تعريض API خارج localhost، استخدم `CORS_ORIGINS` صريحة و`ALLOW_INSECURE_TLS=false`، واستخدم Redis خارجيًا مع TLS عند الحاجة.
+
+يشغّل `preflight` posture state صريحًا (`UNKNOWN` أو `BLOCKED` أو `PASS` أو `READY_WITH_WARNING` أو `DEGRADED`). حالة `READY_WITH_WARNING` في lab تعني أن التشغيل مسموح مع تحذيرات معلنة، ولا تعني qualification حيًا أو غياب كل المخاطر التشغيلية.
 
 طبقة persistence الحالية SQLite؛ وجود PostgreSQL profile لا يعني أن PostgreSQL backend مدعوم إنتاجيًا. لا تفترض أن نجاح تشغيل SQLite يثبت سلامة تشغيل PostgreSQL.
 
@@ -155,7 +157,7 @@ make doctor
 .venv/bin/pytest -q
 ```
 
-لا تنشر `.env` أو قواعد SQLite أو cookies أو تقارير تحتوي credentials أو service logs. استخدم reverse proxy مع TLS، ودوّر JWT وaudit وCelery-payload وwebhook وOOB secrets بشكل مستقل.
+لا تنشر `.env` أو قواعد SQLite أو cookies أو تقارير تحتوي credentials أو service logs. استخدم reverse proxy مع TLS، ودوّر JWT وaudit وCelery-payload وwebhook وOOB secrets بشكل مستقل. تقارير `docs/` المحلية الخاصة بالـmock والـpreflight لا تثبت تشغيلًا حيًا على WAPTLab.
 
 ## CLI وAPI
 

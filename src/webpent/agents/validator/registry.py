@@ -49,6 +49,11 @@ _IMPLEMENTED_VALIDATORS: Final[dict[str, str]] = {
     "brute_force": "brute_force",
 }
 
+_OFFLINE_FIXTURE_VALIDATORS: Final[dict[str, str]] = {
+    "elasticsearch_snapshot_traversal": "offline-fixture:elasticsearch_snapshot_traversal",
+    "xslt_injection": "offline-fixture:xslt_injection",
+}
+
 _ALL_CLASSES: Final[tuple[str, ...]] = (
     "xss",
     "sqli",
@@ -81,6 +86,8 @@ _ALL_CLASSES: Final[tuple[str, ...]] = (
     "cloud_storage_exposure",
     "jwt_weakness",
     "jwt_key_confusion",
+    "elasticsearch_snapshot_traversal",
+    "xslt_injection",
     "unknown",
 )
 
@@ -94,11 +101,26 @@ def capability_for(vuln_class: str) -> ValidatorCapability:
     """Return an explicit capability record for any known or unknown class."""
     vuln_class = str(vuln_class)
     validator_id = validator_id_for(vuln_class)
+    if validator_id:
+        return ValidatorCapability(
+            vuln_class=vuln_class,
+            validator_id=validator_id,
+            status="tested",
+            evidence_mode="deterministic",
+        )
+    offline_id = _OFFLINE_FIXTURE_VALIDATORS.get(vuln_class)
+    if offline_id:
+        return ValidatorCapability(
+            vuln_class=vuln_class,
+            validator_id=offline_id,
+            status="offline-fixture",
+            evidence_mode="offline-contract",
+        )
     return ValidatorCapability(
         vuln_class=vuln_class,
-        validator_id=validator_id,
-        status="tested" if validator_id else "missing-validator",
-        evidence_mode="deterministic" if validator_id else "human-review",
+        validator_id=None,
+        status="missing-validator",
+        evidence_mode="human-review",
     )
 
 

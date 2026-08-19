@@ -140,6 +140,9 @@ def _build_capability_manifest(settings: Settings | None = None) -> dict[str, An
     """Build a non-secret capability manifest for the current scan profile."""
     settings = settings or get_settings()
     mode = getattr(settings.scan_mode, "value", settings.scan_mode)
+    environment_profile = getattr(
+        settings.environment_profile, "value", settings.environment_profile
+    )
     capabilities: dict[str, dict[str, Any]] = {
         "http_read": {"available": True, "status": "available"},
         "browser": _playwright_status(),
@@ -192,6 +195,7 @@ def _build_capability_manifest(settings: Settings | None = None) -> dict[str, An
 
     return {
         "profile": str(mode),
+        "environment_profile": str(environment_profile),
         "capabilities": capabilities,
         "blockers": blockers,
         "fail_closed": True,

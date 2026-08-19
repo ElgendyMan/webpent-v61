@@ -45,6 +45,14 @@ class ScanMode(str, Enum):
     AUTHORIZED_ACTIVE = "authorized-active"
 
 
+class EnvironmentProfile(str, Enum):
+    """Deployment posture used by startup security gates."""
+
+    LAB = "lab"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+
 class Settings(BaseSettings):
     """Framework-wide settings.
 
@@ -111,6 +119,18 @@ class Settings(BaseSettings):
 
     # -- Framework behaviour -------------------------------------------------
     debug: bool = Field(default=False, description="Enable verbose debug logging.")
+    environment_profile: EnvironmentProfile = Field(
+        default=EnvironmentProfile.LAB,
+        validation_alias=AliasChoices(
+            "environment_profile",
+            "ENVIRONMENT_PROFILE",
+            "WEBPENT_ENVIRONMENT_PROFILE",
+        ),
+        description=(
+            "Explicit deployment posture. lab preserves local loopback compatibility; "
+            "staging and production require authentication and secure transport posture."
+        ),
+    )
     scan_mode: ScanMode = Field(
         default=ScanMode.LEGACY,
         validation_alias=AliasChoices(
@@ -1023,6 +1043,15 @@ class Settings(BaseSettings):
                 (per the CISO directive, checked against
                 ``_INSECURE_JWT_DEFAULTS``).
         """
+        # Environment profile is explicit and fail-closed for non-lab deployments.
+        # The lab default preserves existing local/offline behavior while staging and
+        # production cannot silently run with authentication disabled.
+        if self.environment_profile is not EnvironmentProfile.LAB and not self.auth_enabled:
+            raise ValueError(
+                "SECURITY HARD STOP: environment_profile staging/production requires "
+                "auth_enabled=True"
+            )
+
         # --- JWT secret hard-stop (V6 Zero-Day Patched P0-2) ---
         if self.auth_enabled is True and self.jwt_secret_key in self._INSECURE_JWT_DEFAULTS:
             raise ValueError(

@@ -44,6 +44,10 @@
         "scripts/capture_vip_baseline.py",
         "scripts/run_vip_quality_gate.py",
         "scripts/run_waptlab_regression.py",
+        "scripts/build_release_manifest.py",
+        "scripts/build_capability_report.py",
+        "scripts/build_mock_qualification_report.py",
+        "scripts/build_preflight_report.py",
         "tests/test_vip_application_intent_graph.py",
         "tests/test_vip_baseline.py",
         "tests/test_vip_campaign_planner.py",
@@ -84,7 +88,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "828 passed, 136 warnings in 26.43s"
+        "865 passed, 138 warnings in 26.10s"
       ]
     },
     {
@@ -92,13 +96,13 @@
         "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
         "scripts/verify_test_count.py",
         "--minimum",
-        "498"
+        "796"
       ],
       "name": "test-function-count",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "    \"tests/test_vip_validator_plugins.py\": 5,",
+        "    \"tests/test_vip_validator_plugins.py\": 6,",
         "    \"tests/test_vip_waptlab_regression.py\": 2,",
         "    \"tests/test_vip_workflow_replay.py\": 3,",
         "    \"tests/test_waptlab_catalog_manifest.py\": 6,",
@@ -106,22 +110,170 @@
         "    \"tests/test_waptlab_live_improvements.py\": 3,",
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
-        "  \"minimum\": 498,",
-        "  \"total_test_functions\": 779",
+        "  \"minimum\": 796,",
+        "  \"total_test_functions\": 816",
         "}",
-        "OK: preserved test-function count 779 >= minimum 498"
+        "OK: preserved test-function count 816 >= minimum 796"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
+        "scripts/build_preflight_report.py",
+        "--host",
+        "127.0.0.1"
+      ],
+      "name": "preflight-report",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"output\": \"/tmp/webpent_v60_smart_implementation/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
+        "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)",
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
+        "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
+        "scripts/build_capability_report.py"
+      ],
+      "name": "capability-report",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/capability_report.json\"}"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
+        "scripts/build_mock_qualification_report.py"
+      ],
+      "name": "mock-qualification-report",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_smart_implementation/docs/preflight_report.json"
+      ],
+      "name": "preflight-report-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_smart_implementation/docs/capability_report.json"
+      ],
+      "name": "capability-report-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_smart_implementation/docs/waptlab_qualification_report.json"
+      ],
+      "name": "mock-qualification-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/usr/local/bin/bandit",
+        "-q",
+        "-r",
+        "src/webpent",
+        "-x",
+        "tests",
+        "-lll",
+        "-f",
+        "json",
+        "-o",
+        "/tmp/webpent_v60_smart_implementation/docs/bandit_release.json"
+      ],
+      "name": "bandit-high-severity",
+      "passed": true,
+      "requirement_source": "uv-exported-lock",
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/usr/local/bin/pip-audit",
+        "--strict",
+        "--timeout",
+        "15",
+        "--requirement",
+        "/tmp/webpent_v60_smart_implementation/docs/requirements-audit-release.txt",
+        "--format",
+        "cyclonedx-json",
+        "--output",
+        "/tmp/webpent_v60_smart_implementation/docs/sbom.cdx.json"
+      ],
+      "name": "pip-audit-sbom",
+      "passed": false,
+      "requirement_source": "uv-exported-lock",
+      "returncode": 1,
+      "tail": [
+        "Found 17 known vulnerabilities in 9 packages"
+      ]
+    },
+    {
+      "command": [
+        "/usr/local/bin/pip-audit",
+        "--strict",
+        "--timeout",
+        "15",
+        "--requirement",
+        "/tmp/webpent_v60_smart_implementation/docs/requirements-audit-release.txt",
+        "--format",
+        "json",
+        "--output",
+        "/tmp/webpent_v60_smart_implementation/docs/pip_audit_release.json"
+      ],
+      "name": "pip-audit-strict",
+      "passed": false,
+      "requirement_source": "uv-exported-lock",
+      "returncode": 1,
+      "tail": [
+        "Found 17 known vulnerabilities in 9 packages"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
+        "scripts/build_release_manifest.py"
+      ],
+      "name": "release-manifest",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"file_count\": 608, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-19T17:36:02.363307+00:00",
+  "generated_at": "2026-08-19T18:52:07.288534+00:00",
   "known_blockers": [
-    "worker critical-path coverage remains 23% versus the 85% target",
-    "LangChain/LangGraph advisory set remains documented in pip-audit-production.json",
-    "WAPTLab regression is local contract-only; no campaign is confirmed by this gate"
+    "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
+    "worker critical-path qualification and live Docker qualification remain environment-blocked",
+    "pip-audit strict did not pass; dependency advisories remain a release blocker"
   ],
-  "passed": true,
-  "project": "WebPent v60",
-  "schema_version": "vip-quality-gate-v1",
+  "passed": false,
+  "project": "WebPent v61",
+  "schema_version": "vip-quality-gate-v2",
+  "security_artifacts": {
+    "bandit": "docs/bandit_release.json",
+    "pip_audit": "docs/pip_audit_release.json",
+    "sbom": "docs/sbom.cdx.json"
+  },
   "waptlab_artifact_safety": {
     "campaign_count": 20,
     "passed": true,

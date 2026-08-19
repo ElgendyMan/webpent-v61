@@ -113,3 +113,20 @@ def test_validator_outcome_projects_to_redacted_ledger_entry() -> None:
     assert "secret-value" not in rendered
     assert "secret-token" not in rendered
     assert entry.content_digest().startswith("sha256:")
+
+
+def test_offline_fixture_capabilities_are_not_live_validators() -> None:
+    from webpent.agents.validator.registry import capability_for, validator_id_for
+
+    elasticsearch = capability_for("elasticsearch_snapshot_traversal")
+    xslt = capability_for("xslt_injection")
+    unknown = capability_for("unknown_future_class")
+
+    assert elasticsearch.status == "offline-fixture"
+    assert elasticsearch.evidence_mode == "offline-contract"
+    assert xslt.status == "offline-fixture"
+    assert xslt.evidence_mode == "offline-contract"
+    assert validator_id_for("elasticsearch_snapshot_traversal") is None
+    assert validator_id_for("xslt_injection") is None
+    assert unknown.status == "missing-validator"
+    assert unknown.validator_id is None

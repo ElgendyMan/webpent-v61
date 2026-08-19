@@ -29,6 +29,7 @@ Usage (API/worker startup):
 
 from __future__ import annotations
 
+import importlib.metadata
 import logging
 import os
 from urllib.parse import urlparse
@@ -77,7 +78,12 @@ def _check_playwright_ws_guard() -> dict[str, object]:
     try:
         import playwright
 
-        version = getattr(playwright, "__version__", "unknown")
+        version = getattr(playwright, "__version__", None)
+        if not version:
+            try:
+                version = importlib.metadata.version("playwright")
+            except importlib.metadata.PackageNotFoundError:
+                version = "unknown"
         # route_web_socket was added in Playwright 1.48. Parse the
         # major.minor to determine availability.
         try:
@@ -366,6 +372,35 @@ def _enforce_api_security_posture(
     )
 
 
+def _posture_state(report: dict[str, dict[str, object]], profile: str) -> dict[str, object]:
+    """Project individual checks into a fail-closed startup posture."""
+    statuses = [str(info.get("status", "unknown")).lower() for info in report.values()]
+    if any("unknown" in status for status in statuses):
+        state = "UNKNOWN"
+    elif any(
+        status.startswith("fail")
+        or "unmitigated" in status
+        or "blocked startup" in status
+        for status in statuses
+    ):
+        state = "BLOCKED"
+    elif any(
+        token in status
+        for status in statuses
+        for token in ("degraded", "disabled", "not configured")
+    ):
+        state = "DEGRADED" if profile in {"staging", "production"} else "READY_WITH_WARNING"
+    else:
+        state = "PASS"
+    return {
+        "profile": profile,
+        "state": state,
+        "status": state,
+        "allowed_to_start": state in {"PASS", "READY_WITH_WARNING", "DEGRADED"},
+        "fail_closed": True,
+    }
+
+
 def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
     """Emit the capability report and enforce public-bind security posture.
 
@@ -400,6 +435,13 @@ def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
             "blockers": [{"capability": "manifest", "reason": type(exc).__name__}],
             "fail_closed": True,
         }
+    try:
+        from webpent.config.settings import get_settings
+
+        profile = getattr(get_settings().environment_profile, "value", "unknown")
+    except Exception:
+        profile = "unknown"
+    report["posture"] = _posture_state(report, profile)
     _enforce_redis_security(report)
     _enforce_api_security_posture(host=host, report=report)
     # Emit one INFO line per capability so the operator sees the full

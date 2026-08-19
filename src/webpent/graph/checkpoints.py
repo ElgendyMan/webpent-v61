@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 import sqlite3
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_SESSIONS_DB_PATH = "./memory/global/sessions.db"
 _BUSY_TIMEOUT_MS = 30_000
+_STRICT_MSGPACK_ENV = "LANGGRAPH_STRICT_MSGPACK"
 _SECRET_CHANNELS = {"session_cookies", "identity_profiles"}
 _SENSITIVE_KEYS = frozenset(
     {
@@ -89,6 +91,22 @@ def _ensure_parent_dir(db_path: str) -> None:
     if path.parent and not path.parent.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         logger.debug("Created checkpoint parent directory: %s", path.parent)
+
+
+def _enforce_checkpoint_deserialization_policy() -> None:
+    """Require strict checkpoint deserialization outside local lab mode."""
+    profile = os.getenv("ENVIRONMENT_PROFILE", "lab").strip().lower() or "lab"
+    strict_value = os.getenv(_STRICT_MSGPACK_ENV, "").strip().lower()
+    strict_enabled = strict_value in {"1", "true", "yes", "on"}
+    if profile in {"staging", "production"} and not strict_enabled:
+        raise RuntimeError(
+            f"{_STRICT_MSGPACK_ENV}=true is required for {profile} checkpoint persistence"
+        )
+    if profile == "lab" and not strict_enabled:
+        logger.warning(
+            "%s is not enabled in lab mode; checkpoint deserialization is less restrictive",
+            _STRICT_MSGPACK_ENV,
+        )
 
 
 def _set_busy_timeout(conn: sqlite3.Connection) -> None:
@@ -231,6 +249,7 @@ class RedactingSqliteSaver(SqliteSaver):
 def _managed_factory_saver(factory: Any) -> Iterator[RedactingSqliteSaver]:
     """Apply policy to the official LangGraph factory path."""
     with factory as saver:
+        _enforce_checkpoint_deserialization_policy()
         _set_busy_timeout(saver.conn)
         yield RedactingSqliteSaver(conn=saver.conn, serde=saver.serde)
 
@@ -239,6 +258,7 @@ def _managed_factory_saver(factory: Any) -> Iterator[RedactingSqliteSaver]:
 def _managed_fallback_saver(conn: sqlite3.Connection) -> Iterator[RedactingSqliteSaver]:
     """Wrap a fallback connection with enforced policy and safe closure."""
     try:
+        _enforce_checkpoint_deserialization_policy()
         _set_busy_timeout(conn)
         yield RedactingSqliteSaver(conn=conn)
     finally:
