@@ -3,12 +3,12 @@
     "docs/bandit_release.json": "63c242c3360086c7efd4acf58dd2beb37d140d521d581e5c00cc59047f347a25",
     "docs/pip_audit_release.json": "2157e15ea70f79b0f8cb32ea96fdd4773b6d250f34c2cc1b42f2166b2b3c18ee",
     "docs/sbom.cdx.json": "8f5b59ff921f258d1888ad4daddfcac177b240a58bf7235877cf6fa2b6096c87",
-    "docs/vip_quality_gate.json": "bbfeadf2ba0457ac448d3e10e4ed82505ad63c0a621d193c6abf16d6c884aa80",
+    "docs/vip_quality_gate.json": "25e2581b92d242dcf114ae95a59989d1b5f1449e740ec14059c15dc9cf8c2e8b",
     "docs/waptlab_coverage_ledger.json": "aa78f0e14120ca8fa332293546677420eee616adf0f3dc4415e31feeeea93e9e",
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "f2eb93e83b4b84615e873ecba1cc278b1b5d5a4019ac99f9808fb866c6fee864"
   },
-  "file_count": 600,
+  "file_count": 601,
   "files": {
     ".env.example": "4f4b285bbd0abd590dea40f39b8b9af27698f6de1ed5ba567dc3e9597bde11f5",
     ".github/workflows/ci.yml": "f7fe55005d2fa5535668337090e5d8eb4732d1c704268491ea08ac6ba1951cf9",
@@ -154,6 +154,7 @@
     "docs/v72_release_notes.md": "9b5762443db9d7edfb2891dd6ec709f8fa276f69e036bfdce4bc1d5cfe611617",
     "docs/v72_verification/summary.txt": "5f28ccb88565a18042f26d59d63a962fd875edbc65f30c8b1d30d22c1689fa40",
     "docs/v72_verification/vip_quality_gate.exit": "7e3551182b6c297e639049c527c79fb18f4e8135532232bd3a6a44c2c6ae514b",
+    "docs/v72_verification/vip_quality_gate_post_commit.exit": "09546a2294cbf14c129c84cbc8d307f74b9c7c7fca6785dcdd73d17da17d0a9a",
     "docs/vip_audit_compliance_matrix.md": "2ad2b9504769c859daeb2bac70a4eb541fb727c25ffb88371e4727aa270f58a5",
     "docs/vip_audit_delivery_notes.md": "3cf20979c2ed401bccd93a22ccd73008df1acda580308cec246af3dd4086ae8a",
     "docs/vip_audit_execution_scope.md": "ff85fcf969654260dd953306258ae1212c2c05479a18d19b18729bb9623c127a",
@@ -162,7 +163,7 @@
     "docs/vip_baseline.json": "27c18adb3854117f475fbe71fefb39604366ba30aadc2ee40625fda764a3a6ca",
     "docs/vip_baseline_inventory.txt": "f71fe462fc13a6df9b6ff70a75f83ea723134f2c36a6a060ae586cad848d9fbe",
     "docs/vip_plan_gap_audit.md": "6801e76e927bdef72736491b54e61dce6d45d0e5aaa4decd3df89f7af8824bc4",
-    "docs/vip_quality_gate.json": "bbfeadf2ba0457ac448d3e10e4ed82505ad63c0a621d193c6abf16d6c884aa80",
+    "docs/vip_quality_gate.json": "25e2581b92d242dcf114ae95a59989d1b5f1449e740ec14059c15dc9cf8c2e8b",
     "docs/waptlab_baseline_manifest.json": "58e3da694cdfd6617520ba11937e341a8a99509c9ea9f3372f959cbed1e2f0d6",
     "docs/waptlab_coverage_ledger.json": "aa78f0e14120ca8fa332293546677420eee616adf0f3dc4415e31feeeea93e9e",
     "docs/waptlab_discovery_confirmation_upgrade_report.md": "87f0d3963f0db25c04177655b76b61935c1740b36bc4a159196380fd9f66bbb6",
@@ -611,8 +612,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-19T22:20:06.111094+00:00",
-  "git_commit": "5c850ac8e6bfc5a44357fdc6e0fec4800c2c2d48",
+  "generated_at": "2026-08-19T22:20:51.309458+00:00",
+  "git_commit": "bed9dd89a22d028c26505a9a6340af898f570012",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
