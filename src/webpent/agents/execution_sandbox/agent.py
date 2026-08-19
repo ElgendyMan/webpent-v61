@@ -29,6 +29,7 @@ from langchain_core.messages import AIMessage
 
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Confidence, Finding, VulnClass
+from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.poc_policy import derive_execution_risk, evaluate_execution_gate
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
 from webpent.state.state import PentestState
@@ -371,6 +372,70 @@ def _test_finding_payloads(
             stealth_mode=stealth_mode,
         )
         if confirmed:
+            negative_control_payload = "webpent-neutral-control"
+            negative_control_triggered = _test_payload_with_browser(
+                browser,
+                finding.url,
+                negative_control_payload,
+                auth_state,
+                stealth_mode=stealth_mode,
+            )
+            evidence = {
+                "validator": "playwright_xss_replay",
+                "positive_payload": payload,
+                "positive_signal": True,
+                "causal_signal": True,
+                "negative_control_payload": negative_control_payload,
+                "negative_control_complete": not negative_control_triggered,
+                "negative_control_signal": negative_control_triggered,
+            }
+            if negative_control_triggered:
+                logger.warning(
+                    "Playwright XSS promotion blocked for %s: neutral control also triggered",
+                    finding.id,
+                )
+                return finding.model_copy(
+                    update={
+                        "confidence_level": "Needs Human Review",
+                        "evidence": {
+                            **(finding.evidence or {}),
+                            **evidence,
+                            "promotion_guard": {
+                                "status": "blocked",
+                                "reason": "negative_control_triggered",
+                            },
+                        },
+                    }
+                )
+            bundle = build_proof_bundle(
+                engagement_id=str(
+                    (finding.evidence or {}).get("engagement_id") or "runtime-unbound"
+                ),
+                finding_id=str(finding.id),
+                evidence=[
+                    {"payload": payload, "triggered": True},
+                    {"payload": negative_control_payload, "triggered": False},
+                ],
+                evidence_refs=[
+                    f"playwright:{finding.id}:positive",
+                    f"playwright:{finding.id}:negative-control",
+                ],
+                negative_control={"payload": negative_control_payload, "triggered": False},
+            ).seal(actor="playwright_execution_sandbox")
+            if not validate_proof_bundle(bundle, require_negative_control=True):
+                return finding.model_copy(
+                    update={
+                        "confidence_level": "Needs Human Review",
+                        "evidence": {
+                            **(finding.evidence or {}),
+                            **evidence,
+                            "promotion_guard": {
+                                "status": "blocked",
+                                "reason": "proof_bundle_validation_failed",
+                            },
+                        },
+                    }
+                )
             logger.info(
                 "Playwright CONFIRMED XSS for finding %s (%s) — upgrading confidence",
                 finding.id, finding.title,
@@ -380,6 +445,16 @@ def _test_finding_payloads(
                     "confidence": Confidence.CONFIRMED.value,
                     "payload": f"{_PLAYWRIGHT_CONFIRMED_MARKER}: {payload}",
                     "confidence_level": "Tool-Confirmed",
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        **evidence,
+                        "proof_bundle_sealed": True,
+                        "proof_bundle": bundle.model_dump(mode="json"),
+                        "promotion_guard": {
+                            "status": "passed",
+                            "proof_bundle_sealed": True,
+                        },
+                    },
                 }
             )
             # V3.5 Obsidian Master Fix: Incrementally persist the confirmed

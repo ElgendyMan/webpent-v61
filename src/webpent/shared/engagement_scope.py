@@ -63,6 +63,7 @@ of which thread/greenlet Playwright invokes the callback from.
 from __future__ import annotations
 
 import contextvars
+import ipaddress
 import logging
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
@@ -107,14 +108,21 @@ class OriginPolicy:
         parsed = urlsplit(str(value).strip())
         scheme = parsed.scheme.lower()
         hostname = parsed.hostname
-        if scheme not in _DEFAULT_PORTS or not hostname:
-            raise ValueError("OriginPolicy requires an http(s)/ws(s) URL with a host")
-        try:
-            hostname.encode("ascii")
-        except UnicodeEncodeError as exc:
-            raise ValueError("OriginPolicy hostname must be ASCII/punycode") from exc
-        hostname = hostname.strip("[]").lower()
+        if (
+            scheme not in _DEFAULT_PORTS
+            or not hostname
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            raise ValueError(
+                "OriginPolicy requires an http(s)/ws(s) URL with a host and no userinfo"
+            )
+        hostname = _normalize_hostname(hostname)
+        if not hostname:
+            raise ValueError("OriginPolicy hostname is invalid")
+
         port = parsed.port or _DEFAULT_PORTS[scheme]
+
         if not 1 <= port <= 65535:
             raise ValueError("OriginPolicy port must be between 1 and 65535")
         path = parsed.path or "/"
@@ -139,7 +147,9 @@ class OriginPolicy:
         try:
             parsed = urlsplit(str(value).strip())
             scheme = parsed.scheme.lower()
-            hostname = (parsed.hostname or "").strip("[]").lower()
+            if parsed.username is not None or parsed.password is not None:
+                return False
+            hostname = _normalize_hostname(parsed.hostname or "")
             port = parsed.port or _DEFAULT_PORTS.get(scheme)
             if not hostname or port is None:
                 return False
@@ -170,8 +180,22 @@ def normalize_scope_host(value: str | None) -> str | None:
     return _extract_host(value or "")
 
 
+def _normalize_hostname(value: str) -> str | None:
+    """Canonicalize DNS/IDNA names and IP literals for exact comparisons."""
+    cleaned = str(value or "").strip().strip("[]").rstrip(".")
+    if not cleaned:
+        return None
+    try:
+        return ipaddress.ip_address(cleaned).compressed.lower()
+    except ValueError:
+        try:
+            return cleaned.encode("idna").decode("ascii").lower().rstrip(".")
+        except (UnicodeError, ValueError):
+            return None
+
+
 def _extract_host(value: str) -> str | None:
-    """Extract a normalized hostname from a URL or bare host/IP string."""
+    """Extract a canonical hostname from a URL or bare host/IP string."""
     if not value:
         return None
     value = value.strip()
@@ -184,7 +208,7 @@ def _extract_host(value: str) -> str | None:
     host = parsed.hostname
     if not host:
         return None
-    return host.strip().strip("[]").lower()
+    return _normalize_hostname(host)
 
 
 def set_engagement_target_hosts(*urls_or_hosts: str | None) -> contextvars.Token:
@@ -302,7 +326,7 @@ def is_engagement_target_host(host: str | None) -> bool:
     if not host:
         return False
     try:
-        cleaned = host.strip().strip("[]").lower()
+        cleaned = _normalize_hostname(host)
     except Exception:
         return False
-    return cleaned in _ENGAGEMENT_TARGET_HOSTS.get()
+    return bool(cleaned and cleaned in _ENGAGEMENT_TARGET_HOSTS.get())

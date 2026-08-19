@@ -324,6 +324,50 @@ def create_rabbit_hole_branch_goal(
     )
 
 
+def _coerce_goal_tree(tree_state: Any) -> GoalTree | None:
+    """Coerce serialized state into the canonical GoalTree model."""
+    if isinstance(tree_state, GoalTree):
+        return tree_state
+    if not isinstance(tree_state, dict):
+        return None
+    try:
+        return GoalTree(**tree_state)
+    except Exception:
+        return None
+
+
+def find_root_goal_id(tree_state: Any) -> str | None:
+    """Return the canonical ROOT node id, or ``None`` for invalid state."""
+    tree = _coerce_goal_tree(tree_state)
+    if tree is None:
+        return None
+    roots = [node.id for node in tree.nodes.values() if node.goal_type == GoalType.ROOT.value]
+    return sorted(roots)[0] if roots else None
+
+
+def count_goal_nodes(tree_state: Any, goal_type: GoalType | str) -> int:
+    """Count nodes of one type through the canonical GoalTree model."""
+    tree = _coerce_goal_tree(tree_state)
+    if tree is None:
+        return 0
+    normalized = goal_type.value if isinstance(goal_type, GoalType) else str(goal_type)
+    return sum(1 for node in tree.nodes.values() if node.goal_type == normalized)
+
+
+def curiosity_budget_consumed(tree_state: Any) -> float:
+    """Return rabbit-hole budget consumption as a bounded tree-derived ratio."""
+    tree = _coerce_goal_tree(tree_state)
+    if tree is None:
+        return 0.0
+    total = sum(node.budget_consumed for node in tree.nodes.values())
+    rabbit = sum(
+        node.budget_consumed
+        for node in tree.nodes.values()
+        if node.goal_type == GoalType.RABBIT_HOLE_BRANCH.value
+    )
+    return min(1.0, rabbit / total) if total else 0.0
+
+
 def get_open_leaves(tree_state: Any) -> list[GoalTreeNode]:
     """Return all open leaf nodes (no open children) in the tree.
 

@@ -358,7 +358,7 @@ def main() -> int:
     )
     checks.append(manifest_check)
     safety = _artifact_safety()
-    passed = all(check["passed"] for check in checks) and safety["passed"]
+    hard_checks_passed = all(check["passed"] for check in checks) and safety["passed"]
     blockers = [
         "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
         "worker critical-path qualification and live Docker qualification remain "
@@ -375,10 +375,12 @@ def main() -> int:
         )
     if not check_by_name.get("release-manifest", {}).get("passed", False):
         blockers.append("release manifest could not be generated")
+    passed = hard_checks_passed and not blockers
     report = {
         "schema_version": "vip-quality-gate-v2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "project": "WebPent v70",
+        "project": "WebPent v72",
+        "hard_checks_passed": hard_checks_passed,
         "passed": passed,
         "checks": checks,
         "waptlab_artifact_safety": safety,

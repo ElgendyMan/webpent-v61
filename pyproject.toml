@@ -27,21 +27,13 @@ classifiers = [
 
 dependencies = [
     "torch>=2.2.0",
-    # Keep the graph/checkpoint APIs on the v59-tested generation. Broad
-    # lower bounds allowed major-version drift and made clean installs
-    # backtrack for many minutes across incompatible provider packages.
-    "langgraph>=0.2.0,<1.0",
-    "langgraph-checkpoint-sqlite>=2.0.0,<3.0",
-    "langchain-core>=0.3.86,<0.4.0",
-    # V7 Phase 6 FIX: langchain-community pinned to a verified-working
-    # 0.3.x range instead of the previous unbounded `>=0.3.0`. The
-    # unbounded floor let pip resolve to versions where provider
-    # integrations had been split out into standalone packages
-    # (Cloudflare Workers AI in particular moved to langchain-cloudflare).
-    # The duplicate `langchain-community>=0.2.0` line that was previously
-    # also present here is removed — duplicate deps are functionally
-    # harmless (pip silently picks the higher floor) but confusing.
-    "langchain-community>=0.3.18,<0.4",
+    # Security floor: the LangChain/LangGraph 1.x generation contains the
+    # patched releases required by the current pip-audit policy. Keep upper
+    # bounds at the next major version so clean installs remain reproducible.
+    "langgraph>=1.0.10,<2.0",
+    "langgraph-checkpoint-sqlite>=3.1.1,<4.0",
+    "langchain-core>=1.2.22,<2.0",
+    "langchain-community>=0.4.2,<1.0",
     # V7 Phase 6 FIX: Cloudflare Workers AI now lives in its own
     # standalone package (LangChain's ongoing trend of splitting
     # providers out of langchain-community). _build_cloudflare() in
@@ -49,28 +41,14 @@ dependencies = [
     # falls back to langchain_community for backward compatibility.
     "langchain-cloudflare>=0.1.0",
     "pyyaml>=6.0",
-    "langchain-openai>=0.2.0,<0.4",
-    "langchain-mistralai>=0.2.0,<0.4",
-    "langchain-google-genai>=2.0.0,<3.0.0",
-    # V8.1 REGRESSION RE-FIX: this pin reverted to the pre-V7-Phase-6-fix
-    # state (>=0.1.4,<0.2) in a later editing round that appears to have
-    # branched from an older tree. >=0.1.4,<0.2 requires
-    # langchain-core<0.2.0/<0.3 (version-dependent), which directly
-    # conflicts with this project's own langchain-core>=0.3.0 above —
-    # this is the exact ResolutionImpossible seen in `pip install -e .`
-    # on the app Dockerfile. Verified against actual package source
-    # (diffed langchain_cohere.chat_models across versions): the v2 API
-    # code path (`self.client.v2.chat(...)`) first appears in 0.4.1;
-    # every version before that only builds v1-style requests. Floor
-    # bumped back to 0.4.1, confirmed via a real `pip install --dry-run`
-    # resolution: resolves cleanly to langchain-cohere-0.4.6 +
-    # langchain-core-0.3.86 with zero conflicts.
-    "langchain-cohere>=0.4.1,<0.5",
-    # Anthropic is routed lazily from llm.py so offline mode still works
-    # without provider calls; declaring it here makes the configured online
-    # path reproducible for standard project installations.
-    "langchain-anthropic>=0.3.0,<0.4",
-    "langchain-chroma>=0.1.0,<0.3",
+    "langchain-openai>=1.1.14,<2.0",
+    "langchain-mistralai>=1.0.0,<2.0",
+    "langchain-google-genai>=4.0.0,<5.0",
+    "langchain-cohere>=0.6.0,<0.7",
+    # Providers are imported lazily, so offline mode remains available;
+    # these floors keep configured online paths reproducible and patched.
+    "langchain-anthropic>=1.4.6,<2.0",
+    "langchain-chroma>=0.2.3,<1.0",
     "chromadb>=0.5.0,<1.0",
     "sentence-transformers>=2.7.0",
     "pypdf>=4.0.0",

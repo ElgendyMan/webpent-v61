@@ -39,6 +39,9 @@ def test_evidence_contract_requires_all_primitives_and_fails_closed() -> None:
             "baseline": {"status_code": 200, "body_digest": "a"},
             "probe": {"status_code": 200, "body_digest": "b"},
             "callback_received": True,
+            "causal_signal": True,
+            "negative_control_complete": True,
+            "proof_bundle_sealed": True,
         },
     )
     assert complete["satisfied"] is True

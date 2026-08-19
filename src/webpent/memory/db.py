@@ -16,7 +16,7 @@ import os
 import sqlite3
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +25,8 @@ from uuid import UUID
 
 from webpent.config.settings import get_settings
 from webpent.models.findings import Confidence, Finding, Severity
+from webpent.validators.causal_validator import validate_causal_observation
+from webpent.validators.proof_validator import validate_bundle_structure
 
 logger = logging.getLogger(__name__)
 
@@ -984,6 +986,8 @@ class DatabaseManager:
         *,
         reasoning_appendix: str,
         payload_marker: str | None = None,
+        causal_observation: Mapping[str, Any] | None = None,
+        proof_bundle: Any = None,
     ) -> Finding | None:
         """Flip a finding to Tool-Confirmed via an OOB callback.
 
@@ -1013,6 +1017,16 @@ class DatabaseManager:
                 ``"confirmed-by:oob-callback"``).
         """
         self.init_db()
+        if not (
+            validate_causal_observation(causal_observation)
+            and validate_bundle_structure(proof_bundle, require_negative_control=True)
+        ):
+            logger.warning(
+                "OOB confirmation blocked for finding %s: causal signal and sealed "
+                "negative-control proof are required.",
+                finding_id,
+            )
+            return self.get_finding(finding_id)
         with self._write_lock, self._connect() as conn:
             # V5 Sprint 9: BEGIN IMMEDIATE acquires a RESERVED lock
             # immediately, preventing other connections (including

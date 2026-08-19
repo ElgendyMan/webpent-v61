@@ -77,9 +77,9 @@ class TestC2ExecutionSandboxThreadId:
         )
         tid = f"thread-c2-{uuid.uuid4()}"
 
-        # Mock _test_payload_with_browser to return True (confirmed).
+        # Mock a causal positive replay followed by a clean neutral control.
         with (
-            patch.object(es_agent, "_test_payload_with_browser", return_value=True),
+            patch.object(es_agent, "_test_payload_with_browser", side_effect=[True, False]),
             patch.object(es_agent, "get_db_manager") as mock_db_mgr,
         ):
             mock_db = MagicMock()

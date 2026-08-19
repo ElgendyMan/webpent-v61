@@ -153,8 +153,8 @@ def validate_csp(finding: Finding, cookies: dict[str, str] | None = None) -> Fin
     if not csp:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": "Content-Security-Policy: (missing)",
                 "reasoning": (
                     "CSP check: the Content-Security-Policy header is "
@@ -181,8 +181,8 @@ def validate_csp(finding: Finding, cookies: dict[str, str] | None = None) -> Fin
     if issues:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": f"Content-Security-Policy: {csp[:200]}",
                 "reasoning": (
                     f"CSP check: weak Content-Security-Policy detected. "
@@ -306,8 +306,8 @@ def validate_weak_session(finding: Finding, cookies: dict[str, str] | None = Non
     if issues:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": "; ".join(set_cookies)[:200],
                 "reasoning": (
                     f"Weak session check: structural weaknesses detected. "
@@ -489,8 +489,8 @@ def validate_auth_bypass(
     if unauthed_status == 200 and len(unauthed_body) > 100:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": f"unauth: {unauthed_status} ({len(unauthed_body)} bytes)",
                 "reasoning": (
                     f"Auth bypass check: target returned HTTP 200 with "
@@ -670,8 +670,8 @@ def validate_cryptography(finding: Finding, cookies: dict[str, str] | None = Non
     if issues:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": "; ".join(issues)[:200],
                 "reasoning": (
                     f"Cryptography check: weak crypto practices detected. "
@@ -743,8 +743,8 @@ def validate_captcha(finding: Finding, cookies: dict[str, str] | None = None) ->
     if has_form and has_password_field and not has_captcha:
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": "missing captcha on password form",
                 "reasoning": (
                     "Captcha check: the page contains a password form "
@@ -896,8 +896,8 @@ def validate_brute_force(finding: Finding, cookies: dict[str, str] | None = None
     if all(s == 200 for s in probe_results):
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": f"3 invalid login probes: {probe_results}",
                 "reasoning": (
                     "Brute force check: sent 3 controlled invalid-login "
@@ -1002,8 +1002,8 @@ def validate_info_disclosure(
         }
         return finding.model_copy(
             update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Needs Human Review",
                 "payload": parsed_path[-200:],
                 "evidence": evidence,
                 "reasoning": (

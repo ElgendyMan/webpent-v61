@@ -301,13 +301,30 @@ def assess_access_control(
         row.get("identity") != owner_identity and row.get("accessible")
         for row in observations
     )
-    if owner_access and foreign_access:
+    negative_control_complete = any(
+        row.get("identity") not in {None, owner_identity}
+        and not row.get("accessible")
+        and int(row.get("status_code") or 0) in {401, 403}
+        for row in observations
+    )
+    if owner_access and foreign_access and negative_control_complete:
         return {
             "status": "confirmed",
             "confidence_level": "Tool-Confirmed",
+            "negative_control_complete": True,
             "reason": (
                 "The owner and a different identity both received reproducible "
-                "successful access."
+                "successful access, while a separate non-owner control was denied."
+            ),
+        }
+    if owner_access and foreign_access:
+        return {
+            "status": "needs_review",
+            "confidence_level": "Needs Human Review",
+            "negative_control_complete": False,
+            "reason": (
+                "Owner and foreign access both succeeded, but a denied non-owner "
+                "negative control was not observed."
             ),
         }
     if owner_access and not foreign_access:

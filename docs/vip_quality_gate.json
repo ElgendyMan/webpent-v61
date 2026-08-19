@@ -104,10 +104,10 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)",
+        "    from langchain_community.embeddings import HuggingFaceEmbeddings",
         "",
         "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
-        "  /tmp/webpent_v60_smart_implementation/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the :class:`~langchain-huggingface package and should be used instead. To use it run `pip install -U :class:`~langchain-huggingface` and import as `from :class:`~langchain_huggingface import HuggingFaceEmbeddings``.",
+        "  /tmp/webpent_v60_smart_implementation/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
         "    embeddings = HuggingFaceEmbeddings(**kwargs)",
         "",
         "tests/test_v58_post_form_hypotheses.py: 20 warnings",
@@ -115,7 +115,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "916 passed, 138 warnings in 26.23s"
+        "930 passed, 140 warnings in 46.22s"
       ]
     },
     {
@@ -138,9 +138,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 867",
+        "  \"total_test_functions\": 881",
         "}",
-        "OK: preserved test-function count 867 >= minimum 818"
+        "OK: preserved test-function count 881 >= minimum 818"
       ]
     },
     {
@@ -214,7 +214,7 @@
     },
     {
       "command": [
-        "/usr/local/bin/bandit",
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/bandit",
         "-q",
         "-r",
         "src/webpent",
@@ -234,7 +234,7 @@
     },
     {
       "command": [
-        "/usr/local/bin/pip-audit",
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
@@ -246,16 +246,16 @@
         "/tmp/webpent_v60_smart_implementation/docs/sbom.cdx.json"
       ],
       "name": "pip-audit-sbom",
-      "passed": false,
+      "passed": true,
       "requirement_source": "uv-exported-lock",
-      "returncode": 1,
+      "returncode": 0,
       "tail": [
-        "Found 17 known vulnerabilities in 9 packages"
+        "No known vulnerabilities found"
       ]
     },
     {
       "command": [
-        "/usr/local/bin/pip-audit",
+        "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
@@ -267,11 +267,11 @@
         "/tmp/webpent_v60_smart_implementation/docs/pip_audit_release.json"
       ],
       "name": "pip-audit-strict",
-      "passed": false,
+      "passed": true,
       "requirement_source": "uv-exported-lock",
-      "returncode": 1,
+      "returncode": 0,
       "tail": [
-        "Found 17 known vulnerabilities in 9 packages"
+        "No known vulnerabilities found"
       ]
     },
     {
@@ -283,18 +283,18 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 658, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/release_manifest.json\"}"
+        "{\"file_count\": 663, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-19T20:30:02.662493+00:00",
+  "generated_at": "2026-08-19T21:48:24.298277+00:00",
+  "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
-    "worker critical-path qualification and live Docker qualification remain environment-blocked",
-    "pip-audit strict did not pass; dependency advisories remain a release blocker"
+    "worker critical-path qualification and live Docker qualification remain environment-blocked"
   ],
   "passed": false,
-  "project": "WebPent v70",
+  "project": "WebPent v72",
   "schema_version": "vip-quality-gate-v2",
   "security_artifacts": {
     "bandit": "docs/bandit_release.json",

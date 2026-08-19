@@ -18,6 +18,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from langchain_core.messages import AIMessage
 
 from webpent.models.findings import Finding, Severity, VulnClass
+from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.authorization_matrix import build_authorization_matrix
 from webpent.shared.bac_identity_tester import (
     IdentityProfile,
@@ -577,6 +578,33 @@ def access_control_node(state: PentestState) -> dict:
                 "relational_edges": edges,
                 "redaction": "cookies, authorization headers, and raw bodies omitted",
             }
+            negative_control = next(
+                (
+                    row
+                    for row in rows
+                    if row.get("identity") != owner_identity and not row.get("accessible")
+                ),
+                None,
+            )
+            evidence["causal_signal"] = True
+            evidence["negative_control_complete"] = negative_control is not None
+            if negative_control is None:
+                evidence["promotion_guard"] = {
+                    "status": "blocked",
+                    "reason": "foreign_denied_negative_control_missing",
+                }
+                gaps_out.append(
+                    {
+                        "resource_url": url,
+                        "object_id": object_id,
+                        "owner_identity": owner_identity,
+                        "status": "needs_review",
+                        "confidence_level": "Needs Human Review",
+                        "reason": "No denied foreign-identity negative control was observed.",
+                        "identities_tested": [row["identity"] for row in rows],
+                    }
+                )
+                continue
             finding = _create_idor_finding(
                 url,
                 int(foreign["status_code"]),
@@ -598,9 +626,48 @@ def access_control_node(state: PentestState) -> dict:
                 ),
                 foreign_role=str(foreign.get("role") or "unknown"),
             )
+            bundle = build_proof_bundle(
+                engagement_id=str(state.get("engagement_id") or "runtime-unbound"),
+                finding_id=str(finding.id),
+                evidence=[row for row in rows if isinstance(row, dict)],
+                evidence_refs=[
+                    f"bac:{object_id or 'unknown'}:owner",
+                    f"bac:{object_id or 'unknown'}:foreign",
+                    f"bac:{object_id or 'unknown'}:negative-control",
+                ],
+                negative_control=negative_control,
+            ).seal(actor="access_control_validator")
+            if not validate_proof_bundle(bundle, require_negative_control=True):
+                finding = finding.model_copy(
+                    update={
+                        "confidence_level": "Needs Human Review",
+                        "evidence": {
+                            **(finding.evidence or {}),
+                            "promotion_guard": {
+                                "status": "blocked",
+                                "reason": "proof_bundle_validation_failed",
+                            },
+                        },
+                    }
+                )
+            else:
+                finding = finding.model_copy(
+                    update={
+                        "evidence": {
+                            **(finding.evidence or {}),
+                            "proof_bundle_sealed": True,
+                            "proof_bundle": bundle.model_dump(mode="json"),
+                            "promotion_guard": {
+                                "status": "passed",
+                                "proof_bundle_sealed": True,
+                            },
+                        }
+                    }
+                )
             new_findings.append(finding)
-            confirmed_count += 1
-            audit_logger.warning("Tool-confirmed BAC differential for %s", url)
+            if finding.confidence_level == "Tool-Confirmed":
+                confirmed_count += 1
+                audit_logger.warning("Tool-confirmed BAC differential for %s", url)
         elif assessment["status"] in {"coverage_gap", "needs_review", "inconclusive"}:
             gaps_out.append(
                 {

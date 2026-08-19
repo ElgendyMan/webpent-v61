@@ -118,12 +118,9 @@ def _load_file(file_path: Path) -> list[Any]:
 def _chunk_documents(documents: list[Any], chunk_size: int, chunk_overlap: int) -> list[Any]:
     try:
         from langchain_text_splitters import RecursiveCharacterTextSplitter
-    except ImportError:
-        try:
-            from langchain.text_splitter import RecursiveCharacterTextSplitter
-        except ImportError as exc:
-            logger.error("Could not import RecursiveCharacterTextSplitter: %s", exc)
-            return documents
+    except ImportError as exc:
+        logger.error("Could not import RecursiveCharacterTextSplitter: %s", exc)
+        return documents
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_documents(documents)
 

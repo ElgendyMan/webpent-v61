@@ -45,6 +45,41 @@ class ScanMode(str, Enum):
     AUTHORIZED_ACTIVE = "authorized-active"
 
 
+class ScanProfile(str, Enum):
+    """User-facing composition profile layered over the authority mode."""
+
+    LEGACY = "legacy"
+    SMART = "smart"
+    SMART_OBSERVE = "smart-observe"
+    AUTHORIZED_ACTIVE = "authorized-active"
+    VIP_QUALIFICATION = "vip-qualification"
+
+
+_PROFILE_TO_SCAN_MODE: dict[ScanProfile, ScanMode] = {
+    ScanProfile.LEGACY: ScanMode.LEGACY,
+    ScanProfile.SMART: ScanMode.SAFE_SMART,
+    ScanProfile.SMART_OBSERVE: ScanMode.SAFE_SMART,
+    ScanProfile.AUTHORIZED_ACTIVE: ScanMode.AUTHORIZED_ACTIVE,
+    ScanProfile.VIP_QUALIFICATION: ScanMode.AUTHORIZED_ACTIVE,
+}
+
+
+def resolve_scan_profile(value: str | ScanProfile | None) -> tuple[ScanProfile, ScanMode]:
+    """Resolve a public profile into its authority mode without enabling risk implicitly."""
+    if value is None:
+        return ScanProfile.LEGACY, ScanMode.LEGACY
+    try:
+        profile = (
+            value
+            if isinstance(value, ScanProfile)
+            else ScanProfile(str(value).strip().lower())
+        )
+    except ValueError as exc:
+        allowed = ", ".join(item.value for item in ScanProfile)
+        raise ValueError(f"unsupported scan profile; choose one of: {allowed}") from exc
+    return profile, _PROFILE_TO_SCAN_MODE[profile]
+
+
 class EnvironmentProfile(str, Enum):
     """Deployment posture used by startup security gates."""
 
@@ -796,7 +831,7 @@ class Settings(BaseSettings):
     # by default — see workers/pentest_worker.py) in PLAINTEXT. See
     # webpent.utils.task_crypto for the encrypt/decrypt call sites (API
     # dispatch and worker task entry, respectively). A Fernet key is
-    # derived from this string via SHA-256 -> urlsafe-base64 so operators
+    # derived from this string via versioned PBKDF2-HMAC-SHA256 so operators
     # can set any sufficiently long passphrase, matching the UX of
     # jwt_secret_key / audit_secret_key above, rather than being required
     # to hand-generate a raw Fernet key.
@@ -824,6 +859,20 @@ class Settings(BaseSettings):
             "Redis connection itself (WEBPENT_REDIS_URL should still use "
             "rediss:// in production) — this is defense in depth for the "
             "task PAYLOAD specifically."
+        ),
+    )
+    celery_payload_key_previous: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "CELERY_PAYLOAD_KEY_PREVIOUS",
+            "WEBPENT_CELERY_PAYLOAD_KEY_PREVIOUS",
+            "CELERY_PAYLOAD_KEY_OLD",
+            "WEBPENT_CELERY_PAYLOAD_KEY_OLD",
+            "celery_payload_key_previous",
+        ),
+        description=(
+            "Optional previous Celery payload passphrase used only to decrypt "
+            "legacy envelopes during key rotation; new payloads always use the current key."
         ),
     )
     jwt_algorithm: str = Field(

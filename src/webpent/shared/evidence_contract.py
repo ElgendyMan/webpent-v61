@@ -165,11 +165,28 @@ def evaluate_contract(
             }
             satisfied = bool(observed["owner_accessible"] and observed["foreign_accessible"])
         results.append({"primitive": primitive, "satisfied": satisfied, "observed": observed})
-    overall = bool(parsed.all_of) and all(item["satisfied"] for item in results)
+    primitives_satisfied = bool(parsed.all_of) and all(item["satisfied"] for item in results)
+    causal_signal = bool(evidence.get("causal_signal"))
+    negative_control_complete = bool(evidence.get("negative_control_complete"))
+    proof_bundle_sealed = bool(evidence.get("proof_bundle_sealed"))
+    proof_posture = {
+        "causal_signal": causal_signal,
+        "negative_control_complete": negative_control_complete,
+        "proof_bundle_sealed": proof_bundle_sealed,
+    }
+    proof_ready = all(proof_posture.values())
+    overall = primitives_satisfied and proof_ready
+    if not primitives_satisfied:
+        reason = "required_primitive_missing"
+    elif not proof_ready:
+        reason = "proof_posture_incomplete"
+    else:
+        reason = "all_required_primitives_and_proof_posture_satisfied"
     return {
         "satisfied": overall,
         "results": results,
-        "reason": "all_required_primitives_satisfied" if overall else "required_primitive_missing",
+        "proof_posture": proof_posture,
+        "reason": reason,
         "provenance": list(parsed.provenance),
     }
 

@@ -17,6 +17,7 @@ from webpent.api.auth import (
 from webpent.api.rate_limit import RateLimiter
 from webpent.memory.db import DatabaseManager
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+from webpent.models.proof_bundle import build_proof_bundle
 from webpent.shared.engagement_scope import (
     OriginPolicy,
     clear_engagement_target_hosts,
@@ -428,7 +429,7 @@ def test_raw_http_refuses_out_of_scope_host_before_connect(monkeypatch) -> None:
         clear_engagement_target_hosts(token)
 
 
-def test_oob_confirmation_is_one_way_and_replay_idempotent(tmp_path) -> None:
+def test_oob_callback_without_proof_is_fail_closed(tmp_path) -> None:
     db = DatabaseManager(f"sqlite:///{tmp_path / 'oob.db'}")
     finding = Finding(
         id=uuid.uuid4(),
@@ -456,7 +457,143 @@ def test_oob_confirmation_is_one_way_and_replay_idempotent(tmp_path) -> None:
 
     assert first is not None
     assert replay is not None
-    assert replay.confidence_level == "Tool-Confirmed"
-    assert replay.reasoning.count("callback-1") == 1
-    assert "callback-2" not in replay.reasoning
-    assert replay.payload == "marker-1"
+    assert first.confidence_level == "Pending"
+    assert replay.confidence_level == "Pending"
+    assert replay.reasoning == "baseline"
+    assert replay.payload is None
+
+
+def test_oob_confirmation_requires_causal_signal_and_sealed_proof(tmp_path) -> None:
+    db = DatabaseManager(f"sqlite:///{tmp_path / 'oob-proof.db'}")
+    finding = Finding(
+        id=uuid.uuid4(),
+        title="OOB proof finding",
+        severity=Severity.HIGH,
+        description="Synthetic OOB proof finding.",
+        tool_name="regression",
+        url="https://target.test/oob-proof",
+        confidence=Confidence.TENTATIVE.value,
+        vuln_class=VulnClass.XSS.value,
+        reasoning="baseline",
+    )
+    db.save_finding(finding)
+    evidence_ref = f"oob:{finding.id}:callback"
+    proof = build_proof_bundle(
+        engagement_id="regression",
+        finding_id=str(finding.id),
+        evidence=("callback-marker",),
+        evidence_refs=(evidence_ref,),
+        negative_control={"status": 404},
+    ).seal(actor="oob-validator")
+    causal = {
+        "evidence_refs": [evidence_ref],
+        "causal_signal": True,
+        "negative_control_complete": True,
+    }
+
+    confirmed = db.mark_oob_confirmed(
+        finding.id,
+        reasoning_appendix="callback-verified",
+        payload_marker="marker-proof",
+        causal_observation=causal,
+        proof_bundle=proof,
+    )
+
+    assert confirmed is not None
+    assert confirmed.confidence_level == "Tool-Confirmed"
+    assert confirmed.confidence == Confidence.CONFIRMED.value
+    assert confirmed.reasoning.endswith("callback-verified")
+    assert confirmed.payload == "marker-proof"
+
+
+def test_origin_policy_rejects_adversarial_origin_variants() -> None:
+    from webpent.shared.engagement_scope import OriginPolicy
+
+    policy = OriginPolicy.from_url("https://Exämple.test/app")
+
+    assert policy.allows("https://xn--exmple-cua.test/app") is True
+    assert policy.allows("https://xn--exmple-cua.test/app/item") is True
+    assert policy.allows("https://xn--exmple-cua.test/app2") is False
+    assert policy.allows("http://xn--exmple-cua.test/app") is False
+    assert policy.allows("https://xn--exmple-cua.test:444/app") is False
+    assert policy.allows("https://evil.example.test/app") is False
+    assert policy.allows("https://user:pass@xn--exmple-cua.test/app") is False
+
+
+def test_origin_policy_canonicalizes_ipv6_and_preserves_port_boundaries() -> None:
+    from webpent.shared.engagement_scope import OriginPolicy
+
+    policy = OriginPolicy.from_url("http://[2001:0db8:0:0:0:0:0:1]:8080/lab")
+
+    assert policy.allows("http://[2001:db8::1]:8080/lab") is True
+    assert policy.allows("http://[2001:db8::1]:8080/lab/next") is True
+    assert policy.allows("http://[2001:db8::1]:80/lab") is False
+    assert policy.allows("http://[2001:db8::2]:8080/lab") is False
+    assert policy.allows("http://[2001:db8::1]:8080/lab2") is False
+
+
+def test_reference_allowlist_uses_exact_origin_and_segment_boundaries() -> None:
+    from webpent.shared.reference_lookup import _is_url_allowed
+
+    allowlist = [{"base_url": "https://docs.example.test/guide", "allowed_paths": ["/guide"]}]
+
+    assert _is_url_allowed("https://docs.example.test/guide/page", allowlist) is True
+    assert _is_url_allowed("https://docs.example.test/guidebook", allowlist) is False
+    assert _is_url_allowed("https://docs.example.test.evil/guide/page", allowlist) is False
+    assert _is_url_allowed("http://docs.example.test/guide/page", allowlist) is False
+    assert _is_url_allowed("https://docs.example.test:444/guide/page", allowlist) is False
+    assert _is_url_allowed("https://user:pass@docs.example.test/guide/page", allowlist) is False
+
+
+def test_information_tasks_do_not_bypass_precondition_resolution() -> None:
+    from webpent.agents.smart_campaigns.agent import smart_campaigns_execution_node
+
+    state = {
+        "scan_mode": "safe-smart",
+        "smart_governance": {"profile": "safe-smart"},
+        "target": {"url": "https://target.test"},
+        "smart_information_actions": [
+            {
+                "action_id": "blocked-research",
+                "fingerprint": "blocked-research",
+                "target_ref": "https://target.test/robots.txt",
+                "method": "GET",
+                "requires_approval": True,
+                "action_class": "discovery",
+                "preconditions": ["planned_same_origin_information_action"],
+            }
+        ],
+        "observed_preconditions": (),
+        "blocked_preconditions": ("planned_same_origin_information_action",),
+        "campaign_task_outcomes": [],
+        "findings": [],
+        "hypotheses": [],
+        "action_budget": {"max_actions": 10, "max_cost": 10.0},
+        "auto_approve": False,
+    }
+
+    result = smart_campaigns_execution_node(state)
+    outcomes = result.get("campaign_task_outcomes", [])
+    assert outcomes
+    assert any(
+        str(item.get("status")) == "blocked_by_precondition"
+        for item in outcomes
+        if isinstance(item, dict)
+    )
+
+
+def test_llm_cross_reasoning_hypothesis_is_not_deterministic() -> None:
+    from webpent.agents.cross_reasoning.agent import cross_reasoning_node
+    from webpent.models.targets import Target
+
+    result = cross_reasoning_node(
+        {
+            "target": Target(url="https://target.test"),
+            "findings": [],
+            "messages": [],
+        }
+    )
+    assert all(
+        not bool(getattr(item, "deterministic_match", False))
+        for item in result.get("hypotheses", [])
+    )

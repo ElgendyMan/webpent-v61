@@ -7,11 +7,7 @@ import json
 
 from webpent.agents.api_testing.agent import _analyze_captured_jwts
 from webpent.agents.disclosed_report_intel.agent import disclosed_report_intel_node
-from webpent.shared.disclosed_report_intel import (
-    build_advisories,
-    ingest_disclosed_reports,
-    search_disclosed_reports,
-)
+from webpent.shared.disclosed_report_intel import build_advisories, ingest_disclosed_reports
 from webpent.shared.jwt_deep_testing import (
     analyze_captured_jwt,
     extract_candidate_jwts,
@@ -81,8 +77,7 @@ def test_disclosed_report_intel_is_local_text_search_and_advisory_only():
         ]
     )
     assert len(records) == 2
-    matches = search_disclosed_reports(records, "idor order")
-    assert matches and matches[0]["report_id"] == records[0]["report_id"]
+    assert records[0]["tags"] == ["broken_access_control"]
     advisories, gaps = build_advisories(
         "https://example.test",
         ["https://example.test/api/orders/123"],

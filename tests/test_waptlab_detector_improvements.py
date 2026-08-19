@@ -46,7 +46,7 @@ def test_info_disclosure_confirms_public_backup_with_bounded_evidence(monkeypatc
     result = structural_checks.validate_info_disclosure(
         _finding("http://fixture.local/composer.lock.bak", VulnClass.INFO_DISCLOSURE.value)
     )
-    assert result.confidence_level == "Tool-Confirmed"
+    assert result.confidence_level == "Needs Human Review"
     assert result.evidence["path_signature"] is True
     assert result.evidence["response_body_capped"] is True
 
@@ -337,7 +337,7 @@ def test_info_disclosure_confirms_debug_trace_on_server_error(monkeypatch) -> No
     result = structural_checks.validate_info_disclosure(
         _finding("http://fixture.local/debug?trigger=1", VulnClass.INFO_DISCLOSURE.value)
     )
-    assert result.confidence_level == "Tool-Confirmed"
+    assert result.confidence_level == "Needs Human Review"
     assert result.evidence["debug_markers"]
 
 
