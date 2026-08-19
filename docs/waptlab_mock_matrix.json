@@ -15,7 +15,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/sqli/header"
+      "url": "http://127.0.0.1:18080/sqli/header"
     },
     {
       "body_markers": [
@@ -31,7 +31,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/csv"
+      "url": "http://127.0.0.1:18080/csv"
     },
     {
       "confidence": "confirmed",
@@ -48,7 +48,7 @@
       "label": "jwt_path_traversal",
       "reasoning": "PATH_TRAVERSAL replay produced marker 'root:x:0:0' only after the controlled payload was injected; the baseline did not contain that marker.",
       "status": "tool-confirmed",
-      "url": "http://127.0.0.1:18089/crm/view?path=safe"
+      "url": "http://127.0.0.1:18080/crm/view?path=safe"
     },
     {
       "confidence": "Confidence.TENTATIVE",
@@ -61,7 +61,7 @@
       "label": "double_slash_redirect",
       "reasoning": "Open redirect baseline/candidate replay could not be completed.",
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/oauth/authorize?redirect_uri=//evil.example/return"
+      "url": "http://127.0.0.1:18080/oauth/authorize?redirect_uri=//evil.example/return"
     },
     {
       "confidence": "Confidence.TENTATIVE",
@@ -74,7 +74,7 @@
       "label": "oauth_redirect_uri",
       "reasoning": "Open redirect baseline/candidate replay could not be completed.",
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/oauth/authorize?redirect_uri=//evil.example/return"
+      "url": "http://127.0.0.1:18080/oauth/authorize?redirect_uri=//evil.example/return"
     },
     {
       "confidence": "Confidence.TENTATIVE",
@@ -88,7 +88,7 @@
       "label": "download_idor",
       "reasoning": "IDOR check: unauthenticated object access returned HTTP 200. This is a candidate signal only; owner-vs-foreign identity differential and a denial control are still required.",
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/crm/download/1"
+      "url": "http://127.0.0.1:18080/crm/download/1"
     },
     {
       "confidence": "Confidence.TENTATIVE",
@@ -102,7 +102,7 @@
       "label": "tenant_context_switching",
       "reasoning": "IDOR check: unauthenticated object access returned HTTP 200. This is a candidate signal only; owner-vs-foreign identity differential and a denial control are still required.",
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/dashboard/view-crm/1"
+      "url": "http://127.0.0.1:18080/dashboard/view-crm/1"
     },
     {
       "confidence": "confirmed",
@@ -119,7 +119,7 @@
       "label": "training_email_ssti",
       "reasoning": "SSTI replay evaluated a harmless arithmetic expression to 391; the baseline did not contain 391.",
       "status": "tool-confirmed",
-      "url": "http://127.0.0.1:18089/training/send-results-email"
+      "url": "http://127.0.0.1:18080/training/send-results-email"
     },
     {
       "confidence": "confirmed",
@@ -136,7 +136,7 @@
       "label": "export_blade_ssti",
       "reasoning": "SSTI replay evaluated a harmless arithmetic expression to 391; the baseline did not contain 391.",
       "status": "tool-confirmed",
-      "url": "http://127.0.0.1:18089/crm/export"
+      "url": "http://127.0.0.1:18080/crm/export"
     },
     {
       "body_markers": [],
@@ -150,7 +150,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/swagger_ui?url=http://127.0.0.1:18089/internal"
+      "url": "http://127.0.0.1:18080/swagger_ui?url=http://127.0.0.1:18080/internal"
     },
     {
       "body_markers": [
@@ -166,7 +166,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/profile/fetch-image"
+      "url": "http://127.0.0.1:18080/profile/fetch-image"
     },
     {
       "body_markers": [],
@@ -180,7 +180,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/profile"
+      "url": "http://127.0.0.1:18080/profile"
     },
     {
       "body_markers": [],
@@ -194,7 +194,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/profile"
+      "url": "http://127.0.0.1:18080/profile"
     },
     {
       "body_markers": [
@@ -210,7 +210,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/elasticsearch"
+      "url": "http://127.0.0.1:18080/elasticsearch"
     },
     {
       "confidence": "confirmed",
@@ -226,7 +226,7 @@
       "label": "public_backup_disclosure",
       "reasoning": "Information disclosure check: a public response exposed a sensitive artifact or debug surface (including bounded error responses). The response body was capped; no broader secret inventory is claimed.",
       "status": "tool-confirmed",
-      "url": "http://127.0.0.1:18089/composer.lock.bak"
+      "url": "http://127.0.0.1:18080/composer.lock.bak"
     },
     {
       "confidence": "confirmed",
@@ -242,7 +242,7 @@
       "label": "laravel_app_debug",
       "reasoning": "Information disclosure check: a public response exposed a sensitive artifact or debug surface (including bounded error responses). The response body was capped; no broader secret inventory is claimed.",
       "status": "tool-confirmed",
-      "url": "http://127.0.0.1:18089/debug?trigger=1"
+      "url": "http://127.0.0.1:18080/debug?trigger=1"
     },
     {
       "body_markers": [
@@ -258,7 +258,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/js/markdown-editor-0.3.0.js"
+      "url": "http://127.0.0.1:18080/js/markdown-editor-0.3.0.js"
     },
     {
       "body_markers": [],
@@ -272,7 +272,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/es/fetch/elasticsearch:9200/_search"
+      "url": "http://127.0.0.1:18080/es/fetch/elasticsearch:9200/_search"
     },
     {
       "body_markers": [
@@ -288,7 +288,7 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/xml/upload"
+      "url": "http://127.0.0.1:18080/xml/upload"
     },
     {
       "body_markers": [
@@ -304,10 +304,10 @@
         "server": "WAPTLabMock/1.0 Elasticsearch/1.4.4 Python/3.12.3"
       },
       "status": "candidate-or-review",
-      "url": "http://127.0.0.1:18089/xml/upload"
+      "url": "http://127.0.0.1:18080/xml/upload"
     }
   ],
-  "generated_at": "2026-08-18T12:53:35.797757+00:00",
+  "generated_at": "2026-08-19T17:28:39.396221+00:00",
   "mode": "loopback-mock-detector-coverage",
   "project": "WebPent v60",
   "safety_statement": "This matrix exercises WebPent validators against a local synthetic fixture. It is not live WAPTLab evidence; only the Docker-blocked static ground truth and the local fixture behavior are measured.",

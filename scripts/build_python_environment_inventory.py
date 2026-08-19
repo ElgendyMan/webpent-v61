@@ -26,8 +26,7 @@ def main() -> int:
         "standard_sbom": False,
         "strict_release_gate": False,
         "tooling_note": (
-            "syft/grype unavailable; this is an inventory artifact, "
-            "not a CycloneDX or SPDX SBOM."
+            "syft/grype unavailable; this is an inventory artifact, not a CycloneDX or SPDX SBOM."
         ),
         "packages": packages,
     }

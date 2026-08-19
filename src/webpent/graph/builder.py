@@ -210,6 +210,23 @@ def route_after_attack_graph(state: PentestState) -> str:
     return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
 
 
+def route_after_smart_campaigns_execution(state: PentestState) -> str:
+    """Bounded observation-driven replan route for the Smart Hunter adapter."""
+    if _autonomous_controller_enabled(state):
+        return NODE_AUTONOMOUS_CONTROLLER
+    replanning = state.get("smart_replanning") or {}
+    if not isinstance(replanning, dict):
+        return NODE_STRATEGIST
+    if replanning.get("replan_requested") is not True:
+        return NODE_STRATEGIST
+    try:
+        current_round = int(replanning.get("round", 0))
+        max_rounds = int(replanning.get("max_replan_rounds", 0))
+    except (TypeError, ValueError):
+        return NODE_STRATEGIST
+    return NODE_SMART_CAMPAIGNS if current_round < max_rounds else NODE_STRATEGIST
+
+
 def _target_understanding_enabled() -> bool:
     """Return the additive Target Understanding flag, fail-closed."""
     try:
@@ -235,9 +252,13 @@ def route_after_crawler(state: PentestState) -> str:
 
 
 def route_after_infrastructure(state: PentestState) -> str:
-    """Route through Target Understanding only when explicitly enabled."""
-    del state
-    return NODE_TARGET_UNDERSTANDING if _target_understanding_enabled() else NODE_SCOPE_ENFORCER
+    """Route through Target Understanding for configured or Smart scans."""
+    smart_scan = _smart_campaigns_enabled(state)
+    return (
+        NODE_TARGET_UNDERSTANDING
+        if _target_understanding_enabled() or smart_scan
+        else NODE_SCOPE_ENFORCER
+    )
 
 
 def route_after_auth(state: PentestState) -> str:
@@ -667,12 +688,9 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_edge(NODE_SMART_CAMPAIGNS, NODE_SMART_CAMPAIGNS_EXECUTION)
     graph.add_conditional_edges(
         NODE_SMART_CAMPAIGNS_EXECUTION,
-        lambda state: (
-            NODE_AUTONOMOUS_CONTROLLER
-            if _autonomous_controller_enabled(state)
-            else NODE_STRATEGIST
-        ),
+        route_after_smart_campaigns_execution,
         {
+            NODE_SMART_CAMPAIGNS: NODE_SMART_CAMPAIGNS,
             NODE_AUTONOMOUS_CONTROLLER: NODE_AUTONOMOUS_CONTROLLER,
             NODE_STRATEGIST: NODE_STRATEGIST,
         },

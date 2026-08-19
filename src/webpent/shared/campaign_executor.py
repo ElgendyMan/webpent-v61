@@ -138,6 +138,7 @@ def resolve_preconditions(
     *,
     observed_preconditions: Iterable[str] = (),
     blocked_preconditions: Iterable[str] = (),
+    require_observations: bool = False,
 ) -> tuple[bool, tuple[str, ...]]:
     """Resolve readiness from explicit evidence without guessing missing state."""
     observed = {
@@ -158,7 +159,10 @@ def resolve_preconditions(
         precondition
         for precondition in task.preconditions
         if _normalize_precondition(precondition) in blocked
-        or (observed and _normalize_precondition(precondition) not in observed)
+        or (
+            (observed or require_observations)
+            and _normalize_precondition(precondition) not in observed
+        )
     )
     return not missing, missing
 

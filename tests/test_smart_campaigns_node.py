@@ -53,6 +53,7 @@ def _state(*, enabled: bool = True) -> dict:
                     "gaps": [],
                     "contract": {
                         "preconditions": ["download object reference observed"],
+                        "observed_preconditions": ["download object reference observed"],
                         "identities": ["owner", "foreign_user"],
                         "negative_control": ["owner reads own object"],
                         "oracle": ["foreign denial"],
@@ -139,6 +140,30 @@ def test_unobserved_or_missing_validator_campaign_is_blocked() -> None:
     tasks, outcomes = build_smart_campaign_tasks(_state())
     assert [task.vulnerability_class for task in tasks] == ["download_idor"]
     assert outcomes[0]["reason"] == "missing_observed_surface"
+
+
+def test_execution_node_blocks_missing_precondition_before_handler(monkeypatch) -> None:
+    state = _state()
+    state["campaign_plan"]["entries"][0]["contract"].pop("observed_preconditions", None)
+    called = False
+
+    def should_not_execute(**_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("handler must not run when preconditions are unproven")
+
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
+        should_not_execute,
+    )
+    result = smart_campaigns_execution_node(state)
+    assert called is False
+    assert result["smart_http_observations"] == []
+    assert any(
+        item["status"] == "blocked_by_precondition"
+        and item["reason"] == "precondition_failed"
+        for item in result["campaign_task_outcomes"]
+    )
 
 
 def test_execution_node_uses_bounded_get_and_records_safe_metadata(monkeypatch) -> None:
@@ -424,6 +449,7 @@ def test_authorized_active_direct_swagger_probe_confirms_existing_finding(monkey
     state = _state()
     state["smart_governance"] = {"profile": "authorized-active"}
     state["scan_mode"] = "authorized-active"
+    state["auto_approve"] = True
     state["findings"] = [existing]
     monkeypatch.setattr(
         "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
@@ -438,6 +464,11 @@ def test_authorized_active_direct_swagger_probe_confirms_existing_finding(monkey
     assert direct[0].evidence["matched_marker"] == "ipv6-loopback"
     assert "body" not in direct[0].evidence["response"]
     assert direct[0].id == existing.id
+    assert any(
+        item["outcome"]["status"] == "executed"
+        for item in result["decision_trace"]
+        if item.get("selected_task") == "smart-swagger-ssrf-proof"
+    )
 
 
 def test_authorized_active_direct_swagger_probe_requires_marker(monkeypatch) -> None:

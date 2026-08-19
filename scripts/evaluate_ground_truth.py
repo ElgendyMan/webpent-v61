@@ -53,9 +53,7 @@ from typing import Any
 # Configuration
 # ---------------------------------------------------------------------------
 DEFAULT_API_URL = os.environ.get("WEBPENT_API_URL", "http://api:8000")
-DEFAULT_TARGET_URL = os.environ.get(
-    "WEBPENT_TARGET_URL", "http://ground-truth:8080"
-)
+DEFAULT_TARGET_URL = os.environ.get("WEBPENT_TARGET_URL", "http://ground-truth:8080")
 # V6: Removed localhost defaults — use Docker internal DNS names.
 # When running outside Docker, set WEBPENT_API_URL and WEBPENT_TARGET_URL env vars.
 DEFAULT_DB_PATH = os.environ.get(
@@ -197,11 +195,14 @@ def purge_celery_queue() -> None:
     from outside the project root, e.g. from /tmp or /).
     """
     import subprocess
+
     project_root = Path(__file__).resolve().parents[1]
     try:
         result = subprocess.run(
             ["celery", "-A", "worker.celery_app", "purge", "-f"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
             cwd=str(project_root),
         )
         if result.returncode == 0:
@@ -209,7 +210,8 @@ def purge_celery_queue() -> None:
         else:
             log.warning(
                 "V6.1: Celery purge returned %d: %s",
-                result.returncode, result.stderr[:200],
+                result.returncode,
+                result.stderr[:200],
             )
     except FileNotFoundError:
         log.warning("V6.1: celery CLI not found — skipping queue purge")
@@ -240,8 +242,7 @@ def get_auth_token(api_url: str) -> str | None:
                 log.info("V6: Auth token acquired (auth_enabled=true)")
                 return token
             log.info(
-                "V6: /token returned %d — auth likely disabled, "
-                "proceeding without Bearer token",
+                "V6: /token returned %d — auth likely disabled, proceeding without Bearer token",
                 resp.status_code,
             )
             return None
@@ -282,15 +283,16 @@ def trigger_scan(
 # Step 2: Poll scan status until completed
 # ---------------------------------------------------------------------------
 def wait_for_completion(
-    api_url: str, thread_id: str, timeout: int, poll_interval: int,
+    api_url: str,
+    thread_id: str,
+    timeout: int,
+    poll_interval: int,
     auth_token: str | None = None,
 ) -> bool:
     """Poll /api/v1/scans/{thread_id}/status until status == 'completed'."""
     import httpx
 
-    log.info(
-        "Waiting for scan completion (thread=%s, timeout=%ds)", thread_id, timeout
-    )
+    log.info("Waiting for scan completion (thread=%s, timeout=%ds)", thread_id, timeout)
     deadline = time.monotonic() + timeout
     last_status = "unknown"
     headers: dict[str, str] = {}
@@ -313,9 +315,7 @@ def wait_for_completion(
                 if last_status == "error":
                     log.error("Scan entered error state.")
                     return False
-                log.info(
-                    "  status=%s, next=%s", last_status, data.get("next", [])
-                )
+                log.info("  status=%s, next=%s", last_status, data.get("next", []))
             except Exception as exc:
                 log.warning("Status poll failed (will retry): %s", exc)
             time.sleep(poll_interval)
@@ -375,9 +375,7 @@ def load_findings_via_api(
 # ---------------------------------------------------------------------------
 # Step 4: Assert ground-truth expectations
 # ---------------------------------------------------------------------------
-def _finding_matches(
-    finding: dict[str, Any], vuln_class: str, url_substring: str
-) -> bool:
+def _finding_matches(finding: dict[str, Any], vuln_class: str, url_substring: str) -> bool:
     """Check whether a finding matches the expected vuln class + URL."""
     f_vuln_class = str(finding.get("vuln_class", "")).lower()
     f_url = str(finding.get("url", ""))
@@ -406,12 +404,7 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
     print("=" * 78)
     print("GROUND-TRUTH EVALUATION — Pass/Fail Matrix")
     print("=" * 78)
-    print(
-        f"{'Vulnerability':<32} "
-        f"{'Expected':<16} "
-        f"{'Actual':<16} "
-        f"{'Result':<8}"
-    )
+    print(f"{'Vulnerability':<32} {'Expected':<16} {'Actual':<16} {'Result':<8}")
     print("-" * 78)
 
     passed = 0
@@ -425,16 +418,11 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
         want = expected["expected_confidence_level"]
 
         # Find any finding that matches this vuln class + URL.
-        matching = [
-            f for f in findings if _finding_matches(f, vc, url_sub)
-        ]
+        matching = [f for f in findings if _finding_matches(f, vc, url_sub)]
 
         if not matching:
             # No finding detected for this vuln class at all.
-            print(
-                f"{name:<32} {want:<16} {'(none)':<16} "
-                f"{'MISS':<8}  (no finding detected)"
-            )
+            print(f"{name:<32} {want:<16} {'(none)':<16} {'MISS':<8}  (no finding detected)")
             missing += 1
             failed += 1
             continue
@@ -444,9 +432,7 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
         priority = {"Tool-Confirmed": 3, "AI-Assessed": 2, "Pending": 1}
         best = max(
             matching,
-            key=lambda f: priority.get(
-                str(f.get("confidence_level", "Pending")), 0
-            ),
+            key=lambda f: priority.get(str(f.get("confidence_level", "Pending")), 0),
         )
         actual = str(best.get("confidence_level", "Pending"))
 
@@ -455,8 +441,7 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
             passed += 1
         else:
             print(
-                f"{name:<32} {want:<16} {actual:<16} "
-                f"{'FAIL':<8}  (expected {want}, got {actual})"
+                f"{name:<32} {want:<16} {actual:<16} {'FAIL':<8}  (expected {want}, got {actual})"
             )
             failed += 1
 
@@ -474,9 +459,7 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
     print("=" * 78)
     print("NEGATIVE GROUND-TRUTH — False Positive Check")
     print("=" * 78)
-    print(
-        f"{'Safe Endpoint':<32} {'Expected':<16} {'Actual':<16} {'Result':<8}"
-    )
+    print(f"{'Safe Endpoint':<32} {'Expected':<16} {'Actual':<16} {'Result':<8}")
     print("-" * 78)
 
     false_positive_count = 0
@@ -487,7 +470,8 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
 
         # Check if ANY finding matches this safe endpoint.
         false_positives = [
-            f for f in findings
+            f
+            for f in findings
             if url_sub in str(f.get("url", ""))
             and (
                 str(f.get("vuln_class", "")).lower() == vc.lower()
@@ -529,9 +513,7 @@ def evaluate(findings: list[dict[str, Any]]) -> tuple[int, int, int, int]:
 # Main entry point
 # ---------------------------------------------------------------------------
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="V5 Sprint 7 — Ground-Truth Evaluation Harness"
-    )
+    parser = argparse.ArgumentParser(description="V5 Sprint 7 — Ground-Truth Evaluation Harness")
     parser.add_argument(
         "--api-url",
         default=DEFAULT_API_URL,
@@ -586,13 +568,14 @@ def main() -> int:
 
     thread_id: str | None = None
     if not args.skip_scan:
-        task_id, thread_id = trigger_scan(
-            args.api_url, target_url, auth_token=auth_token
-        )
+        task_id, thread_id = trigger_scan(args.api_url, target_url, auth_token=auth_token)
         log.info("Scan dispatched: task_id=%s, thread_id=%s", task_id, thread_id)
 
         completed = wait_for_completion(
-            args.api_url, thread_id, args.scan_timeout, args.poll_interval,
+            args.api_url,
+            thread_id,
+            args.scan_timeout,
+            args.poll_interval,
             auth_token=auth_token,
         )
         if not completed:
@@ -604,13 +587,9 @@ def main() -> int:
     # Load findings.
     findings = load_findings(args.db_path)
     if not findings:
-        log.warning(
-            "No findings loaded from DB at %s; trying API fallback.", args.db_path
-        )
+        log.warning("No findings loaded from DB at %s; trying API fallback.", args.db_path)
         if thread_id:
-            findings = load_findings_via_api(
-                args.api_url, thread_id, auth_token=auth_token
-            )
+            findings = load_findings_via_api(args.api_url, thread_id, auth_token=auth_token)
 
     if not findings:
         log.error("No findings available — cannot evaluate.")
@@ -640,7 +619,8 @@ def main() -> int:
         log.error(
             "POSITIVE GROUND-TRUTH FAILED: %d expectation(s) missed "
             "(%d missing). Forcing exit code 1.",
-            failed, missing,
+            failed,
+            missing,
         )
         return 1
     return 0

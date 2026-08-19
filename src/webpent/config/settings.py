@@ -401,6 +401,18 @@ class Settings(BaseSettings):
             "the per-run database and preserves findings across code revisions."
         ),
     )
+    action_ledger_path: Path = Field(
+        default=Path("~/.webpent/action_ledger.sqlite3"),
+        validation_alias=AliasChoices(
+            "action_ledger_path",
+            "ACTION_LEDGER_PATH",
+            "WEBPENT_ACTION_LEDGER_PATH",
+        ),
+        description=(
+            "Durable action reservation ledger used by runtime campaign executors; "
+            "it stores redacted metadata only."
+        ),
+    )
     reauth_vault_shared_store: bool = Field(
         default=False,
         validation_alias=AliasChoices(

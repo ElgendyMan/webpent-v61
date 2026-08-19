@@ -23,8 +23,17 @@ def main() -> int:
         if _stable(path) != baseline:
             mismatches.append(str(path))
     summary = baseline.get("summary", {})
-    print(json.dumps({"runs": [str(path) for path in paths], "stable": not mismatches,
-                      "mismatches": mismatches, "summary": summary}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "runs": [str(path) for path in paths],
+                "stable": not mismatches,
+                "mismatches": mismatches,
+                "summary": summary,
+            },
+            sort_keys=True,
+        )
+    )
     return 0 if not mismatches else 1
 
 

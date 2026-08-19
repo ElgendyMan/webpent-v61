@@ -405,6 +405,7 @@ def scan(
                 skip_recon=skip_recon,
                 stealth_mode=stealth,
                 scan_mode=resolved_mode,
+                action_ledger_path=str(settings.action_ledger_path),
             )
 
             config = {

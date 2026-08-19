@@ -2853,50 +2853,16 @@ def _apply_validation_failure_learning(
 
 
 def _validate_known_swagger_ssrf(finding: Finding, state: PentestState) -> Finding | None:
-    """Verify the WAPTLab Swagger SSRF marker in authorized-active mode only.
-
-    This is a bounded, same-origin GET fallback for a route-specific surface
-    that is already represented by a finding.  It reuses the smart-campaign
-    probe and its engagement-scoped HTTP transport, and fails closed for every
-    other profile or URL.
-    """
-    governance = state.get("smart_governance") or {}
-    profile = (
-        governance.get("profile")
-        if isinstance(governance, dict)
-        else state.get("scan_mode")
-    )
-    if str(profile) != "authorized-active":
-        return None
+    """Accept only a Swagger SSRF proof already produced by the central executor."""
+    del state
     if finding.vuln_class != "ssrf" or "/swagger_ui" not in str(finding.url):
         return None
-    target = state.get("target")
-    if isinstance(target, dict):
-        root = str(target.get("url") or "")
-    else:
-        root = str(getattr(target, "url", "") or "")
-    if not root:
+    evidence = finding.evidence or {}
+    if evidence.get("action_executor_probe") is not True:
         return None
-    try:
-        from webpent.agents.smart_campaigns.agent import (
-            _run_swagger_ssrf_probe,
-            _user_agent,
-        )
-
-        headers = {"User-Agent": _user_agent(state)}
-        cookies = state.get("session_cookies") or {}
-        if isinstance(cookies, dict) and cookies:
-            headers["Cookie"] = "; ".join(
-                f"{str(key)[:128]}={str(value)[:512]}"
-                for key, value in cookies.items()
-                if value
-            )
-        probe_state = dict(state)
-        probe_state["findings"] = [finding]
-        return _run_swagger_ssrf_probe(probe_state, root, headers)
-    except Exception as exc:
-        logger.info("Known Swagger SSRF proof unavailable: %s", type(exc).__name__)
+    if finding.confidence != Confidence.CONFIRMED.value:
         return None
+    return finding
 
 
 def validator_node(state: PentestState) -> dict:
@@ -2995,6 +2961,7 @@ def validator_node(state: PentestState) -> dict:
             and finding.vuln_class == "ssrf"
             and "/swagger_ui" in str(finding.url)
             and finding.confidence != Confidence.CONFIRMED.value
+            and (finding.evidence or {}).get("action_executor_probe") is not True
         )
         if not known_swagger_probe and not _validation_requeue and (
             _finding_evidence.get("validation_attempted")

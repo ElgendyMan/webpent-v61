@@ -5,6 +5,7 @@ It exposes deterministic, non-destructive response markers so WebPent discovery
 and evidence plumbing can be exercised when Docker networking is unavailable.
 Bind to loopback by default only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -68,9 +69,13 @@ class MockHandler(BaseHTTPRequestHandler):
                 "/composer.lock.bak",
                 "/_oob/mock-token",
             ]
-            body = "<html><body><h1>WAPTLab Mock</h1>" + "".join(
-                f'<a href="{html.escape(link)}">{html.escape(link)}</a><br>' for link in links
-            ) + '<form method="post" action="/profile"><input name="name"><input name="email">'
+            body = (
+                "<html><body><h1>WAPTLab Mock</h1>"
+                + "".join(
+                    f'<a href="{html.escape(link)}">{html.escape(link)}</a><br>' for link in links
+                )
+                + '<form method="post" action="/profile"><input name="name"><input name="email">'
+            )
             body += '<textarea name="description"></textarea></form>'
             body += '<script src="/js/markdown-editor-0.3.0.js"></script></body></html>'
             self._send(200, body)
@@ -145,8 +150,7 @@ class MockHandler(BaseHTTPRequestHandler):
             if params.get("trigger"):
                 self._send(
                     500,
-                    "Whoops! APP_DEBUG=true Traceback: /var/www/html/.env "
-                    "APP_KEY=mock-secret",
+                    "Whoops! APP_DEBUG=true Traceback: /var/www/html/.env APP_KEY=mock-secret",
                 )
             else:
                 self._send(200, "ok")
@@ -200,9 +204,7 @@ class MockHandler(BaseHTTPRequestHandler):
             self._json(200, {"status": "saved"})
             return
         if path in {"/training/send-results-email", "/crm/export", "/export-erp"}:
-            template_text = "\n".join(
-                value for values in params.values() for value in values
-            )
+            template_text = "\n".join(value for values in params.values() for value in values)
             if "{{17*23}}" in template_text:
                 rendered = "391"
             elif "{{" in template_text or "{!!" in template_text:

@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = PROJECT_ROOT / "docs" / "vip_quality_gate.json"
-PYTHON = str(PROJECT_ROOT / ".venv" / "bin" / "python")
-RUFF = str(PROJECT_ROOT / ".venv" / "bin" / "ruff")
+PYTHON = sys.executable
+_LOCAL_RUFF = Path(PYTHON).with_name("ruff")
+RUFF = str(_LOCAL_RUFF) if _LOCAL_RUFF.is_file() else (shutil.which("ruff") or "ruff")
 PYTEST = [PYTHON, "-m", "pytest", "-q"]
 
 VIP_FILES = [
@@ -59,7 +63,7 @@ def _run(name: str, command: list[str], *, timeout: int = 300) -> dict[str, Any]
         completed = subprocess.run(
             command,
             cwd=PROJECT_ROOT,
-            env={**__import__("os").environ, "PYTHONPATH": "src"},
+            env={**os.environ, "PYTHONPATH": "src"},
             capture_output=True,
             text=True,
             timeout=timeout,

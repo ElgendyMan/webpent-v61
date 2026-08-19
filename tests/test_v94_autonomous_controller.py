@@ -18,7 +18,12 @@ def _state() -> dict:
                 {
                     "key": "sqli",
                     "matched_observation_refs": ["surface:0"],
-                    "contract": {"method": "GET", "oracle": "status_compare"},
+                    "contract": {
+                        "method": "GET",
+                        "oracle": "status_compare",
+                        "preconditions": ["surface observed"],
+                        "observed_preconditions": ["surface observed"],
+                    },
                 }
             ]
         },
@@ -34,12 +39,13 @@ def _state() -> dict:
     }
 
 
-def test_controller_safe_stops_without_injected_handler() -> None:
-    result = AutonomousController().run(_state())
-
-    assert result["smart_replanning"]["status"] == "controller_safe_stopped"
-    assert result["smart_replanning"]["controller_trace"][0]["status"] == "safe_stopped"
-    assert result["smart_replanning"]["controller_trace"][0]["planned_count"] >= 1
+def test_controller_requires_injected_runtime_dependencies() -> None:
+    try:
+        AutonomousController().run(_state())
+    except RuntimeError as exc:
+        assert "runtime_dependencies_required" in str(exc)
+    else:
+        raise AssertionError("controller must reject missing runtime dependencies")
 
 
 def test_controller_executes_only_through_action_executor() -> None:
@@ -77,10 +83,39 @@ def test_controller_executes_only_through_action_executor() -> None:
     assert result["lifecycle_events"]
 
 
-def test_controller_does_not_execute_when_action_executor_is_missing() -> None:
+def test_controller_blocks_unproven_preconditions_before_handler() -> None:
+    state = _state()
+    state["campaign_plan"]["entries"][0]["contract"].pop("observed_preconditions", None)
     calls: list[str] = []
 
-    result = AutonomousController().run(_state(), handler=lambda task: calls.append(task.task_id))
+    result = AutonomousController(
+        action_executor=ActionExecutor(
+            ActionAuthority(
+                settings=SimpleNamespace(
+                    scan_mode="safe-smart",
+                    smart_auto_approve=False,
+                    smart_action_budget=10.0,
+                    smart_max_actions=3,
+                    smart_require_idempotency=True,
+                ),
+                allowed_origin="http://example.test",
+                manifest={"capabilities": {"http_read": {"available": True}}},
+            )
+        )
+    ).run(state, handler=lambda task: calls.append(task.task_id), iterations=1)
 
     assert calls == []
-    assert result["smart_replanning"]["status"] == "controller_safe_stopped"
+    assert result["campaign_task_outcomes"][0]["status"] == "blocked_by_precondition"
+    assert result["smart_replanning"]["controller_executed"] == 0
+
+
+def test_controller_requires_executor_when_handler_is_present() -> None:
+    calls: list[str] = []
+
+    try:
+        AutonomousController().run(_state(), handler=lambda task: calls.append(task.task_id))
+    except RuntimeError as exc:
+        assert "runtime_dependencies_required" in str(exc)
+    else:
+        raise AssertionError("controller must reject a missing ActionExecutor")
+    assert calls == []

@@ -31,6 +31,13 @@ def _text(value: Any) -> str:
     return clean[:200]
 
 
+def _nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, min(1_000_000, int(value or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _status_for_outcome(outcome: Mapping[str, Any]) -> str:
     raw = _text(outcome.get("status")).lower()
     if raw in {"confirmed", "tool_confirmed"}:
@@ -140,6 +147,31 @@ def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
         for item in state.get("smart_information_actions") or []
         if isinstance(item, Mapping)
     ]
+    research_session = state.get("research_session") or {}
+    if not isinstance(research_session, Mapping):
+        research_session = {}
+    session_actions = [
+        item
+        for item in research_session.get("next_best_actions") or []
+        if isinstance(item, Mapping)
+    ]
+    target_understanding = state.get("target_understanding") or {}
+    if not isinstance(target_understanding, Mapping):
+        target_understanding = {}
+    raw_target_gaps = target_understanding.get("coverage_gaps")
+    target_gap_count = len(raw_target_gaps) if isinstance(raw_target_gaps, list) else 0
+    target_dimensions = {
+        "endpoint_count": _nonnegative_int(target_understanding.get("endpoint_count")),
+        "form_count": _nonnegative_int(target_understanding.get("form_count")),
+        "identity_count": _nonnegative_int(target_understanding.get("identity_count")),
+        "object_candidate_count": _nonnegative_int(
+            target_understanding.get("object_candidate_count")
+        ),
+        "workflow_candidate_count": _nonnegative_int(
+            target_understanding.get("workflow_candidate_count")
+        ),
+        "coverage_gap_count": target_gap_count,
+    }
     return {
         "version": 1,
         "source": "proof_engine_projection",
@@ -152,6 +184,16 @@ def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
             ),
             "gap_count": len(research_gaps),
             "planned_information_action_count": len(research_actions),
+            "executed_information_action_count": sum(
+                1
+                for item in session_actions
+                if _text(item.get("outcome")).lower() not in {"", "planned"}
+            ),
+            "positive_evidence_count": len(research_session.get("positive_evidence_ledger") or []),
+            "negative_evidence_count": len(research_session.get("negative_evidence_ledger") or []),
+            "failed_path_count": len(research_session.get("failed_paths") or []),
+            "promising_path_count": len(research_session.get("promising_paths") or []),
+            "decision_trace_count": len(state.get("research_decision_trace") or []),
             "gap_ids": sorted(
                 {
                     _text(gap.get("gap_id"))
@@ -159,6 +201,9 @@ def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
                     if _text(gap.get("gap_id"))
                 }
             ),
+            "target_understanding": target_dimensions,
+            "client_id": _text(research_session.get("client_id")),
+            "engagement_id": _text(research_session.get("engagement_id")),
             "source": "research_intelligence_projection",
         },
     }

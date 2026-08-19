@@ -14,7 +14,11 @@ from webpent.agents.smart_campaigns.agent import (
     build_smart_campaign_tasks,
     smart_campaigns_node,
 )
-from webpent.shared.campaign_executor import ActionExecutor, CampaignTask
+from webpent.shared.campaign_executor import (
+    ActionExecutor,
+    CampaignTask,
+    resolve_preconditions,
+)
 from webpent.shared.capability_manifest import CapabilityRegistry
 
 TaskHandler = Callable[[CampaignTask], Any]
@@ -23,8 +27,9 @@ TaskHandler = Callable[[CampaignTask], Any]
 class AutonomousController:
     """Run bounded plan -> gate -> execute -> observe iterations.
 
-    A missing handler is an intentional safe stop, not an implicit transport
-    fallback. Every actual action must pass through the supplied ActionExecutor.
+    A missing handler or executor is a configuration error, not an implicit
+    transport fallback. Every actual action must pass through the supplied
+    ActionExecutor.
     """
 
     def __init__(
@@ -78,15 +83,10 @@ class AutonomousController:
             last_planning = dict(planning)
             tasks = self._planned_tasks(working, planning)
             if handler is None or self.action_executor is None:
-                trace.append(
-                    {
-                        "controller_round": round_number,
-                        "status": "safe_stopped",
-                        "reason": "explicit_action_handler_and_executor_required",
-                        "planned_count": len(tasks),
-                    }
+                raise RuntimeError(
+                    "autonomous_controller_runtime_dependencies_required: "
+                    "inject both action_executor and handler"
                 )
-                break
 
             selected = tasks[:1]
             if not selected:
@@ -98,7 +98,21 @@ class AutonomousController:
                     }
                 )
                 break
-            record = self.action_executor.execute(selected[0], handler)
+            observed_preconditions = working.get("observed_preconditions", ())
+            blocked_preconditions = working.get("blocked_preconditions", ())
+            if isinstance(observed_preconditions, str):
+                observed_preconditions = (observed_preconditions,)
+            if isinstance(blocked_preconditions, str):
+                blocked_preconditions = (blocked_preconditions,)
+            ready, _ = resolve_preconditions(
+                selected[0],
+                observed_preconditions=observed_preconditions,
+                blocked_preconditions=blocked_preconditions,
+                require_observations=True,
+            )
+            record = self.action_executor.execute(
+                selected[0], handler, preconditions_met=ready
+            )
             all_outcomes.append(record)
             all_lifecycle.extend(self.action_executor.lifecycle_events[-4:])
             trace.append(
@@ -109,17 +123,17 @@ class AutonomousController:
                     "proof_bundle_sealed": bool(record.get("proof_bundle_sealed")),
                 }
             )
-            executed += 1
+            if str(record.get("status")) == "executed":
+                executed += 1
+            else:
+                working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
+                break
             working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
 
         replanning = dict(last_planning.get("smart_replanning") or {})
         replanning.update(
             {
-                "status": (
-                    "controller_completed"
-                    if handler and self.action_executor
-                    else "controller_safe_stopped"
-                ),
+                "status": "controller_completed",
                 "controller_iterations": len(trace),
                 "controller_executed": executed,
                 "controller_trace": trace,

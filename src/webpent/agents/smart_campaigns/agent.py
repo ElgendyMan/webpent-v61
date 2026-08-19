@@ -18,11 +18,13 @@ from webpent.config.settings import ScanMode, get_settings
 from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 from webpent.shared.action_authority import ActionAuthority, ActionRisk
+from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.campaign_executor import (
     ActionExecutor,
     CampaignTask,
     CampaignTaskStatus,
     NextBestActionEngine,
+    resolve_preconditions,
 )
 from webpent.shared.campaign_planner import build_campaign_plan
 from webpent.shared.coverage_ledger import project_coverage_ledger
@@ -32,6 +34,7 @@ from webpent.shared.engagement_scope import (
 )
 from webpent.shared.http import make_safe_httpx_client
 from webpent.shared.research_intelligence import (
+    ActionClass,
     KnowledgeGapEngine,
     ResearchSession,
     SmartNextBestActionEngine,
@@ -156,6 +159,21 @@ def _task_from_entry(
         or "unknown"
     )[:120]
     validator_id = str(entry.get("validator_id") or entry.get("validator") or "")[:120]
+    observed_preconditions = entry.get(
+        "observed_preconditions",
+        contract.get("observed_preconditions", surface_record.get("observed_preconditions", ())),
+    )
+    if isinstance(observed_preconditions, str):
+        observed_preconditions = (observed_preconditions,)
+    if not isinstance(observed_preconditions, (list, tuple, set)):
+        observed_preconditions = ()
+    blocked_preconditions = entry.get(
+        "blocked_preconditions", contract.get("blocked_preconditions", ())
+    )
+    if isinstance(blocked_preconditions, str):
+        blocked_preconditions = (blocked_preconditions,)
+    if not isinstance(blocked_preconditions, (list, tuple, set)):
+        blocked_preconditions = ()
     task_id = f"smart:{key}:{index}"
     return CampaignTask(
         task_id=task_id,
@@ -202,6 +220,8 @@ def _task_from_entry(
             "body_schema": body_schema,
             "tenant_context": tenant_context,
             "validator_id": validator_id,
+            "observed_preconditions": [str(item)[:200] for item in observed_preconditions],
+            "blocked_preconditions": [str(item)[:200] for item in blocked_preconditions],
         },
         body_schema=body_schema,
         content_type=content_type,
@@ -287,6 +307,109 @@ def build_smart_campaign_tasks(
 
     cap = max(1, min(10, int(max_tasks)))
     return tasks[:cap], outcomes
+
+
+def _information_task_from_record(
+    record: Mapping[str, Any],
+    *,
+    state: Mapping[str, Any],
+    index: int,
+) -> CampaignTask | None:
+    """Adapt one planned research action to the central read-only executor."""
+    target_url = str(record.get("target_ref") or "").strip()[:500]
+    parsed = urlsplit(target_url)
+    root = urlsplit(_target_url(state))
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.scheme != root.scheme
+        or parsed.netloc != root.netloc
+    ):
+        return None
+    method = str(record.get("method") or "GET").upper().strip()
+    if method not in {"GET", "HEAD", "OPTIONS"}:
+        return None
+    action_class = str(record.get("action_class") or ActionClass.DISCOVERY.value)[:80]
+    action_id = str(record.get("action_id") or f"research-action-{index}")[:160]
+    fingerprint = str(record.get("fingerprint") or "").strip()[:160]
+    idempotency_key = f"research-information:{fingerprint or action_id}"
+    requires_approval = bool(record.get("requires_approval", False))
+    try:
+        cost = max(0.1, min(2.0, float(record.get("cost", 1.0) or 1.0)))
+    except (TypeError, ValueError):
+        cost = 1.0
+    try:
+        information_gain = max(
+            0.0, min(1.0, float(record.get("expected_information_gain", 0.0) or 0.0))
+        )
+    except (TypeError, ValueError):
+        information_gain = 0.0
+    return CampaignTask(
+        task_id=f"research-information:{action_id}:{index}",
+        engagement_id=str(state.get("engagement_id") or "engagement:unknown")[:160],
+        asset_id=target_url,
+        source_evidence_ids=(),
+        vulnerability_class="research_information",
+        hypothesis_id=f"research-gap:{action_id}",
+        preconditions=(),
+        identity_context=str(record.get("identity_context") or "anonymous")[:80],
+        workflow_state=str(record.get("workflow_state") or "unknown")[:120],
+        probe_family="bounded_information_action",
+        negative_control=(
+            "required" if action_class == ActionClass.NEGATIVE_CONTROL.value else "not_applicable"
+        ),
+        oracle="response_metadata_only",
+        budget=cost,
+        expected_information_gain=information_gain,
+        idempotency_key=idempotency_key,
+        method=method,
+        capability="http_read",
+        action_family="http_read",
+        risk_tier=ActionRisk.READ_ONLY,
+        target_url=target_url,
+        metadata={
+            "probe_kind": "research_information",
+            "research_action_id": action_id,
+            "research_action_class": action_class,
+            "research_action_fingerprint": fingerprint,
+            "objective": str(record.get("objective") or "")[:240],
+            "justification": str(record.get("justification") or "")[:240],
+            "human_approved": bool(state.get("auto_approve", False)) or not requires_approval,
+            "observed_preconditions": ["planned_same_origin_information_action"],
+        },
+        tenant_context=str(record.get("tenant_context") or "unknown")[:120],
+        validator_id="research_information_observation",
+    )
+
+
+def _update_research_action_outcome(
+    session: ResearchSession,
+    record: Mapping[str, Any],
+    *,
+    outcome: str,
+) -> None:
+    """Update one planned research action without replacing session history."""
+    action_id = str(record.get("action_id") or "")[:160]
+    fingerprint = str(record.get("fingerprint") or "")[:160]
+    for item in reversed(session.next_best_actions):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("action_id") or "")[:160] == action_id or (
+            fingerprint and str(item.get("fingerprint") or "")[:160] == fingerprint
+        ):
+            item["outcome"] = outcome[:80]
+            return
+    session.next_best_actions.append(
+        {
+            "action_id": action_id or "research-action:unknown",
+            "fingerprint": fingerprint,
+            "action_class": str(record.get("action_class") or ActionClass.DISCOVERY.value),
+            "score": float(record.get("score") or 0.0),
+            "outcome": outcome[:80],
+            "reasons": [str(item)[:160] for item in record.get("reasons", [])[:8]],
+        }
+    )
+    session.next_best_actions = session.next_best_actions[-100:]
 
 
 def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -541,27 +664,40 @@ def _swagger_ssrf_finding(
     )
 
 
-def _run_swagger_ssrf_probe(
-    state: Mapping[str, Any],
-    root: str,
-    headers: dict[str, str],
-) -> Finding | None:
-    """Run one bounded, same-origin SSRF proof for the known Swagger surface."""
+def _build_swagger_ssrf_task(state: Mapping[str, Any], root: str) -> CampaignTask | None:
+    """Build the bounded Swagger SSRF action; transport stays in the executor handler."""
     parsed_root = urlsplit(root)
     if parsed_root.scheme not in {"http", "https"} or not parsed_root.netloc:
         return None
-    swagger_url = f"{root.rstrip('/')}/swagger_ui"
-    request_url = f"{swagger_url}?url={quote('http://[::1]/', safe='')}"
-    try:
-        with _declared_target_scope(root), make_safe_httpx_client(
-            timeout=10.0,
-            follow_redirects=False,
-            headers=headers,
-        ) as client:
-            response = client.get(request_url)
-    except Exception:
-        return None
-    return _swagger_ssrf_finding(state, response, request_url)
+    request_url = (
+        f"{root.rstrip('/')}/swagger_ui?url={quote('http://[::1]/', safe='')}"
+    )
+    engagement_id = str(state.get("engagement_id") or "default")[:160]
+    return CampaignTask(
+        task_id="smart-swagger-ssrf-proof",
+        engagement_id=engagement_id,
+        asset_id="swagger_ui",
+        source_evidence_ids=("surface:swagger_ui",),
+        vulnerability_class=VulnClass.SSRF.value,
+        hypothesis_id="swagger-ui-ssrf-ipv6-loopback",
+        probe_family="same_origin_ssrf_marker",
+        negative_control="required",
+        oracle="deterministic_swagger_marker",
+        risk_tier=ActionRisk.ACTIVE,
+        budget=1.0,
+        expected_information_gain=0.8,
+        idempotency_key=f"swagger-ssrf:{engagement_id}:{request_url}",
+        method="GET",
+        capability="http_read",
+        action_family="http_read",
+        target_url=request_url,
+        metadata={
+            "probe_kind": "swagger_ssrf",
+            "observed_preconditions": ("authorized-active profile",),
+            "human_approved": bool(state.get("auto_approve", False)),
+        },
+        validator_id="swagger_url_ssrf_direct_probe",
+    )
 
 
 def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -601,16 +737,54 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         )
     except ValueError:
         runtime_settings = base_settings
+    ledger = None
+    ledger_path = state.get("action_ledger_path")
+    if ledger_path:
+        try:
+            ledger = SQLiteActionLedger(str(ledger_path))
+        except (OSError, ValueError):
+            return {
+                "campaign_task_outcomes": [
+                    {
+                        "status": CampaignTaskStatus.STOPPED.value,
+                        "reason": "ledger:initialization_failure",
+                    }
+                ],
+                "errors": ["action ledger could not be initialized; execution stopped"],
+            }
     authority = ActionAuthority(
         settings=runtime_settings,
         allowed_origin=root,
         manifest=state.get("capability_manifest") or {},
         used_actions=int((state.get("action_budget") or {}).get("used_actions", 0)),
         used_budget=float((state.get("action_budget") or {}).get("used_cost", 0.0)),
+        ledger=ledger,
     )
     executor = ActionExecutor(authority)
     observations: list[dict[str, Any]] = []
     outcomes = list(blocked)
+    direct_findings: list[Finding] = []
+    research_session = ResearchSession.from_state(state)
+    planned_information = state.get("smart_information_actions") or []
+    if not isinstance(planned_information, list):
+        planned_information = []
+    research_attempted = {
+        str(item.get("fingerprint"))
+        for item in research_session.next_best_actions
+        if isinstance(item, Mapping)
+        and str(item.get("outcome") or "") not in {"", "planned"}
+    }
+    information_tasks: list[tuple[CampaignTask, Mapping[str, Any]]] = []
+    for index, record in enumerate(planned_information[:3]):
+        if not isinstance(record, Mapping):
+            continue
+        fingerprint = str(record.get("fingerprint") or "")
+        if fingerprint and fingerprint in research_attempted:
+            continue
+        information_task = _information_task_from_record(record, state=state, index=index)
+        if information_task is not None:
+            information_tasks.append((information_task, record))
+            break
     selected = [task for task in tasks if task.normalized_idempotency_key() not in attempted][:3]
 
     def handler(task: CampaignTask) -> dict[str, Any]:
@@ -696,6 +870,20 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         }
         observation.update(_safe_http_observation(response))
         observations.append(observation)
+        if task.metadata.get("probe_kind") == "swagger_ssrf":
+            direct_finding = _swagger_ssrf_finding(state, response, task.target_url)
+            if direct_finding is not None:
+                direct_findings.append(
+                    direct_finding.model_copy(
+                        update={
+                            "evidence": {
+                                **(direct_finding.evidence or {}),
+                                "action_executor_probe": True,
+                                "validator_path": "action_executor_swagger_ssrf",
+                            }
+                        }
+                    )
+                )
         proof_evidence = task.metadata.get("proof_evidence")
         proof_refs = task.metadata.get("evidence_refs")
         negative_control = task.metadata.get("negative_control_payload")
@@ -710,21 +898,46 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 result["negative_control"] = redact_sensitive(negative_control)[0]
         return result
 
-    direct_findings: list[Finding] = []
-    if profile == "authorized-active":
-        probe_headers = {"User-Agent": _user_agent(state)}
-        probe_cookies = state.get("session_cookies") or {}
-        if isinstance(probe_cookies, Mapping) and probe_cookies:
-            probe_headers["Cookie"] = "; ".join(
-                f"{str(key)[:128]}={str(value)[:512]}"
-                for key, value in probe_cookies.items()
-            )
-        direct_finding = _run_swagger_ssrf_probe(state, root, probe_headers)
-        if direct_finding is not None:
-            direct_findings.append(direct_finding)
-
+    state_observed_preconditions = state.get("observed_preconditions", ())
+    state_blocked_preconditions = state.get("blocked_preconditions", ())
+    if isinstance(state_observed_preconditions, str):
+        state_observed_preconditions = (state_observed_preconditions,)
+    if isinstance(state_blocked_preconditions, str):
+        state_blocked_preconditions = (state_blocked_preconditions,)
     for task in selected:
-        outcomes.append(executor.execute(task, handler, preconditions_met=True))
+        ready, _ = resolve_preconditions(
+            task,
+            observed_preconditions=state_observed_preconditions,
+            blocked_preconditions=state_blocked_preconditions,
+            require_observations=True,
+        )
+        outcomes.append(executor.execute(task, handler, preconditions_met=ready))
+
+    for information_task, information_record in information_tasks:
+        information_outcome = executor.execute(information_task, handler, preconditions_met=True)
+        outcomes.append(information_outcome)
+        status = str(information_outcome.get("status") or "")
+        outcome_name = "executed" if status == CampaignTaskStatus.EXECUTED.value else "blocked"
+        if status == CampaignTaskStatus.INFRASTRUCTURE_FAILURE.value:
+            outcome_name = "failed"
+        _update_research_action_outcome(
+            research_session,
+            information_record,
+            outcome=outcome_name,
+        )
+
+    if profile == "authorized-active":
+        swagger_task = _build_swagger_ssrf_task(state, root)
+        if swagger_task is not None:
+            observed = tuple(state_observed_preconditions or ()) + ("authorized-active profile",)
+            ready, _ = resolve_preconditions(
+                swagger_task,
+                observed_preconditions=observed,
+                blocked_preconditions=state_blocked_preconditions,
+                require_observations=True,
+            )
+            outcomes.append(executor.execute(swagger_task, handler, preconditions_met=ready))
+
     projection_state = dict(state)
     projection_state["campaign_task_outcomes"] = [
         *(state.get("campaign_task_outcomes") or []),
@@ -738,6 +951,17 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         and isinstance(item.get("proof_bundle"), Mapping)
         and item.get("proof_bundle_sealed") is True
     ]
+    previous_replanning = state.get("smart_replanning") or {}
+    try:
+        previous_round = int(previous_replanning.get("round", 0))
+    except (AttributeError, TypeError, ValueError):
+        previous_round = 0
+    try:
+        max_replan_rounds = int(getattr(base_settings, "smart_max_replan_rounds", 0))
+    except (TypeError, ValueError):
+        max_replan_rounds = 0
+    next_round = previous_round + 1
+    replan_requested = bool(observations) and next_round < max_replan_rounds
     return {
         "campaign_plan": campaign_plan,
         "campaign_task_outcomes": outcomes,
@@ -747,9 +971,14 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         "decision_trace": list(executor.decision_trace),
         "lifecycle_events": list(executor.lifecycle_events),
         "coverage_ledger": coverage_ledger,
+        "research_session": research_session.as_dict(),
+        "positive_evidence_ledger": list(research_session.positive_evidence_ledger),
+        "negative_evidence_ledger": list(research_session.negative_evidence_ledger),
         "smart_replanning": {
             "status": "executed" if observations else "blocked",
-            "round": int((state.get("smart_replanning") or {}).get("round", 0)),
+            "round": next_round,
+            "max_replan_rounds": max_replan_rounds,
+            "replan_requested": replan_requested,
             "executed_count": len(observations),
             "max_tasks": 3,
             "get_only": all(task.method.upper() in {"GET", "HEAD", "OPTIONS"} for task in selected),

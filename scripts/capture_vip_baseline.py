@@ -90,8 +90,7 @@ def capture() -> dict[str, Any]:
         "waptlab_fixture": {
             "available": False,
             "reason": (
-                "No local WAPTLab fixture directory is present; "
-                "no remote target was contacted."
+                "No local WAPTLab fixture directory is present; no remote target was contacted."
             ),
         },
         "campaign_ledger": build_waptlab_campaign_ledger(),

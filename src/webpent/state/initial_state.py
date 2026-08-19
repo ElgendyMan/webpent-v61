@@ -57,6 +57,7 @@ def build_initial_state(
     enable_autonomous_controller: bool = False,
     scan_mode: str | ScanMode | None = None,
     root_goal_nodes: dict[str, Any] | None = None,
+    action_ledger_path: str | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -157,6 +158,7 @@ def build_initial_state(
             "smart_auto_approve": bool(settings.smart_auto_approve),
             "require_idempotency": bool(settings.smart_require_idempotency),
         },
+        "action_ledger_path": action_ledger_path,
         "action_budget": {
             "max_actions": int(settings.smart_max_actions),
             "used_actions": 0,

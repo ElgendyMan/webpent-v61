@@ -40,8 +40,12 @@ def graph_facts() -> dict[str, object]:
     builder = ROOT / "src/webpent/graph/builder.py"
     text = read_text(builder)
     nodes = sorted(set(re.findall(r"graph\.add_node\((NODE_[A-Z0-9_]+)", text)))
-    edges = re.findall(r"graph\.add_edge\((NODE_[A-Z0-9_]+|START|END),\s*(NODE_[A-Z0-9_]+|START|END)\)", text)
-    conditionals = re.findall(r"graph\.add_conditional_edges\(\s*(NODE_[A-Z0-9_]+),\s*([a-zA-Z_][a-zA-Z0-9_]*)", text)
+    edges = re.findall(
+        r"graph\.add_edge\((NODE_[A-Z0-9_]+|START|END),\s*(NODE_[A-Z0-9_]+|START|END)\)", text
+    )
+    conditionals = re.findall(
+        r"graph\.add_conditional_edges\(\s*(NODE_[A-Z0-9_]+),\s*([a-zA-Z_][a-zA-Z0-9_]*)", text
+    )
     interrupt = "interrupt_before" in text
     return {
         "builder": str(builder.relative_to(ROOT)),
@@ -69,10 +73,14 @@ def status_for(required_symbols: list[str], required_files: list[str]) -> dict[s
     missing_symbols = [name for name in required_symbols if name not in idx]
     missing_files = [name for name in required_files if not (ROOT / name).exists()]
     return {
-        "implemented_symbols": {name: idx.get(name, []) for name in required_symbols if name in idx},
+        "implemented_symbols": {
+            name: idx.get(name, []) for name in required_symbols if name in idx
+        },
         "missing_symbols": missing_symbols,
         "missing_files": missing_files,
-        "status": "implemented" if not missing_symbols and not missing_files else "partial_or_absent",
+        "status": "implemented"
+        if not missing_symbols and not missing_files
+        else "partial_or_absent",
     }
 
 
@@ -82,7 +90,9 @@ def main() -> None:
             "archive": "/home/ubuntu/upload/webpent_v60_final_reviewed.zip",
             "pytest": "700 passed, 110 warnings",
             "ruff": "104 errors under configured E/F/I/N/W/UP/B/C4/SIM rules",
-            "compileall": "not reached in first baseline command because Ruff failed; rerun separately",
+            "compileall": (
+                "not reached in first baseline command because Ruff failed; rerun separately"
+            ),
         },
         "graph": graph_facts(),
         "p0_traceability": {
@@ -136,7 +146,14 @@ def main() -> None:
     lines.extend(f"- `{left}` -> `{right}`" for left, right in graph["edges"])
     lines.extend(["", "## Conditional routers", ""])
     lines.extend(f"- `{node}` uses `{router}()`" for node, router in graph["conditional_edges"])
-    lines.extend(["", "## Approval boundary", "", f"- `interrupt_before` present in builder: `{graph['interrupt_before_present']}`"])
+    lines.extend(
+        [
+            "",
+            "## Approval boundary",
+            "",
+            f"- `interrupt_before` present in builder: `{graph['interrupt_before_present']}`",
+        ]
+    )
     OUT_GRAPH.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

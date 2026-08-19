@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from webpent.config.settings import ScanMode, Settings, get_settings
+from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.capability_manifest import capability_available
 
 
@@ -100,12 +101,14 @@ class ActionAuthority:
         manifest: dict[str, Any] | None = None,
         used_actions: int = 0,
         used_budget: float = 0.0,
+        ledger: SQLiteActionLedger | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.allowed_origin = self._normalize_origin(allowed_origin)
         self.manifest = manifest or {}
         self.used_actions = used_actions
         self.used_budget = used_budget
+        self.ledger = ledger
         self.trace: list[dict[str, Any]] = []
 
     @staticmethod
@@ -182,16 +185,52 @@ class ActionAuthority:
         decision = self.authorize(request)
         if not decision.allowed:
             return ActionResult(status=decision.status, decision=decision)
+        method = request.method.upper().strip()
+        reservation = None
+        if self.ledger is not None:
+            reservation = self.ledger.reserve(
+                idempotency_key=request.idempotency_key,
+                engagement_id=request.engagement_id,
+                task_id=request.task_id,
+                target_origin=self._normalize_origin(request.target_url),
+                method=method,
+                action_family=request.action_family,
+                identity_ref=request.identity_ref,
+                tenant_context=str(request.metadata.get("tenant_context", "unknown")),
+                vulnerability_class=str(request.metadata.get("vulnerability_class", "unknown")),
+                validator_id=str(request.metadata.get("validator_id", "")),
+                estimated_cost=request.estimated_cost,
+                max_actions=self.settings.smart_max_actions,
+                max_budget=self.settings.smart_action_budget,
+            )
+            if not reservation.allowed:
+                denied = self._decision(
+                    request,
+                    [reservation.reason or "ledger:reservation_denied"],
+                    ActionStatus.POLICY_DENIED,
+                )
+                return ActionResult(status=denied.status, decision=denied)
+            self.used_actions = max(self.used_actions, reservation.used_actions)
+            self.used_budget = max(self.used_budget, reservation.used_budget)
+
         try:
             output = handler(request)
         except Exception as exc:  # pragma: no cover - exact exception belongs to transport
+            if self.ledger is not None:
+                self.ledger.complete(
+                    request.engagement_id, request.idempotency_key, status="failed"
+                )
             failure = self._decision(
                 request,
                 [f"handler:infrastructure_failure:{type(exc).__name__}"],
                 ActionStatus.INFRASTRUCTURE_FAILURE,
             )
             return ActionResult(status=failure.status, decision=failure)
-        self.used_actions += 1
-        self.used_budget += request.estimated_cost
+        self.used_actions += 1 if reservation is None else 0
+        self.used_budget += request.estimated_cost if reservation is None else 0.0
+        if self.ledger is not None:
+            self.ledger.complete(
+                request.engagement_id, request.idempotency_key, status="executed"
+            )
         executed = self._decision(request, [], ActionStatus.EXECUTED)
         return ActionResult(status=executed.status, decision=executed, output=output)

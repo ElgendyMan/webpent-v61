@@ -55,9 +55,9 @@ import argparse
 import json
 import logging
 import threading
-import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
 from urllib.parse import urlparse
 
 logger = logging.getLogger("mock_oob_server")
@@ -80,14 +80,19 @@ def _record_ping(finding_id: str, token: str, source_ip: str, method: str) -> No
             _PINGS[finding_id] = {}
         if token not in _PINGS[finding_id]:
             _PINGS[finding_id][token] = []
-        _PINGS[finding_id][token].append({
-            "pinged_at": _now_iso(),
-            "source_ip": source_ip,
-            "method": method,
-        })
+        _PINGS[finding_id][token].append(
+            {
+                "pinged_at": _now_iso(),
+                "source_ip": source_ip,
+                "method": method,
+            }
+        )
     logger.info(
         "OOB ping recorded: finding_id=%s token=%s source=%s method=%s",
-        finding_id, token[:8] + "…", source_ip, method,
+        finding_id,
+        token[:8] + "…",
+        source_ip,
+        method,
     )
 
 
@@ -108,13 +113,9 @@ def _all_stats() -> dict:
     with _PINGS_LOCK:
         stats: dict[str, Any] = {}
         for finding_id, tokens in _PINGS.items():
-            stats[finding_id] = {
-                token: len(pings) for token, pings in tokens.items()
-            }
+            stats[finding_id] = {token: len(pings) for token, pings in tokens.items()}
         return stats
 
-
-from typing import Any  # moved here to keep the top of the file clean
 
 
 class MockOOBHandler(BaseHTTPRequestHandler):
@@ -178,19 +179,25 @@ class MockOOBHandler(BaseHTTPRequestHandler):
             _, finding_id, token = parts
             pings = _get_pings(finding_id, token)
             if pings:
-                self._send_json(200, {
-                    "confirmed": True,
-                    "ping_count": len(pings),
-                    "first_ping_at": pings[0]["pinged_at"],
-                    "last_ping_at": pings[-1]["pinged_at"],
-                })
+                self._send_json(
+                    200,
+                    {
+                        "confirmed": True,
+                        "ping_count": len(pings),
+                        "first_ping_at": pings[0]["pinged_at"],
+                        "last_ping_at": pings[-1]["pinged_at"],
+                    },
+                )
             else:
-                self._send_json(200, {
-                    "confirmed": False,
-                    "ping_count": 0,
-                    "first_ping_at": None,
-                    "last_ping_at": None,
-                })
+                self._send_json(
+                    200,
+                    {
+                        "confirmed": False,
+                        "ping_count": 0,
+                        "first_ping_at": None,
+                        "last_ping_at": None,
+                    },
+                )
             return
 
         self._send_json(404, {"error": f"unknown path: {path}"})
@@ -220,7 +227,9 @@ class MockOOBHandler(BaseHTTPRequestHandler):
             _record_ping(finding_id, token, source_ip, "POST")
             logger.debug(
                 "OOB POST body (%d bytes) for finding_id=%s: %r",
-                len(body), finding_id, body[:200],
+                len(body),
+                finding_id,
+                body[:200],
             )
             self._send_text(200, "ok")
             return
@@ -231,18 +240,28 @@ class MockOOBHandler(BaseHTTPRequestHandler):
 def main() -> int:
     """Run the mock OOB server."""
     parser = argparse.ArgumentParser(
-        description="V7 Sprint 0.3 Mock OOB Server — records canary-token pings for Dev Mode testing."
+        description=(
+            "V7 Sprint 0.3 Mock OOB Server — records canary-token pings "
+            "for Dev Mode testing."
+        )
     )
     parser.add_argument(
-        "--host", default="127.0.0.1",
-        help="Bind address (default: 127.0.0.1 — never 0.0.0.0, the mock server must be unreachable from external networks).",
+        "--host",
+        default="127.0.0.1",
+        help=(
+            "Bind address (default: 127.0.0.1 — never 0.0.0.0, the mock server "
+            "must be unreachable from external networks)."
+        ),
     )
     parser.add_argument(
-        "--port", type=int, default=18099,
+        "--port",
+        type=int,
+        default=18099,
         help="Listen port (default: 18099, matching settings.mock_oob_server_url).",
     )
     parser.add_argument(
-        "--log-level", default="info",
+        "--log-level",
+        default="info",
         choices=["debug", "info", "warning", "error"],
         help="Logging level (default: info).",
     )
@@ -258,12 +277,14 @@ def main() -> int:
     logger.info(
         "Mock OOB server starting on %s:%d (endpoints: /oob/{id}/{token}, "
         "/poll/{id}/{token}, /health, /stats, /reset)",
-        args.host, args.port,
+        args.host,
+        args.port,
     )
     logger.info(
         "Configure WebPent with MOCK_OOB_SERVER_URL=http://%s:%d "
         "(already the default in Dev Mode).",
-        args.host, args.port,
+        args.host,
+        args.port,
     )
     try:
         server.serve_forever()

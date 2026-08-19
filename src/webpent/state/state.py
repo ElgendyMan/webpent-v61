@@ -141,6 +141,9 @@ class PentestState(TypedDict, total=False):
     # V5 Sprint 6 addition
     stealth_mode: bool  # When True, insert jitter + rate-limit delays
 
+    # Optional durable runtime ledger; absent in legacy/tests means in-memory only.
+    action_ledger_path: str | None
+
     # P0 execution-policy persistence: keep the operator's approval mode in
     # the checkpoint so a resumed engagement cannot silently downgrade from
     # auto-approved execution to an HITL interrupt. Optional for legacy

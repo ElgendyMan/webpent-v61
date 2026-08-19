@@ -4,6 +4,7 @@ The fixture is not WAPTLab and this report must never be presented as live WAPTL
 validation.  It measures detector and proof-loop coverage using the real Finding
 model and validators while Docker networking is unavailable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -147,148 +148,205 @@ def _run_matrix_unscoped(base_url: str) -> dict[str, Any]:
             ),
         )
     )
-    results.append(_validated(
-        "jwt_path_traversal",
-        _finding(
-            f"{base}/crm/view?path=safe",
-            VulnClass.PATH_TRAVERSAL.value,
-            target_param="path",
-        ),
-        active_checks.validate_path_traversal,
-    ))
+    results.append(
+        _validated(
+            "jwt_path_traversal",
+            _finding(
+                f"{base}/crm/view?path=safe",
+                VulnClass.PATH_TRAVERSAL.value,
+                target_param="path",
+            ),
+            active_checks.validate_path_traversal,
+        )
+    )
     redirect_url = f"{base}/oauth/authorize?redirect_uri=//evil.example/return"
-    results.append(_validated(
-        "double_slash_redirect",
-        _finding(
-            redirect_url,
-            VulnClass.OPEN_REDIRECT.value,
-            target_param="redirect_uri",
-        ),
-        _validate_open_redirect,
-    ))
-    results.append(_validated(
-        "oauth_redirect_uri",
-        _finding(
-            redirect_url,
-            VulnClass.OPEN_REDIRECT.value,
-            target_param="redirect_uri",
-        ),
-        _validate_open_redirect,
-    ))
-    results.append(_validated(
-        "download_idor", _finding(f"{base}/crm/download/1", VulnClass.IDOR.value),
-        structural_checks.validate_idor,
-    ))
-    results.append(_validated(
-        "tenant_context_switching", _finding(f"{base}/dashboard/view-crm/1", VulnClass.IDOR.value),
-        structural_checks.validate_idor,
-    ))
-    results.append(_validated(
-        "training_email_ssti",
-        _finding(
-            f"{base}/training/send-results-email",
-            VulnClass.SSTI.value,
+    results.append(
+        _validated(
+            "double_slash_redirect",
+            _finding(
+                redirect_url,
+                VulnClass.OPEN_REDIRECT.value,
+                target_param="redirect_uri",
+            ),
+            _validate_open_redirect,
+        )
+    )
+    results.append(
+        _validated(
+            "oauth_redirect_uri",
+            _finding(
+                redirect_url,
+                VulnClass.OPEN_REDIRECT.value,
+                target_param="redirect_uri",
+            ),
+            _validate_open_redirect,
+        )
+    )
+    results.append(
+        _validated(
+            "download_idor",
+            _finding(f"{base}/crm/download/1", VulnClass.IDOR.value),
+            structural_checks.validate_idor,
+        )
+    )
+    results.append(
+        _validated(
+            "tenant_context_switching",
+            _finding(f"{base}/dashboard/view-crm/1", VulnClass.IDOR.value),
+            structural_checks.validate_idor,
+        )
+    )
+    results.append(
+        _validated(
+            "training_email_ssti",
+            _finding(
+                f"{base}/training/send-results-email",
+                VulnClass.SSTI.value,
+                method="POST",
+                data={"template": "safe"},
+                target_param="template",
+            ),
+            active_checks.validate_ssti,
+        )
+    )
+    results.append(
+        _validated(
+            "export_blade_ssti",
+            _finding(
+                f"{base}/crm/export",
+                VulnClass.SSTI.value,
+                method="POST",
+                data={"template": "safe"},
+                target_param="template",
+            ),
+            active_checks.validate_ssti,
+        )
+    )
+    results.append(
+        _raw_probe(
+            "swagger_url_ssrf",
+            f"{base}/swagger_ui?url={base}/internal",
+            reasoning=(
+                "Fixture returned a fetched internal preview, but no OOB callback was available; "
+                "review-only."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "image_fetch_ssrf",
+            f"{base}/profile/fetch-image",
             method="POST",
-            data={"template": "safe"},
-            target_param="template",
-        ),
-        active_checks.validate_ssti,
-    ))
-    results.append(_validated(
-        "export_blade_ssti",
-        _finding(
-            f"{base}/crm/export",
-            VulnClass.SSTI.value,
+            data="image_url=http%3A%2F%2F127.0.0.1%3A18083%2Finternal",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            reasoning=(
+                "Fixture returned the supplied image URL and SSRF marker, but no OOB callback "
+                "was available; review-only."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "stored_profile_xss",
+            f"{base}/profile",
             method="POST",
-            data={"template": "safe"},
-            target_param="template",
-        ),
-        active_checks.validate_ssti,
-    ))
-    results.append(_raw_probe(
-        "swagger_url_ssrf", f"{base}/swagger_ui?url={base}/internal",
-        reasoning=(
-            "Fixture returned a fetched internal preview, but no OOB callback was available; "
-            "review-only."
-        ),
-    ))
-    results.append(_raw_probe(
-        "image_fetch_ssrf", f"{base}/profile/fetch-image", method="POST",
-        data="image_url=http%3A%2F%2F127.0.0.1%3A18083%2Finternal",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        reasoning=(
-            "Fixture returned the supplied image URL and SSRF marker, but no OOB callback "
-            "was available; review-only."
-        ),
-    ))
-    results.append(_raw_probe(
-        "stored_profile_xss", f"{base}/profile", method="POST",
-        data="name=%3Cscript%3Ealert(1)%3C%2Fscript%3E&email=a%40b.test&description=x",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        reasoning=(
-            "Controlled stored-XSS payload was accepted by the fixture; browser sink "
-            "confirmation remains review-only."
-        ),
-    ))
-    results.append(_raw_probe(
-        "quoted_field_xss", f"{base}/profile", method="POST",
-        data="name=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E&email=a%40b.test",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        reasoning=(
-            "Malformed-quoting payload was submitted to the fixture; browser sink "
-            "confirmation remains review-only."
-        ),
-    ))
-    results.append(_raw_probe(
-        "elasticsearch_snapshot_traversal", f"{base}/elasticsearch", method="POST",
-        data=json.dumps({"url": "../../../../etc/passwd"}),
-        headers={"Content-Type": "application/json"},
-        reasoning=(
-            "Controlled Elasticsearch traversal payload produced the fixture marker; "
-            "campaign remains human-review."
-        ),
-    ))
-    results.append(_validated(
-        "public_backup_disclosure",
-        _finding(
-            f"{base}/composer.lock.bak",
-            VulnClass.INFO_DISCLOSURE.value,
-        ),
-        structural_checks.validate_info_disclosure,
-    ))
-    results.append(_validated(
-        "laravel_app_debug", _finding(f"{base}/debug?trigger=1", VulnClass.INFO_DISCLOSURE.value),
-        structural_checks.validate_info_disclosure,
-    ))
-    results.append(_raw_probe(
-        "frontend_dependency_exposure", f"{base}/js/markdown-editor-0.3.0.js",
-        reasoning=(
-            "Versioned vulnerable-component fingerprint was served; dependency exploitability "
-            "requires package-specific review."
-        ),
-    ))
-    results.append(_raw_probe(
-        "public_elasticsearch_exposure", f"{base}/es/fetch/elasticsearch:9200/_search",
-        reasoning=(
-            "Public Elasticsearch-like service response was reachable; authorization and "
-            "version impact require human review."
-        ),
-    ))
-    results.append(_raw_probe(
-        "oob_xxe", f"{base}/xml/upload", method="POST",
-        data='<!DOCTYPE x [<!ENTITY webpent SYSTEM "file:///etc/passwd">]><x>&webpent;</x>',
-        headers={"Content-Type": "application/xml"},
-        reasoning=(
-            "XML sink marker was produced, but OOB callback was unavailable; no XXE "
-            "confirmation is claimed."
-        ),
-    ))
-    results.append(_raw_probe(
-        "xslt_injection", f"{base}/xml/upload", method="POST",
-        data="<xsl:stylesheet><xsl:copy-of select=\"document('file:///etc/passwd')\"/></xsl:stylesheet>",
-        headers={"Content-Type": "application/xml"},
-        reasoning="XSLT document/copy-of marker was produced, but campaign remains human-review.",
-    ))
+            data="name=%3Cscript%3Ealert(1)%3C%2Fscript%3E&email=a%40b.test&description=x",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            reasoning=(
+                "Controlled stored-XSS payload was accepted by the fixture; browser sink "
+                "confirmation remains review-only."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "quoted_field_xss",
+            f"{base}/profile",
+            method="POST",
+            data="name=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E&email=a%40b.test",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            reasoning=(
+                "Malformed-quoting payload was submitted to the fixture; browser sink "
+                "confirmation remains review-only."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "elasticsearch_snapshot_traversal",
+            f"{base}/elasticsearch",
+            method="POST",
+            data=json.dumps({"url": "../../../../etc/passwd"}),
+            headers={"Content-Type": "application/json"},
+            reasoning=(
+                "Controlled Elasticsearch traversal payload produced the fixture marker; "
+                "campaign remains human-review."
+            ),
+        )
+    )
+    results.append(
+        _validated(
+            "public_backup_disclosure",
+            _finding(
+                f"{base}/composer.lock.bak",
+                VulnClass.INFO_DISCLOSURE.value,
+            ),
+            structural_checks.validate_info_disclosure,
+        )
+    )
+    results.append(
+        _validated(
+            "laravel_app_debug",
+            _finding(f"{base}/debug?trigger=1", VulnClass.INFO_DISCLOSURE.value),
+            structural_checks.validate_info_disclosure,
+        )
+    )
+    results.append(
+        _raw_probe(
+            "frontend_dependency_exposure",
+            f"{base}/js/markdown-editor-0.3.0.js",
+            reasoning=(
+                "Versioned vulnerable-component fingerprint was served; dependency exploitability "
+                "requires package-specific review."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "public_elasticsearch_exposure",
+            f"{base}/es/fetch/elasticsearch:9200/_search",
+            reasoning=(
+                "Public Elasticsearch-like service response was reachable; authorization and "
+                "version impact require human review."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "oob_xxe",
+            f"{base}/xml/upload",
+            method="POST",
+            data='<!DOCTYPE x [<!ENTITY webpent SYSTEM "file:///etc/passwd">]><x>&webpent;</x>',
+            headers={"Content-Type": "application/xml"},
+            reasoning=(
+                "XML sink marker was produced, but OOB callback was unavailable; no XXE "
+                "confirmation is claimed."
+            ),
+        )
+    )
+    results.append(
+        _raw_probe(
+            "xslt_injection",
+            f"{base}/xml/upload",
+            method="POST",
+            data="<xsl:stylesheet><xsl:copy-of select=\"document('file:///etc/passwd')\"/></xsl:stylesheet>",
+            headers={"Content-Type": "application/xml"},
+            reasoning=(
+                "XSLT document/copy-of marker was produced, but campaign remains "
+                "human-review."
+            ),
+        )
+    )
 
     summary: dict[str, int] = {}
     for result in results:
