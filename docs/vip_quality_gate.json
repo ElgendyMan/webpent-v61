@@ -84,7 +84,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "796 passed, 136 warnings in 25.29s"
+        "828 passed, 136 warnings in 26.43s"
       ]
     },
     {
@@ -107,13 +107,13 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 498,",
-        "  \"total_test_functions\": 747",
+        "  \"total_test_functions\": 779",
         "}",
-        "OK: preserved test-function count 747 >= minimum 498"
+        "OK: preserved test-function count 779 >= minimum 498"
       ]
     }
   ],
-  "generated_at": "2026-08-19T17:30:15.770734+00:00",
+  "generated_at": "2026-08-19T17:36:02.363307+00:00",
   "known_blockers": [
     "worker critical-path coverage remains 23% versus the 85% target",
     "LangChain/LangGraph advisory set remains documented in pip-audit-production.json",
