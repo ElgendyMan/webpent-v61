@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة v60 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG. آخر بوابة تحقق موثقة: **764 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff على `src` و`tests` ناجح. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف.
+> **الحالة الحالية:** نسخة v60 Smart Hunter مع remediation v61 وSmart Research Upgrade additive. آخر بوابة تحقق موثقة: **789 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff = 0 على `src`, `tests`, `benchmarks`, و`scripts`. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل qualification حية أو ضمانًا لاكتشاف كل الثغرات على كل هدف.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -59,6 +59,11 @@ flowchart LR
 | Memory isolation | عزل lessons حسب `client_id` مع تضييق اختياري حسب `engagement_id`. |
 | Reporting | JSON وHTML وتقرير قابل للتوسعة مع authorization matrix appendix وredaction. |
 | Resumability | Checkpoints وthread state لاستكمال الحملات المنظمة بدل عرض آخر thread فقط. |
+| Smart research contracts | `ResearchContext` و`CandidateAction` و`InformationObservation` typed وcheckpoint-safe، مع utility decision trace. |
+| Active research | Loop اختياري يمر عبر policy/scope/capability/budget gates، ويحدث coverage وfailed-path memory دون promotion. |
+| Causal intelligence | Causal edges وnovel behavior projections passive؛ لا تصبح Finding بدون oracle وnegative control وProofBundle. |
+| LLM reliability | Schema ثم sanitization ثم scope ثم policy ثم capability ثم budget، مع fallback bounded وtrace redacted. |
+| Scientific measurement | Benchmark versioned في `benchmarks/vip_v1`، expected findings، scenarios A–E، وprecision/recall/F1 strict. |
 
 ## هيكل المشروع
 
@@ -253,7 +258,19 @@ PYTHONPATH=src python scripts/verify_rag_knowledge_pack.py
 
 التحقق الموثق أثبت direct retrieval للأنواع الخمسة، ومرور context bounded يحمل provenance markers إلى helper المستخدم من الـagents. الـplanner يستدعي `methodology` و`repository` و`scenario`، بينما يستدعي hypothesis analyzer `writeup` و`report` و`scenario`.
 
-الـRAG **advisory-only**: methodology أو write-up أو repository لا يرفع Finding تلقائيًا. يجب أن يثبت السلوك الفعلي ويجتاز evidence وvalidation وconfidence contracts.
+الـRAG **advisory-only**: methodology أو write-up أو repository لا يرفع Finding تلقائيًا. يجب أن يثبت السلوك الفعلي ويجتاز evidence وvalidation وconfidence contracts. طبقة القرار الجديدة تستخدم `DecisionRetrievalRequest` لتخصيص doc types وstack filters حسب gap/action، مع bounded context وprovenance وعزل engagement/client.
+
+## Smart Research Loop
+
+المكونات الجديدة additive ولا تغيّر المسار القديم عندما يكون `enable_autonomous_controller=false`. يبدأ المسار الاختياري من `ResearchContext`، يقرأ gaps وcoverage وfailed paths، يحول المعلومات إلى `CandidateAction`، ثم يمررها إلى policy/capability/scope/budget gates. يستطيع `active_research_node` تنفيذ handler محقون ومصرح به فقط؛ وإلا يتوقف بأمان. نتيجة التنفيذ هي `InformationObservation` لا Finding.
+
+يحتفظ النظام بـ`NegativeEvidenceLedger` و`ResearchSession` لتمييز الطريق الفاشل من الطريق غير المُختبر، وتحديد شروط retry وentry/exit/depth/budget. لذلك لا يُعاد تنفيذ action مكررًا بلا مبرر، ولا تتحول blocker بنية تحتية إلى confirmation صامت.
+
+## Benchmark وقياس الأداء
+
+يوجد benchmark versioned في [`benchmarks/vip_v1`](benchmarks/vip_v1/README.md). يقوم `expected_findings.json` على catalog موثق، بينما `scenarios.json` يغطي خمس رحلات E2E: discovery إلى confirmation، recovery بعد فشل hypothesis، رفض false positive، causal chaining، وdeterministic fallback عند غياب LLM. لا يسمح benchmark بتعديل WAPTLab أو Juice Shop.
+
+يقبل `scripts/evaluate_benchmark.py` Findingًا في precision/recall فقط إذا كانت الحالة confirmed ومعها `causal_signal` و`negative_control_complete` و`proof_bundle_sealed`. هذا يمنع خلط candidate أو unit-test fixture مع اكتشاف حي. لا يجوز إعلان VIP qualification قبل ثلاث تشغيلات محلية نظيفة تحقق بوابات الخطة المنشورة.
 
 ## عزل الحملات والذاكرة
 
@@ -334,7 +351,7 @@ export PYTHONPATH="$PWD/src"
 
 .venv/bin/python -m compileall "$PWD/src" -q
 .venv/bin/pytest "$PWD/tests" -q --tb=short
-.venv/bin/ruff check "$PWD/src" "$PWD/tests" \
+.venv/bin/ruff check "$PWD/src" "$PWD/tests" "$PWD/benchmarks" "$PWD/scripts" \
   --line-length 100 \
   --output-format concise
 ```
@@ -352,9 +369,11 @@ PYTHONPATH=src .venv/bin/python scripts/verify_rag_knowledge_pack.py
 
 WebPent مشروع **research-grade autonomous pentesting framework** قوي، لكنه ليس بديلًا عن pentester بشري ولا يضمن عددًا ثابتًا من الثغرات في أي تطبيق. جودة النتائج تعتمد على scope، الحسابات المتاحة، استقرار الهدف، تغطية crawler، إعدادات LLM والembeddings، والـnegative controls.
 
-الـKnowledge Pack مضاف ومربوط ومسار retrieval مثبت، لكنه corpus صغير نسبيًا مقارنة بقاعدة معرفة إنتاجية واسعة. كذلك، رقم الاختبارات لا يساوي recall على WAPTLab أو Juice Shop. لقياس precision وrecall يجب إنشاء benchmark versioned يحدد known findings وexpected evidence ثم قياس coverage لكل agent.
+الـKnowledge Pack مضاف ومربوط ومسار retrieval مثبت، لكنه corpus seed صغير نسبيًا مقارنة بقاعدة معرفة إنتاجية واسعة. كذلك، رقم الاختبارات لا يساوي recall على WAPTLab أو Juice Shop؛ benchmark v1 يثبت طريقة القياس لكنه لا يقدّم qualification حية تلقائيًا.
 
-يجب أيضًا مراجعة dependency warnings وproduction hardening قبل النشر العام، خصوصًا إدارة الأسرار، Celery/Redis، Chroma persistence، rate limiting، logging redaction، وCI security scanning.
+الوصف الصحيح حتى اجتياز release gates هو **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**. لا يجوز وصف المشروع بأنه VIP Smart Autonomous Bug Hunter قبل إثبات 15/20 confirmations في ثلاث تشغيلات محلية مستقلة، precision لا تقل عن 90%، reproducibility لا تقل عن 95%، ProofBundle coverage بنسبة 100%، وصفر scope violations أو duplicate executions أو silent precondition failures.
+
+تبقى مراجعة production hardening مطلوبة قبل النشر العام، خصوصًا إدارة الأسرار، Celery/Redis، Chroma persistence، rate limiting، logging redaction، dependency/SBOM scanning، وCI security gates.
 
 ## Change records وGit
 
@@ -363,10 +382,14 @@ WebPent مشروع **research-grade autonomous pentesting framework** قوي، �
 - [`knowledge_pack/README.md`](knowledge_pack/README.md) — بنية الحزمة وحدود الثقة والتشغيل.
 - [`audit/coverage_matrix_v55_plus.md`](audit/coverage_matrix_v55_plus.md) — نضج التغطية ومعايير الإغلاق.
 - [`audit/v56_coverage_report.md`](audit/v56_coverage_report.md) — تقرير تغطية سابق.
+- [`audit/autonomous_controller_gap_analysis.md`](audit/autonomous_controller_gap_analysis.md) — gap analysis مبني على runtime الفعلي قبل التنفيذ.
+- [`benchmarks/vip_v1/README.md`](benchmarks/vip_v1/README.md) — benchmark وطرق القياس وحدود qualification.
+- [`audit/vip_upgrade_release_gates.md`](audit/vip_upgrade_release_gates.md) — traceability ونتائج release gates للخطتين.
+- [`audit/production_hardening_checklist.md`](audit/production_hardening_checklist.md) — متطلبات النشر وإغلاق المخاطر المتبقية.
 
 المستودع البعيد المعلن في سجل التسليم هو [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)، branch `master`.
 
-لم يتم تعديل WAPTLab أو Juice Shop ضمن remediation v61 أو إضافة Knowledge Pack.
+لم يتم تعديل WAPTLab أو Juice Shop ضمن remediation v61 أو Smart Research Upgrade أو benchmark artifacts.
 
 ## المراجع
 

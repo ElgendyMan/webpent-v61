@@ -65,6 +65,25 @@ The baseline commit and completed remediation commits are currently:
 
 The final prompt-audit archive is `/home/ubuntu/upload/webpent_v61_prompt_audit_final.zip`, with SHA256 in `/home/ubuntu/upload/webpent_v61_prompt_audit_final.sha256`. The final full-suite result is `764 passed, 120 warnings, 0 failures`, with compileall and Ruff passing. The GitHub destination is the private repository [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61), using the local `master` branch. The final audit commit was pushed successfully to `master`; `git ls-remote` confirmed that the remote branch tip matched the local branch tip after the final push. The destination is private and no WAPTLab or Juice Shop repository was modified.
 
+## Smart Research Upgrade delivery record
+
+The additive VIP upgrade was implemented only after a runtime audit. The capability audit found partial existing projections but no complete policy-first research loop. The following commits record the execution sequence:
+
+| Commit | Scope |
+|---|---|
+| `6bebc1c` | Baseline, controller gap analysis, and runtime capability manifest. |
+| `2f327c9` | Typed `ResearchContext`/`CandidateAction` contracts and unified decision trace. |
+| `d14dade` | Guarded active research loop, observations, coverage, and failed-path projections. |
+| `c0f3624` | Causal attack-graph enrichment, novel behavior detection, and decision-aware RAG. |
+| `aa9144d` | Deterministic LLM reliability gates and redacted smart-campaign trace. |
+| `ffff72f` | Versioned benchmark v1, scenarios A–E, strict metrics runner, and script lint cleanup. |
+
+The final local Phase 6 gate returned **789 passed, 130 warnings, 0 failures**, with compileall successful and Ruff reporting zero errors across `src`, `tests`, `benchmarks`, and `scripts`. Warnings are dependency/development-mode warnings and did not cause test failures.
+
+The release-gate report is [`audit/vip_upgrade_release_gates.md`](audit/vip_upgrade_release_gates.md), the benchmark is [`benchmarks/vip_v1/`](benchmarks/vip_v1/), and production prerequisites are [`audit/production_hardening_checklist.md`](audit/production_hardening_checklist.md). These artifacts explicitly distinguish contract/regression evidence from live WAPTLab or Juice Shop qualification. No lab source was modified.
+
+Until three independent clean qualification runs satisfy the published thresholds, the honest product description remains **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**, not VIP Smart Autonomous Bug Hunter.
+
 ## Author
 
 Manus AI
