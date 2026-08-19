@@ -7,11 +7,16 @@ promotes a finding.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from webpent.models.research import CandidateAction, ResearchContext
+from webpent.models.research import (
+    CandidateAction,
+    InformationObservation,
+    ResearchContext,
+    SurfaceCoverage,
+)
 from webpent.shared.research_intelligence import InformationAction
 
 
@@ -198,7 +203,268 @@ class ResearchDecisionEngine:
         )
 
 
+@dataclass(frozen=True)
+class ActiveResearchResult:
+    """Safe output of one active step; no raw transport response is retained."""
+
+    context: ResearchContext
+    selected: ResearchDecision | None
+    observation: InformationObservation
+    coverage: SurfaceCoverage
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "context": self.context.as_dict(),
+            "selected": self.selected.as_dict() if self.selected else None,
+            "observation": self.observation.model_dump(mode="json"),
+            "coverage": self.coverage.as_dict(),
+        }
+
+
+class CoverageIntelligence:
+    """Track bounded surface coverage and expose gaps for future planning."""
+
+    def __init__(self, *, expected_action_classes: Iterable[str] = ()) -> None:
+        self.expected_action_classes = {str(item) for item in expected_action_classes if str(item)}
+        self._surfaces: dict[str, SurfaceCoverage] = {}
+
+    def update(
+        self,
+        *,
+        surface_id: str,
+        target_ref: str,
+        action: CandidateAction,
+        observation: InformationObservation,
+    ) -> SurfaceCoverage:
+        current = self._surfaces.get(surface_id) or SurfaceCoverage(
+            surface_id=surface_id,
+            target_ref=target_ref,
+            coverage_score=0.0,
+        )
+        attempted = list(dict.fromkeys([*current.attempted_action_ids, action.action_id]))[-100:]
+        classes = list(dict.fromkeys([*current.covered_action_classes, action.action_class]))[-100:]
+        positive = list(dict.fromkeys([*current.positive_observation_ids]))
+        negative = list(dict.fromkeys([*current.negative_observation_ids]))
+        inconclusive = list(dict.fromkeys([*current.inconclusive_observation_ids]))
+        if observation.status == "positive":
+            positive.append(observation.observation_id)
+        elif observation.status == "negative":
+            negative.append(observation.observation_id)
+        else:
+            inconclusive.append(observation.observation_id)
+        expected = self.expected_action_classes or set(classes)
+        coverage_score = len(set(classes) & expected) / max(1, len(expected))
+        current = SurfaceCoverage(
+            surface_id=surface_id,
+            target_ref=target_ref,
+            surface_type=current.surface_type,
+            attempted_action_ids=attempted,
+            covered_action_classes=classes,
+            uncovered_action_classes=sorted(expected - set(classes)),
+            positive_observation_ids=positive[-100:],
+            negative_observation_ids=negative[-100:],
+            inconclusive_observation_ids=inconclusive[-100:],
+            coverage_score=coverage_score,
+        )
+        self._surfaces[surface_id] = current
+        return current
+
+    def snapshot(self) -> dict[str, dict[str, Any]]:
+        return {key: value.as_dict() for key, value in self._surfaces.items()}
+
+
+class ActiveResearchLoop:
+    """Execute at most one policy-approved, injected research action per step."""
+
+    def __init__(
+        self,
+        *,
+        decision_engine: ResearchDecisionEngine | None = None,
+        coverage: CoverageIntelligence | None = None,
+        max_steps: int = 10,
+    ) -> None:
+        self.decision_engine = decision_engine or ResearchDecisionEngine()
+        self.coverage = coverage or CoverageIntelligence()
+        self.max_steps = max(1, min(100, int(max_steps)))
+
+    @staticmethod
+    def _blocked_observation(
+        candidate: CandidateAction | None, reason: str
+    ) -> InformationObservation:
+        action_id = candidate.action_id if candidate else "action:none"
+        fingerprint = candidate.fingerprint() if candidate else "0" * 32
+        return InformationObservation(
+            observation_id=f"observation:blocked:{fingerprint}",
+            action_id=action_id,
+            action_fingerprint=fingerprint,
+            status="blocked",
+            reason=reason,
+            revisit_conditions=["explicit policy/capability/scope change"],
+        )
+
+    def step(
+        self,
+        context: ResearchContext,
+        candidates: Sequence[CandidateAction],
+        *,
+        handler: Callable[[CandidateAction], Mapping[str, Any]] | None = None,
+        available_capabilities: Mapping[str, Any] | Iterable[str] = (),
+        target_allowed: bool | None = None,
+        approved: bool = False,
+        failed_path_fingerprints: Iterable[str] = (),
+    ) -> ActiveResearchResult:
+        """Select and optionally execute one action, requiring explicit scope."""
+        if context.depth >= min(context.max_depth, self.max_steps):
+            observation = self._blocked_observation(None, "research_depth_exhausted")
+            return ActiveResearchResult(
+                context, None, observation, SurfaceCoverage(surface_id="none")
+            )
+        if context.budget_remaining <= 0:
+            observation = self._blocked_observation(None, "research_budget_exhausted")
+            return ActiveResearchResult(
+                context, None, observation, SurfaceCoverage(surface_id="none")
+            )
+        decisions = self.decision_engine.rank(
+            candidates,
+            available_capabilities=available_capabilities,
+            attempted_fingerprints=context.attempted_action_fingerprints,
+            failed_path_fingerprints=failed_path_fingerprints,
+            budget_remaining=context.budget_remaining,
+            target_allowed=target_allowed,
+        )
+        selected = next((item for item in decisions if item.status == "ranked"), None)
+        if selected is None:
+            observation = self._blocked_observation(None, "no_policy_approved_candidate")
+            return ActiveResearchResult(
+                context, None, observation, SurfaceCoverage(surface_id="none")
+            )
+        candidate = selected.candidate
+        if target_allowed is not True:
+            observation = self._blocked_observation(
+                candidate, "target_scope_not_explicitly_allowed"
+            )
+        elif candidate.requires_approval and not approved:
+            observation = self._blocked_observation(candidate, "human_approval_required")
+        elif handler is None:
+            observation = self._blocked_observation(candidate, "no_authorized_handler")
+        else:
+            try:
+                raw = handler(candidate)
+                observation = InformationObservation.model_validate(raw)
+            except Exception as exc:  # handler boundary must fail closed
+                observation = InformationObservation(
+                    observation_id=f"observation:infrastructure:{candidate.fingerprint()}",
+                    action_id=candidate.action_id,
+                    action_fingerprint=candidate.fingerprint(),
+                    status="infrastructure_failure",
+                    reason=type(exc).__name__,
+                    revisit_conditions=["repair handler and retry with fresh evidence"],
+                )
+        context.current_action_id = candidate.action_id
+        context.attempted_action_fingerprints = list(
+            dict.fromkeys([*context.attempted_action_fingerprints, candidate.fingerprint()])
+        )[-200:]
+        context.depth += 1
+        context.budget_remaining = max(0.0, context.budget_remaining - candidate.cost)
+        context.known_facts = list(
+            dict.fromkeys([*context.known_facts, *observation.new_facts])
+        )[-100:]
+        coverage = self.coverage.update(
+            surface_id=candidate.target_ref or candidate.action_id,
+            target_ref=candidate.target_ref,
+            action=candidate,
+            observation=observation,
+        )
+        return ActiveResearchResult(context, selected, observation, coverage)
+
+
+def active_research_node(
+    state: Mapping[str, Any],
+    *,
+    handler: Callable[[CandidateAction], Mapping[str, Any]] | None = None,
+    target_allowed: bool | None = None,
+    approved: bool = False,
+) -> dict[str, Any]:
+    """Run one active research step under explicit scope and handler gates.
+
+    The function is intentionally not auto-wired into legacy graph routes. A
+    caller must inject an authorized handler and pass ``target_allowed=True``.
+    """
+    context = ResearchContext.from_state(dict(state))
+    raw_candidates = state.get("research_candidate_actions") or []
+    candidates: list[CandidateAction] = []
+    for raw in raw_candidates[:100]:
+        if not isinstance(raw, Mapping):
+            continue
+        try:
+            candidate_payload = dict(raw)
+            candidate_payload.pop("fingerprint", None)
+            candidates.append(CandidateAction.model_validate(candidate_payload))
+        except Exception:
+            continue
+    budget = state.get("action_budget") or {}
+    if isinstance(budget, Mapping):
+        context.budget_remaining = float(
+            budget.get("research_budget_remaining", budget.get("remaining_cost", 0.0)) or 0.0
+        )
+    manifest = state.get("capability_manifest") or {}
+    available = manifest.get("capabilities", {}) if isinstance(manifest, Mapping) else {}
+    previous_coverage = state.get("surface_coverage") or {}
+    coverage = CoverageIntelligence(
+        expected_action_classes={candidate.action_class for candidate in candidates}
+    )
+    surfaces = (
+        previous_coverage.get("surfaces", {})
+        if isinstance(previous_coverage, Mapping)
+        else {}
+    )
+    for surface_id, raw_surface in surfaces.items():
+        if isinstance(raw_surface, Mapping):
+            try:
+                coverage._surfaces[str(surface_id)] = SurfaceCoverage.model_validate(raw_surface)
+            except Exception:
+                continue
+    failed_paths = {
+        str(item.get("action_fingerprint"))
+        for item in state.get("research_failed_paths", [])
+        if isinstance(item, Mapping) and item.get("action_fingerprint")
+    }
+    result = ActiveResearchLoop(coverage=coverage).step(
+        context,
+        candidates,
+        handler=handler,
+        available_capabilities=available,
+        target_allowed=target_allowed,
+        approved=approved,
+        failed_path_fingerprints=failed_paths,
+    )
+    observation = result.observation.model_dump(mode="json")
+    failed_update = []
+    if observation["status"] in {"negative", "inconclusive", "infrastructure_failure"}:
+        failed_update.append(
+            {
+                "action_id": observation["action_id"],
+                "action_fingerprint": observation["action_fingerprint"],
+                "status": observation["status"],
+                "reason": observation["reason"],
+                "revisit_conditions": observation["revisit_conditions"],
+            }
+        )
+    return {
+        "research_context": result.context.as_dict(),
+        "research_active_observations": [observation],
+        "surface_coverage": {
+            "surfaces": {result.coverage.surface_id: result.coverage.as_dict()}
+        },
+        "research_failed_paths": failed_update,
+    }
+
+
 __all__ = [
+    "ActiveResearchLoop",
+    "active_research_node",
+    "ActiveResearchResult",
+    "CoverageIntelligence",
     "ResearchDecision",
     "ResearchDecisionEngine",
     "candidate_from_information_action",

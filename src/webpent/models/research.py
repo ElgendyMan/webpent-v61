@@ -7,7 +7,7 @@ confirm a finding, or replace the existing proof/validator boundary.
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -97,6 +97,82 @@ class ResearchContext(BaseModel):
         return clean
 
 
+class InformationObservation(BaseModel):
+    """Bounded observation returned by an injected policy-approved handler."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    version: int = Field(default=1, ge=1, le=10)
+    observation_id: str = Field(min_length=3, max_length=160)
+    action_id: str = Field(min_length=3, max_length=160)
+    action_fingerprint: str = Field(min_length=8, max_length=80)
+    status: Literal["positive", "negative", "inconclusive", "blocked", "infrastructure_failure"]
+    evidence_refs: list[str] = Field(default_factory=list, max_length=30)
+    new_facts: list[str] = Field(default_factory=list, max_length=30)
+    contradictions: list[str] = Field(default_factory=list, max_length=30)
+    reason: str = Field(default="", max_length=500)
+    control_complete: bool = False
+    causal_signal: bool = False
+    proof_bundle_sealed: bool = False
+    revisit_conditions: list[str] = Field(default_factory=list, max_length=20)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        "observation_id",
+        "action_id",
+        "action_fingerprint",
+        "evidence_refs",
+        "new_facts",
+        "contradictions",
+        "reason",
+        "revisit_conditions",
+        "metadata",
+        mode="before",
+    )
+    @classmethod
+    def _redact_fields(cls, value: Any) -> Any:
+        return _redact(value)
+
+
+class SurfaceCoverage(BaseModel):
+    """Report-safe accounting for what a bounded research session covered."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    surface_id: str = Field(min_length=3, max_length=160)
+    target_ref: str = Field(default="", max_length=500)
+    surface_type: str = Field(default="endpoint", max_length=64)
+    attempted_action_ids: list[str] = Field(default_factory=list, max_length=100)
+    covered_action_classes: list[str] = Field(default_factory=list, max_length=100)
+    uncovered_action_classes: list[str] = Field(default_factory=list, max_length=100)
+    positive_observation_ids: list[str] = Field(default_factory=list, max_length=100)
+    negative_observation_ids: list[str] = Field(default_factory=list, max_length=100)
+    inconclusive_observation_ids: list[str] = Field(default_factory=list, max_length=100)
+    coverage_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        "surface_id",
+        "target_ref",
+        "surface_type",
+        "attempted_action_ids",
+        "covered_action_classes",
+        "uncovered_action_classes",
+        "positive_observation_ids",
+        "negative_observation_ids",
+        "inconclusive_observation_ids",
+        "metadata",
+        mode="before",
+    )
+    @classmethod
+    def _redact_fields(cls, value: Any) -> Any:
+        return _redact(value)
+
+    def as_dict(self) -> dict[str, Any]:
+        clean, _ = redact_sensitive(self.model_dump(mode="json"))
+        return clean
+
+
 class CandidateAction(BaseModel):
     """Schema-validated proposal for one bounded research action."""
 
@@ -183,4 +259,9 @@ class CandidateAction(BaseModel):
         return clean
 
 
-__all__ = ["CandidateAction", "ResearchContext"]
+__all__ = [
+    "CandidateAction",
+    "InformationObservation",
+    "ResearchContext",
+    "SurfaceCoverage",
+]

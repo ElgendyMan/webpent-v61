@@ -304,6 +304,9 @@ class PentestState(TypedDict, total=False):
     research_context: Annotated[dict[str, Any], merge_dicts]
     research_candidate_actions: Annotated[list[dict[str, Any]], merge_lists]
     research_unified_decision_trace: Annotated[list[dict[str, Any]], merge_lists]
+    research_active_observations: Annotated[list[dict[str, Any]], merge_lists]
+    surface_coverage: Annotated[dict[str, Any], merge_dicts]
+    research_failed_paths: Annotated[list[dict[str, Any]], merge_lists]
     # Read-only HTTP observations from the bounded Smart Hunter executor.
     # Bodies, cookies, and raw headers are intentionally excluded.
     smart_http_observations: Annotated[list[dict[str, Any]], merge_lists]
