@@ -126,6 +126,52 @@ def test_access_control_node_uses_bounded_enumeration_and_preserves_provenance(m
 
 
 
+def test_bac_query_parameter_candidate_isolated():
+    records = access_agent._extract_candidate_records(
+        {"endpoints": [{"url": "https://lab.local/api/profile?uid=17", "method": "GET"}]}
+    )
+
+    assert len(records) == 1
+    assert records[0]["object_id"] == "17"
+    assert records[0]["candidate_sources"] == ["query:uid"]
+
+
+def test_bac_json_body_candidate_isolated():
+    records = access_agent._extract_candidate_records(
+        {
+            "endpoints": [
+                {
+                    "url": "https://lab.local/api/orders",
+                    "method": "POST",
+                    "request_data": '{"order_id": "88", "note": "redacted"}',
+                }
+            ]
+        }
+    )
+
+    assert len(records) == 1
+    assert records[0]["object_id"] == "88"
+    assert "request_data:order_id" in records[0]["candidate_sources"]
+
+
+def test_bac_ownership_header_candidate_isolated():
+    records = access_agent._extract_candidate_records(
+        {
+            "endpoints": [
+                {
+                    "url": "https://lab.local/api/profile",
+                    "headers": {"X-User-Id": "user-23"},
+                }
+            ]
+        }
+    )
+
+    assert len(records) == 1
+    assert records[0]["object_id"] == "profile"
+    assert "header:X-User-Id" in records[0]["candidate_sources"]
+    assert records[0]["candidate_identifiers"] == ["user-23"]
+
+
 def test_bac_node_state_gate_blocks_then_allows_state_changing_method(monkeypatch):
     calls: list[str] = []
 
