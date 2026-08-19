@@ -38,7 +38,11 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(records, indent=2), encoding="utf-8")
     print(json.dumps(records, indent=2))
-    return 0 if all(item["direct_hits"] > 0 and item["helper_contains_type_marker"] for item in records) else 1
+    return (
+        0
+        if all(item["direct_hits"] > 0 and item["helper_contains_type_marker"] for item in records)
+        else 1
+    )
 
 
 if __name__ == "__main__":

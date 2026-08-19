@@ -53,8 +53,13 @@ commit MUST re-verify the paths still exist at that commit (the
 SecLists repo, for example, restructured its Fuzzing/XSS/ subdir
 between 2024.4 and 2026.1).
 """
+
 from __future__ import annotations
-import argparse, logging, sys, time
+
+import argparse
+import logging
+import sys
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -62,73 +67,104 @@ from urllib.parse import quote
 logger = logging.getLogger("ingest_payloads")
 _MANIFEST_PATH = Path(__file__).resolve().parents[1] / "knowledge_sources.yaml"
 
+
 def _load_manifest(path: Path) -> dict[str, Any]:
     try:
         import yaml
     except ImportError:
-        logger.error("PyYAML not installed"); sys.exit(1)
+        logger.error("PyYAML not installed")
+        sys.exit(1)
     if not path.is_file():
-        logger.error("Manifest not found: %s", path); sys.exit(1)
+        logger.error("Manifest not found: %s", path)
+        sys.exit(1)
     with open(path, encoding="utf-8") as f:
         manifest = yaml.safe_load(f) or {}
     manifest["_base_dir"] = str(path.resolve().parent)
     return manifest
 
+
 def _raw_url(repo: str, commit: str, path: str) -> str:
     return f"https://raw.githubusercontent.com/{repo}/{commit}/{quote(path)}"
+
 
 def _fetch(url: str, timeout: float = 30.0) -> str | None:
     try:
         from webpent.shared.http import make_safe_httpx_client
+
         factory = make_safe_httpx_client
     except ImportError:
-        import httpx; factory = httpx.Client
+        import httpx
+
+        factory = httpx.Client
     try:
         with factory(timeout=timeout, follow_redirects=True) as c:
             r = c.get(url)
-        if r.status_code == 200: return r.text
+        if r.status_code == 200:
+            return r.text
         logger.warning("HTTP %d: %s", r.status_code, url)
     except Exception as e:
         logger.warning("Fetch error: %s", e)
     return None
 
+
 def _chunk(text: str, size: int, overlap: int) -> list[str]:
-    if not text: return []
-    if len(text) <= size: return [text]
+    if not text:
+        return []
+    if len(text) <= size:
+        return [text]
     chunks, start = [], 0
     while start < len(text):
-        chunks.append(text[start:start+size])
-        if start+size >= len(text): break
+        chunks.append(text[start : start + size])
+        if start + size >= len(text):
+            break
         start = start + size - overlap
     return chunks
 
+
 def _ingest_file(file_path: Path, doc_type: str, chunk_size: int, chunk_overlap: int) -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-    from webpent.memory.lessons import structural_sanitize, _sanitize_lesson_content
+    from webpent.memory.lessons import _sanitize_lesson_content, structural_sanitize
     from webpent.memory.vectorstore import get_vector_store_manager
+
     mgr = get_vector_store_manager()
     ext = file_path.suffix.lower()
     if ext == ".pdf":
         try:
             from pypdf import PdfReader
+
             reader = PdfReader(str(file_path))
             content = "\n".join(p.extract_text() or "" for p in reader.pages)
         except ImportError:
-            logger.error("pypdf not installed"); return 0
+            logger.error("pypdf not installed")
+            return 0
     elif ext in (".md", ".markdown", ".txt", ".text"):
         content = file_path.read_text(encoding="utf-8", errors="replace")
     else:
-        logger.warning("Unsupported: %s", ext); return 0
-    sanitized = structural_sanitize(content) if doc_type == "payload" else _sanitize_lesson_content(content)
-    if not sanitized: return 0
+        logger.warning("Unsupported: %s", ext)
+        return 0
+    sanitized = (
+        structural_sanitize(content) if doc_type == "payload" else _sanitize_lesson_content(content)
+    )
+    if not sanitized:
+        return 0
     chunks = _chunk(sanitized, chunk_size, chunk_overlap)
-    if not chunks: return 0
-    metas = [{"type": doc_type, "category": "file_upload", "stack": "generic",
-              "source_repo": "local", "source_path": str(file_path),
-              "chunk_index": i, "total_chunks": len(chunks),
-              "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-             for i in range(len(chunks))]
+    if not chunks:
+        return 0
+    metas = [
+        {
+            "type": doc_type,
+            "category": "file_upload",
+            "stack": "generic",
+            "source_repo": "local",
+            "source_path": str(file_path),
+            "chunk_index": i,
+            "total_chunks": len(chunks),
+            "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        for i in range(len(chunks))
+    ]
     return mgr.add_knowledge_batch(texts=chunks, metadatas=metas, doc_type=doc_type)
+
 
 def _ingest_manifest_content(
     *,
@@ -179,7 +215,7 @@ def ingest_manifest(
     dry_run: bool = False,
 ) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-    from webpent.memory.lessons import structural_sanitize, _sanitize_lesson_content
+    from webpent.memory.lessons import _sanitize_lesson_content, structural_sanitize
     from webpent.memory.vectorstore import get_vector_store_manager
 
     mgr = get_vector_store_manager()
@@ -243,7 +279,9 @@ def ingest_manifest(
         commit = source.get("commit", "main")
         for pe in source.get("paths", []):
             path = pe.get("path", "") if isinstance(pe, dict) else pe
-            category = pe.get("category", "uncategorized") if isinstance(pe, dict) else "uncategorized"
+            category = (
+                pe.get("category", "uncategorized") if isinstance(pe, dict) else "uncategorized"
+            )
             stack = pe.get("stack", "generic") if isinstance(pe, dict) else "generic"
             url = _raw_url(repo, commit, path)
             if dry_run:
@@ -281,6 +319,7 @@ def ingest_manifest(
                 summary["failed"] += 1
     return summary
 
+
 def _verify_pins(manifest: dict) -> int:
     """V8 P0 B2: pre-flight pin verification.
 
@@ -289,7 +328,9 @@ def _verify_pins(manifest: dict) -> int:
     body. Does NOT touch ChromaDB or the embedding API — pure network
     check. Returns the number of failed paths (0 = all reachable).
     """
-    import urllib.request, urllib.error
+    import urllib.error
+    import urllib.request
+
     sources = manifest.get("sources") or []
     total, ok, fail = 0, 0, 0
     print(f"Verifying {len(sources)} source repo(s)...")
@@ -327,14 +368,17 @@ def _verify_pins(manifest: dict) -> int:
                     print(f"  OK    {repo}@{commit[:8]}  {path}  ({len(body)} bytes)")
                 else:
                     fail += 1
-                    print(f"  FAIL  {repo}@{commit[:8]}  {path}  (HTTP {resp.status}, {len(body)} bytes)")
+                    print(
+                        f"  FAIL  {repo}@{commit[:8]}  {path}  "
+                        f"(HTTP {resp.status}, {len(body)} bytes)"
+                    )
             except urllib.error.HTTPError as exc:
                 fail += 1
                 print(f"  FAIL  {repo}@{commit[:8]}  {path}  (HTTP {exc.code})")
             except Exception as exc:
                 fail += 1
                 print(f"  FAIL  {repo}@{commit[:8]}  {path}  ({exc})")
-    print(f"\n{'='*60}\nVerified: {total}  OK: {ok}  FAIL: {fail}\n{'='*60}")
+    print(f"\n{'=' * 60}\nVerified: {total}  OK: {ok}  FAIL: {fail}\n{'=' * 60}")
     return fail
 
 
@@ -344,10 +388,13 @@ def main() -> int:
     p.add_argument("--chunk-size", type=int, default=1000)
     p.add_argument("--chunk-overlap", type=int, default=100)
     p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--verify-pins", action="store_true",
-                   help="V8 P0 B2: pre-flight check that every (repo, commit, path) "
-                        "triple in the manifest is reachable. Does NOT persist.")
-    p.add_argument("--log-level", default="info", choices=["debug","info","warning","error"])
+    p.add_argument(
+        "--verify-pins",
+        action="store_true",
+        help="V8 P0 B2: pre-flight check that every (repo, commit, path) "
+        "triple in the manifest is reachable. Does NOT persist.",
+    )
+    p.add_argument("--log-level", default="info", choices=["debug", "info", "warning", "error"])
     p.add_argument("--ingest-file", default=None)
     p.add_argument(
         "--doc-type",
@@ -355,8 +402,11 @@ def main() -> int:
         choices=["payload", "methodology", "repository", "report", "writeup", "scenario"],
     )
     args = p.parse_args()
-    logging.basicConfig(level=getattr(logging, args.log_level.upper()),
-                        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S")
+    logging.basicConfig(
+        level=getattr(logging, args.log_level.upper()),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
     mp = Path(args.manifest) if args.manifest else _MANIFEST_PATH
     # --verify-pins works without ChromaDB and without the webpent package
     # installed — it's a pure network check on the manifest.
@@ -365,13 +415,24 @@ def main() -> int:
         return 0 if _verify_pins(manifest) == 0 else 1
     if args.ingest_file:
         fp = Path(args.ingest_file)
-        if not fp.is_file(): logger.error("File not found"); return 1
+        if not fp.is_file():
+            logger.error("File not found")
+            return 1
         added = _ingest_file(fp, args.doc_type, args.chunk_size, args.chunk_overlap)
-        print(f"\nIngested {added} chunks from {fp}"); return 0
+        print(f"\nIngested {added} chunks from {fp}")
+        return 0
     manifest = _load_manifest(mp)
-    s = ingest_manifest(manifest, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap, dry_run=args.dry_run)
-    print(f"\n{'='*60}\nFetched: {s['fetched']}  Ingested: {s['ingested']}  Failed: {s['failed']}  Chunks: {s['total_chunks']}\n{'='*60}")
+    s = ingest_manifest(
+        manifest, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap, dry_run=args.dry_run
+    )
+    print(
+        f"\n{'=' * 60}\n"
+        f"Fetched: {s['fetched']}  Ingested: {s['ingested']}  "
+        f"Failed: {s['failed']}  Chunks: {s['total_chunks']}\n"
+        f"{'=' * 60}"
+    )
     return 0 if s["failed"] == 0 else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
