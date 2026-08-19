@@ -299,6 +299,11 @@ class PentestState(TypedDict, total=False):
     research_session: Annotated[dict[str, Any], merge_dicts]
     research_decision_trace: Annotated[list[dict[str, Any]], merge_lists]
     smart_information_actions: Annotated[list[dict[str, Any]], merge_lists]
+    # Typed research contracts are additive planning telemetry only. They never
+    # authorize execution, promote hypotheses, or replace proof validation.
+    research_context: Annotated[dict[str, Any], merge_dicts]
+    research_candidate_actions: Annotated[list[dict[str, Any]], merge_lists]
+    research_unified_decision_trace: Annotated[list[dict[str, Any]], merge_lists]
     # Read-only HTTP observations from the bounded Smart Hunter executor.
     # Bodies, cookies, and raw headers are intentionally excluded.
     smart_http_observations: Annotated[list[dict[str, Any]], merge_lists]
