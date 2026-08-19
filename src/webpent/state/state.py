@@ -307,6 +307,11 @@ class PentestState(TypedDict, total=False):
     research_active_observations: Annotated[list[dict[str, Any]], merge_lists]
     surface_coverage: Annotated[dict[str, Any], merge_dicts]
     research_failed_paths: Annotated[list[dict[str, Any]], merge_lists]
+    # Phase 4 evidence-only behavior and causal projections. They never create
+    # findings, authorize transport, or replace proof validation.
+    novel_behavior_observations: Annotated[list[dict[str, Any]], merge_lists]
+    causal_attack_edges: Annotated[list[dict[str, Any]], merge_lists]
+    causal_attack_graph: Annotated[dict[str, Any], merge_dicts]
     # Read-only HTTP observations from the bounded Smart Hunter executor.
     # Bodies, cookies, and raw headers are intentionally excluded.
     smart_http_observations: Annotated[list[dict[str, Any]], merge_lists]

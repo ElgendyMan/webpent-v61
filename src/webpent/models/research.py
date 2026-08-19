@@ -134,6 +134,49 @@ class InformationObservation(BaseModel):
         return _redact(value)
 
 
+class NovelBehaviorObservation(BaseModel):
+    """Redacted behavior delta used to seed hypotheses, never findings."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    observation_id: str = Field(min_length=3, max_length=160)
+    baseline_ref: str = Field(default="", max_length=160)
+    current_ref: str = Field(default="", max_length=160)
+    behavior_kind: Literal[
+        "status_change",
+        "authorization_differential",
+        "workflow_transition",
+        "response_shape_change",
+        "timing_change",
+        "unknown",
+    ] = "unknown"
+    changed_dimensions: list[str] = Field(default_factory=list, max_length=30)
+    signal_strength: float = Field(default=0.0, ge=0.0, le=1.0)
+    causal_signal: bool = False
+    negative_control_complete: bool = False
+    hypothesis_seed: str = Field(default="", max_length=500)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=30)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        "observation_id",
+        "baseline_ref",
+        "current_ref",
+        "changed_dimensions",
+        "hypothesis_seed",
+        "evidence_refs",
+        "metadata",
+        mode="before",
+    )
+    @classmethod
+    def _redact_fields(cls, value: Any) -> Any:
+        return _redact(value)
+
+    def as_dict(self) -> dict[str, Any]:
+        clean, _ = redact_sensitive(self.model_dump(mode="json"))
+        return clean
+
+
 class SurfaceCoverage(BaseModel):
     """Report-safe accounting for what a bounded research session covered."""
 
@@ -262,6 +305,7 @@ class CandidateAction(BaseModel):
 __all__ = [
     "CandidateAction",
     "InformationObservation",
+    "NovelBehaviorObservation",
     "ResearchContext",
     "SurfaceCoverage",
 ]

@@ -294,6 +294,93 @@ def _add_finding_nodes(graph: AttackGraph, findings: Iterable[Any]) -> None:
                 )
 
 
+def _add_novel_behavior_nodes(graph: AttackGraph, novel_behaviors: Iterable[Any]) -> dict[str, str]:
+    """Project novel behavior observations into hypothesis-only nodes."""
+    ids: dict[str, str] = {}
+    for behavior in novel_behaviors:
+        if not isinstance(behavior, Mapping):
+            continue
+        observation_id = str(behavior.get("observation_id") or "").strip()
+        if not observation_id:
+            continue
+        node_id = _stable_ref(observation_id, prefix="novel")
+        ids[observation_id] = node_id
+        graph.nodes.setdefault(
+            node_id,
+            AttackGraphNode(
+                id=node_id,
+                kind=AttackGraphNodeKind.HYPOTHESIS,
+                label="novel_behavior",
+                status="causal_candidate" if behavior.get("causal_signal") else "candidate",
+                criticality="medium",
+                source_refs=[observation_id[:160]],
+                metadata={
+                    "behavior_kind": str(behavior.get("behavior_kind") or "unknown"),
+                    "changed_dimensions": [
+                        str(item)[:80]
+                        for item in (behavior.get("changed_dimensions") or [])[:20]
+                    ],
+                    "causal_signal": bool(behavior.get("causal_signal")),
+                    "negative_control_complete": bool(
+                        behavior.get("negative_control_complete")
+                    ),
+                },
+            ),
+        )
+        target_ref = _safe_url((behavior.get("metadata") or {}).get("target_ref"))
+        if target_ref:
+            endpoint_id = _mental_node_id("endpoint", _endpoint_identity(target_ref) or target_ref)
+            if endpoint_id in graph.nodes:
+                _add_edge(
+                    graph,
+                    kind="novel_behavior_targets",
+                    source_id=node_id,
+                    target_id=endpoint_id,
+                    evidence_refs=[observation_id],
+                    confidence="causal_candidate" if behavior.get("causal_signal") else "observed",
+                )
+    return ids
+
+
+_ALLOWED_CAUSAL_EDGE_KINDS = {
+    "causal_precondition",
+    "causal_transition",
+    "causal_signal",
+    "negative_control",
+    "observation_supports_hypothesis",
+}
+
+
+def _add_causal_edges(graph: AttackGraph, causal_edges: Iterable[Any]) -> None:
+    """Add only typed, existing-node causal relationships."""
+    for row in causal_edges:
+        if not isinstance(row, Mapping):
+            continue
+        kind = str(row.get("kind") or "").strip()
+        if kind not in _ALLOWED_CAUSAL_EDGE_KINDS:
+            continue
+        if kind == "causal_signal" and not (
+            bool(row.get("causal_signal")) and bool(row.get("negative_control_complete"))
+        ):
+            continue
+        source_id = str(row.get("source_id") or "")
+        target_id = str(row.get("target_id") or "")
+        if source_id not in graph.nodes or target_id not in graph.nodes:
+            continue
+        _add_edge(
+            graph,
+            kind=kind,
+            source_id=source_id,
+            target_id=target_id,
+            evidence_refs=row.get("evidence_refs") or (),
+            confidence=str(row.get("confidence") or "observed"),
+            metadata={
+                "negative_control_complete": bool(row.get("negative_control_complete")),
+                "control_complete": bool(row.get("control_complete")),
+            },
+        )
+
+
 def _add_hypothesis_nodes(graph: AttackGraph, hypotheses: Iterable[Any]) -> None:
     for hypothesis in hypotheses:
         hypothesis_id = model_get(hypothesis, "id")
@@ -331,6 +418,9 @@ def build_attack_graph(
     relational_evidence: Iterable[Any] = (),
     findings: Iterable[Any] = (),
     hypotheses: Iterable[Any] = (),
+    novel_behaviors: Iterable[Any] = (),
+    causal_edges: Iterable[Any] = (),
+    coverage_gaps: Iterable[Any] = (),
 ) -> dict[str, Any]:
     """Project current state into a deterministic, redacted Attack Graph."""
 
@@ -352,6 +442,11 @@ def build_attack_graph(
     _add_relational_edges(graph, relational_evidence)
     _add_finding_nodes(graph, findings)
     _add_hypothesis_nodes(graph, hypotheses)
+    _add_novel_behavior_nodes(graph, novel_behaviors)
+    _add_causal_edges(graph, causal_edges)
+    graph.coverage_gaps.extend(
+        str(item)[:240] for item in coverage_gaps if str(item).strip()
+    )
 
     if not graph.nodes:
         graph.coverage_gaps.append("No typed target nodes were available for graph projection.")

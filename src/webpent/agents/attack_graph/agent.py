@@ -36,6 +36,9 @@ def attack_graph_node(state: dict[str, Any]) -> dict[str, Any]:
             relational_evidence=state.get("relational_evidence") or (),
             findings=state.get("findings") or (),
             hypotheses=state.get("hypotheses") or (),
+            novel_behaviors=state.get("novel_behavior_observations") or (),
+            causal_edges=state.get("causal_attack_edges") or (),
+            coverage_gaps=state.get("research_failed_paths") or (),
         )
     except Exception:
         logger.exception("Attack Graph projection failed; preserving legacy state")
@@ -44,7 +47,7 @@ def attack_graph_node(state: dict[str, Any]) -> dict[str, Any]:
                 "Attack Graph projection failed; legacy findings pipeline preserved."
             ]
         }
-    return {"attack_graph": graph}
+    return {"attack_graph": graph, "causal_attack_graph": graph}
 
 
 __all__ = ["attack_graph_node"]
