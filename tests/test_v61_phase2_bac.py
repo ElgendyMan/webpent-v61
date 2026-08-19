@@ -1,4 +1,5 @@
 from webpent.agents.access_control import agent as access_agent
+from webpent.models.findings import Severity, VulnClass
 from webpent.shared import http as shared_http
 
 
@@ -247,3 +248,32 @@ def test_bac_node_state_gate_uses_named_bac_approval_flag(monkeypatch):
     )
 
     assert calls == ["PATCH", "PATCH"]
+
+
+
+def test_bac_role_aware_finding_distinguishes_horizontal_and_vertical_access():
+    horizontal = access_agent._create_idor_finding(
+        "https://lab.local/orders/42",
+        200,
+        128,
+        "foreign user read",
+        evidence={"type": "relational_access_control"},
+        owner_role="user",
+        foreign_role="user",
+    )
+    vertical = access_agent._create_idor_finding(
+        "https://lab.local/admin/orders/42",
+        200,
+        128,
+        "lower privilege read",
+        evidence={"type": "relational_access_control"},
+        owner_role="admin",
+        foreign_role="user",
+    )
+
+    assert horizontal.severity == Severity.HIGH
+    assert horizontal.vuln_class == VulnClass.IDOR.value
+    assert vertical.severity == Severity.CRITICAL
+    assert vertical.vuln_class == VulnClass.AUTH_BYPASS.value
+    assert "Privilege escalation" in vertical.reasoning
+    assert "Privilege escalation" not in horizontal.reasoning
