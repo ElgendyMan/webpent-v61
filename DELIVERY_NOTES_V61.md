@@ -63,7 +63,7 @@ The baseline commit and completed remediation commits are currently:
 
 ## Final delivery record
 
-The final archive from the earlier Phase 3 delivery was `/home/ubuntu/upload/webpent_v61_final.zip`. After the prompt audit fix, the source tree has a newer commit and must be rebuilt into a new audit archive before delivery. The current final full-suite result is `764 passed, 120 warnings, 0 failures`, with compileall and Ruff passing. The GitHub destination is the newly created private repository [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61), using the local `master` branch. The final commit was pushed successfully to `master`; `git ls-remote` confirmed that the remote branch tip matched the local branch tip after the final push. The exact immutable commit hash is included in the delivery message and can be reproduced with `git rev-parse HEAD`. The destination is private and no WAPTLab or Juice Shop repository was modified.
+The final prompt-audit archive is `/home/ubuntu/upload/webpent_v61_prompt_audit_final.zip`, with SHA256 in `/home/ubuntu/upload/webpent_v61_prompt_audit_final.sha256`. The final full-suite result is `764 passed, 120 warnings, 0 failures`, with compileall and Ruff passing. The GitHub destination is the private repository [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61), using the local `master` branch. The final audit commit was pushed successfully to `master`; `git ls-remote` confirmed that the remote branch tip matched the local branch tip after the final push. The destination is private and no WAPTLab or Juice Shop repository was modified.
 
 ## Author
 
