@@ -378,6 +378,22 @@ class VectorStoreManager:
         clean_texts = [p[0] for p in pairs]
         # V3.5: Inject doc_type into every metadata dict.
         clean_metas = [{**p[1], "type": doc_type} for p in pairs]
+        source_ids = {
+            str(meta.get("source_id", "")).strip()
+            for meta in clean_metas
+            if str(meta.get("source_id", "")).strip()
+        }
+        if len(source_ids) == 1:
+            source_id = next(iter(source_ids))
+            try:
+                existing = store.get(where={"source_id": source_id})
+                if existing and existing.get("ids"):
+                    logger.info("Knowledge source already present; skipping: %s", source_id)
+                    return 0
+            except Exception:
+                # Older/in-memory store adapters may not implement ``get``.
+                # They retain the historical additive behavior.
+                logger.debug("Knowledge source dedupe lookup unavailable", exc_info=True)
         lock = self._acquire_lock()
         try:
             store.add_texts(texts=clean_texts, metadatas=clean_metas)

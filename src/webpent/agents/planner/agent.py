@@ -14,8 +14,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from webpent.config.settings import get_settings
-from webpent.memory.vectorstore import get_vector_store_manager
 from webpent.models.targets import Target
+from webpent.shared.knowledge_retrieval import retrieve_knowledge_context
 from webpent.shared.llm import (
     TaskType,
     get_llm,  # legacy monkeypatch point; guarded by llm_enabled below
@@ -80,22 +80,20 @@ _FALLBACK_PLAN = (
     "(Fallback plan — LLM-based planning was unavailable.)"
 )
 
-_RAG_QUERY = "penetration testing methodology PTES NIST OWASP"
+_RAG_QUERY = (
+    "web application penetration testing methodology OWASP WSTG NIST PTES "
+    "ASVS reporting validation scenarios"
+)
 
 
 def _retrieve_methodologies() -> str:
-    try:
-        manager = get_vector_store_manager()
-        results = manager.search_knowledge(_RAG_QUERY, k=3)
-        if not results:
-            logger.debug("RAG returned no methodologies — proceeding without context")
-            return ""
-        formatted = "\n---\n".join(results[:3])
-        logger.debug("RAG retrieved %d methodology chunk(s)", len(results))
-        return formatted
-    except Exception as exc:
-        logger.warning("RAG methodology retrieval failed: %s", exc)
-        return ""
+    """Retrieve bounded methodology, repository, and scenario guidance."""
+    return retrieve_knowledge_context(
+        _RAG_QUERY,
+        doc_types=("methodology", "repository", "scenario"),
+        per_type_k=2,
+        max_chars=4000,
+    )
 
 
 def _state_target_refs(state: PentestState) -> list[str]:

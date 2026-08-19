@@ -69,8 +69,10 @@ def _load_manifest(path: Path) -> dict[str, Any]:
         logger.error("PyYAML not installed"); sys.exit(1)
     if not path.is_file():
         logger.error("Manifest not found: %s", path); sys.exit(1)
-    with open(path) as f:
-        return yaml.safe_load(f)
+    with open(path, encoding="utf-8") as f:
+        manifest = yaml.safe_load(f) or {}
+    manifest["_base_dir"] = str(path.resolve().parent)
+    return manifest
 
 def _raw_url(repo: str, commit: str, path: str) -> str:
     return f"https://raw.githubusercontent.com/{repo}/{commit}/{quote(path)}"
@@ -128,39 +130,155 @@ def _ingest_file(file_path: Path, doc_type: str, chunk_size: int, chunk_overlap:
              for i in range(len(chunks))]
     return mgr.add_knowledge_batch(texts=chunks, metadatas=metas, doc_type=doc_type)
 
-def ingest_manifest(manifest: dict, *, chunk_size: int = 1000, chunk_overlap: int = 100, dry_run: bool = False) -> dict:
+def _ingest_manifest_content(
+    *,
+    content: str,
+    manager: Any,
+    doc_type: str,
+    category: str,
+    stack: str,
+    metadata: dict[str, Any],
+    chunk_size: int,
+    chunk_overlap: int,
+    structural_sanitize: Any,
+    sanitize_text: Any,
+) -> int:
+    sanitized = structural_sanitize(content) if doc_type == "payload" else sanitize_text(content)
+    if not sanitized:
+        return 0
+    chunks = _chunk(sanitized, chunk_size, chunk_overlap)
+    if not chunks:
+        return 0
+    base_metadata = {
+        "type": doc_type,
+        "category": category,
+        "stack": stack,
+        **metadata,
+    }
+    metas = [
+        {
+            **base_metadata,
+            "chunk_index": index,
+            "total_chunks": len(chunks),
+            "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        for index in range(len(chunks))
+    ]
+    return manager.add_knowledge_batch(
+        texts=chunks,
+        metadatas=metas,
+        doc_type=doc_type,
+    )
+
+
+def ingest_manifest(
+    manifest: dict,
+    *,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 100,
+    dry_run: bool = False,
+) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
     from webpent.memory.lessons import structural_sanitize, _sanitize_lesson_content
     from webpent.memory.vectorstore import get_vector_store_manager
+
     mgr = get_vector_store_manager()
     summary = {"fetched": 0, "ingested": 0, "failed": 0, "total_chunks": 0}
+    base_dir = Path(str(manifest.get("_base_dir", Path.cwd())))
     for source in manifest.get("sources", []):
-        repo, commit, doc_type = source["repo"], source.get("commit", "main"), source.get("doc_type", "payload")
+        source_kind = source.get("type", "git_repo")
+        doc_type = source.get("doc_type", "report")
+        if source_kind == "local_file":
+            relative_path = Path(str(source.get("path", "")))
+            if relative_path.is_absolute() or ".." in relative_path.parts:
+                logger.error("Refusing local source outside manifest directory: %s", relative_path)
+                summary["failed"] += 1
+                continue
+            file_path = (base_dir / relative_path).resolve()
+            try:
+                file_path.relative_to(base_dir.resolve())
+            except ValueError:
+                logger.error("Refusing local source outside manifest directory: %s", file_path)
+                summary["failed"] += 1
+                continue
+            if dry_run:
+                logger.info("[dry-run] %s", file_path)
+                summary["fetched"] += 1
+                continue
+            if not file_path.is_file():
+                logger.error("Local knowledge source not found: %s", file_path)
+                summary["failed"] += 1
+                continue
+            try:
+                content = file_path.read_text(encoding="utf-8", errors="replace")
+                added = _ingest_manifest_content(
+                    content=content,
+                    manager=mgr,
+                    doc_type=doc_type,
+                    category=source.get("category", "uncategorized"),
+                    stack=source.get("stack", "generic"),
+                    metadata={
+                        "source_file": str(file_path),
+                        "source_path": str(relative_path),
+                        "source_url": source.get("source_url", ""),
+                        "source_id": source.get("source_id", str(relative_path)),
+                        "title": source.get("title", file_path.name),
+                        "license_note": source.get("license_note", ""),
+                        "trust_note": source.get("trust_note", ""),
+                    },
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    structural_sanitize=structural_sanitize,
+                    sanitize_text=_sanitize_lesson_content,
+                )
+                summary["fetched"] += 1
+                summary["ingested"] += int(added > 0)
+                summary["total_chunks"] += added
+            except Exception as exc:
+                logger.error("Local knowledge ingestion failed for %s: %s", file_path, exc)
+                summary["failed"] += 1
+            continue
+
+        repo = source.get("repo", "")
+        commit = source.get("commit", "main")
         for pe in source.get("paths", []):
             path = pe.get("path", "") if isinstance(pe, dict) else pe
             category = pe.get("category", "uncategorized") if isinstance(pe, dict) else "uncategorized"
             stack = pe.get("stack", "generic") if isinstance(pe, dict) else "generic"
             url = _raw_url(repo, commit, path)
             if dry_run:
-                logger.info("[dry-run] %s", url); summary["fetched"] += 1; continue
+                logger.info("[dry-run] %s", url)
+                summary["fetched"] += 1
+                continue
             content = _fetch(url)
             if content is None:
-                summary["failed"] += 1; continue
-            summary["fetched"] += 1
-            sanitized = structural_sanitize(content) if doc_type == "payload" else _sanitize_lesson_content(content)
-            if not sanitized: continue
-            chunks = _chunk(sanitized, chunk_size, chunk_overlap)
-            if not chunks: continue
-            metas = [{"type": doc_type, "category": category, "stack": stack,
-                      "source_repo": repo, "source_commit": commit, "source_path": path,
-                      "chunk_index": i, "total_chunks": len(chunks),
-                      "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-                     for i in range(len(chunks))]
+                summary["failed"] += 1
+                continue
             try:
-                added = mgr.add_knowledge_batch(texts=chunks, metadatas=metas, doc_type=doc_type)
-                summary["ingested"] += 1; summary["total_chunks"] += added
-            except Exception as e:
-                logger.error("Persist failed: %s", e); summary["failed"] += 1
+                added = _ingest_manifest_content(
+                    content=content,
+                    manager=mgr,
+                    doc_type=doc_type,
+                    category=category,
+                    stack=stack,
+                    metadata={
+                        "source_repo": repo,
+                        "source_commit": commit,
+                        "source_path": path,
+                        "source_url": url,
+                        "source_id": f"{repo}@{commit}:{path}",
+                    },
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    structural_sanitize=structural_sanitize,
+                    sanitize_text=_sanitize_lesson_content,
+                )
+                summary["fetched"] += 1
+                summary["ingested"] += int(added > 0)
+                summary["total_chunks"] += added
+            except Exception as exc:
+                logger.error("Persist failed for %s: %s", url, exc)
+                summary["failed"] += 1
     return summary
 
 def _verify_pins(manifest: dict) -> int:
@@ -175,7 +293,24 @@ def _verify_pins(manifest: dict) -> int:
     sources = manifest.get("sources") or []
     total, ok, fail = 0, 0, 0
     print(f"Verifying {len(sources)} source repo(s)...")
+    base_dir = Path(str(manifest.get("_base_dir", Path.cwd())))
     for src in sources:
+        if src.get("type") == "local_file":
+            relative_path = Path(str(src.get("path", "")))
+            total += 1
+            candidate = (base_dir / relative_path).resolve()
+            try:
+                candidate.relative_to(base_dir.resolve())
+                is_valid = candidate.is_file()
+            except ValueError:
+                is_valid = False
+            if is_valid:
+                ok += 1
+                print(f"  OK    local  {relative_path}")
+            else:
+                fail += 1
+                print(f"  FAIL  local  {relative_path}")
+            continue
         repo = src.get("repo")
         commit = src.get("commit", "main")
         paths = src.get("paths") or []
@@ -214,7 +349,11 @@ def main() -> int:
                         "triple in the manifest is reachable. Does NOT persist.")
     p.add_argument("--log-level", default="info", choices=["debug","info","warning","error"])
     p.add_argument("--ingest-file", default=None)
-    p.add_argument("--doc-type", default="methodology", choices=["payload","methodology"])
+    p.add_argument(
+        "--doc-type",
+        default="methodology",
+        choices=["payload", "methodology", "repository", "report", "writeup", "scenario"],
+    )
     args = p.parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level.upper()),
                         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S")

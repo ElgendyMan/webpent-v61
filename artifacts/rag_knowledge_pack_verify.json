@@ -1,0 +1,32 @@
+[
+  {
+    "doc_type": "methodology",
+    "direct_hits": 2,
+    "helper_context_chars": 1178,
+    "helper_contains_type_marker": true
+  },
+  {
+    "doc_type": "repository",
+    "direct_hits": 2,
+    "helper_context_chars": 1177,
+    "helper_contains_type_marker": true
+  },
+  {
+    "doc_type": "report",
+    "direct_hits": 2,
+    "helper_context_chars": 1169,
+    "helper_contains_type_marker": true
+  },
+  {
+    "doc_type": "writeup",
+    "direct_hits": 2,
+    "helper_context_chars": 1171,
+    "helper_contains_type_marker": true
+  },
+  {
+    "doc_type": "scenario",
+    "direct_hits": 2,
+    "helper_context_chars": 1173,
+    "helper_contains_type_marker": true
+  }
+]

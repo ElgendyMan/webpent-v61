@@ -68,6 +68,7 @@ from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.models.hypothesis import Hypothesis, HypothesisOrigin
 from webpent.models.memory import MemoryBudget, MemoryKind
 from webpent.shared.confidence import compute_initial_hypothesis_confidence
+from webpent.shared.knowledge_retrieval import retrieve_knowledge_context
 from webpent.shared.memory_boundary import MemoryBoundary
 from webpent.state.state import PentestState
 
@@ -141,21 +142,17 @@ def _sanitize_retrieved_lessons(lessons: list[str]) -> list[str]:
 
 
 def _retrieve_relevant_knowledge(target_url: str) -> str:
-    """Query the legacy RAG knowledge base for relevant writeups."""
-    query = f"vulnerabilities in {target_url} forms and parameters"
-    try:
-        # V6 Titanium P2: use the process-wide singleton.
-        manager = get_vector_store_manager()
-        results = manager.search_knowledge(query, k=3)
-        if not results:
-            logger.debug("RAG returned no writeups — proceeding without context")
-            return ""
-        formatted = "\n---\n".join(results[:3])
-        logger.debug("RAG retrieved %d writeup chunk(s)", len(results))
-        return formatted
-    except Exception as exc:
-        logger.warning("RAG writeup retrieval failed: %s", exc)
-        return ""
+    """Query the curated RAG pack for bounded advisory web-app guidance."""
+    query = (
+        f"vulnerabilities in {target_url} forms parameters endpoints "
+        "writeup report scenario validation"
+    )
+    return retrieve_knowledge_context(
+        query,
+        doc_types=("writeup", "report", "scenario", "methodology", "repository"),
+        per_type_k=2,
+        max_chars=4000,
+    )
 
 
 def _retrieve_with_memory_boundary(
