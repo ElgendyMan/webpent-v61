@@ -1,0 +1,88 @@
+"""Deterministic benchmark metrics for lab evaluation artifacts."""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class BenchmarkReport:
+    """Metric result with explicit denominators and no inferred findings."""
+
+    true_positive_count: int
+    false_positive_count: int
+    missed_count: int
+    predicted_count: int
+    expected_count: int
+    precision: float
+    recall: float
+    false_positive_rate: float
+    evidence_quality: float
+    coverage: float
+    reproducibility: float
+
+    def as_dict(self) -> dict[str, int | float]:
+        return {
+            "true_positive_count": self.true_positive_count,
+            "false_positive_count": self.false_positive_count,
+            "missed_count": self.missed_count,
+            "predicted_count": self.predicted_count,
+            "expected_count": self.expected_count,
+            "precision": self.precision,
+            "recall": self.recall,
+            "false_positive_rate": self.false_positive_rate,
+            "evidence_quality": self.evidence_quality,
+            "coverage": self.coverage,
+            "reproducibility": self.reproducibility,
+        }
+
+
+def evaluate(
+    predicted: Iterable[str],
+    expected: Iterable[str],
+    *,
+    evidence_complete: Mapping[str, bool] | None = None,
+    tested_surface_count: int = 0,
+    total_surface_count: int = 0,
+    independent_runs: Iterable[Iterable[str]] = (),
+) -> BenchmarkReport:
+    """Evaluate exact finding keys; empty denominators resolve to zero."""
+    predicted_set = {str(item).strip() for item in predicted if str(item).strip()}
+    expected_set = {str(item).strip() for item in expected if str(item).strip()}
+    true_positive = predicted_set & expected_set
+    false_positive = predicted_set - expected_set
+    missed = expected_set - predicted_set
+    complete = evidence_complete or {}
+    evidence_quality = (
+        sum(bool(complete.get(item, False)) for item in predicted_set) / len(predicted_set)
+        if predicted_set
+        else 0.0
+    )
+    runs = [
+        {str(item).strip() for item in run if str(item).strip()}
+        for run in independent_runs
+    ]
+    reproducibility = 0.0
+    if runs and predicted_set:
+        reproducibility = sum(1 for run in runs if run == predicted_set) / len(runs)
+    return BenchmarkReport(
+        true_positive_count=len(true_positive),
+        false_positive_count=len(false_positive),
+        missed_count=len(missed),
+        predicted_count=len(predicted_set),
+        expected_count=len(expected_set),
+        precision=len(true_positive) / len(predicted_set) if predicted_set else 0.0,
+        recall=len(true_positive) / len(expected_set) if expected_set else 0.0,
+        false_positive_rate=len(false_positive) / len(predicted_set) if predicted_set else 0.0,
+        evidence_quality=round(evidence_quality, 6),
+        coverage=(
+            max(0, min(tested_surface_count, total_surface_count)) / total_surface_count
+            if total_surface_count > 0
+            else 0.0
+        ),
+        reproducibility=round(reproducibility, 6),
+    )
+
+
+__all__ = ["BenchmarkReport", "evaluate"]

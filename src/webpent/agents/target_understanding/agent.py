@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage
 
+from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.models.mental_model import EdgeKind, extract_mental_model_updates
 from webpent.models.targets import Target
 from webpent.shared.application_intent import infer_application_intent
@@ -328,8 +329,25 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
         f"{summary['identity_count']} identity context(s), "
         f"{summary['workflow_candidate_count']} workflow candidate(s)."
     )
+    knowledge_state = dict(state)
+    knowledge_state["target_understanding"] = {
+        **summary,
+        "endpoints": [
+            detail for detail in details if detail.get("url") in in_scope_endpoints
+        ],
+        "workflows": workflows,
+    }
+    knowledge_state["mental_model"] = model_update
+    try:
+        knowledge_model = KnowledgeBuilder.from_state(knowledge_state).build()
+        target_knowledge_dict = knowledge_model.to_dict()
+    except Exception as exc:
+        logger.warning("Target Knowledge projection degraded safely: %s", exc)
+        target_knowledge_dict = {}
+
     return {
         "target_understanding": summary,
+        "target_knowledge": target_knowledge_dict,
         "application_intent": intent,
         "policy_assumptions": intent.get("policy_assumptions", []),
         "mental_model": model_update,

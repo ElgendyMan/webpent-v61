@@ -16,6 +16,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class AttackGraphNodeKind(str, Enum):
     IDENTITY = "identity"
+    PERMISSION = "permission"
+    RESOURCE = "resource"
+    ACTION = "action"
+    IMPACT = "impact"
     OBJECT = "object"
     WORKFLOW = "workflow"
     ENDPOINT = "endpoint"

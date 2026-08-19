@@ -213,6 +213,8 @@ class PentestState(TypedDict, total=False):
     # V55 Target Understanding projection. Optional and additive so legacy
     # checkpoints and graph consumers continue to work unchanged.
     target_understanding: Annotated[dict[str, Any], merge_dicts]
+    # V62 additive Target Knowledge projection derived from observed state only.
+    target_knowledge: Annotated[dict[str, Any], merge_dicts]
     # Application intent is a bounded, report-safe projection used by
     # business-logic and hypothesis agents. Optional for legacy checkpoints.
     application_intent: Annotated[dict[str, Any], merge_dicts]

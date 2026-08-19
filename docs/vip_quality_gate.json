@@ -41,6 +41,25 @@
         "src/webpent/state/initial_state.py",
         "src/webpent/state/state.py",
         "src/webpent/agents/validator/agent.py",
+        "src/webpent/agents/team.py",
+        "src/webpent/agents/target_understanding/agent.py",
+        "src/webpent/agents/attack_graph/agent.py",
+        "src/webpent/knowledge/__init__.py",
+        "src/webpent/knowledge/target_knowledge.py",
+        "src/webpent/knowledge/builder.py",
+        "src/webpent/research/__init__.py",
+        "src/webpent/research/hypothesis_engine.py",
+        "src/webpent/research/hypothesis_ranker.py",
+        "src/webpent/research/experiment_manager.py",
+        "src/webpent/validators/__init__.py",
+        "src/webpent/validators/proof_validator.py",
+        "src/webpent/validators/causal_validator.py",
+        "src/webpent/validators/replay_validator.py",
+        "src/webpent/shared/copilot_boundary.py",
+        "src/webpent/shared/coverage_ledger.py",
+        "src/webpent/benchmark/__init__.py",
+        "src/webpent/benchmark/metrics.py",
+        "src/webpent/cli/__init__.py",
         "scripts/capture_vip_baseline.py",
         "scripts/run_vip_quality_gate.py",
         "scripts/run_waptlab_regression.py",
@@ -57,7 +76,15 @@
         "tests/test_vip_validator_plugins.py",
         "tests/test_vip_offline_validator_fixtures.py",
         "tests/test_vip_waptlab_regression.py",
-        "tests/test_vip_workflow_replay.py"
+        "tests/test_vip_workflow_replay.py",
+        "tests/test_v62_target_knowledge.py",
+        "tests/test_v62_attack_graph_target_knowledge.py",
+        "tests/test_v63_hypothesis_engine.py",
+        "tests/test_v64_multi_agent_proof_validators.py",
+        "tests/test_v65_coverage_copilot_boundary.py",
+        "tests/test_v66_benchmark_metrics.py",
+        "tests/test_v66_cli_coverage_contract.py",
+        "tests/test_v70_release_contracts.py"
       ],
       "name": "ruff",
       "passed": true,
@@ -88,7 +115,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "865 passed, 138 warnings in 26.10s"
+        "904 passed, 138 warnings in 34.56s"
       ]
     },
     {
@@ -96,7 +123,7 @@
         "/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv/bin/python",
         "scripts/verify_test_count.py",
         "--minimum",
-        "796"
+        "818"
       ],
       "name": "test-function-count",
       "passed": true,
@@ -110,10 +137,10 @@
         "    \"tests/test_waptlab_live_improvements.py\": 3,",
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
-        "  \"minimum\": 796,",
-        "  \"total_test_functions\": 816",
+        "  \"minimum\": 818,",
+        "  \"total_test_functions\": 855",
         "}",
-        "OK: preserved test-function count 816 >= minimum 796"
+        "OK: preserved test-function count 855 >= minimum 818"
       ]
     },
     {
@@ -256,18 +283,18 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 608, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/release_manifest.json\"}"
+        "{\"file_count\": 633, \"output\": \"/tmp/webpent_v60_smart_implementation/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-19T18:52:07.288534+00:00",
+  "generated_at": "2026-08-19T20:02:00.552439+00:00",
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
     "worker critical-path qualification and live Docker qualification remain environment-blocked",
     "pip-audit strict did not pass; dependency advisories remain a release blocker"
   ],
   "passed": false,
-  "project": "WebPent v61",
+  "project": "WebPent v70",
   "schema_version": "vip-quality-gate-v2",
   "security_artifacts": {
     "bandit": "docs/bandit_release.json",

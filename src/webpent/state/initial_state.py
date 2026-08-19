@@ -146,6 +146,7 @@ def build_initial_state(
         "canonical_executions": [],
         "canonical_observations": [],
         "target_understanding": {},
+        "target_knowledge": {},
         "attack_graph": {},
         "report_quality_gate": {},
         "memory_summary": {},

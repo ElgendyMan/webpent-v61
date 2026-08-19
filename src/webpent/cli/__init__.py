@@ -34,6 +34,7 @@ from webpent.config.settings import ScanMode, get_settings
 from webpent.graph.builder import build_graph
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
+from webpent.shared.coverage_ledger import CoverageIntelligence
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
 from webpent.shared.persistent_finding_ledger import (
     PersistentFindingLedger,
@@ -894,6 +895,37 @@ def graph_command(
         json.dumps({"summary": summary, "graph": graph}, indent=2) + "\n", encoding="utf-8"
     )
     console.print(f"[green]Graph export written:[/green] {export_path}")
+
+
+@app.command("coverage")
+def coverage_command(
+    state_file: Path = typer.Option(  # noqa: B008
+        ..., "--state", help="Path to a redacted state JSON artifact."
+    ),
+    output: str = typer.Option("table", "--output", "-o", help="Output format: table or json."),
+) -> None:
+    """Show measured campaign coverage from an operator-provided state artifact."""
+    if output not in {"table", "json"}:
+        err_console.print("[red]Error:[/red] coverage output must be table or json")
+        raise typer.Exit(1)
+    try:
+        state = json.loads(state_file.expanduser().read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        err_console.print(f"[red]Error:[/red] cannot read state artifact: {exc}")
+        raise typer.Exit(1) from exc
+    if not isinstance(state, dict):
+        err_console.print("[red]Error:[/red] state artifact must contain a JSON object")
+        raise typer.Exit(1)
+    metrics = CoverageIntelligence().metrics(state)
+    if output == "json":
+        console.print(json.dumps(metrics, indent=2))
+        return
+    table = Table(title="Coverage Metrics", border_style="cyan")
+    table.add_column("Metric")
+    table.add_column("Value")
+    for key, value in metrics.items():
+        table.add_row(str(key), str(value))
+    console.print(table)
 
 
 @app.command("findings")

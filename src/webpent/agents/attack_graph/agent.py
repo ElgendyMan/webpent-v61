@@ -39,6 +39,7 @@ def attack_graph_node(state: dict[str, Any]) -> dict[str, Any]:
             novel_behaviors=state.get("novel_behavior_observations") or (),
             causal_edges=state.get("causal_attack_edges") or (),
             coverage_gaps=state.get("research_failed_paths") or (),
+            target_knowledge=state.get("target_knowledge") or {},
         )
     except Exception:
         logger.exception("Attack Graph projection failed; preserving legacy state")

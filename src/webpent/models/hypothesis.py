@@ -89,6 +89,7 @@ class HypothesisStatus(str, Enum):
     ABANDONED = "abandoned"
     RESOLVED_TRUE = "resolved_true"
     RESOLVED_FALSE = "resolved_false"
+    LEARNED = "learned"
 
 
 class HypothesisOrigin(str, Enum):
@@ -378,8 +379,8 @@ class Hypothesis(BaseModel):
         """Return True if this hypothesis is still worth considering.
 
         ``unexplored`` and ``investigating`` are open; ``promoted``,
-        ``abandoned``, ``resolved_true``, and ``resolved_false`` are
-        closed. Dynamic Prioritization only ranks open hypotheses.
+        ``abandoned``, ``resolved_true``, ``resolved_false``, and ``learned``
+        are closed. Dynamic Prioritization only ranks open hypotheses.
         """
         return self.status in (
             HypothesisStatus.UNEXPLORED.value,

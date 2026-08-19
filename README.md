@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة v60 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG. آخر بوابة تحقق موثقة: **865 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff على `src` و`tests` و`scripts` ناجح. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف.
+> **الحالة الحالية:** نسخة v70 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG، وإضافات Target Knowledge Model وAttack Graph projection وHypothesis lifecycle وProofBundle validators وCoverage Intelligence وحدود LLM Copilot وbenchmark contracts. آخر بوابة تحقق موثقة: **904 اختبارات ناجحة**، و`compileall` وRuff على `src` و`tests` و`scripts` ناجحان. بوابة release الموسعة وصلت إلى checks الكود والـqualification، وBandit عالي الخطورة نجح، لكن pip-audit strict وجد **17 ثغرة معروفة في 9 حزم**؛ لذلك لا تُعد بوابة الأمن الخضراء مكتملة بعد. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف. راجع [`docs/v70_validation.md`](docs/v70_validation.md) للتفاصيل والـblockers المعروفة.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -20,6 +20,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 6. [`scripts/ingest_payloads.py`](scripts/ingest_payloads.py) — مسار الإدخال المعتمد للـknowledge pack.
 7. [`scripts/verify_rag_knowledge_pack.py`](scripts/verify_rag_knowledge_pack.py) — إثبات direct retrieval للأنواع الخمسة.
 8. [`DELIVERY_NOTES_V61.md`](DELIVERY_NOTES_V61.md) — سجل التنفيذ والبوابات والـGit history.
+9. [`docs/v70_validation.md`](docs/v70_validation.md) — تقرير تحقق v62–v70 وحدود الادعاءات.
 
 ## ماذا يفعل WebPent؟
 
@@ -72,6 +73,10 @@ flowchart LR
 │   ├── graph/               # بناء الرسم ومسارات التوجيه
 │   ├── memory/              # Chroma وlessons وembeddings وretrieval
 │   ├── models/              # النماذج وعقود الأدلة
+│   ├── knowledge/           # Target Knowledge Model وdeterministic builder
+│   ├── research/            # Hypothesis lifecycle وexperiment ledger
+│   ├── validators/          # ProofBundle structural/causal/replay gates
+│   ├── benchmark/           # Evaluation metrics وreproducibility contracts
 │   ├── shared/              # confidence وsafety وauthorization وLLM helpers
 │   ├── state/               # PentestState وreducers
 │   ├── tools/               # adapters واكتشاف الأدوات

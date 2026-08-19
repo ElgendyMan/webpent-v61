@@ -412,6 +412,142 @@ def _add_hypothesis_nodes(graph: AttackGraph, hypotheses: Iterable[Any]) -> None
                 )
 
 
+def _add_target_knowledge_nodes(
+    graph: AttackGraph, target_knowledge: Any
+) -> None:
+    """Project typed target knowledge into graph nodes and evidence-backed edges."""
+    if not isinstance(target_knowledge, Mapping):
+        return
+    engagement_id = str(target_knowledge.get("engagement_id") or "unscoped").strip()
+    if not engagement_id:
+        engagement_id = "unscoped"
+    prefix = f"knowledge:{_stable_ref(engagement_id, prefix='engagement')}"
+    raw_nodes = target_knowledge.get("nodes")
+    if not isinstance(raw_nodes, Mapping):
+        raw_nodes = {}
+    kind_map = {
+        "identity": AttackGraphNodeKind.IDENTITY,
+        "role": AttackGraphNodeKind.IDENTITY,
+        "endpoint": AttackGraphNodeKind.ENDPOINT,
+        "workflow": AttackGraphNodeKind.WORKFLOW,
+        "object": AttackGraphNodeKind.RESOURCE,
+        "data_store": AttackGraphNodeKind.RESOURCE,
+        "host": AttackGraphNodeKind.OBJECT,
+        "service": AttackGraphNodeKind.OBJECT,
+        "technology": AttackGraphNodeKind.OBJECT,
+    }
+    node_ids: dict[str, str] = {}
+    for raw_id, raw_node in raw_nodes.items():
+        if not isinstance(raw_node, Mapping):
+            continue
+        source_id = str(raw_id).strip()
+        if not source_id:
+            continue
+        node_id = f"{prefix}:{source_id}"[:200]
+        node_ids[source_id] = node_id
+        raw_kind = str(raw_node.get("kind") or "object")
+        graph_kind = kind_map.get(raw_kind, AttackGraphNodeKind.OBJECT)
+        evidence_refs = [str(ref)[:240] for ref in raw_node.get("evidence_refs", []) if ref]
+        metadata = _safe_metadata(raw_node.get("metadata"))
+        metadata.update({"knowledge_kind": raw_kind, "engagement_ref": prefix})
+        graph.nodes.setdefault(
+            node_id,
+            AttackGraphNode(
+                id=node_id,
+                kind=graph_kind,
+                label=f"{raw_kind}:{node_id[-12:]}",
+                status="observed",
+                criticality="medium",
+                source_refs=evidence_refs[:50] or ["target_knowledge"],
+                metadata=metadata,
+            ),
+        )
+
+    for raw_edge in target_knowledge.get("edges", []):
+        if not isinstance(raw_edge, Mapping):
+            continue
+        source_id = node_ids.get(str(raw_edge.get("source_id") or ""))
+        target_id = node_ids.get(str(raw_edge.get("target_id") or ""))
+        if not source_id or not target_id:
+            continue
+        _add_edge(
+            graph,
+            kind=f"knowledge_{str(raw_edge.get('relation') or 'related_to')}",
+            source_id=source_id,
+            target_id=target_id,
+            evidence_refs=raw_edge.get("evidence_refs") or (),
+            confidence=str(raw_edge.get("confidence") or "observed"),
+            metadata={"engagement_ref": prefix},
+        )
+
+    for raw_profile in target_knowledge.get("authorization_profiles", {}).values():
+        if not isinstance(raw_profile, Mapping):
+            continue
+        identity = str(raw_profile.get("identity_id") or "").strip()
+        if not identity:
+            continue
+        identity_id = node_ids.get(identity)
+        if identity_id is None:
+            identity_id = f"{prefix}:identity:{_stable_ref(identity, prefix='id')}"[:200]
+            node_ids[identity] = identity_id
+            graph.nodes.setdefault(
+                identity_id,
+                AttackGraphNode(
+                    id=identity_id,
+                    kind=AttackGraphNodeKind.IDENTITY,
+                    label=f"identity:{identity_id[-12:]}",
+                    status=str(raw_profile.get("authorization_status") or "unknown"),
+                    source_refs=[
+                        str(ref)[:240] for ref in raw_profile.get("evidence_refs", []) if ref
+                    ]
+                    or ["target_knowledge"],
+                    metadata={"engagement_ref": prefix},
+                ),
+            )
+        for capability in raw_profile.get("observed_capabilities", []):
+            permission_id = f"{prefix}:permission:{_stable_ref(capability, prefix='perm')}"[:200]
+            graph.nodes.setdefault(
+                permission_id,
+                AttackGraphNode(
+                    id=permission_id,
+                    kind=AttackGraphNodeKind.PERMISSION,
+                    label="permission",
+                    status="observed",
+                    source_refs=[
+                        str(ref)[:240] for ref in raw_profile.get("evidence_refs", []) if ref
+                    ]
+                    or ["target_knowledge"],
+                    metadata={"engagement_ref": prefix},
+                ),
+            )
+            _add_edge(
+                graph,
+                kind="identity_has_permission",
+                source_id=identity_id,
+                target_id=permission_id,
+                evidence_refs=raw_profile.get("evidence_refs") or (),
+                confidence="observed",
+                metadata={"capability_observed": True, "engagement_ref": prefix},
+            )
+
+    for raw_flow in target_knowledge.get("data_flows", []):
+        if not isinstance(raw_flow, Mapping):
+            continue
+        source_id = node_ids.get(str(raw_flow.get("source_id") or ""))
+        target_id = node_ids.get(str(raw_flow.get("destination_id") or ""))
+        if not source_id or not target_id or not raw_flow.get("observed"):
+            continue
+        _add_edge(
+            graph,
+            kind="observed_data_flow",
+            source_id=source_id,
+            target_id=target_id,
+            evidence_refs=raw_flow.get("evidence_refs") or (),
+            confidence="observed",
+            metadata={"channel": str(raw_flow.get("channel") or "")[:80]},
+        )
+
+
 def build_attack_graph(
     mental_model_state: Any = None,
     *,
@@ -421,6 +557,7 @@ def build_attack_graph(
     novel_behaviors: Iterable[Any] = (),
     causal_edges: Iterable[Any] = (),
     coverage_gaps: Iterable[Any] = (),
+    target_knowledge: Any = None,
 ) -> dict[str, Any]:
     """Project current state into a deterministic, redacted Attack Graph."""
 
@@ -440,6 +577,9 @@ def build_attack_graph(
         )
 
     _add_relational_edges(graph, relational_evidence)
+    if isinstance(target_knowledge, Mapping):
+        graph.generated_from.append("target_knowledge")
+        _add_target_knowledge_nodes(graph, target_knowledge)
     _add_finding_nodes(graph, findings)
     _add_hypothesis_nodes(graph, hypotheses)
     _add_novel_behavior_nodes(graph, novel_behaviors)

@@ -86,6 +86,36 @@ class CoverageIntelligence:
             }
         ]
 
+    def metrics(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        """Compute coverage metrics from explicit campaign outcomes only."""
+        projection = self.project(state)
+        entries = [entry for entry in projection.get("entries", []) if isinstance(entry, Mapping)]
+        tested = [
+            entry
+            for entry in entries
+            if entry.get("attempts", 0) > 0
+            and entry.get("status") not in {"not_scanned", "inconclusive"}
+        ]
+        confirmed = [entry for entry in entries if entry.get("status") == "tool_confirmed"]
+        blocked = [
+            entry
+            for entry in entries
+            if entry.get("status")
+            in {"blocked_by_precondition", "policy_block", "infrastructure_failure"}
+        ]
+        total = len(entries)
+        return {
+            "version": self.version,
+            "campaign_count": total,
+            "tested_count": len(tested),
+            "confirmed_count": len(confirmed),
+            "blocked_count": len(blocked),
+            "gap_count": len(self.gaps(state)),
+            "tested_ratio": round(len(tested) / total, 6) if total else 0.0,
+            "confirmation_ratio": round(len(confirmed) / total, 6) if total else 0.0,
+            "source": "explicit_campaign_outcomes",
+        }
+
 
 def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
     """Project explicit proof outcomes into a report-safe coverage ledger."""
