@@ -12,6 +12,9 @@ _FORBIDDEN_KEYS = frozenset(
 _ALLOWED_KEYS = frozenset(
     {"action_class", "target_ref", "reason", "expected_information_gain", "evidence_refs"}
 )
+_ALLOWED_ACTION_CLASSES = frozenset(
+    {"information_gathering", "passive_discovery", "research"}
+)
 
 
 def sanitize_copilot_suggestion(value: Any) -> dict[str, Any] | None:
@@ -26,6 +29,8 @@ def sanitize_copilot_suggestion(value: Any) -> dict[str, Any] | None:
     if keys & _FORBIDDEN_KEYS:
         return None
     if not {"action_class", "target_ref"}.issubset(keys):
+        return None
+    if str(value.get("action_class", "")).strip() not in _ALLOWED_ACTION_CLASSES:
         return None
     clean: dict[str, Any] = {}
     for key in _ALLOWED_KEYS:

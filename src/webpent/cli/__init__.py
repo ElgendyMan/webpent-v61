@@ -1071,3 +1071,210 @@ def report_command(
             encoding="utf-8",
         )
     console.print(f"[green]Report written:[/green] {output_path}")
+
+
+# v71 gap closure: local artifact inspection and bounded campaign contracts.
+def _artifact_document(value: str) -> tuple[Path, dict[str, Any]]:
+    """Load either a manifest path or a redacted JSON state artifact."""
+    path = Path(value).expanduser()
+    if not path.exists():
+        err_console.print(f"[red]Error:[/red] artifact does not exist: {path}")
+        raise typer.Exit(1)
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        err_console.print(f"[red]Error:[/red] invalid JSON artifact: {exc}")
+        raise typer.Exit(1) from exc
+    if not isinstance(document, dict):
+        err_console.print("[red]Error:[/red] artifact must contain a JSON object")
+        raise typer.Exit(1)
+    return path, document
+
+
+def _emit_artifact_json(value: dict[str, Any], output: str) -> None:
+    if output == "json":
+        console.print(json.dumps(value, indent=2, sort_keys=True))
+        return
+    if output != "table":
+        err_console.print("[red]Error:[/red] output must be table or json")
+        raise typer.Exit(1)
+    table = Table(border_style="cyan", header_style="bold cyan")
+    table.add_column("Key")
+    table.add_column("Value")
+    for key, item in value.items():
+        rendered = json.dumps(item, sort_keys=True) if isinstance(item, (dict, list)) else str(item)
+        table.add_row(str(key), rendered)
+    console.print(table)
+
+
+@app.command("analyze")
+def analyze_command(
+    artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    output: str = typer.Option("table", "--output", "-o"),
+) -> None:
+    """Summarize a local engagement/state artifact without contacting a target."""
+    _path, document = _artifact_document(artifact)
+    findings = [item for item in document.get("findings", []) if isinstance(item, dict)]
+    confirmed = [item for item in findings if str(item.get("status", "")).lower() == "confirmed"]
+    reviewed = [
+        item
+        for item in findings
+        if str(item.get("status", "")).lower() in {"needs_human_review", "review"}
+    ]
+    evidence = document.get("evidence_refs", [])
+    runs = document.get("runs", [])
+    summary = {
+        "artifact": str(_path),
+        "engagement": document.get("engagement", {}).get("name", "unknown"),
+        "scope_entries": (
+            len(document.get("scope", [])) if isinstance(document.get("scope"), list) else 0
+        ),
+        "runs": len(runs) if isinstance(runs, list) else 0,
+        "findings": len(findings),
+        "confirmed": len(confirmed),
+        "needs_review": len(reviewed),
+        "evidence_refs": len(evidence) if isinstance(evidence, list) else 0,
+        "live_qualification_proven": False,
+    }
+    _emit_artifact_json(summary, output)
+
+
+@app.command("campaign")
+def campaign_command(
+    target_ref: str = typer.Option(
+        ..., "--target-ref", help="Existing scope reference; no URL is contacted."
+    ),
+    manifest: str = typer.Option("webpent-engagement.json", "--manifest", "-f"),
+    time_budget: int = typer.Option(900, "--time-budget", min=1, max=86400),
+    request_budget: int = typer.Option(1000, "--request-budget", min=1, max=100000),
+    llm_budget: float = typer.Option(10.0, "--llm-budget", min=0.0, max=10000.0),
+) -> None:
+    """Create a bounded campaign plan; execution remains delegated to the existing scan command."""
+    from datetime import datetime, timezone
+
+    from webpent.cli.manifest import save_manifest
+
+    path, document = _manifest_or_exit(manifest)
+    scope = document.get("scope", [])
+    if not isinstance(scope, list) or not any(
+        isinstance(item, dict)
+        and target_ref in {str(item.get("url", "")), str(item.get("host", ""))}
+        for item in scope
+    ):
+        err_console.print("[red]Error:[/red] --target-ref must match an existing scope URL or host")
+        raise typer.Exit(1)
+    run = {
+        "id": str(uuid4()),
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "target_ref": target_ref,
+        "time_budget_seconds": time_budget,
+        "request_budget": request_budget,
+        "llm_budget": llm_budget,
+        "status": "planned",
+        "execution_required": True,
+    }
+    document.setdefault("runs", []).append(run)
+    save_manifest(path, document)
+    console.print(f"[green]Campaign planned:[/green] {run['id']} (no network requests made)")
+
+
+@app.command("knowledge")
+def knowledge_command(
+    artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    output: str = typer.Option("json", "--output", "-o"),
+) -> None:
+    """Display the bounded target-knowledge projection from a local artifact."""
+    _path, document = _artifact_document(artifact)
+    knowledge = document.get("target_knowledge", {})
+    if not isinstance(knowledge, dict):
+        knowledge = {}
+    _emit_artifact_json(knowledge, output)
+
+
+@app.command("replay")
+def replay_command(
+    artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    evidence_id: str | None = typer.Option(None, "--evidence-id"),
+    output: str = typer.Option("table", "--output", "-o"),
+) -> None:
+    """Inspect declared replay metadata; never replays a request or executes a PoC."""
+    _path, document = _artifact_document(artifact)
+    refs = document.get("evidence_refs", [])
+    bundles = document.get("proof_bundles", [])
+    rows: list[dict[str, Any]] = []
+    for item in bundles if isinstance(bundles, list) else []:
+        if not isinstance(item, dict):
+            continue
+        if evidence_id and str(item.get("evidence_id", item.get("id", ""))) != evidence_id:
+            continue
+        rows.append(
+            {
+                "id": item.get("id", item.get("evidence_id", "")),
+                "sealed": bool(item.get("sealed", False)),
+                "replay_matches": bool(item.get("replay_matches", False)),
+                "execution": "not_performed",
+            }
+        )
+    if not rows and evidence_id:
+        rows = [
+            {
+                "id": evidence_id,
+                "declared": any(
+                    isinstance(ref, dict) and ref.get("id") == evidence_id for ref in refs
+                ),
+                "execution": "not_performed",
+            }
+        ]
+    if output == "json":
+        console.print(json.dumps({"replays": rows, "live_replay_performed": False}, indent=2))
+        return
+    if output != "table":
+        err_console.print("[red]Error:[/red] output must be table or json")
+        raise typer.Exit(1)
+    table = Table(title="Replay Metadata (no execution)", border_style="cyan")
+    table.add_column("ID")
+    table.add_column("Sealed")
+    table.add_column("Replay matches")
+    table.add_column("Execution")
+    for row in rows:
+        table.add_row(
+            str(row.get("id", "")),
+            str(row.get("sealed", row.get("declared", False))),
+            str(row.get("replay_matches", "unknown")),
+            str(row.get("execution", "not_performed")),
+        )
+    console.print(table if rows else "[dim]No replay metadata recorded.[/dim]")
+
+
+@app.command("explain")
+def explain_command(
+    finding_id: str = typer.Argument(..., help="Finding identifier."),
+    artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    output: str = typer.Option("table", "--output", "-o"),
+) -> None:
+    """Explain one local finding using declared evidence and validation metadata only."""
+    _path, document = _artifact_document(artifact)
+    finding = next(
+        (
+            item
+            for item in document.get("findings", [])
+            if isinstance(item, dict) and str(item.get("id", "")) == finding_id
+        ),
+        None,
+    )
+    if finding is None:
+        err_console.print(f"[red]Error:[/red] finding not found: {finding_id}")
+        raise typer.Exit(1)
+    explanation = {
+        "id": finding_id,
+        "title": finding.get("title", ""),
+        "status": finding.get("status", "unknown"),
+        "confidence": finding.get("confidence", "unknown"),
+        "severity": finding.get("severity", "unknown"),
+        "evidence_refs": finding.get("evidence_refs", []),
+        "causal_signal": finding.get("causal_signal", False),
+        "negative_control": finding.get("negative_control", False),
+        "replay_required": finding.get("replay_required", True),
+        "authority": "read_only_explanation",
+    }
+    _emit_artifact_json(explanation, output)
