@@ -123,3 +123,81 @@ def test_access_control_node_uses_bounded_enumeration_and_preserves_provenance(m
         item["resource_url"].startswith("https://lab.local/orders/")
         for item in observations
     )
+
+
+
+def test_bac_node_state_gate_blocks_then_allows_state_changing_method(monkeypatch):
+    calls: list[str] = []
+
+    class FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def request(self, method, url, headers=None):
+            calls.append(method)
+            return type("Response", (), {"status_code": 200, "content": b"ok"})()
+
+    monkeypatch.setattr(shared_http, "make_safe_httpx_client", lambda **kwargs: FakeClient())
+    state = {
+        "target": {"url": "https://lab.local/"},
+        "findings": [],
+        "crawled_data": {
+            "endpoints": [
+                {
+                    "url": "https://lab.local/orders/42",
+                    "method": "DELETE",
+                    "owner_identity": "owner",
+                }
+            ]
+        },
+        "identity_profiles": {
+            "owner": {"role": "user", "cookies": {"session": "owner"}},
+        },
+    }
+
+    access_agent.access_control_node(state)
+    assert calls == []
+
+    access_agent.access_control_node({**state, "auto_approve": True})
+    assert calls == ["DELETE", "DELETE"]
+
+
+def test_bac_node_state_gate_uses_named_bac_approval_flag(monkeypatch):
+    calls: list[str] = []
+
+    class FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def request(self, method, url, headers=None):
+            calls.append(method)
+            return type("Response", (), {"status_code": 200, "content": b"ok"})()
+
+    monkeypatch.setattr(shared_http, "make_safe_httpx_client", lambda **kwargs: FakeClient())
+    access_agent.access_control_node(
+        {
+            "target": {"url": "https://lab.local/"},
+            "findings": [],
+            "bac_allow_state_changing_probes": True,
+            "crawled_data": {
+                "endpoints": [
+                    {
+                        "url": "https://lab.local/orders/42",
+                        "method": "PATCH",
+                        "owner_identity": "owner",
+                    }
+                ]
+            },
+            "identity_profiles": {
+                "owner": {"role": "user", "cookies": {"session": "owner"}},
+            },
+        }
+    )
+
+    assert calls == ["PATCH", "PATCH"]
