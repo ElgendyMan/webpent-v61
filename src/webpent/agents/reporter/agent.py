@@ -559,14 +559,21 @@ def reporter_node(state: PentestState) -> dict:
     # previous code only assigned md_path inside the try, so a
     # _compose_markdown failure followed by a _render_html_report
     # fallback failure logged md_path as an unbound local).
+    selected_formats = state.get("report_formats")
+    markdown_requested = (
+        selected_formats is None
+        or "all" in selected_formats
+        or "md" in selected_formats
+    )
     md_path: str | None = None
     markdown_failed = False
     try:
-        markdown = _compose_markdown(
-            target_url, findings, executive_summary, decision_log=decision_log
-        )
-        md_path = _save_report(markdown, output_dir, _REPORT_MD_FILENAME)
-        logger.info("Markdown report written to %s", md_path)
+        if markdown_requested:
+            markdown = _compose_markdown(
+                target_url, findings, executive_summary, decision_log=decision_log
+            )
+            md_path = _save_report(markdown, output_dir, _REPORT_MD_FILENAME)
+            logger.info("Markdown report written to %s", md_path)
     except Exception as exc:
         markdown_failed = True
         # V9 P0 [round-2 wiring audit]: previously unguarded — a
@@ -583,6 +590,12 @@ def reporter_node(state: PentestState) -> dict:
             "in the database regardless.",
             exc,
         )
+
+    html_requested = (
+        selected_formats is None
+        or "all" in selected_formats
+        or "html" in selected_formats
+    )
 
     # V5 Sprint 11: Multi-format export (JSON + HTML + PDF) with
     # cryptographic audit trail + compliance tags.
@@ -628,12 +641,13 @@ def reporter_node(state: PentestState) -> dict:
             campaign_ledger=campaign_ledger,
             proof_observability=dict(state.get("proof_observability") or {}),
             authorization_matrix=dict(state.get("authorization_matrix") or {}),
+            formats=list(selected_formats) if selected_formats else None,
         )
         export_ok = True
-        logger.info(
-            "V5 Sprint 11 multi-format export complete: json=%s, html=%s, pdf=%s",
-            paths.get("json"), paths.get("html"), paths.get("pdf"),
-        )
+        rendered = ", ".join(
+            f"{name}={path}" for name, path in paths.items() if path is not None
+        ) or "none"
+        logger.info("V5 Sprint 11 multi-format export complete: %s", rendered)
     except Exception as exc:
         logger.warning(
             "V5 Sprint 11 multi-format export failed (%s) — falling "
@@ -641,19 +655,27 @@ def reporter_node(state: PentestState) -> dict:
         )
         # V9 P0 B10: guard the fallback path too — a bad UUID/datetime/None
         # in _render_html_report must NOT wipe the engagement's Markdown
-        # report (already written above) or crash the graph.
-        try:
-            html = _render_html_report(target_url, findings, executive_summary, hypotheses)
-            if html is not None:
-                html_path = _save_report(html, output_dir, _REPORT_HTML_FILENAME)
-                export_ok = True
-                logger.info("HTML report written to %s (legacy)", html_path)
-        except Exception as fallback_exc:
+        # report (already written above) or crash the graph. Respect an
+        # explicit format selection: JSON-only/MD-only runs must not create
+        # an unrequested HTML artifact.
+        if html_requested:
+            try:
+                html = _render_html_report(target_url, findings, executive_summary, hypotheses)
+                if html is not None:
+                    html_path = _save_report(html, output_dir, _REPORT_HTML_FILENAME)
+                    export_ok = True
+                    logger.info("HTML report written to %s (legacy)", html_path)
+            except Exception as fallback_exc:
+                logger.error(
+                    "Legacy HTML render also failed (%s) — Markdown report "
+                    "at %s is the canonical output. Engagement findings are "
+                    "still persisted in the DB; only the HTML rendering is lost.",
+                    fallback_exc, md_path,
+                )
+        else:
             logger.error(
-                "Legacy HTML render also failed (%s) — Markdown report "
-                "at %s is the canonical output. Engagement findings are "
-                "still persisted in the DB; only the HTML rendering is lost.",
-                fallback_exc, md_path,
+                "Selected report formats failed and no HTML fallback was requested; "
+                "engagement findings remain persisted in the DB."
             )
 
     # V10 P3-3 FIX (b): previously this returned "Report generated

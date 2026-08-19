@@ -365,6 +365,86 @@ def export_to_json(
 
 
 # ===========================================================================
+# Markdown export
+# ===========================================================================
+def export_to_markdown(
+    target_url: str,
+    findings: list[Finding],
+    output_dir: Path,
+    executive_summary: str = "",
+    risk_score: str = "Low",
+    hypotheses: list[str] | None = None,
+    decision_log: list[dict[str, Any]] | None = None,
+    **report_kwargs: Any,
+) -> Path:
+    """Export canonical redacted report data as a readable Markdown file."""
+    report_data = build_report_data(
+        target_url,
+        findings,
+        executive_summary,
+        risk_score,
+        hypotheses,
+        decision_log,
+        **report_kwargs,
+    )
+    lines = [
+        "# WebPent Security Report",
+        "",
+        f"**Target:** {report_data.get('target_url', target_url)}",
+        f"**Generated:** {report_data.get('generated_at', '')}",
+        f"**Risk score:** {report_data.get('risk_score', risk_score)}",
+        "",
+        "## Executive Summary",
+        "",
+        str(report_data.get("executive_summary") or "No executive summary was produced."),
+        "",
+        "## Severity Summary",
+        "",
+        "| Severity | Count |",
+        "| --- | ---: |",
+    ]
+    for severity, count in (report_data.get("severity_counts") or {}).items():
+        lines.append(f"| {severity} | {count} |")
+    lines.extend(["", "## Findings", ""])
+    report_findings = report_data.get("findings") or []
+    if not report_findings:
+        lines.append("No findings were discovered.")
+    for index, finding in enumerate(report_findings, 1):
+        lines.extend(
+            [
+                f"### {index}. {finding.get('title') or 'Untitled finding'}",
+                "",
+                f"- **Severity:** {finding.get('severity', '')}",
+                f"- **Confidence:** {finding.get('confidence_level', '')}",
+                f"- **Lifecycle:** {finding.get('lifecycle_stage', '')}",
+                f"- **URL:** {finding.get('url', '')}",
+                f"- **Tool:** {finding.get('tool_name', '')}",
+                "",
+                str(finding.get("description") or ""),
+                "",
+                "#### Evidence",
+                "",
+                "```json",
+                json.dumps(finding.get("evidence_bundle"), indent=2, default=str),
+                "```",
+                "",
+            ]
+        )
+    decisions = report_data.get("decision_log") or []
+    if decisions:
+        lines.extend(["## Explainability Log", "", "| Decision | Reason |", "| --- | --- |"])
+        for item in decisions:
+            if isinstance(item, dict):
+                lines.append(f"| {item.get('decision', '')} | {item.get('reason', '')} |")
+        lines.append("")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "report.md"
+    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    logger.info("Markdown report written to %s", path)
+    return path
+
+
+# ===========================================================================
 # HTML export (Jinja2)
 # ===========================================================================
 def export_to_html(
@@ -583,90 +663,50 @@ def export_all_formats(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    formats: list[str] | None = None,
 ) -> dict[str, Path | None]:
-    """Export findings to JSON + HTML + PDF in one call.
-
-    Returns:
-        A dict mapping format names to file paths:
-        ``{"json": Path, "html": Path, "pdf": Path | None}``.
-        The PDF path is ``None`` if no PDF backend was available.
-    """
-    json_path = export_to_json(
-        target_url,
-        findings,
-        output_dir,
-        executive_summary,
-        risk_score,
-        hypotheses,
-        decision_log,
-        bac_observations,
-        bac_coverage_gaps,
-        relational_evidence,
-        subdomain_takeover_observations,
-        subdomain_takeover_coverage_gaps,
-        cloud_storage_observations,
-        cloud_storage_coverage_gaps,
-        jwt_deep_observations,
-        jwt_deep_coverage_gaps,
-        disclosed_report_advisories,
-        advisory_coverage_gaps,
-        strict_quality_gate=strict_quality_gate,
-        require_proof_bundle=require_proof_bundle,
-        coverage_ledger=coverage_ledger,
-        campaign_ledger=campaign_ledger,
-        proof_observability=proof_observability,
-        authorization_matrix=authorization_matrix,
-    )
-    html_path = export_to_html(
-        target_url,
-        findings,
-        output_dir,
-        executive_summary,
-        risk_score,
-        hypotheses,
-        decision_log,
-        bac_observations,
-        bac_coverage_gaps,
-        relational_evidence,
-        subdomain_takeover_observations,
-        subdomain_takeover_coverage_gaps,
-        cloud_storage_observations,
-        cloud_storage_coverage_gaps,
-        jwt_deep_observations,
-        jwt_deep_coverage_gaps,
-        disclosed_report_advisories,
-        advisory_coverage_gaps,
-        strict_quality_gate=strict_quality_gate,
-        require_proof_bundle=require_proof_bundle,
-        coverage_ledger=coverage_ledger,
-        campaign_ledger=campaign_ledger,
-        proof_observability=proof_observability,
-        authorization_matrix=authorization_matrix,
-    )
-    pdf_path = export_to_pdf(
-        target_url,
-        findings,
-        output_dir,
-        executive_summary,
-        risk_score,
-        hypotheses,
-        decision_log,
-        bac_observations,
-        bac_coverage_gaps,
-        relational_evidence,
-        subdomain_takeover_observations,
-        subdomain_takeover_coverage_gaps,
-        cloud_storage_observations,
-        cloud_storage_coverage_gaps,
-        jwt_deep_observations,
-        jwt_deep_coverage_gaps,
-        disclosed_report_advisories,
-        advisory_coverage_gaps,
-        strict_quality_gate=strict_quality_gate,
-        require_proof_bundle=require_proof_bundle,
-        coverage_ledger=coverage_ledger,
-        campaign_ledger=campaign_ledger,
-        proof_observability=proof_observability,
-        authorization_matrix=authorization_matrix,
-    )
-    return {"json": json_path, "html": html_path, "pdf": pdf_path}
+    """Export selected formats; ``None`` preserves historical JSON/HTML/PDF."""
+    requested = {str(item).strip().lower() for item in (formats or ["json", "html", "pdf"])}
+    if "all" in requested:
+        requested = {"json", "html", "pdf", "md"}
+    shared = {
+        "bac_observations": bac_observations,
+        "bac_coverage_gaps": bac_coverage_gaps,
+        "relational_evidence": relational_evidence,
+        "subdomain_takeover_observations": subdomain_takeover_observations,
+        "subdomain_takeover_coverage_gaps": subdomain_takeover_coverage_gaps,
+        "cloud_storage_observations": cloud_storage_observations,
+        "cloud_storage_coverage_gaps": cloud_storage_coverage_gaps,
+        "jwt_deep_observations": jwt_deep_observations,
+        "jwt_deep_coverage_gaps": jwt_deep_coverage_gaps,
+        "disclosed_report_advisories": disclosed_report_advisories,
+        "advisory_coverage_gaps": advisory_coverage_gaps,
+        "strict_quality_gate": strict_quality_gate,
+        "require_proof_bundle": require_proof_bundle,
+        "coverage_ledger": coverage_ledger,
+        "campaign_ledger": campaign_ledger,
+        "proof_observability": proof_observability,
+        "authorization_matrix": authorization_matrix,
+    }
+    paths: dict[str, Path | None] = {}
+    if "json" in requested:
+        paths["json"] = export_to_json(
+            target_url, findings, output_dir, executive_summary, risk_score,
+            hypotheses, decision_log, **shared
+        )
+    if "html" in requested:
+        paths["html"] = export_to_html(
+            target_url, findings, output_dir, executive_summary, risk_score,
+            hypotheses, decision_log, **shared
+        )
+    if "pdf" in requested:
+        paths["pdf"] = export_to_pdf(
+            target_url, findings, output_dir, executive_summary, risk_score,
+            hypotheses, decision_log, **shared
+        )
+    if "md" in requested:
+        paths["md"] = export_to_markdown(
+            target_url, findings, output_dir, executive_summary, risk_score,
+            hypotheses, decision_log, **shared
+        )
+    return paths

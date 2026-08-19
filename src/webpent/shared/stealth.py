@@ -49,6 +49,44 @@ logger = logging.getLogger(__name__)
 # workers do not corrupt each other's timestamps.
 _last_request_at: dict[str, float] = {}
 _rate_lock = threading.Lock()
+_telemetry_local = threading.local()
+
+
+def _telemetry() -> dict[str, float]:
+    state = getattr(_telemetry_local, "state", None)
+    if state is None:
+        state = {
+            "jitter_calls": 0.0,
+            "rate_limit_calls": 0.0,
+            "jitter_sleep_seconds": 0.0,
+            "rate_limit_sleep_seconds": 0.0,
+        }
+        _telemetry_local.state = state
+    return state
+
+
+def get_stealth_summary() -> dict[str, float | int]:
+    """Return redaction-safe telemetry for the current worker thread."""
+    state = _telemetry()
+    jitter_sleep = state["jitter_sleep_seconds"]
+    rate_sleep = state["rate_limit_sleep_seconds"]
+    return {
+        "jitter_calls": int(state["jitter_calls"]),
+        "rate_limit_calls": int(state["rate_limit_calls"]),
+        "jitter_sleep_seconds": round(jitter_sleep, 3),
+        "rate_limit_sleep_seconds": round(rate_sleep, 3),
+        "total_sleep_seconds": round(jitter_sleep + rate_sleep, 3),
+    }
+
+
+def reset_stealth_telemetry() -> None:
+    """Reset current-thread telemetry; intended for scan boundaries and tests."""
+    _telemetry_local.state = {
+        "jitter_calls": 0.0,
+        "rate_limit_calls": 0.0,
+        "jitter_sleep_seconds": 0.0,
+        "rate_limit_sleep_seconds": 0.0,
+    }
 
 
 def _draw_jitter_seconds() -> float:
@@ -86,6 +124,7 @@ def apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
     """
     if not stealth_mode:
         return 0.0
+    _telemetry()["jitter_calls"] += 1.0
     delay = _draw_jitter_seconds()
     if delay <= 0.0:
         return 0.0
@@ -93,6 +132,7 @@ def apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
         "stealth jitter: sleeping %.2fs before %s", delay, label or "action"
     )
     time.sleep(delay)
+    _telemetry()["jitter_sleep_seconds"] += delay
     return delay
 
 
@@ -114,6 +154,7 @@ async def async_apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
     """
     if not stealth_mode:
         return 0.0
+    _telemetry()["jitter_calls"] += 1.0
     delay = _draw_jitter_seconds()
     if delay <= 0.0:
         return 0.0
@@ -121,6 +162,7 @@ async def async_apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
         "stealth jitter: awaiting %.2fs before %s", delay, label or "action"
     )
     await asyncio.sleep(delay)
+    _telemetry()["jitter_sleep_seconds"] += delay
     return delay
 
 
@@ -142,6 +184,7 @@ def enforce_min_interval(stealth_mode: bool, host: str) -> float:
     """
     if not stealth_mode or not host:
         return 0.0
+    _telemetry()["rate_limit_calls"] += 1.0
     settings = get_settings()
     min_interval = float(settings.stealth_min_request_interval)
     if min_interval <= 0.0:
@@ -164,6 +207,7 @@ def enforce_min_interval(stealth_mode: bool, host: str) -> float:
             "stealth rate-limit: sleeping %.2fs for host %s", wait, host
         )
         time.sleep(wait)
+    _telemetry()["rate_limit_sleep_seconds"] += wait
     return wait
 
 
@@ -177,6 +221,7 @@ async def async_enforce_min_interval(stealth_mode: bool, host: str) -> float:
     """
     if not stealth_mode or not host:
         return 0.0
+    _telemetry()["rate_limit_calls"] += 1.0
     settings = get_settings()
     min_interval = float(settings.stealth_min_request_interval)
     if min_interval <= 0.0:
@@ -199,6 +244,7 @@ async def async_enforce_min_interval(stealth_mode: bool, host: str) -> float:
             "stealth rate-limit: awaiting %.2fs for host %s", wait, host
         )
         await asyncio.sleep(wait)
+    _telemetry()["rate_limit_sleep_seconds"] += wait
     return wait
 
 

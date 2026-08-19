@@ -180,6 +180,58 @@ def _check_celery_payload_key() -> dict[str, object]:
         }
 
 
+def _check_llm_providers() -> dict[str, object]:
+    """Report configured LLM providers and usable fallback chains without API calls."""
+    try:
+        from webpent.config.settings import get_settings
+        from webpent.shared.llm import (
+            _TASK_PREFERENCE_ORDER,
+            TaskType,
+            _api_key_for_provider,
+            get_dead_providers,
+            is_llm_enabled,
+        )
+
+        settings = get_settings()
+        configured: dict[str, bool] = {}
+        for chain in _TASK_PREFERENCE_ORDER.values():
+            for provider, _model in chain:
+                configured[provider] = bool(_api_key_for_provider(provider, settings))
+        available = sorted(name for name, ready in configured.items() if ready)
+        chains: dict[str, list[str]] = {}
+        for task in TaskType:
+            chains[task.value] = [
+                f"{provider}:{model}"
+                for provider, model in _TASK_PREFERENCE_ORDER[task]
+                if configured.get(provider, False)
+            ]
+        enabled = is_llm_enabled(settings)
+        dead = sorted(get_dead_providers())
+        return {
+            "enabled": enabled,
+            "configured_providers": available,
+            "configured_count": len(available),
+            "dead_providers": dead,
+            "fallback_chains": chains,
+            "status": (
+                "disabled — deterministic fallbacks active"
+                if not enabled
+                else "ok — at least one configured provider"
+                if available
+                else "degraded — no configured provider; deterministic fallbacks only"
+            ),
+        }
+    except Exception as exc:
+        return {
+            "enabled": False,
+            "configured_providers": [],
+            "configured_count": 0,
+            "dead_providers": [],
+            "fallback_chains": {},
+            "status": f"degraded (LLM diagnostics failed: {type(exc).__name__})",
+        }
+
+
 def _truthy_env(name: str) -> bool:
     """Return whether an environment switch is explicitly enabled."""
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
@@ -330,6 +382,7 @@ def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
         "embeddings": _check_embeddings(),
         "celery_payload_key": _check_celery_payload_key(),
         "redis_security": _check_redis_security(),
+        "llm": _check_llm_providers(),
     }
     try:
         from webpent.shared.capability_manifest import build_capability_manifest

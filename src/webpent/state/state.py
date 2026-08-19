@@ -140,6 +140,12 @@ class PentestState(TypedDict, total=False):
 
     # V5 Sprint 6 addition
     stealth_mode: bool  # When True, insert jitter + rate-limit delays
+    # Operations UX additions. These remain optional for legacy checkpoints
+    # because the TypedDict is declared with total=False.
+    stealth_telemetry: Annotated[dict[str, Any], merge_dicts]
+    custom_payloads: list[str]
+    report_formats: list[str]
+    llm_enabled_override: bool | None
 
     # P0 execution-policy persistence: keep the operator's approval mode in
     # the checkpoint so a resumed engagement cannot silently downgrade from
