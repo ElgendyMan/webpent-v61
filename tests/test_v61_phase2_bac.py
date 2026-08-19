@@ -277,3 +277,19 @@ def test_bac_role_aware_finding_distinguishes_horizontal_and_vertical_access():
     assert vertical.vuln_class == VulnClass.AUTH_BYPASS.value
     assert "Privilege escalation" in vertical.reasoning
     assert "Privilege escalation" not in horizontal.reasoning
+
+
+
+def test_bac_enumeration_default_bound_is_five_and_skips_uuid():
+    numeric_neighbors = access_agent._enumerate_adjacent_ids(
+        {"object_id": "1001", "url": "https://lab.local/orders/1001"},
+        {},
+    )
+    uuid_neighbors = access_agent._enumerate_adjacent_ids(
+        {"object_id": "550e8400-e29b-41d4-a716-446655440000"},
+        {},
+    )
+
+    assert numeric_neighbors == ["1000", "1002", "999", "1003", "998"]
+    assert len(numeric_neighbors) == 5
+    assert uuid_neighbors == []

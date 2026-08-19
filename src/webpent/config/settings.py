@@ -246,7 +246,7 @@ class Settings(BaseSettings):
             "Disabled by default; enumeration remains read-only and never confirms a finding."
         ),
     )
-    idor_enumeration_neighbors: int = Field(default=2, ge=1, le=10)
+    idor_enumeration_neighbors: int = Field(default=5, ge=1, le=10)
     enable_js_intelligence: bool = Field(
         default=False,
         description=(

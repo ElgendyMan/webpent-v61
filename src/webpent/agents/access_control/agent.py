@@ -265,7 +265,7 @@ def _enumerate_adjacent_ids(record: dict[str, Any], profile: Any) -> list[str]:
         base = int(raw_id)
     except ValueError:
         return []
-    configured = profile.get("max_neighbors", 2) if isinstance(profile, dict) else 2
+    configured = profile.get("max_neighbors", 5) if isinstance(profile, dict) else 5
     limit = max(1, min(int(configured), 10))
     neighbors: list[str] = []
     for delta in range(1, limit + 1):
