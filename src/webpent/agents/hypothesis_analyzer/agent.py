@@ -189,13 +189,12 @@ def _retrieve_with_memory_boundary(
             source = "vectorstore:knowledge"
             prefix = "Knowledge"
         elif kind is MemoryKind.EXPERIENCE_LESSON:
-            if not client_id or not engagement_id:
+            if not client_id:
                 return []
             values = manager.search_lessons(
                 query,
                 k=limit,
                 client_id=client_id,
-                engagement_id=engagement_id,
             )
             source = "vectorstore:lessons"
             prefix = "Experience lesson"
@@ -824,8 +823,7 @@ def hypothesis_node(state: PentestState) -> dict:
                 f"parameters forms endpoints {endpoint_sample}"
             )
             client_id = state.get("client_id")
-            engagement_id = state.get("engagement_id") or state.get("thread_id")
-            if not client_id or not engagement_id:
+            if not client_id:
                 relevant_lessons = []
                 logger.warning("V5 Feedback Loop: refusing unscoped lesson retrieval")
             else:
@@ -833,7 +831,6 @@ def hypothesis_node(state: PentestState) -> dict:
                     lessons_query,
                     k=5,
                     client_id=client_id,
-                    engagement_id=engagement_id,
                 )
             # V6 DX-Final: retrieval-side moderation for legacy lessons.
             if relevant_lessons:

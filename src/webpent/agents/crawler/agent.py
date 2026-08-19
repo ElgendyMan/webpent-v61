@@ -38,13 +38,19 @@ from webpent.shared.exceptions import ToolExecutionError, ToolNotFoundError
 from webpent.shared.http_discovery import discover_http_surface
 from webpent.shared.llm import (
     TaskType,
-    get_llm,
+    get_cached_llm,
     get_safety_system_instruction,
     safe_prompt_format,
 )
 from webpent.shared.recon_triage import build_coverage_preserving_queue
 from webpent.state.state import PentestState
 from webpent.tools.recon.katana import run_katana
+
+
+def get_llm(task_type: TaskType) -> Any:
+    """Legacy patch point routed through the shared LLM cache."""
+    return get_cached_llm(task_type)
+
 
 logger = logging.getLogger(__name__)
 
