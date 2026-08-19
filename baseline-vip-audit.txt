@@ -1,0 +1,86 @@
+--- root ---
+.env.example
+.github
+.pytest_cache
+.ruff_cache
+.venv
+DELIVERY_NOTES_V55.md
+DELIVERY_NOTES_V56.md
+DELIVERY_NOTES_V57.md
+DELIVERY_NOTES_V58.md
+DELIVERY_NOTES_V59.md
+Dockerfile
+Dockerfile.base
+Makefile
+PROJECT_BASELINE_AR.md
+README.md
+REVIEW_REPORT_2026-08-15.md
+alembic
+alembic.ini
+baseline-symbols.txt
+baseline-vip-audit.txt
+code-symbols.txt
+docker-compose.dev.yml
+docker-compose.test.yml
+docker-compose.yml
+docs
+doctor-offline.json
+entrypoint.sh
+knowledge_sources.yaml
+main.py
+memory
+pyproject.toml
+pytest-baseline.log
+pytest-before-five.log
+pytest-collect.log
+pytest-full.log
+pytest-v61-full-final.log
+pytest-v61-full.log
+pytest-v62-full-final.log
+pytest-v62-regression.log
+ruff-baseline.log
+ruff-new.log
+ruff-v61-targeted.log
+ruff-v62-new-only.log
+ruff-v62-targeted.log
+scripts
+server.py
+src
+tests
+uv.lock
+verify_all.py
+viewer.py
+webpent-cli.sh
+webpent.db
+worker.py
+--- package files ---
+./.venv/.lock
+./docker-compose.dev.yml
+./docker-compose.test.yml
+./docker-compose.yml
+./pyproject.toml
+./server.py
+./uv.lock
+--- test collection ---
+tests/test_v9_round2_wiring_fixes.py::TestReporterCrashResilience::test_output_dir_failure_returns_clean_degraded_result
+tests/test_validator_merge_back.py::test_needs_human_review_is_written_back
+tests/test_validator_merge_back.py::test_confirmed_sqli_still_works
+tests/test_validator_merge_back.py::test_no_false_tool_confirmed
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/langgraph/cache/base/__init__.py:8
+  /home/ubuntu/webpent_v60/.venv/lib/python3.12/site-packages/langgraph/cache/base/__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:263
+  /home/ubuntu/webpent_v60/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:263
+  /home/ubuntu/webpent_v60/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+453 tests collected in 5.27s
+--- compile ---
+OK

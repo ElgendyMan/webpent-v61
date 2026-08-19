@@ -1,0 +1,1 @@
+{"trace_type": "contract_review", "status": "implemented_bounded_projection", "knowledge_gap_engine": "src/webpent/shared/research_intelligence.py:188", "next_best_action_engine": "src/webpent/shared/research_intelligence.py:346", "active_information_execution": "smart_campaigns adapter only", "finding_confirmation": "not asserted"}

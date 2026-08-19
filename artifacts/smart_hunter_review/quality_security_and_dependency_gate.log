@@ -1,0 +1,4 @@
+Review status: latest targeted tests 15 passed; prior full qualification 722 passed.
+Ruff: prior full qualification 0 errors; touched-file check passed after latest additions.
+compileall: prior full qualification passed; rerun required after latest additions.
+WAPTLab VIP gate: NOT CLAIMED; three-run 15/20 live evidence absent.

@@ -1,0 +1,320 @@
+src/webpent/shared/bac_identity_tester.py:31:class IdentityProfile:
+src/webpent/shared/bac_identity_tester.py:59:def _clean_label(value: Any, fallback: str) -> str:
+src/webpent/shared/bac_identity_tester.py:64:def _string_set(value: Any) -> frozenset[str]:
+src/webpent/shared/bac_identity_tester.py:72:def _safe_dict(value: Any) -> dict[str, str]:
+src/webpent/shared/bac_identity_tester.py:78:def normalise_identity_profiles(
+src/webpent/shared/bac_identity_tester.py:130:def extract_object_id(url: str) -> str | None:
+src/webpent/shared/bac_identity_tester.py:141:def profile_owns_resource(profile: IdentityProfile, url: str, object_id: str | None = None) -> bool:
+src/webpent/shared/bac_identity_tester.py:149:def _cookie_header(cookies: dict[str, str]) -> str:
+src/webpent/shared/bac_identity_tester.py:153:def _sanitised_headers(headers: dict[str, Any]) -> dict[str, str]:
+src/webpent/shared/bac_identity_tester.py:160:def response_fingerprint(
+src/webpent/shared/bac_identity_tester.py:174:def sanitise_probe_result(
+src/webpent/shared/bac_identity_tester.py:199:def build_relational_evidence(
+src/webpent/shared/bac_identity_tester.py:259:def assess_access_control(
+src/webpent/shared/memory_boundary.py:19:class MemoryBoundary:
+src/webpent/shared/surface_security.py:34:def _hash(value: str) -> str:
+src/webpent/shared/surface_security.py:38:def _safe_url(value: Any) -> str:
+src/webpent/shared/surface_security.py:51:def _endpoint_value(item: Any) -> str:
+src/webpent/shared/surface_security.py:61:def _records(value: Any) -> list[Mapping[str, Any]]:
+src/webpent/shared/surface_security.py:69:def _text(value: Any) -> str:
+src/webpent/shared/surface_security.py:79:def _param_names(url: str) -> set[str]:
+src/webpent/shared/surface_security.py:86:def _add(
+src/webpent/shared/surface_security.py:124:def analyze_security_surface(
+src/webpent/shared/javascript_intelligence.py:81:def _sha256(value: str | bytes) -> str:
+src/webpent/shared/javascript_intelligence.py:86:def _line_number(source: str, offset: int) -> int:
+src/webpent/shared/javascript_intelligence.py:90:def _same_origin(url: str, target_url: str) -> bool:
+src/webpent/shared/javascript_intelligence.py:103:def _redacted_url(url: str, target_url: str) -> str | None:
+src/webpent/shared/javascript_intelligence.py:118:def _evidence_ref(kind: str, source_asset: str, locator: str) -> str:
+src/webpent/shared/javascript_intelligence.py:122:def _task_id(task_type: str, target_ref: str, source_asset: str) -> str:
+src/webpent/shared/javascript_intelligence.py:126:def _source_map_info(source: str, asset_url: str, target_url: str, source_map_content: str | None) -> tuple[str | None, list[str]]:
+src/webpent/shared/javascript_intelligence.py:150:def analyze_javascript_source(
+src/webpent/shared/javascript_intelligence.py:338:def merge_javascript_intelligence(items: list[JavaScriptIntelligence]) -> JavaScriptIntelligence:
+src/webpent/shared/engagement_scope.py:76:def _extract_host(value: str) -> str | None:
+src/webpent/shared/engagement_scope.py:93:def set_engagement_target_hosts(*urls_or_hosts: str | None) -> contextvars.Token:
+src/webpent/shared/engagement_scope.py:125:def clear_engagement_target_hosts(token: contextvars.Token | None = None) -> None:
+src/webpent/shared/engagement_scope.py:157:def get_engagement_target_hosts() -> frozenset[str]:
+src/webpent/shared/engagement_scope.py:162:def is_engagement_target_host(host: str | None) -> bool:
+src/webpent/shared/tool_adapters.py:35:def _now() -> datetime:
+src/webpent/shared/tool_adapters.py:39:def _records(result: Any) -> list[Any]:
+src/webpent/shared/tool_adapters.py:47:def _redaction_status(changed: bool) -> str:
+src/webpent/shared/tool_adapters.py:51:def _safe_error(exc: BaseException) -> str:
+src/webpent/shared/tool_adapters.py:56:class ToolAdapter:
+src/webpent/shared/tool_adapters.py:191:def _httpx_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+src/webpent/shared/tool_adapters.py:197:def _katana_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+src/webpent/shared/tool_adapters.py:203:def _nuclei_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+src/webpent/shared/tool_adapters.py:210:def builtin_adapters() -> dict[str, ToolAdapter]:
+src/webpent/shared/tool_adapters.py:231:def get_tool_adapter(name: str) -> ToolAdapter:
+src/webpent/shared/tool_adapters.py:239:def adapt_result(
+src/webpent/shared/http_discovery.py:19:class _SurfaceParser(HTMLParser):
+src/webpent/shared/http_discovery.py:96:def _origin(url: str) -> tuple[str, str, int | None]:
+src/webpent/shared/http_discovery.py:106:def _same_origin(url: str, base_url: str) -> bool:
+src/webpent/shared/http_discovery.py:113:def _normalise_url(candidate: str, base_url: str) -> str | None:
+src/webpent/shared/http_discovery.py:144:def _is_safe_discovery_get(url: str, *, start_url: str) -> bool:
+src/webpent/shared/http_discovery.py:162:def _get_form_url(action: str, source_url: str, data: dict[str, str]) -> str:
+src/webpent/shared/http_discovery.py:170:def _redact_form_data(data: dict[str, str]) -> dict[str, str]:
+src/webpent/shared/http_discovery.py:177:def discover_http_surface(
+src/webpent/shared/http.py:157:def sanitize_cookie_pair(name: str, value: str) -> tuple[str, str]:
+src/webpent/shared/http.py:169:def build_cookie_header(cookies: dict[str, str] | None) -> str:
+src/webpent/shared/http.py:233:class SSRFRedirectBlockedError(httpx.RequestError):
+src/webpent/shared/http.py:245:def _is_blocked_host(host: str | None) -> bool:
+src/webpent/shared/http.py:290:def _resolve_first_ip(
+src/webpent/shared/http.py:333:def _redirect_guard(response: httpx.Response) -> None:
+src/webpent/shared/http.py:388:class SSRFPinningTransport(httpx.BaseTransport):
+src/webpent/shared/http.py:620:class AsyncSSRFPinningTransport(httpx.AsyncBaseTransport):
+src/webpent/shared/http.py:766:def _replace_host_in_url(url: str, old_host: str, new_host: str) -> str:
+src/webpent/shared/http.py:806:def make_safe_httpx_client(**kwargs: Any) -> httpx.Client:
+src/webpent/shared/http.py:884:def make_safe_httpx_async_client(**kwargs: Any) -> httpx.AsyncClient:
+src/webpent/shared/http.py:944:def resolve_host_for_pinning(hostname: str, port: int = 443) -> str | None:
+src/webpent/shared/http.py:970:def build_host_resolver_rules_args(*hostnames: str) -> list[str]:
+src/webpent/shared/http.py:1052:def install_playwright_ssrf_guard(
+src/webpent/shared/http.py:1386:class _contextlib_suppress_context:
+src/webpent/shared/http.py:1401:def contextlib_suppress() -> _contextlib_suppress_context:
+src/webpent/shared/confidence.py:63:class EvidenceType(str, Enum):
+src/webpent/shared/confidence.py:77:class DevilsAdvocateVerdict(str, Enum):
+src/webpent/shared/confidence.py:150:def compute_confidence_score(
+src/webpent/shared/confidence.py:236:def evidence_type_from_origin(origin: Any) -> EvidenceType:
+src/webpent/shared/confidence.py:261:def recompute_hypothesis_confidence(
+src/webpent/shared/llm.py:78:def _mark_provider_dead(provider: str, reason: str = "") -> None:
+src/webpent/shared/llm.py:104:def _evict_expired_dead_providers() -> None:
+src/webpent/shared/llm.py:131:def _is_provider_dead(provider: str) -> bool:
+src/webpent/shared/llm.py:146:def reset_dead_providers() -> None:
+src/webpent/shared/llm.py:152:def get_dead_providers() -> dict[str, float]:
+src/webpent/shared/llm.py:181:class TaskType(str, Enum):
+src/webpent/shared/llm.py:281:def _api_key_for_provider(provider: str, settings: Settings) -> str | None:
+src/webpent/shared/llm.py:309:def _should_trip_circuit_breaker(exc: BaseException) -> bool:
+src/webpent/shared/llm.py:373:def _build_openai_compatible(
+src/webpent/shared/llm.py:395:def _build_mistral(
+src/webpent/shared/llm.py:415:def _build_gemini(
+src/webpent/shared/llm.py:444:def _build_cohere(
+src/webpent/shared/llm.py:479:def _build_anthropic(
+src/webpent/shared/llm.py:503:def _build_cloudflare(
+src/webpent/shared/llm.py:577:def _build_model(
+src/webpent/shared/llm.py:684:def get_llm_diagnostics(
+src/webpent/shared/llm.py:717:def get_llm(
+src/webpent/shared/llm.py:810:def try_get_llm(
+src/webpent/shared/llm.py:833:def supports_prompt_caching(task_type: TaskType = TaskType.GENERAL) -> bool:
+src/webpent/shared/llm.py:872:def get_cached_llm(task_type: TaskType = TaskType.GENERAL) -> Runnable:
+src/webpent/shared/llm.py:917:def _get_cached_llm_dynamic(task_type: TaskType) -> Runnable:
+src/webpent/shared/llm.py:980:def _resolve_primary_provider(task_type: TaskType) -> str | None:
+src/webpent/shared/llm.py:1000:def clear_cached_llms() -> None:
+src/webpent/shared/llm.py:1210:def _homoglyph_skeleton(val: str) -> str:
+src/webpent/shared/llm.py:1229:def _sanitize_untrusted(val: str) -> str:
+src/webpent/shared/llm.py:1317:def deep_sanitize(data: object) -> object:
+src/webpent/shared/llm.py:1342:def safe_prompt_format(template: str, **kwargs: object) -> str:
+src/webpent/shared/llm.py:1376:def get_safety_system_instruction() -> str:
+src/webpent/shared/report_quality.py:28:class FindingQualityResult(BaseModel):
+src/webpent/shared/report_quality.py:43:class ReportQualityResult(BaseModel):
+src/webpent/shared/report_quality.py:59:class ReportQualityGateError(ValueError):
+src/webpent/shared/report_quality.py:74:def _as_dict(value: Any) -> dict[str, Any]:
+src/webpent/shared/report_quality.py:86:def _nested_value(container: Any, *keys: str) -> Any:
+src/webpent/shared/report_quality.py:95:def _evidence_dict(finding: Any) -> dict[str, Any]:
+src/webpent/shared/report_quality.py:100:def _has_reproduction(finding: Any, evidence: dict[str, Any], bundle: Any) -> bool:
+src/webpent/shared/report_quality.py:109:def lifecycle_stage(finding: Any) -> str:
+src/webpent/shared/report_quality.py:136:def validate_finding_quality(finding: Any) -> FindingQualityResult:
+src/webpent/shared/report_quality.py:203:def evaluate_report_quality(findings: Iterable[Any]) -> ReportQualityResult:
+src/webpent/shared/report_quality.py:216:def enforce_report_quality(findings: Iterable[Any]) -> ReportQualityResult:
+src/webpent/shared/console.py:59:def _severity_style(severity: str) -> str:
+src/webpent/shared/console.py:73:def render_phase(phase_name: str, detail: str | None = None) -> None:
+src/webpent/shared/console.py:95:def render_findings_table(findings: Sequence, title: str = "Findings") -> None:
+src/webpent/shared/console.py:148:def render_summary(
+src/webpent/shared/console.py:178:def render_error(message: str, detail: str | None = None) -> None:
+src/webpent/shared/console.py:200:def configure_logging(debug: bool = False) -> None:
+src/webpent/shared/console.py:272:def print_info(message: str) -> None:
+src/webpent/shared/console.py:277:def print_success(message: str) -> None:
+src/webpent/shared/workflow_understanding.py:32:def _text(value: Any) -> str:
+src/webpent/shared/workflow_understanding.py:39:def _url(value: Any, *, base_url: str = "") -> str:
+src/webpent/shared/workflow_understanding.py:58:def _method(value: Any) -> str:
+src/webpent/shared/workflow_understanding.py:67:def _iter_dicts(value: Any) -> Iterable[dict[str, Any]]:
+src/webpent/shared/workflow_understanding.py:74:def _state_from_record(record: dict[str, Any]) -> str:
+src/webpent/shared/workflow_understanding.py:86:def _signals(record: dict[str, Any], *, form: bool = False) -> list[str]:
+src/webpent/shared/workflow_understanding.py:111:def _prerequisites(record: dict[str, Any]) -> list[str]:
+src/webpent/shared/workflow_understanding.py:130:def _fingerprint(payload: dict[str, Any]) -> str:
+src/webpent/shared/workflow_understanding.py:134:def extract_workflow_observations(
+src/webpent/shared/workflow_understanding.py:228:def generate_business_logic_hypotheses(
+src/webpent/shared/workflow_understanding.py:357:def workflow_coverage_gaps(
+src/webpent/shared/disclosed_report_intel.py:31:def _redact(text: str) -> str:
+src/webpent/shared/disclosed_report_intel.py:37:def _fingerprint(source: str, text: str) -> str:
+src/webpent/shared/disclosed_report_intel.py:41:def _classify(text: str) -> list[str]:
+src/webpent/shared/disclosed_report_intel.py:46:def ingest_disclosed_reports(documents: Iterable[str | dict[str, Any]], *, max_documents: int = 200) -> list[dict[str, Any]]:
+src/webpent/shared/disclosed_report_intel.py:78:def search_disclosed_reports(records: Iterable[dict[str, Any]], query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+src/webpent/shared/disclosed_report_intel.py:95:def build_advisories(
+src/webpent/shared/stealth.py:54:def _draw_jitter_seconds() -> float:
+src/webpent/shared/stealth.py:70:def apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
+src/webpent/shared/stealth.py:127:def enforce_min_interval(stealth_mode: bool, host: str) -> float:
+src/webpent/shared/stealth.py:205:def extract_host(url: str) -> str:
+src/webpent/shared/stealth.py:219:def reset_rate_limits() -> None:
+src/webpent/shared/poc_policy.py:18:class PocGateDecision:
+src/webpent/shared/poc_policy.py:30:def evaluate_poc_risk(
+src/webpent/shared/poc_policy.py:76:def _value(item: Any, key: str, default: Any = None) -> Any:
+src/webpent/shared/poc_policy.py:83:def _normalise_value(value: Any) -> str:
+src/webpent/shared/poc_policy.py:88:def derive_execution_risk(state: dict[str, Any]) -> str:
+src/webpent/shared/poc_policy.py:121:def evaluate_execution_gate(state: dict[str, Any]) -> PocGateDecision:
+src/webpent/shared/jwt_deep_testing.py:45:def _b64url_decode(value: str) -> bytes:
+src/webpent/shared/jwt_deep_testing.py:50:def _safe_json_segment(value: str) -> dict[str, Any] | None:
+src/webpent/shared/jwt_deep_testing.py:59:def token_fingerprint(token: str) -> str:
+src/webpent/shared/jwt_deep_testing.py:64:def parse_compact_jwt(token: str) -> dict[str, Any] | None:
+src/webpent/shared/jwt_deep_testing.py:88:def extract_candidate_jwts(value: Any, *, max_tokens: int = 100) -> list[str]:
+src/webpent/shared/jwt_deep_testing.py:123:def _verify_hmac(token: str, secret: str, algorithm: str) -> bool:
+src/webpent/shared/jwt_deep_testing.py:138:def analyze_captured_jwt(
+src/webpent/shared/jwt_deep_testing.py:212:def redact_jwt_observation(value: Any) -> Any:
+src/webpent/shared/rate_governor.py:52:class Permit:
+src/webpent/shared/rate_governor.py:100:class RequestRateGovernor:
+src/webpent/shared/rate_governor.py:289:def get_rate_governor() -> RequestRateGovernor:
+src/webpent/shared/reference_lookup.py:14:def _load_allowlist() -> list[dict[str, Any]]:
+src/webpent/shared/reference_lookup.py:22:def _is_url_allowed(url: str, allowlist: list[dict[str, Any]]) -> bool:
+src/webpent/shared/reference_lookup.py:32:def reference_lookup(query: str, finding_id: str, *, source: str = "hacktricks", max_results: int = 3) -> str:
+src/webpent/shared/reference_lookup.py:77:def reset_lookup_budget(finding_id: str | None = None) -> None:
+src/webpent/shared/exceptions.py:15:class WebPentError(Exception):
+src/webpent/shared/exceptions.py:23:class ToolNotFoundError(WebPentError):
+src/webpent/shared/exceptions.py:39:class ToolNotInstalledError(ToolNotFoundError):
+src/webpent/shared/exceptions.py:62:class ToolExecutionError(WebPentError):
+src/webpent/shared/adaptive_hunt.py:63:def _get(value: Any, key: str, default: Any = None) -> Any:
+src/webpent/shared/adaptive_hunt.py:69:def _text(value: Any) -> str:
+src/webpent/shared/adaptive_hunt.py:73:def _enum_value(value: Any) -> str:
+src/webpent/shared/adaptive_hunt.py:78:def _normalise_url(url: str) -> str:
+src/webpent/shared/adaptive_hunt.py:100:def _stable_key(*parts: Any) -> str:
+src/webpent/shared/adaptive_hunt.py:105:def _safe_context_value(value: Any) -> str | None:
+src/webpent/shared/adaptive_hunt.py:117:def _evidence_dict(finding: Any) -> dict[str, Any]:
+src/webpent/shared/adaptive_hunt.py:122:def _finding_context(finding: Any) -> dict[str, Any]:
+src/webpent/shared/adaptive_hunt.py:136:def _confidence_number(value: Any) -> float:
+src/webpent/shared/adaptive_hunt.py:143:def _first_context_value(context: dict[str, Any], *keys: str) -> str | None:
+src/webpent/shared/adaptive_hunt.py:152:def _budget_for(task_type: str) -> BranchBudget:
+src/webpent/shared/adaptive_hunt.py:172:def _candidate(
+src/webpent/shared/adaptive_hunt.py:214:def build_targeted_revisit_tasks(
+src/webpent/shared/adaptive_hunt.py:370:def _severity_score(context: dict[str, Any]) -> float:
+src/webpent/shared/adaptive_hunt.py:376:def _evidence_score(context: dict[str, Any]) -> float:
+src/webpent/shared/adaptive_hunt.py:387:def score_revisit_task(
+src/webpent/shared/adaptive_hunt.py:447:def prioritize_revisit_tasks(
+src/webpent/shared/adaptive_hunt.py:487:def apply_revisit_outcome(task: RevisitTask, outcome: RevisitOutcome) -> RevisitTask:
+src/webpent/shared/adaptive_hunt.py:509:def adaptive_hunt_enabled() -> bool:
+src/webpent/shared/adaptive_hunt.py:518:def build_adaptive_hunt_update(state: Any) -> dict[str, Any]:
+src/webpent/shared/planner_decisions.py:46:def redact_prompt_target(url: str) -> str:
+src/webpent/shared/planner_decisions.py:67:def _get(value: Any, key: str, default: Any = None) -> Any:
+src/webpent/shared/planner_decisions.py:73:def _enum_value(value: Any) -> str:
+src/webpent/shared/planner_decisions.py:78:def _known_target_refs(state: dict[str, Any]) -> set[str]:
+src/webpent/shared/planner_decisions.py:90:def _known_hypothesis_refs(state: dict[str, Any]) -> set[str]:
+src/webpent/shared/planner_decisions.py:99:def _deterministic_proposal(state: dict[str, Any]) -> PlannerDecisionProposal:
+src/webpent/shared/planner_decisions.py:145:def parse_proposal(raw: Any) -> PlannerDecisionProposal:
+src/webpent/shared/planner_decisions.py:162:def evaluate_proposal(
+src/webpent/shared/planner_decisions.py:246:def build_planner_decision(
+src/webpent/shared/attack_graph.py:42:def _stable_ref(value: Any, *, prefix: str) -> str:
+src/webpent/shared/attack_graph.py:49:def _safe_url(value: Any) -> str | None:
+src/webpent/shared/attack_graph.py:61:def _endpoint_identity(value: Any) -> str | None:
+src/webpent/shared/attack_graph.py:82:def _mental_node_id(prefix: str, identity_key: str) -> str:
+src/webpent/shared/attack_graph.py:88:def _credential_node_id(prefix: str, raw_value: Any) -> str:
+src/webpent/shared/attack_graph.py:93:def _safe_metadata(value: Any) -> dict[str, Any]:
+src/webpent/shared/attack_graph.py:117:def _node_from_mental_model(node_id: str, node: MentalModelNode) -> AttackGraphNode:
+src/webpent/shared/attack_graph.py:141:def _add_edge(
+src/webpent/shared/attack_graph.py:170:def _coerce_graph_node_id(value: Any, *, kind: str, graph: AttackGraph) -> str | None:
+src/webpent/shared/attack_graph.py:200:def _add_relational_edges(graph: AttackGraph, relational_evidence: Iterable[Any]) -> None:
+src/webpent/shared/attack_graph.py:265:def _add_finding_nodes(graph: AttackGraph, findings: Iterable[Any]) -> None:
+src/webpent/shared/attack_graph.py:297:def _add_hypothesis_nodes(graph: AttackGraph, hypotheses: Iterable[Any]) -> None:
+src/webpent/shared/attack_graph.py:328:def build_attack_graph(
+src/webpent/shared/preflight.py:38:def _check_alembic() -> dict[str, object]:
+src/webpent/shared/preflight.py:64:def _check_playwright_ws_guard() -> dict[str, object]:
+src/webpent/shared/preflight.py:107:def _check_embeddings() -> dict[str, object]:
+src/webpent/shared/preflight.py:147:def _check_celery_payload_key() -> dict[str, object]:
+src/webpent/shared/preflight.py:182:def _truthy_env(name: str) -> bool:
+src/webpent/shared/preflight.py:187:def _enforce_api_security_posture(
+src/webpent/shared/preflight.py:254:def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
+src/webpent/shared/self_critique.py:94:class SelfCritiqueCheckpoint(str, Enum):
+src/webpent/shared/self_critique.py:110:class SelfCritiqueAction(str, Enum):
+src/webpent/shared/self_critique.py:166:def _write_decision_log_entry(
+src/webpent/shared/self_critique.py:222:def _extract_deterministic_signals(
+src/webpent/shared/self_critique.py:371:def _ask_llm_unproductive(
+src/webpent/shared/self_critique.py:490:def recommend_self_critique_action(
+src/webpent/shared/self_critique.py:639:def _check_risk_manager_caps(caps: dict[str, Any]) -> str | None:
+src/webpent/shared/self_critique.py:679:def should_fire_before_promotion(hypothesis: Hypothesis) -> bool:
+src/webpent/shared/self_critique.py:696:def should_fire_every_n_discoveries(
+src/webpent/shared/cognitive_components.py:56:def compute_evidence_quality_score(
+src/webpent/shared/cognitive_components.py:111:class ActionType(str, Enum):
+src/webpent/shared/cognitive_components.py:143:def estimate_action_cost(action_type: ActionType | str) -> float:
+src/webpent/shared/cognitive_components.py:173:class FollowableArtifactType(str, Enum):
+src/webpent/shared/cognitive_components.py:260:def classify_followable_artifact(
+src/webpent/shared/cognitive_components.py:295:class OnlineLearningEvent(str, Enum):
+src/webpent/shared/cognitive_components.py:362:def apply_online_learning_delta(
+src/webpent/shared/cognitive_components.py:393:def check_loop_prevention(
+src/webpent/shared/cognitive_components.py:422:def record_visited_asset(
+src/webpent/shared/cognitive_components.py:468:class ForcedHITLCategories:
+src/webpent/shared/skill_selector.py:10:def _load_skills() -> list[dict[str, Any]]:
+src/webpent/shared/skill_selector.py:18:def select_skills(current_phase: str, vuln_class: str | None = None) -> list[dict[str, Any]]:
+src/webpent/shared/skill_selector.py:29:def get_skill_reference(skill: dict[str, Any], finding_id: str) -> str:
+src/webpent/shared/recon_triage.py:51:class EndpointTriage:
+src/webpent/shared/recon_triage.py:78:def _normalise_endpoint(value: Any) -> str | None:
+src/webpent/shared/recon_triage.py:88:def _tokens(parsed: Any) -> tuple[str, ...]:
+src/webpent/shared/recon_triage.py:94:def classify_endpoint(url: str, *, discovery_index: int = 0) -> EndpointTriage | None:
+src/webpent/shared/recon_triage.py:147:def build_coverage_preserving_queue(
+src/webpent/shared/grounding.py:42:def verify_citation(
+src/webpent/shared/grounding.py:78:def extract_cited_strings(llm_reasoning: str) -> list[str]:
+src/webpent/shared/grounding.py:111:def verify_all_citations(
+src/webpent/shared/grounding.py:141:def generate_canary_token() -> str:
+src/webpent/shared/grounding.py:156:def canary_in_response(canary_token: str, response_body: str) -> bool:
+src/webpent/shared/grounding.py:179:class EvidenceBundle:
+src/webpent/shared/grounding.py:232:def capture_evidence_bundle(
+src/webpent/shared/grounding.py:291:class BaselineDifferential:
+src/webpent/shared/grounding.py:310:def _normalize_body(body: str | None) -> str:
+src/webpent/shared/grounding.py:321:def compare_responses(
+src/webpent/shared/grounding.py:475:def baseline_differential_test(
+src/webpent/shared/authorization_matrix.py:25:def _text(value: Any, default: str = "") -> str:
+src/webpent/shared/authorization_matrix.py:29:def _safe_endpoint(value: Any) -> str:
+src/webpent/shared/authorization_matrix.py:50:def _observation_key(row: Mapping[str, Any]) -> tuple[str, str, str, str]:
+src/webpent/shared/authorization_matrix.py:59:def _identity_relation(row: Mapping[str, Any], owner_identity: str | None) -> str:
+src/webpent/shared/authorization_matrix.py:68:def _expected_access(row: Mapping[str, Any], relation: str) -> str:
+src/webpent/shared/authorization_matrix.py:79:def build_authorization_matrix(
+src/webpent/shared/prioritization.py:71:def _normalize_finding_url(url: str, vuln_class: str) -> str:
+src/webpent/shared/prioritization.py:197:def _evidence_quality_score(hypothesis: Hypothesis, state: Any) -> float:
+src/webpent/shared/prioritization.py:283:def _write_decision_log_entry(
+src/webpent/shared/prioritization.py:332:def score_hypothesis(
+src/webpent/shared/prioritization.py:425:def _coerce_hypothesis(h: Any) -> Hypothesis | None:
+src/webpent/shared/prioritization.py:474:def rank_open_hypotheses(
+src/webpent/shared/prioritization.py:538:class PrioritizationAction(str, Enum):
+src/webpent/shared/prioritization.py:597:def _deterministic_promotion_allowed(
+src/webpent/shared/prioritization.py:613:def recommend_action(
+src/webpent/shared/prioritization.py:742:def promote_hypothesis_to_finding(
+src/webpent/graph/checkpoints.py:27:def _ensure_parent_dir(db_path: str) -> None:
+src/webpent/graph/checkpoints.py:36:def _managed_fallback_saver(conn: sqlite3.Connection) -> Iterator[SqliteSaver]:
+src/webpent/graph/checkpoints.py:62:def get_checkpointer(db_path: str = _DEFAULT_SESSIONS_DB_PATH):
+src/webpent/graph/builder.py:147:def _is_exploitable(finding: Finding) -> bool:
+src/webpent/graph/builder.py:161:def _meets_severity_threshold(finding: Finding) -> bool:
+src/webpent/graph/builder.py:167:def _attack_graph_enabled() -> bool:
+src/webpent/graph/builder.py:177:def route_after_disclosed_report_intel(state: PentestState) -> str:
+src/webpent/graph/builder.py:183:def _target_understanding_enabled() -> bool:
+src/webpent/graph/builder.py:192:def _js_intelligence_enabled() -> bool:
+src/webpent/graph/builder.py:201:def route_after_crawler(state: PentestState) -> str:
+src/webpent/graph/builder.py:207:def route_after_infrastructure(state: PentestState) -> str:
+src/webpent/graph/builder.py:213:def route_after_auth(state: PentestState) -> str:
+src/webpent/graph/builder.py:228:def route_after_hypothesis(state: PentestState) -> str:
+src/webpent/graph/builder.py:322:def route_after_chainer(state: PentestState) -> str:
+src/webpent/graph/builder.py:347:def route_after_rabbit_hole(state: PentestState) -> str:
+src/webpent/graph/builder.py:417:def route_after_validator(state: PentestState) -> str:
+src/webpent/graph/builder.py:481:def build_graph(checkpointer: Any = None, auto_approve: bool = False):
+src/webpent/agents/access_control/agent.py:45:def _extract_candidate_records(crawled_data: Any) -> list[dict[str, Any]]:
+src/webpent/agents/access_control/agent.py:100:def _extract_idor_candidates(crawled_data: dict[str, Any]) -> list[str]:
+src/webpent/agents/access_control/agent.py:105:def _probe_url(
+src/webpent/agents/access_control/agent.py:137:def _create_idor_finding(
+src/webpent/agents/access_control/agent.py:172:def _public_identity_rows(profiles: list[IdentityProfile]) -> dict[str, dict[str, Any]]:
+src/webpent/agents/access_control/agent.py:176:def _identity_profiles_from_state(state: PentestState) -> list[IdentityProfile]:
+src/webpent/agents/access_control/agent.py:186:def access_control_node(state: PentestState) -> dict:
+src/webpent/agents/payload_generator/agent.py:182:def _is_exploitable(finding: Finding) -> bool:
+src/webpent/agents/payload_generator/agent.py:191:def _meets_severity_threshold(finding: Finding) -> bool:
+src/webpent/agents/payload_generator/agent.py:197:def _exploitability_score(finding: Finding) -> int:
+src/webpent/agents/payload_generator/agent.py:246:def _rank_findings_for_payload_generation(
+src/webpent/agents/payload_generator/agent.py:277:def _parse_payloads(raw_response: str) -> list[str]:
+src/webpent/agents/payload_generator/agent.py:298:def _retrieve_payload_reference(finding: Finding, stack: str | None = None) -> str:
+src/webpent/agents/payload_generator/agent.py:437:def _generate_payloads_for_finding(
+src/webpent/agents/payload_generator/agent.py:606:def payload_generator_node(state: PentestState) -> dict:
+src/webpent/agents/hypothesis_analyzer/agent.py:76:def _sanitize_retrieved_lessons(lessons: list[str]) -> list[str]:
+src/webpent/agents/hypothesis_analyzer/agent.py:123:def _retrieve_relevant_knowledge(target_url: str) -> str:
+src/webpent/agents/hypothesis_analyzer/agent.py:141:def _retrieve_with_memory_boundary(
+src/webpent/agents/hypothesis_analyzer/agent.py:240:def _analyze_url_for_hypotheses(url: str) -> list[tuple[str, str]]:
+src/webpent/agents/hypothesis_analyzer/agent.py:427:def _classify_by_url_path(url: str) -> tuple[str, str] | None:
+src/webpent/agents/hypothesis_analyzer/agent.py:488:def hypothesis_node(state: PentestState) -> dict:
+src/webpent/agents/reporter/agent.py:105:def _compose_bug_bounty_markdown(
+src/webpent/agents/reporter/agent.py:173:def _sanitize_cell(value: str) -> str:
+src/webpent/agents/reporter/agent.py:177:def _render_findings_table(findings: Iterable[Finding]) -> str:
+src/webpent/agents/reporter/agent.py:200:def _build_human_prompt(target_url: str, findings: list[Finding]) -> str:
+src/webpent/agents/reporter/agent.py:212:def _compose_markdown(
+src/webpent/agents/reporter/agent.py:259:def _save_report(content: str, output_dir: Path, filename: str) -> Path:
+src/webpent/agents/reporter/agent.py:266:def _compute_stats(findings: list[Finding]) -> dict[str, int]:
+src/webpent/agents/reporter/agent.py:286:def _findings_to_dicts(findings: list[Finding]) -> list[dict[str, Any]]:
+src/webpent/agents/reporter/agent.py:305:def _render_html_report(

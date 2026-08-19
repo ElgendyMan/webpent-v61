@@ -1,0 +1,113 @@
+"""Deterministic cumulative finding aggregation.
+
+Findings are persisted per scan thread for tenant isolation.  A logical
+engagement may contain several scan threads, so reporting needs a bounded,
+deterministic merge across those threads.  This module deliberately does not
+change Finding IDs or database rows; it only controls the read-side projection.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
+from hashlib import sha256
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from webpent.models.findings import Confidence, Finding, Severity
+
+_SEVERITY_RANK = {
+    Severity.INFO.value: 0,
+    Severity.LOW.value: 1,
+    Severity.MEDIUM.value: 2,
+    Severity.HIGH.value: 3,
+    Severity.CRITICAL.value: 4,
+}
+_CONFIDENCE_RANK = {
+    Confidence.TENTATIVE.value: 0,
+    Confidence.FIRM.value: 1,
+    Confidence.CONFIRMED.value: 2,
+}
+_CONFIDENCE_LEVEL_RANK = {
+    "pending": 0,
+    "needs human review": 1,
+    "ai-assessed": 2,
+    "tool-confirmed": 3,
+}
+
+
+def _value(value: object) -> str:
+    return str(getattr(value, "value", value) or "").strip().lower()
+
+
+def _normalise_url(url: str) -> str:
+    """Normalise URL without discarding query parameter names."""
+    try:
+        parsed = urlsplit(str(url).strip())
+        query_keys = sorted(
+            (key.strip().lower(), "")
+            for key, _value in parse_qsl(parsed.query, keep_blank_values=True)
+            if key.strip()
+        )
+        query = urlencode(query_keys)
+        return urlunsplit(
+            (
+                parsed.scheme.lower(),
+                parsed.netloc.lower(),
+                parsed.path.rstrip("/") or "/",
+                query,
+                "",
+            )
+        )
+    except ValueError:
+        return str(url).strip().lower().rstrip("/")
+
+
+def default_engagement_id(target_url: str, client_id: str | None = None) -> str:
+    """Derive a stable, non-secret scope for repeated scans of one target."""
+    scope = f"{_normalise_url(target_url)}|{str(client_id or '').strip()}"
+    return f"target-{sha256(scope.encode('utf-8')).hexdigest()[:24]}"
+
+
+def finding_fingerprint(finding: Finding) -> str:
+    """Return the stable logical identity used for cross-run deduplication.
+
+    The identity intentionally includes vulnerability class, title, and
+    normalised affected URL.  It does not include UUIDs, timestamps, payloads,
+    or tool names, because those commonly change between repeated scans of the
+    same issue.
+    """
+    vuln_class = _value(finding.vuln_class) or "unknown"
+    title = " ".join(str(finding.title).lower().split())
+    return "|".join((vuln_class, _normalise_url(finding.url), title))
+
+
+def _strength(finding: Finding) -> tuple[int, int, int, float]:
+    confidence_level = _CONFIDENCE_LEVEL_RANK.get(_value(finding.confidence_level), 0)
+    confidence = _CONFIDENCE_RANK.get(_value(finding.confidence), 0)
+    severity = _SEVERITY_RANK.get(_value(finding.severity), 0)
+    cvss = 0.0
+    if finding.cvss_score:
+        try:
+            cvss = float(str(finding.cvss_score).split()[0])
+        except (TypeError, ValueError):
+            cvss = 0.0
+    return confidence_level, confidence, severity, cvss
+
+
+def aggregate_findings(findings: Iterable[Finding]) -> list[Finding]:
+    """Merge findings across runs while preserving distinct vulnerabilities.
+
+    When repeated runs report the same logical issue, the strongest record is
+    retained.  A confirmed finding therefore cannot be replaced by a newer
+    tentative candidate.  Different classes, URLs, or titles remain separate.
+    Output order is deterministic by creation time and UUID.
+    """
+    selected: dict[str, Finding] = {}
+    for finding in findings:
+        key = finding_fingerprint(finding)
+        current = selected.get(key)
+        if current is None or _strength(finding) > _strength(current):
+            selected[key] = finding
+    return sorted(
+        selected.values(),
+        key=lambda item: (item.created_at.isoformat(), str(item.id)),
+    )

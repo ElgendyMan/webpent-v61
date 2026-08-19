@@ -1,0 +1,289 @@
+{
+  "campaign_ledger": {
+    "entries": [
+      {
+        "evidence_complete": false,
+        "id": 1,
+        "key": "header_sqli",
+        "status": "not_observed",
+        "surfaces": [
+          "headers",
+          "query",
+          "logging"
+        ],
+        "validator": "sqli",
+        "validator_id": "sqli"
+      },
+      {
+        "evidence_complete": false,
+        "id": 2,
+        "key": "csv_ingestion_sqli",
+        "status": "not_observed",
+        "surfaces": [
+          "multipart",
+          "csv",
+          "worker"
+        ],
+        "validator": "sqli",
+        "validator_id": "sqli"
+      },
+      {
+        "evidence_complete": false,
+        "id": 3,
+        "key": "jwt_path_traversal",
+        "status": "not_observed",
+        "surfaces": [
+          "jwt",
+          "path",
+          "download"
+        ],
+        "validator": "path_traversal",
+        "validator_id": "path_traversal"
+      },
+      {
+        "evidence_complete": false,
+        "id": 4,
+        "key": "double_slash_redirect",
+        "status": "not_observed",
+        "surfaces": [
+          "redirect",
+          "path"
+        ],
+        "validator": "open_redirect",
+        "validator_id": "open_redirect"
+      },
+      {
+        "evidence_complete": false,
+        "id": 5,
+        "key": "oauth_redirect_uri",
+        "status": "not_observed",
+        "surfaces": [
+          "oauth",
+          "redirect",
+          "callback"
+        ],
+        "validator": "open_redirect",
+        "validator_id": "open_redirect"
+      },
+      {
+        "evidence_complete": false,
+        "id": 6,
+        "key": "download_idor",
+        "status": "missing-validator",
+        "surfaces": [
+          "download",
+          "object",
+          "identity"
+        ],
+        "validator": "idor",
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 7,
+        "key": "tenant_context_switching",
+        "status": "missing-validator",
+        "surfaces": [
+          "tenant",
+          "identity",
+          "object"
+        ],
+        "validator": "idor",
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 8,
+        "key": "training_email_ssti",
+        "status": "not_observed",
+        "surfaces": [
+          "template",
+          "email",
+          "workflow"
+        ],
+        "validator": "ssti",
+        "validator_id": "ssti"
+      },
+      {
+        "evidence_complete": false,
+        "id": 9,
+        "key": "export_blade_ssti",
+        "status": "not_observed",
+        "surfaces": [
+          "export",
+          "template",
+          "download"
+        ],
+        "validator": "ssti",
+        "validator_id": "ssti"
+      },
+      {
+        "evidence_complete": false,
+        "id": 10,
+        "key": "swagger_url_ssrf",
+        "status": "not_observed",
+        "surfaces": [
+          "swagger",
+          "openapi",
+          "url"
+        ],
+        "validator": "ssrf",
+        "validator_id": "ssrf"
+      },
+      {
+        "evidence_complete": false,
+        "id": 11,
+        "key": "image_fetch_ssrf",
+        "status": "not_observed",
+        "surfaces": [
+          "profile",
+          "image",
+          "url"
+        ],
+        "validator": "ssrf",
+        "validator_id": "ssrf"
+      },
+      {
+        "evidence_complete": false,
+        "id": 12,
+        "key": "stored_profile_xss",
+        "status": "not_observed",
+        "surfaces": [
+          "profile",
+          "stored",
+          "browser"
+        ],
+        "validator": "xss",
+        "validator_id": "xss"
+      },
+      {
+        "evidence_complete": false,
+        "id": 13,
+        "key": "quoted_field_xss",
+        "status": "not_observed",
+        "surfaces": [
+          "profile",
+          "form",
+          "attribute"
+        ],
+        "validator": "xss",
+        "validator_id": "xss"
+      },
+      {
+        "evidence_complete": false,
+        "id": 14,
+        "key": "elasticsearch_snapshot_traversal",
+        "status": "missing-validator",
+        "surfaces": [
+          "elasticsearch",
+          "snapshot",
+          "service"
+        ],
+        "validator": null,
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 15,
+        "key": "public_backup_disclosure",
+        "status": "missing-validator",
+        "surfaces": [
+          "backup",
+          "artifact",
+          "download"
+        ],
+        "validator": "info_disclosure",
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 16,
+        "key": "laravel_app_debug",
+        "status": "missing-validator",
+        "surfaces": [
+          "error",
+          "debug",
+          "laravel"
+        ],
+        "validator": "info_disclosure",
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 17,
+        "key": "frontend_dependency_exposure",
+        "status": "not_observed",
+        "surfaces": [
+          "javascript",
+          "sbom",
+          "bundle"
+        ],
+        "validator": "javascript",
+        "validator_id": "javascript"
+      },
+      {
+        "evidence_complete": false,
+        "id": 18,
+        "key": "public_elasticsearch_exposure",
+        "status": "missing-validator",
+        "surfaces": [
+          "elasticsearch",
+          "service",
+          "network"
+        ],
+        "validator": "info_disclosure",
+        "validator_id": null
+      },
+      {
+        "evidence_complete": false,
+        "id": 19,
+        "key": "oob_xxe",
+        "status": "not_observed",
+        "surfaces": [
+          "xml",
+          "multipart",
+          "oob"
+        ],
+        "validator": "xxe",
+        "validator_id": "xxe"
+      },
+      {
+        "evidence_complete": false,
+        "id": 20,
+        "key": "xslt_injection",
+        "status": "missing-validator",
+        "surfaces": [
+          "xml",
+          "xslt",
+          "multipart"
+        ],
+        "validator": null,
+        "validator_id": null
+      }
+    ],
+    "source": "waptlab_audit_campaign_matrix",
+    "summary": {
+      "missing-validator": 7,
+      "not_observed": 13
+    },
+    "version": 1
+  },
+  "captured_at": "2026-08-18T10:52:27.182894+00:00",
+  "platform": "Linux-6.1.102-x86_64-with-glibc2.39",
+  "project": "WebPent v60",
+  "project_root": "/home/ubuntu/webpent_v60",
+  "pytest": "pytest 9.1.1",
+  "python": "3.12.3",
+  "root_file_sha256": {
+    "pyproject.toml": "124f60f3189132bdf70cbe38e415cdb3777b3b4896df5495d645ecfd641d94d2",
+    "uv.lock": "fcd0e8d544c40f033d90590aedb19ca4167116f7be3a9bf024942ea409078375"
+  },
+  "ruff": "ruff 0.16.3",
+  "safety_statement": "This baseline is inventory/evidence accounting only. It does not claim that unobserved campaigns are negative or confirmed.",
+  "schema_version": "vip-baseline-v1",
+  "test_function_count": 498,
+  "waptlab_fixture": {
+    "available": false,
+    "reason": "No local WAPTLab fixture directory is present; no remote target was contacted."
+  }
+}

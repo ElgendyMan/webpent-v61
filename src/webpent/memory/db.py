@@ -1,0 +1,1144 @@
+# src/webpent/memory/db.py
+"""webpent.memory.db
+
+Lightweight SQLite persistence layer for the WebPent Framework V1/V2/V3.
+
+V3 audit fix (Part 2 W-1): enables WAL mode and busy_timeout on every
+file-backed connection to prevent ``database is locked`` errors under
+concurrent multi-worker Celery writes.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import sqlite3
+import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import UUID
+
+from webpent.config.settings import get_settings
+from webpent.models.findings import Confidence, Finding, Severity
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _suppress_sqlite_errors() -> Iterator[None]:
+    """Swallow sqlite3.OperationalError exceptions.
+
+    V5 Sprint 9: Used inside ``mark_oob_confirmed``'s exception handler
+    to ensure ROLLBACK failures (e.g. when the connection is already in
+    a broken state) do not mask the original exception that triggered
+    the rollback.
+    """
+    with suppress(sqlite3.Error):
+        yield
+
+
+def _resolve_db_path(database_url: str) -> Path:
+    """Resolve a database URL to an absolute :class:`Path`.
+
+    V6.1 P0: Relative paths are anchored to the project root
+    (``Path(__file__).resolve().parents[3]``) rather than ``os.getcwd()``
+    which changes depending on where the process is launched from.
+    """
+    prefix = "sqlite:///"
+    if database_url == "sqlite://":
+        return Path(":memory:")
+    if not database_url.startswith(prefix):
+        raise ValueError(
+            f"Unsupported database URL scheme: {database_url!r}. "
+            "Only 'sqlite:///' URLs are supported."
+        )
+    raw_path = database_url[len(prefix) :]
+    p = Path(raw_path)
+    # V6.1 P0: If the path is relative, anchor it to the project root.
+    # This prevents the DB from being created in whatever CWD the
+    # process happens to be in (e.g., /app vs /app/src vs /).
+    if not p.is_absolute():
+        # db.py is at src/webpent/memory/db.py → parents[3] = project root.
+        project_root = Path(__file__).resolve().parents[3]
+        p = project_root / p
+    return p
+
+
+FINDINGS_DDL = """
+CREATE TABLE IF NOT EXISTS findings (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    severity    TEXT NOT NULL,
+    description TEXT NOT NULL,
+    tool_name   TEXT NOT NULL,
+    payload     TEXT,
+    url         TEXT NOT NULL,
+    confidence  TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    evidence    TEXT,
+    "references" TEXT NOT NULL DEFAULT '[]',
+    cvss_score      TEXT,
+    business_impact TEXT,
+    confidence_level TEXT,
+    reasoning TEXT,
+    oob_token TEXT,
+    canary_token TEXT,
+    evidence_bundle TEXT,
+    compliance_tags TEXT NOT NULL DEFAULT '[]',
+    evidence_hash TEXT,
+    post_exploitation_data TEXT,
+    vuln_class TEXT DEFAULT 'unknown',
+    strategic_confidence_score REAL,
+    hypothesis_id TEXT,
+    thread_id TEXT
+);
+"""
+
+# V10 P0-C: index on thread_id so get_findings_by_thread doesn't
+# full-scan on every status poll. Created alongside FINDINGS_DDL.
+FINDINGS_INDEX_DDL = """
+CREATE INDEX IF NOT EXISTS ix_findings_thread_id ON findings(thread_id);
+"""
+
+AUTH_TOKEN_VERSIONS_DDL = """
+CREATE TABLE IF NOT EXISTS auth_token_versions (
+    username TEXT PRIMARY KEY,
+    token_version INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL
+);
+"""
+
+REAUTH_VAULT_DDL = """
+CREATE TABLE IF NOT EXISTS reauth_vault_records (
+    thread_id TEXT NOT NULL,
+    record_type TEXT NOT NULL,
+    encrypted_value TEXT NOT NULL,
+    expires_at REAL NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (thread_id, record_type)
+);
+"""
+
+REAUTH_VAULT_INDEX_DDL = """
+CREATE INDEX IF NOT EXISTS ix_reauth_vault_expires_at
+ON reauth_vault_records(expires_at);
+"""
+
+_FINDINGS_INSERT = """
+INSERT OR REPLACE INTO findings (
+    id, title, severity, description, tool_name,
+    payload, url, confidence, created_at, evidence, "references",
+    cvss_score, business_impact, confidence_level, reasoning, oob_token,
+    canary_token, evidence_bundle, compliance_tags, evidence_hash,
+    post_exploitation_data, vuln_class,
+    strategic_confidence_score, hypothesis_id, thread_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+"""
+
+_FINDINGS_SELECT = """
+SELECT
+    id, title, severity, description, tool_name,
+    payload, url, confidence, created_at, evidence, "references",
+    cvss_score, business_impact, confidence_level, reasoning, oob_token,
+    canary_token, evidence_bundle, compliance_tags, evidence_hash,
+    post_exploitation_data, vuln_class,
+    strategic_confidence_score, hypothesis_id, thread_id
+FROM findings
+ORDER BY created_at ASC;
+"""
+
+# V9 P0 Fix 3: per-thread findings query — no cross-thread bleed.
+_FINDINGS_SELECT_BY_THREAD = """
+SELECT
+    id, title, severity, description, tool_name,
+    payload, url, confidence, created_at, evidence, "references",
+    cvss_score, business_impact, confidence_level, reasoning, oob_token,
+    canary_token, evidence_bundle, compliance_tags, evidence_hash,
+    post_exploitation_data, vuln_class,
+    strategic_confidence_score, hypothesis_id, thread_id
+FROM findings
+WHERE thread_id = ?
+ORDER BY created_at ASC;
+"""
+
+# V5 Sprint 5: Single-row lookup used by the OOB endpoint and by the
+# validator's poll loop. Indexing by primary key keeps this O(log n).
+_FINDINGS_SELECT_BY_ID = """
+SELECT
+    id, title, severity, description, tool_name,
+    payload, url, confidence, created_at, evidence, "references",
+    cvss_score, business_impact, confidence_level, reasoning, oob_token,
+    canary_token, evidence_bundle, compliance_tags, evidence_hash,
+    post_exploitation_data, vuln_class,
+    strategic_confidence_score, hypothesis_id, thread_id
+FROM findings
+WHERE id = ?;
+"""
+
+# V5 Sprint 5: Targeted UPDATE used by the OOB callback endpoint to
+# flip a finding to "Tool-Confirmed" and append a justification note
+# to its reasoning trail. Only mutates the three columns that change;
+# all other columns are preserved.
+_FINDINGS_UPDATE_OOB = """
+UPDATE findings
+SET confidence_level = ?,
+    confidence = ?,
+    reasoning = ?,
+    payload = COALESCE(?, payload)
+WHERE id = ?;
+"""
+
+
+class DatabaseManager:
+    """Thread-safe SQLite manager for ``Finding`` persistence.
+
+    V3 improvements:
+      * WAL mode enabled on every file-backed connection (Part 2 W-1).
+      * ``busy_timeout=30000`` to wait for locks instead of failing.
+      * Schema migration for ``cvss_score`` and ``business_impact``.
+    """
+
+    def __init__(self, database_url: str | None = None) -> None:
+        self._database_url = database_url
+        self._write_lock = threading.Lock()
+        self._initialised = False
+        self._memory_conn: sqlite3.Connection | None = None
+
+    def _db_path(self) -> Path:
+        url = self._database_url or get_settings().database_url
+        return _resolve_db_path(url)
+
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        path = self._db_path()
+
+        if str(path) == ":memory:":
+            if self._memory_conn is None:
+                self._memory_conn = sqlite3.connect(
+                    ":memory:",
+                    isolation_level="",
+                    check_same_thread=False,
+                    timeout=30.0,
+                )
+                self._memory_conn.row_factory = sqlite3.Row
+            try:
+                yield self._memory_conn
+            finally:
+                pass
+            return
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(
+            str(path),
+            isolation_level="",
+            check_same_thread=False,
+            timeout=30.0,
+        )
+        conn.row_factory = sqlite3.Row
+
+        # V3 Part 2 W-1: Enable WAL mode + busy_timeout for concurrent
+        # multi-worker safety. WAL allows readers to coexist with a
+        # single writer without blocking.
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=30000")
+        except sqlite3.OperationalError as exc:
+            logger.warning("Could not set WAL mode / busy_timeout: %s", exc)
+
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def init_db(self) -> None:
+        """Initialize the database schema.
+
+        V6 Ultimate: Uses Alembic migrations (``alembic upgrade head``)
+        instead of raw CREATE TABLE / ALTER TABLE statements. Falls back
+        to the legacy DDL + ALTER TABLE approach if Alembic is not
+        installed (e.g., in minimal dev environments).
+
+        Migration errors are fail-closed. Legacy DDL is used only when
+        Alembic itself is unavailable or ``alembic.ini`` is missing; a
+        real migration failure must propagate instead of being stamped
+        as successful.
+        """
+        if self._initialised:
+            return
+        with self._write_lock:
+            if self._initialised:
+                return
+
+            # V6 Ultimate: Try Alembic first.
+            try:
+                self._run_alembic_upgrade()
+                self._initialised = True
+                logger.info("Database initialized via Alembic migration")
+                return
+            except (ImportError, FileNotFoundError) as exc:
+                logger.warning(
+                    "Alembic unavailable (%s) — falling back to legacy DDL + ALTER TABLE approach.",
+                    exc,
+                )
+                # Legacy fallback is intentionally limited to an unavailable
+                # migration tool/configuration. Upgrade failures propagate.
+                self._init_db_legacy()
+
+    def get_token_version(self, username: str) -> int:
+        """Return the shared token version for ``username``.
+
+        Missing rows intentionally resolve to version 1 for compatibility
+        with tokens issued before the shared table existed.  Database errors
+        propagate so authentication can fail closed instead of silently
+        trusting a stale in-process counter.
+        """
+        self.init_db()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT token_version FROM auth_token_versions WHERE username = ?",
+                (username,),
+            ).fetchone()
+        return int(row[0]) if row is not None else 1
+
+    def save_reauth_vault_record(
+        self,
+        thread_id: str,
+        record_type: str,
+        encrypted_value: str,
+        expires_at: float,
+    ) -> None:
+        """Persist one encrypted runtime secret when shared vault is enabled."""
+        self.init_db()
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._write_lock, self._connect() as conn:
+            conn.execute(
+                "INSERT INTO reauth_vault_records "
+                "(thread_id, record_type, encrypted_value, expires_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(thread_id, record_type) DO UPDATE SET "
+                "encrypted_value=excluded.encrypted_value, expires_at=excluded.expires_at, "
+                "updated_at=excluded.updated_at",
+                (thread_id, record_type, encrypted_value, float(expires_at), now),
+            )
+            conn.commit()
+
+    def get_reauth_vault_record(
+        self,
+        thread_id: str,
+        record_type: str,
+    ) -> tuple[str, float] | None:
+        """Return one encrypted vault record without exposing plaintext."""
+        self.init_db()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT encrypted_value, expires_at FROM reauth_vault_records "
+                "WHERE thread_id = ? AND record_type = ?",
+                (thread_id, record_type),
+            ).fetchone()
+        if row is None:
+            return None
+        return str(row[0]), float(row[1])
+
+    def delete_reauth_vault_record(self, thread_id: str, record_type: str) -> int:
+        """Delete one typed vault record without affecting sibling records."""
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM reauth_vault_records WHERE thread_id = ? AND record_type = ?",
+                (thread_id, record_type),
+            )
+            conn.commit()
+            return int(cursor.rowcount)
+
+    def delete_reauth_vault_records(self, thread_id: str) -> int:
+        """Delete all vault records for one engagement and return rows removed."""
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM reauth_vault_records WHERE thread_id = ?",
+                (thread_id,),
+            )
+            conn.commit()
+            return int(cursor.rowcount)
+
+    def sweep_reauth_vault_records(self, max_items: int = 256) -> int:
+        """Delete at most ``max_items`` expired shared-vault rows."""
+        if max_items <= 0:
+            return 0
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM reauth_vault_records WHERE rowid IN ("
+                "SELECT rowid FROM reauth_vault_records WHERE expires_at <= ? "
+                "ORDER BY expires_at LIMIT ?)",
+                (time.time(), max_items),
+            )
+            conn.commit()
+            return int(cursor.rowcount)
+
+    def reauth_vault_stats(self) -> dict[str, int]:
+        """Return non-secret counts for shared-vault operational health."""
+        self.init_db()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT record_type, COUNT(*) FROM reauth_vault_records "
+                "GROUP BY record_type"
+            ).fetchall()
+        return {str(row[0]): int(row[1]) for row in rows}
+
+    def bump_token_version(self, username: str) -> int:
+        """Atomically revoke all existing tokens for ``username``.
+
+        The write lock protects callers in one process; ``BEGIN IMMEDIATE``
+        serializes concurrent SQLite writers across API/worker processes.
+        """
+        self.init_db()
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._write_lock, self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row = conn.execute(
+                    "SELECT token_version FROM auth_token_versions WHERE username = ?",
+                    (username,),
+                ).fetchone()
+                next_version = (int(row[0]) if row is not None else 1) + 1
+                conn.execute(
+                    "INSERT INTO auth_token_versions (username, token_version, updated_at) "
+                    "VALUES (?, ?, ?) "
+                    "ON CONFLICT(username) DO UPDATE SET token_version=excluded.token_version, "
+                    "updated_at=excluded.updated_at",
+                    (username, next_version, now),
+                )
+                conn.commit()
+                return next_version
+            except Exception:
+                with _suppress_sqlite_errors():
+                    conn.execute("ROLLBACK")
+                raise
+
+    def _get_alembic_version(self, conn: sqlite3.Connection) -> str | None:
+        """Return the current alembic version stamp, or ``None`` if unset.
+
+        V6 DX-Final P1: Used by the cross-process migration guard to
+        short-circuit ``alembic upgrade head`` when another container
+        has already migrated the database. Reading the
+        ``alembic_version`` table is O(1) and does not require an
+        exclusive lock, making it a cheap pre-flight check.
+        """
+        try:
+            cursor = conn.execute("SELECT version_num FROM alembic_version LIMIT 1")
+            row = cursor.fetchone()
+            return row[0] if row else None
+        except sqlite3.OperationalError:
+            # Table doesn't exist yet — first run.
+            return None
+
+    def _run_alembic_upgrade(self) -> None:
+        """Run ``alembic upgrade head`` programmatically.
+
+        V6 Ultimate: Replaces the raw SQL migration logic with Alembic.
+        The alembic.ini and env.py are configured to read the database
+        URL from settings.py, ensuring path consistency.
+
+        V6 DX-Final P0: On Alembic failure, falls back to legacy DDL
+        and stamps the ``alembic_version`` table to ``head`` so future
+        runs don't re-attempt the failed migration. Without the stamp,
+        every container start would re-run the failed migration and
+        re-trigger the fallback path, causing a startup loop.
+
+        V6 DX-Final P1: Cross-process race guard. When the API and
+        Worker containers start simultaneously, both used to call
+        ``alembic upgrade head`` on the same SQLite database, racing
+        for the SQLite write lock and occasionally producing
+        ``database is locked`` errors or partially-applied migrations.
+        We now (a) check the ``alembic_version`` table first and skip
+        the upgrade entirely if already at head, and (b) acquire a
+        file-level advisory lock (``fcntl.flock`` on a sibling
+        ``<db>.migration.lock`` sentinel) so only one process at a
+        time can attempt a migration. The DB-level check is the fast
+        path; the file lock is the correctness guarantee.
+        """
+        import sys as _sys
+        from pathlib import Path as _Path
+
+        project_root = _Path(__file__).resolve().parents[3]
+        alembic_ini = project_root / "alembic.ini"
+        if not alembic_ini.is_file():
+            raise FileNotFoundError(f"alembic.ini not found at {alembic_ini}")
+
+        # Ensure project root is on sys.path for alembic env.py imports.
+        if str(project_root) not in _sys.path:
+            _sys.path.insert(0, str(project_root))
+        src_dir = str(project_root / "src")
+        if src_dir not in _sys.path:
+            _sys.path.insert(0, src_dir)
+
+        from alembic.config import Config as AlembicConfig
+
+        # V6 DX-Final P1 FIX (CISO audit): Import ScriptDirectory to
+        # resolve the *actual* head revision ID from the migration
+        # scripts. The previous comparison `current == "head"` always
+        # failed because `current` (read from the alembic_version
+        # table) is a real revision ID like ``0001_initial``, not the
+        # literal string ``"head"``. This forced every container
+        # startup to re-enter the slow migration path (acquiring the
+        # file lock, re-running ``alembic upgrade head``) even when
+        # the database was already fully migrated.
+        from alembic.script import ScriptDirectory
+
+        from alembic import command as alembic_command
+
+        cfg = AlembicConfig(str(alembic_ini))
+        # Resolve migrations from the project root instead of the process
+        # cwd. API and worker processes may start from arbitrary directories.
+        cfg.set_main_option("script_location", str(project_root / "alembic"))
+        # Alembic's env.py normally loads alembic.ini logging handlers. A
+        # runtime API/worker must not replace its active handlers (including
+        # pytest capture handlers), so keep logging ownership with the caller.
+        cfg.attributes["configure_logger"] = False
+        # Pass this manager's URL into Alembic.  Without this override,
+        # alembic/env.py falls back to the process-wide settings URL and a
+        # DatabaseManager created for an isolated path is marked initialized
+        # even though its own database was never migrated.
+        migration_url = self._database_url or get_settings().database_url
+        cfg.set_main_option("sqlalchemy.url", migration_url)
+        actual_head = ScriptDirectory.from_config(cfg).get_current_head()
+
+        # ------------------------------------------------------------------
+        # V6 DX-Final P1: Cross-process race guard.
+        # ------------------------------------------------------------------
+        # Step 1 — Fast path: check alembic_version table. If another
+        # process has already migrated to head, we can return immediately
+        # without acquiring any lock. This makes the steady-state cost
+        # of init_db() a single indexed SELECT.
+        db_path = self._db_path()
+        if str(db_path) != ":memory:":
+            try:
+                with self._connect() as conn:
+                    current = self._get_alembic_version(conn)
+                if current == actual_head:
+                    logger.info(
+                        "Alembic already at head (version_num=%s, head=%s) — skipping migration.",
+                        current,
+                        actual_head,
+                    )
+                    return
+            except Exception as preflight_exc:
+                logger.debug(
+                    "Alembic pre-flight version check failed (non-fatal, "
+                    "will proceed to upgrade): %s",
+                    preflight_exc,
+                )
+
+            # Step 2 — File-level advisory lock. fcntl.flock blocks
+            # other processes trying to acquire the same lock, so only
+            # one container can run migrations at a time. SQLite's own
+            # busy_timeout handles intra-process writer contention; this
+            # file lock prevents two processes from running
+            # ``alembic upgrade head`` concurrently (which would cause
+            # ``database is locked`` errors on the DDL statements).
+            import fcntl
+
+            lock_path = _Path(str(db_path) + ".migration.lock")
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            lock_fd = os.open(
+                str(lock_path),
+                os.O_CREAT | os.O_RDWR,
+                0o644,
+            )
+            try:
+                # Blocking exclusive lock — waits for any other process
+                # currently holding it. Combined with the busy_timeout
+                # on the SQLite connection, this makes the migration
+                # fully serialized across the API + Worker containers.
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+
+                # Step 3 — Re-check inside the lock (double-checked
+                # locking). The process that held the lock before us
+                # may have completed the migration.
+                try:
+                    with self._connect() as conn:
+                        current = self._get_alembic_version(conn)
+                    if current == actual_head:
+                        logger.info(
+                            "Alembic already at head (version_num=%s, "
+                            "head=%s) after acquiring migration lock "
+                            "— skipping migration.",
+                            current,
+                            actual_head,
+                        )
+                        return
+                except Exception as recheck_exc:
+                    logger.debug(
+                        "Alembic re-check failed (non-fatal): %s",
+                        recheck_exc,
+                    )
+
+                # Step 4 — Run the actual migration while holding the
+                # file lock. alembic uses its own SQLAlchemy connection
+                # with its own transaction management; the file lock
+                # only prevents concurrent invocations of the
+                # ``alembic upgrade`` command itself.
+                # Any migration failure is propagated. Silently falling back
+                # and stamping ``head`` would falsely claim schema integrity.
+                alembic_command.upgrade(cfg, "head")
+            finally:
+                # Release the file lock and close the lock fd. We do
+                # NOT delete the lock file — leaving it on disk is
+                # harmless and avoids a TOCTOU race between unlink and
+                # the next process's O_CREAT.
+                with suppress(OSError):
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                os.close(lock_fd)
+            return
+
+        # ------------------------------------------------------------------
+        # In-memory DB path — no file lock needed (single-process only).
+        # ------------------------------------------------------------------
+        # Any migration failure is propagated. Silently stamping ``head``
+        # would falsely claim schema integrity even for an in-memory DB.
+        alembic_command.upgrade(cfg, "head")
+
+    def _init_db_legacy(self) -> None:
+        """Legacy DDL + ALTER TABLE migration (fallback when Alembic unavailable)."""
+        with self._connect() as conn:
+            conn.execute(FINDINGS_DDL)
+
+            cursor = conn.execute("PRAGMA table_info(findings)")
+            existing_columns = {row[1] for row in cursor.fetchall()}
+            if "cvss_score" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN cvss_score TEXT")
+                logger.info("Migration: added cvss_score column")
+            if "business_impact" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN business_impact TEXT")
+                logger.info("Migration: added business_impact column")
+            if "confidence_level" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN confidence_level TEXT")
+                logger.info("Migration: added confidence_level column")
+            if "reasoning" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN reasoning TEXT")
+                logger.info("Migration: added reasoning column")
+            if "oob_token" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN oob_token TEXT")
+                logger.info("Migration: added oob_token column")
+            if "canary_token" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN canary_token TEXT")
+                logger.info("Migration: added canary_token column")
+            if "evidence_bundle" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN evidence_bundle TEXT")
+                logger.info("Migration: added evidence_bundle column")
+            if "compliance_tags" not in existing_columns:
+                conn.execute(
+                    "ALTER TABLE findings ADD COLUMN compliance_tags TEXT NOT NULL DEFAULT '[]'"
+                )
+                logger.info("Migration: added compliance_tags column")
+            if "evidence_hash" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN evidence_hash TEXT")
+                logger.info("Migration: added evidence_hash column")
+            if "post_exploitation_data" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN post_exploitation_data TEXT")
+                logger.info("Migration: added post_exploitation_data column")
+            if "vuln_class" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN vuln_class TEXT DEFAULT 'unknown'")
+                logger.info("Migration: added vuln_class column")
+            # V7 Cognitive Upgrade — Phase 4: persist the new Finding
+            # fields so the audit-trail back-reference (hypothesis_id)
+            # and the informational confidence score survive DB
+            # round-trips. Follows the exact same ALTER TABLE ADD COLUMN
+            # guarded-by-PRAGMA pattern as every other column above.
+            if "strategic_confidence_score" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN strategic_confidence_score REAL")
+                logger.info("Migration: added strategic_confidence_score column")
+            if "hypothesis_id" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN hypothesis_id TEXT")
+                logger.info("Migration: added hypothesis_id column")
+            # V9 P0 Fix 3: thread_id column for per-engagement isolation.
+            if "thread_id" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN thread_id TEXT")
+                logger.info("Migration: added thread_id column (V9 P0 Fix 3)")
+
+            # V10 P0-C: index on thread_id so get_findings_by_thread
+            # doesn't full-scan on every status poll. CREATE INDEX IF
+            # NOT EXISTS is idempotent.
+            conn.execute(FINDINGS_INDEX_DDL)
+
+            # Keep the compatibility fallback schema aligned with the
+            # Alembic head so shared JWT revocation remains fail-closed even
+            # in minimal environments where Alembic is unavailable.
+            conn.execute(AUTH_TOKEN_VERSIONS_DDL)
+            conn.execute(REAUTH_VAULT_DDL)
+            conn.execute(REAUTH_VAULT_INDEX_DDL)
+
+            conn.commit()
+        self._initialised = True
+
+    @staticmethod
+    def _enum_value(v: Any) -> str:
+        """Normalize a (str, Enum) field to its parseable `.value` form.
+
+        V7 Ready-For-Kali P0 FIX (found via empirical round-trip
+        testing, not code review): the previous code did
+        ``str(finding.confidence)`` etc. directly. For a
+        ``class X(str, Enum)`` member, Python's bare ``str()`` returns
+        the QUALIFIED repr form (``"Confidence.TENTATIVE"``), not the
+        parseable value (``"tentative"``) -- confirmed empirically on
+        this Python version. ``Confidence(row["confidence"])`` on read
+        then raises ``ValueError`` immediately, for every single row.
+
+        This "accidentally worked" in the real production pipeline
+        ONLY because LangGraph's checkpointer msgpack round-trip
+        happens to coerce these (str, Enum) fields down to plain
+        strings before ``save_finding()`` is ever reached from
+        ``pentest_worker.py`` -- so ``str()`` on the ALREADY-plain
+        string was a harmless no-op there. It crashes immediately and
+        reproducibly for any finding saved via a more direct path
+        (any unit test; any future code that constructs and saves a
+        Finding without first passing through a checkpoint round-trip
+        -- e.g. exploit_chainer's freshly-created candidates, if they
+        were ever persisted directly rather than via the graph). Not
+        robust, not intentional -- accidental correctness in one
+        specific call path, latent breakage everywhere else. Fixed by
+        explicitly reading ``.value`` when present (true enum member)
+        and falling back to the value itself when it's already a
+        plain string (post-checkpoint case) — safe for both.
+        """
+        return v.value if hasattr(v, "value") else str(v)
+
+    def save_finding(self, finding: Finding) -> None:
+        """Persist a single :class:`Finding` to the database.
+
+        V10 P1-10 FIX (save_finding vs mark_oob_confirmed clobber):
+            ``_FINDINGS_INSERT`` uses ``INSERT OR REPLACE``, which
+            overwrites ALL columns. The OOB callback endpoint calls
+            :meth:`mark_oob_confirmed`, which performs a TARGETED
+            ``UPDATE`` of just four columns (``confidence_level`` →
+            "Tool-Confirmed", ``confidence`` → CONFIRMED, ``reasoning``
+            → existing+appendix, ``payload`` → marker). If the graph
+            subsequently calls ``save_finding`` again for the same
+            finding (e.g. CVSS engine updates the score, devils_advocate
+            appends reasoning), the in-memory finding's SNAPSHOT of
+            those four columns pre-dates the OOB confirmation — so the
+            ``INSERT OR REPLACE`` silently clobbers the OOB-confirmed
+            state back to the older in-memory values. The DB row
+            appeared "Tool-Confirmed" briefly and then reverted, with
+            no log and no audit trail.
+
+            Fix: BEFORE the INSERT OR REPLACE, read the existing row.
+            If the DB row's ``confidence_level`` is "Tool-Confirmed"
+            AND the in-memory finding is at a LOWER confidence (i.e.
+            its ``confidence_level`` is NOT also "Tool-Confirmed"),
+            preserve the DB's four OOB-confirmed columns by overriding
+            the in-memory values used in the INSERT. This makes
+            ``save_finding`` idempotent w.r.t. OOB confirmations: a
+            Tool-Confirmed row cannot be silently downgraded by a
+            later graph-state save. When the in-memory finding is
+            ALSO Tool-Confirmed (e.g. the validator re-confirmed via
+            a different path), the in-memory values win — that is the
+            intended behaviour, since the in-memory state is fresher.
+        """
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            # V10 P1-10: read existing row (if any) under the same
+            # write lock so the check-then-replace is atomic w.r.t.
+            # concurrent mark_oob_confirmed callers.
+            cursor = conn.execute(_FINDINGS_SELECT_BY_ID, (str(finding.id),))
+            existing_row = cursor.fetchone()
+
+            # Local mutable copies of the four OOB-confirmed fields;
+            # overridden below if the DB has a Tool-Confirmed row that
+            # the in-memory finding would otherwise clobber.
+            save_confidence_level = finding.confidence_level
+            save_confidence = self._enum_value(finding.confidence)
+            save_reasoning = finding.reasoning
+            save_payload = finding.payload
+
+            if (
+                existing_row is not None
+                and existing_row["confidence_level"] == "Tool-Confirmed"
+                and finding.confidence_level != "Tool-Confirmed"
+            ):
+                # Preserve the DB's OOB-confirmed columns. The
+                # in-memory finding is at a lower confidence (e.g.
+                # "AI-Assessed" or "Needs Human Review") and would
+                # otherwise clobber the Tool-Confirmed state.
+                save_confidence_level = existing_row["confidence_level"]
+                save_confidence = existing_row["confidence"]
+                save_reasoning = existing_row["reasoning"]
+                save_payload = existing_row["payload"]
+                logger.info(
+                    "save_finding: preserving OOB-confirmed state for "
+                    "finding %s — DB row is Tool-Confirmed but in-memory "
+                    "finding is %s; keeping DB values for "
+                    "confidence_level/confidence/reasoning/payload.",
+                    finding.id,
+                    finding.confidence_level,
+                )
+
+            conn.execute(
+                _FINDINGS_INSERT,
+                (
+                    str(finding.id),
+                    finding.title,
+                    self._enum_value(finding.severity),
+                    finding.description,
+                    finding.tool_name,
+                    save_payload,
+                    finding.url,
+                    save_confidence,
+                    finding.created_at.isoformat(),
+                    json.dumps(finding.evidence) if finding.evidence else None,
+                    json.dumps(finding.references),
+                    finding.cvss_score,
+                    finding.business_impact,
+                    save_confidence_level,
+                    save_reasoning,
+                    finding.oob_token,
+                    finding.canary_token,
+                    json.dumps(finding.evidence_bundle) if finding.evidence_bundle else None,
+                    json.dumps(finding.compliance_tags) if finding.compliance_tags else "[]",
+                    finding.evidence_hash,
+                    json.dumps(finding.post_exploitation_data)
+                    if finding.post_exploitation_data
+                    else None,
+                    self._enum_value(finding.vuln_class) if finding.vuln_class else "unknown",
+                    # V7 Cognitive Upgrade — Phase 4: persist the new
+                    # informational fields so the audit-trail back-reference
+                    # (hypothesis_id) survives DB round-trips.
+                    finding.strategic_confidence_score,
+                    str(finding.hypothesis_id) if finding.hypothesis_id else None,
+                    # V9 P0 Fix 3: persist thread_id for per-engagement isolation.
+                    getattr(finding, "thread_id", None),
+                ),
+            )
+            conn.commit()
+
+    def get_all_findings(self) -> list[Finding]:
+        """Return every persisted finding, ordered by creation time.
+
+        V9 P1 RE-5: Corrupt finding row resilience — one bad row cannot
+        crash the entire findings fetch.
+        """
+        self.init_db()
+        with self._connect() as conn:
+            cursor = conn.execute(_FINDINGS_SELECT)
+            rows = cursor.fetchall()
+
+        findings: list[Finding] = []
+        for row in rows:
+            try:
+                findings.append(self._row_to_finding(row))
+            except Exception as exc:
+                row_id = "<unknown>"
+                with suppress(Exception):
+                    row_id = row["id"]
+                logger.warning(
+                    "Skipping corrupt finding row (id=%s): %s",
+                    row_id,
+                    exc,
+                )
+        return findings
+
+    def get_findings_by_thread(self, thread_id: str) -> list[Finding]:
+        """V9 P0 Fix 3: Return findings for a specific engagement thread only.
+
+        V9 P1 RE-5: Corrupt finding row resilience — one bad row cannot
+        crash the entire findings fetch.
+        """
+        self.init_db()
+        with self._connect() as conn:
+            cursor = conn.execute(_FINDINGS_SELECT_BY_THREAD, (thread_id,))
+            rows = cursor.fetchall()
+
+        findings: list[Finding] = []
+        for row in rows:
+            try:
+                findings.append(self._row_to_finding(row))
+            except Exception as exc:
+                row_id = "<unknown>"
+                with suppress(Exception):
+                    row_id = row["id"]
+                logger.warning(
+                    "Skipping corrupt finding row (id=%s): %s",
+                    row_id,
+                    exc,
+                )
+        return findings
+
+    def get_findings_by_threads(self, thread_ids: list[str] | tuple[str, ...]) -> list[Finding]:
+        """Return findings for a bounded set of threads in creation order."""
+        clean_ids = list(dict.fromkeys(str(item) for item in thread_ids if str(item)))[:256]
+        if not clean_ids:
+            return []
+        self.init_db()
+        placeholders = ", ".join("?" for _ in clean_ids)
+        query = f"""
+        SELECT
+            id, title, severity, description, tool_name,
+            payload, url, confidence, created_at, evidence, "references",
+            cvss_score, business_impact, confidence_level, reasoning, oob_token,
+            canary_token, evidence_bundle, compliance_tags, evidence_hash,
+            post_exploitation_data, vuln_class,
+            strategic_confidence_score, hypothesis_id, thread_id
+        FROM findings
+        WHERE thread_id IN ({placeholders})
+        ORDER BY created_at ASC;
+        """
+        with self._connect() as conn:
+            rows = conn.execute(query, clean_ids).fetchall()
+
+        findings: list[Finding] = []
+        for row in rows:
+            try:
+                findings.append(self._row_to_finding(row))
+            except Exception as exc:
+                row_id = "<unknown>"
+                with suppress(Exception):
+                    row_id = row["id"]
+                logger.warning(
+                    "Skipping corrupt finding row (id=%s): %s",
+                    row_id,
+                    exc,
+                )
+        return findings
+
+    @staticmethod
+    def _row_to_finding(row: sqlite3.Row) -> Finding:
+        """Convert a DB row into a validated :class:`Finding`."""
+
+        # V5 Sprint 11: defensively read optional columns that may not
+        # exist on pre-Sprint-11 databases (the ALTER TABLE migrations
+        # add them, but in-memory test DBs may be created from old DDL).
+        def _get_col(name: str, default: Any = None) -> Any:
+            try:
+                return row[name]
+            except (IndexError, KeyError):
+                return default
+
+        return Finding(
+            id=UUID(row["id"]),
+            title=row["title"],
+            severity=Severity(row["severity"]),
+            description=row["description"],
+            tool_name=row["tool_name"],
+            payload=row["payload"],
+            url=row["url"],
+            confidence=Confidence(row["confidence"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            evidence=json.loads(row["evidence"]) if row["evidence"] else None,
+            references=json.loads(row["references"]) if row["references"] else [],
+            cvss_score=row["cvss_score"],
+            business_impact=row["business_impact"],
+            confidence_level=row["confidence_level"] or "Pending",
+            reasoning=row["reasoning"] or "",
+            oob_token=row["oob_token"] or "",
+            canary_token=_get_col("canary_token"),
+            evidence_bundle=(
+                json.loads(_get_col("evidence_bundle")) if _get_col("evidence_bundle") else None
+            ),
+            compliance_tags=(
+                json.loads(_get_col("compliance_tags", "[]"))
+                if _get_col("compliance_tags", "[]")
+                else []
+            ),
+            evidence_hash=_get_col("evidence_hash"),
+            post_exploitation_data=(
+                json.loads(_get_col("post_exploitation_data"))
+                if _get_col("post_exploitation_data")
+                else None
+            ),
+            vuln_class=_get_col("vuln_class", "unknown"),
+            # V7 Cognitive Upgrade — Phase 4: read the new informational
+            # fields. _get_col defensively handles pre-V7 DBs where the
+            # columns don't exist yet (returns None — treated as 'not
+            # scored' / 'no back-reference' by the model).
+            strategic_confidence_score=_get_col("strategic_confidence_score"),
+            hypothesis_id=(UUID(_get_col("hypothesis_id")) if _get_col("hypothesis_id") else None),
+            # V9 P0 Fix 3: read thread_id for per-engagement isolation.
+            thread_id=_get_col("thread_id"),
+        )
+
+    # ------------------------------------------------------------------ #
+    # V5 Sprint 5: OOB callback support                                  #
+    # ------------------------------------------------------------------ #
+    def get_finding(self, finding_id: UUID | str) -> Finding | None:
+        """Return a single finding by its UUID, or ``None`` if not present.
+
+        Used by the OOB callback endpoint to look up the row being
+        confirmed, and by the validator's poll loop to inspect whether
+        a callback has landed.
+        """
+        self.init_db()
+        with self._connect() as conn:
+            cursor = conn.execute(_FINDINGS_SELECT_BY_ID, (str(finding_id),))
+            row = cursor.fetchone()
+        return self._row_to_finding(row) if row is not None else None
+
+    def mark_oob_confirmed(
+        self,
+        finding_id: UUID | str,
+        *,
+        reasoning_appendix: str,
+        payload_marker: str | None = None,
+    ) -> Finding | None:
+        """Flip a finding to Tool-Confirmed via an OOB callback.
+
+        Updates exactly the columns that change on OOB confirmation:
+          * ``confidence_level`` → ``"Tool-Confirmed"``
+          * ``confidence``       → ``Confidence.CONFIRMED``
+          * ``reasoning``        → existing reasoning + appendix
+          * ``payload``          → marker (if provided)
+
+        Returns the post-update Finding, or ``None`` if the ID was not
+        found. The write is serialised under ``_write_lock`` so concurrent
+        callbacks for the same finding cannot corrupt each other.
+
+        V5 Sprint 9: Uses ``BEGIN IMMEDIATE`` to acquire a file-level
+        SQLite write lock at transaction start. This prevents
+        multi-worker race conditions that ``threading.Lock`` cannot
+        protect against (each Celery worker is a separate process with
+        its own lock instance). ``BEGIN IMMEDIATE`` blocks other writers
+        until the transaction commits, ensuring the read-modify-write
+        cycle is atomic across processes.
+
+        Args:
+            finding_id: UUID of the finding to confirm.
+            reasoning_appendix: Text appended to the existing reasoning
+                trail (e.g. ``"OOB Callback Received from <ip> at <ts>"``).
+            payload_marker: Optional payload string to record (e.g.
+                ``"confirmed-by:oob-callback"``).
+        """
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            # V5 Sprint 9: BEGIN IMMEDIATE acquires a RESERVED lock
+            # immediately, preventing other connections (including
+            # those in other worker processes) from writing until we
+            # commit. This closes the multi-worker race that
+            # threading.Lock cannot prevent (locks are per-process).
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+            except sqlite3.OperationalError as exc:
+                # Another writer holds the lock; the busy_timeout
+                # (30s) should normally prevent this, but if it
+                # fires we propagate so the caller can retry.
+                logger.warning(
+                    "mark_oob_confirmed: BEGIN IMMEDIATE failed for finding %s: %s",
+                    finding_id,
+                    exc,
+                )
+                raise
+
+            try:
+                # Read-modify-write inside the transaction so the
+                # reasoning append is atomic and cannot lose a
+                # concurrent writer's update.
+                cursor = conn.execute(_FINDINGS_SELECT_BY_ID, (str(finding_id),))
+                row = cursor.fetchone()
+                if row is None:
+                    conn.execute("ROLLBACK")
+                    return None
+
+                existing_confidence_level = str(row["confidence_level"] or "")
+                existing_confidence = str(row["confidence"] or "").lower()
+                if (
+                    existing_confidence_level == "Tool-Confirmed"
+                    or existing_confidence == Confidence.CONFIRMED.value.lower()
+                ):
+                    # One-way/idempotent transition: a replayed callback must
+                    # not append another forensic line or overwrite a later
+                    # confirmation. The transaction is rolled back because
+                    # this request made no state change.
+                    conn.execute("ROLLBACK")
+                    return self._row_to_finding(row)
+
+                existing_reasoning = row["reasoning"] or ""
+                new_reasoning = (
+                    f"{existing_reasoning}\n{reasoning_appendix}".strip()
+                    if existing_reasoning
+                    else reasoning_appendix
+                )
+
+                conn.execute(
+                    _FINDINGS_UPDATE_OOB,
+                    (
+                        "Tool-Confirmed",
+                        Confidence.CONFIRMED.value,
+                        new_reasoning,
+                        payload_marker,
+                        str(finding_id),
+                    ),
+                )
+                conn.commit()
+
+                # Re-read so the returned object reflects the persisted state.
+                cursor = conn.execute(_FINDINGS_SELECT_BY_ID, (str(finding_id),))
+                row = cursor.fetchone()
+                return self._row_to_finding(row) if row is not None else None
+            except Exception:
+                # Any error during the transaction → roll back so we
+                # don't leave a half-written state.
+                with _suppress_sqlite_errors():
+                    conn.execute("ROLLBACK")
+                raise
+
+
+# ======================================================================
+# V6 DX-Final P0 FIX (CISO audit): Module-level singleton accessor.
+# ======================================================================
+# Previously, every caller in the framework instantiated
+# ``DatabaseManager()`` independently (in ``api/app.py``,
+# ``workers/pentest_worker.py``, ``agents/validator/agent.py``,
+# ``agents/post_exploit/agent.py``, ``agents/execution_sandbox/agent.py``).
+# Each construction created a fresh ``_write_lock`` (threading.Lock) and
+# a fresh ``_initialised = False`` flag, which had two consequences:
+#
+#   1. The in-process write lock was effectively useless — concurrent
+#      callers each held their own lock, so they could all enter the
+#      critical section simultaneously and race on the SQLite writer.
+#   2. ``init_db()`` was re-run by every caller, re-entering the
+#      Alembic migration path (file lock acquisition, version check,
+#      potential upgrade) on every request even when the database was
+#      already initialised — producing needless serialization
+#      bottlenecks on the migration lock file.
+#
+# The singleton below ensures every caller shares the SAME
+# ``DatabaseManager`` instance, the SAME ``_write_lock``, and the SAME
+# ``_initialised`` flag. ``init_db()`` therefore runs at most once per
+# process lifetime, and all subsequent writes are properly serialized
+# through the single shared lock.
+# ======================================================================
+_db_manager_singleton: DatabaseManager | None = None
+_db_manager_singleton_lock = threading.Lock()
+
+
+def get_db_manager(database_url: str | None = None) -> DatabaseManager:
+    """Return the shared :class:`DatabaseManager` singleton.
+
+    All callers in the framework (API, workers, agents) MUST use this
+    accessor instead of constructing ``DatabaseManager()`` directly.
+    Multiple direct constructions break the in-process write lock
+    guarantee and re-trigger Alembic migration attempts on every call.
+
+    Args:
+        database_url: Optional database URL. Only honoured on the very
+            first call (i.e. when the singleton has not yet been
+            created); subsequent calls return the existing singleton
+            regardless of this argument. This matches the previous
+            behaviour where most callers relied on the URL derived
+            from ``get_settings()`` inside ``DatabaseManager._db_path``.
+
+    Returns:
+        The shared :class:`DatabaseManager` instance.
+    """
+    global _db_manager_singleton
+    if _db_manager_singleton is None:
+        with _db_manager_singleton_lock:
+            # Double-checked locking — prevents two threads from
+            # simultaneously constructing two instances on first call.
+            if _db_manager_singleton is None:
+                _db_manager_singleton = DatabaseManager(database_url)
+    return _db_manager_singleton

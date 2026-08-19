@@ -1,0 +1,388 @@
+{
+  "baseline": {
+    "archive": "/home/ubuntu/upload/webpent_v60_final_reviewed.zip",
+    "pytest": "700 passed, 110 warnings",
+    "ruff": "104 errors under configured E/F/I/N/W/UP/B/C4/SIM rules",
+    "compileall": "not reached in first baseline command because Ruff failed; rerun separately"
+  },
+  "graph": {
+    "builder": "src/webpent/graph/builder.py",
+    "nodes": [
+      "NODE_ACCESS_CONTROL",
+      "NODE_API_TESTING",
+      "NODE_ATTACK_GRAPH",
+      "NODE_AUTH",
+      "NODE_BUSINESS_IMPACT",
+      "NODE_BUSINESS_LOGIC_FUZZER",
+      "NODE_CLOUD_STORAGE",
+      "NODE_CRAWLER",
+      "NODE_CROSS_REASONING",
+      "NODE_CVSS_ENGINE",
+      "NODE_DEVILS_ADVOCATE",
+      "NODE_DISCLOSED_REPORT_INTEL",
+      "NODE_EXECUTION_SANDBOX",
+      "NODE_EXECUTIVE_SUMMARY",
+      "NODE_EXPLOIT_CHAINER",
+      "NODE_HYPOTHESIS",
+      "NODE_JAVASCRIPT_INTELLIGENCE",
+      "NODE_PAYLOAD_GENERATOR",
+      "NODE_PAYLOAD_OPTIMIZER",
+      "NODE_PLANNER",
+      "NODE_POST_EXPLOITATION",
+      "NODE_RABBIT_HOLE",
+      "NODE_RECON",
+      "NODE_REFLECTION",
+      "NODE_REPORTER",
+      "NODE_REQUEST_SMUGGLING",
+      "NODE_SCOPE_ENFORCER",
+      "NODE_SMART_CAMPAIGNS",
+      "NODE_SMART_CAMPAIGNS_EXECUTION",
+      "NODE_STRATEGIST",
+      "NODE_SUBDOMAIN_TAKEOVER",
+      "NODE_TARGET_UNDERSTANDING",
+      "NODE_VALIDATOR",
+      "NODE_WAF_DETECTOR"
+    ],
+    "edges": [
+      [
+        "START",
+        "NODE_PLANNER"
+      ],
+      [
+        "NODE_PLANNER",
+        "NODE_AUTH"
+      ],
+      [
+        "NODE_RECON",
+        "NODE_CRAWLER"
+      ],
+      [
+        "NODE_JAVASCRIPT_INTELLIGENCE",
+        "NODE_SUBDOMAIN_TAKEOVER"
+      ],
+      [
+        "NODE_SUBDOMAIN_TAKEOVER",
+        "NODE_CLOUD_STORAGE"
+      ],
+      [
+        "NODE_TARGET_UNDERSTANDING",
+        "NODE_SCOPE_ENFORCER"
+      ],
+      [
+        "NODE_SCOPE_ENFORCER",
+        "NODE_WAF_DETECTOR"
+      ],
+      [
+        "NODE_WAF_DETECTOR",
+        "NODE_HYPOTHESIS"
+      ],
+      [
+        "NODE_ACCESS_CONTROL",
+        "NODE_API_TESTING"
+      ],
+      [
+        "NODE_API_TESTING",
+        "NODE_BUSINESS_LOGIC_FUZZER"
+      ],
+      [
+        "NODE_BUSINESS_LOGIC_FUZZER",
+        "NODE_REQUEST_SMUGGLING"
+      ],
+      [
+        "NODE_REQUEST_SMUGGLING",
+        "NODE_DISCLOSED_REPORT_INTEL"
+      ],
+      [
+        "NODE_SMART_CAMPAIGNS",
+        "NODE_SMART_CAMPAIGNS_EXECUTION"
+      ],
+      [
+        "NODE_SMART_CAMPAIGNS_EXECUTION",
+        "NODE_STRATEGIST"
+      ],
+      [
+        "NODE_STRATEGIST",
+        "NODE_PAYLOAD_GENERATOR"
+      ],
+      [
+        "NODE_PAYLOAD_GENERATOR",
+        "NODE_EXECUTION_SANDBOX"
+      ],
+      [
+        "NODE_EXECUTION_SANDBOX",
+        "NODE_VALIDATOR"
+      ],
+      [
+        "NODE_PAYLOAD_OPTIMIZER",
+        "NODE_EXECUTION_SANDBOX"
+      ],
+      [
+        "NODE_DEVILS_ADVOCATE",
+        "NODE_EXPLOIT_CHAINER"
+      ],
+      [
+        "NODE_POST_EXPLOITATION",
+        "NODE_RABBIT_HOLE"
+      ],
+      [
+        "NODE_CVSS_ENGINE",
+        "NODE_BUSINESS_IMPACT"
+      ],
+      [
+        "NODE_BUSINESS_IMPACT",
+        "NODE_CROSS_REASONING"
+      ],
+      [
+        "NODE_CROSS_REASONING",
+        "NODE_EXECUTIVE_SUMMARY"
+      ],
+      [
+        "NODE_EXECUTIVE_SUMMARY",
+        "NODE_REPORTER"
+      ],
+      [
+        "NODE_REPORTER",
+        "NODE_REFLECTION"
+      ],
+      [
+        "NODE_REFLECTION",
+        "END"
+      ]
+    ],
+    "conditional_edges": [
+      [
+        "NODE_AUTH",
+        "route_after_auth"
+      ],
+      [
+        "NODE_CRAWLER",
+        "route_after_crawler"
+      ],
+      [
+        "NODE_CLOUD_STORAGE",
+        "route_after_infrastructure"
+      ],
+      [
+        "NODE_DISCLOSED_REPORT_INTEL",
+        "route_after_disclosed_report_intel"
+      ],
+      [
+        "NODE_ATTACK_GRAPH",
+        "route_after_attack_graph"
+      ],
+      [
+        "NODE_DISCLOSED_REPORT_INTEL",
+        "route_after_disclosed_report_intel"
+      ],
+      [
+        "NODE_VALIDATOR",
+        "route_after_validator"
+      ],
+      [
+        "NODE_EXPLOIT_CHAINER",
+        "route_after_chainer"
+      ],
+      [
+        "NODE_RABBIT_HOLE",
+        "route_after_rabbit_hole"
+      ]
+    ],
+    "interrupt_before_present": true
+  },
+  "p0_traceability": {
+    "same_client_lesson_retrieval": {
+      "implemented_symbols": {
+        "search_lessons": [
+          "src/webpent/memory/vectorstore.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented"
+    },
+    "cached_llm": {
+      "implemented_symbols": {
+        "get_cached_llm": [
+          "src/webpent/shared/llm.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented",
+      "callers": [
+        "src/webpent/shared/llm.py:try_get_llm"
+      ]
+    },
+    "deterministic_confidence": {
+      "implemented_symbols": {
+        "compute_confidence_score": [
+          "src/webpent/shared/confidence.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented"
+    },
+    "self_critique": {
+      "implemented_symbols": {
+        "recommend_self_critique_action": [
+          "src/webpent/shared/self_critique.py"
+        ],
+        "should_fire_before_promotion": [
+          "src/webpent/shared/self_critique.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented",
+      "callers": [
+        "src/webpent/agents/strategist/agent.py"
+      ]
+    },
+    "smart_campaigns": {
+      "implemented_symbols": {
+        "smart_campaigns_node": [
+          "src/webpent/agents/smart_campaigns/agent.py"
+        ],
+        "smart_campaigns_execution_node": [
+          "src/webpent/agents/smart_campaigns/agent.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented"
+    }
+  },
+  "planned_components": {
+    "KnowledgeGapEngine": {
+      "implemented_symbols": {
+        "KnowledgeGapEngine": [
+          "src/webpent/shared/research_intelligence.py:188"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_as_bounded_projection",
+      "runtime_boundary": "planning adapter; not controller-owned active information loop"
+    },
+    "ResearchSession": {
+      "implemented_symbols": {
+        "ResearchSession": [
+          "src/webpent/shared/research_intelligence.py:546"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_as_persistent_state_projection",
+      "runtime_boundary": "persists through state; future-engagement verified-memory integration remains partial"
+    },
+    "ActionExecutor": {
+      "implemented_symbols": {
+        "ActionExecutor": [
+          "src/webpent/shared/campaign_executor.py:369"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_for_smart_campaign_runtime",
+      "runtime_boundary": "not proven as the sole executor for every direct-I/O path"
+    },
+    "ProofBundle": {
+      "implemented_symbols": {
+        "ProofBundle": [
+          "src/webpent/models/proof_bundle.py"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented"
+    },
+    "NegativeEvidenceLedger": {
+      "implemented_symbols": {
+        "NegativeEvidenceLedger": [
+          "src/webpent/shared/research_intelligence.py:459"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_bounded_scoped_store",
+      "runtime_boundary": "state/session projection; broad controller consumption remains partial"
+    },
+    "CoverageIntelligence": {
+      "implemented_symbols": {
+        "CoverageIntelligence": [
+          "src/webpent/shared/coverage_ledger.py:55"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_as_report_safe_projection_facade",
+      "runtime_boundary": "coverage is not yet proven to drive controller queue in all routes"
+    },
+    "CapabilityRegistry": {
+      "implemented_symbols": {
+        "CapabilityRegistry": [
+          "src/webpent/shared/capability_manifest.py:83"
+        ]
+      },
+      "missing_symbols": [],
+      "missing_files": [],
+      "status": "implemented_lazy_typed_blocker_facade",
+      "runtime_boundary": "tool-specific fallback coverage is bounded and requires runtime qualification"
+    }
+  },
+  "audit_revision": "2026-08-19-smart-review-3",
+  "actual_qualification": {
+    "pytest": "730 passed, 112 warnings, 0 failures in latest full qualification; 22 targeted controller/research tests passed",
+    "ruff": "0 errors on latest full-project qualification",
+    "compileall": "passed on latest full-project qualification",
+    "scope": "No WAPTLab or Juice Shop source modifications in this workspace"
+  },
+  "controller_integration": {
+    "status": "partial_not_fully_qualified",
+    "implemented_adapter_nodes": [
+      "smart_campaigns",
+      "smart_campaigns_execution",
+      "AutonomousController (explicit opt-in, safe-stop without handler)",
+      "ActionExecutor",
+      "ProofBundle/report gate",
+      "ResearchSession projections"
+    ],
+    "not_present_as_distinct_controller_services": [
+      "surface_observation",
+      "active_information_gathering",
+      "application_intent_update",
+      "identity_tenant_update",
+      "workflow_update",
+      "coverage_update",
+      "hypothesis_factory",
+      "precondition_resolver",
+      "research_session_update",
+      "next_best_action_controller",
+      "policy_authorization_controller",
+      "oracle_engine",
+      "negative_control_controller",
+      "proof_bundle_seal_controller",
+      "verified_memory_update",
+      "causal_attack_graph_update",
+      "novel_behavior_detector",
+      "campaign_stop_or_replan_controller"
+    ],
+    "reason": "A bounded controller-owned orchestration node is now wired behind enable_autonomous_controller, but the plan's full set of distinct research services and terminal live qualification gates remains incomplete."
+  },
+  "qualification_gates": {
+    "G0_baseline": "documented",
+    "G1_security": "partially verified by existing regression suite; production secrets/config still operator-dependent",
+    "G2_runtime_wiring": "partial; bounded controller reachable behind explicit opt-in, full terminal loop not proven",
+    "G3_knowledge": "partial; projections and ledgers exist, not all models are consumed by controller",
+    "G4_active_information": "partial; bounded smart executor supports selected tasks, not all ten required families",
+    "G5_prioritization": "implemented bounded scoring with tests",
+    "G6_workflows": "partial; vertical proof slices not all terminal",
+    "G7_oracles_validators": "partial/legacy validators present; full family matrix not re-qualified live",
+    "G8_proof": "opt-in strict gate implemented; 100 percent live coverage not proven",
+    "G9_learning": "partial; scoped memory and ledgers present, broad verified-memory consumption incomplete",
+    "G10_waptlab": "not_proven; no current three-consecutive 15-of-20 live qualification",
+    "G11_reliability": "partial; full durable multi-worker qualification not rerun in this review",
+    "G12_vip": "not_met_without G10/G11 and proof-coverage evidence"
+  }
+}

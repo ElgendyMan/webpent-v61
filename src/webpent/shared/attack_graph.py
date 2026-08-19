@@ -1,0 +1,365 @@
+"""Deterministic Attack Graph projection helpers.
+
+This module is deliberately passive: it consumes observations already present
+in state and never performs network requests, creates Findings, or authorizes
+an exploit.  It is safe to run in offline mode and is designed to tolerate
+checkpoint-restored dictionaries.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Iterable, Mapping
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
+
+from webpent.models.attack_graph import (
+    AttackGraph,
+    AttackGraphEdge,
+    AttackGraphNode,
+    AttackGraphNodeKind,
+)
+from webpent.models.findings import Confidence
+from webpent.models.mental_model import (
+    MentalModel,
+    MentalModelNode,
+    _coerce_to_mental_model,
+)
+from webpent.state.reducers import model_get
+
+_SECRET_KEYS = {
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "token",
+    "secret",
+    "password",
+    "api_key",
+    "apikey",
+}
+
+
+def _stable_ref(value: Any, *, prefix: str) -> str:
+    """Return a deterministic non-reversible reference for a sensitive label."""
+
+    digest = hashlib.sha256(str(value).encode("utf-8", "replace")).hexdigest()[:20]
+    return f"{prefix}:{digest}"
+
+
+def _safe_url(value: Any) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = urlsplit(value.strip())
+    except ValueError:
+        return None
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path or "/", "", ""))
+
+
+def _endpoint_identity(value: Any) -> str | None:
+    """Return Mental Model-compatible endpoint identity for ID resolution only."""
+
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = urlsplit(value.strip())
+    except ValueError:
+        return None
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+    if scheme == "http" and netloc.endswith(":80"):
+        netloc = netloc[:-3]
+    elif scheme == "https" and netloc.endswith(":443"):
+        netloc = netloc[:-4]
+    path = (parsed.path or "/").rstrip("/") or "/"
+    return urlunsplit((scheme, netloc, path, parsed.query, ""))
+
+
+def _mental_node_id(prefix: str, identity_key: str) -> str:
+    """Mirror Mental Model's deterministic ``<prefix>-<hash>`` IDs."""
+
+    return f"{prefix}-{hashlib.sha256(identity_key.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _credential_node_id(prefix: str, raw_value: Any) -> str:
+    identity_key = f"sha256:{hashlib.sha256(str(raw_value).encode('utf-8', 'replace')).hexdigest()}"
+    return _mental_node_id(prefix, identity_key)
+
+
+def _safe_metadata(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {}
+    safe: dict[str, Any] = {}
+    for raw_key, raw_value in value.items():
+        key = str(raw_key).strip().lower()
+        if (
+            not key
+            or key in _SECRET_KEYS
+            or any(marker in key for marker in ("token", "secret", "password"))
+        ):
+            continue
+        if isinstance(raw_value, str):
+            if _safe_url(raw_value):
+                safe[key] = _safe_url(raw_value)
+            else:
+                safe[key] = raw_value[:200]
+        elif isinstance(raw_value, (bool, int, float)) or raw_value is None:
+            safe[key] = raw_value
+        elif isinstance(raw_value, list):
+            safe[key] = [str(item)[:120] for item in raw_value[:20]]
+    return safe
+
+
+def _node_from_mental_model(node_id: str, node: MentalModelNode) -> AttackGraphNode:
+    kind = str(node.kind)
+    try:
+        graph_kind = AttackGraphNodeKind(kind)
+    except ValueError:
+        graph_kind = AttackGraphNodeKind.OBJECT
+    metadata = _safe_metadata(node.metadata)
+    label = {
+        AttackGraphNodeKind.IDENTITY.value: "identity",
+        AttackGraphNodeKind.OBJECT.value: "object",
+        AttackGraphNodeKind.WORKFLOW.value: "workflow",
+        AttackGraphNodeKind.ENDPOINT.value: "endpoint",
+    }.get(kind, kind)
+    return AttackGraphNode(
+        id=node_id,
+        kind=graph_kind,
+        label=f"{label}:{node_id[-12:]}",
+        status="observed",
+        criticality=str(node.criticality),
+        source_refs=[str(node.discovery_source)],
+        metadata=metadata,
+    )
+
+
+def _add_edge(
+    graph: AttackGraph,
+    *,
+    kind: str,
+    source_id: str,
+    target_id: str,
+    evidence_refs: Iterable[Any] = (),
+    confidence: str = "observed",
+    metadata: Mapping[str, Any] | None = None,
+) -> None:
+    if source_id == target_id or source_id not in graph.nodes or target_id not in graph.nodes:
+        return
+    refs = [str(ref)[:240] for ref in evidence_refs if ref][:50]
+    edge_id = _stable_ref(f"{kind}|{source_id}|{target_id}|{'|'.join(refs)}", prefix="edge")
+    if any(edge.id == edge_id for edge in graph.edges):
+        return
+    graph.edges.append(
+        AttackGraphEdge(
+            id=edge_id,
+            kind=kind,
+            source_id=source_id,
+            target_id=target_id,
+            confidence=confidence,
+            evidence_refs=refs,
+            metadata=_safe_metadata(metadata or {}),
+        )
+    )
+
+
+def _coerce_graph_node_id(value: Any, *, kind: str, graph: AttackGraph) -> str | None:
+    if value is None:
+        return None
+    candidate = str(value)
+    if candidate in graph.nodes:
+        return candidate
+    prefix = {
+        "identity": "identity",
+        "object": "object",
+        "workflow": "workflow",
+        "endpoint": "endpoint",
+    }.get(kind)
+    if prefix is None:
+        return None
+    generated = _credential_node_id(prefix, candidate)
+    if generated not in graph.nodes:
+        graph.nodes[generated] = AttackGraphNode(
+            id=generated,
+            kind=(
+                AttackGraphNodeKind.IDENTITY
+                if prefix == "identity"
+                else AttackGraphNodeKind.OBJECT
+            ),
+            label=f"{prefix}:{generated[-12:]}",
+            source_refs=["relational_evidence"],
+            metadata={"redacted": True},
+        )
+    return generated
+
+
+def _add_relational_edges(graph: AttackGraph, relational_evidence: Iterable[Any]) -> None:
+    for row in relational_evidence:
+        if not isinstance(row, Mapping):
+            continue
+        resource_url = _safe_url(row.get("resource_url"))
+        resource_id = None
+        if resource_url:
+            resource_id = _mental_node_id("endpoint", resource_url)
+            if resource_id not in graph.nodes:
+                graph.nodes[resource_id] = AttackGraphNode(
+                    id=resource_id,
+                    kind=AttackGraphNodeKind.ENDPOINT,
+                    label=f"endpoint:{resource_id[-12:]}",
+                    source_refs=["relational_evidence"],
+                    metadata={"url": resource_url},
+                )
+        object_id = row.get("object_id")
+        if resource_id is None and object_id:
+            resource_id = _credential_node_id("object", object_id)
+            if resource_id not in graph.nodes:
+                graph.nodes[resource_id] = AttackGraphNode(
+                    id=resource_id,
+                    kind=AttackGraphNodeKind.OBJECT,
+                    label=f"object:{resource_id[-12:]}",
+                    source_refs=["relational_evidence"],
+                )
+        if resource_id is None:
+            continue
+        from_id = _coerce_graph_node_id(row.get("from_identity"), kind="identity", graph=graph)
+        to_id = _coerce_graph_node_id(row.get("to_identity"), kind="identity", graph=graph)
+        owner_id = _coerce_graph_node_id(row.get("owner_identity"), kind="identity", graph=graph)
+        refs = row.get("evidence_refs") or []
+        differential = bool(row.get("differential"))
+        confidence = "relational_differential" if differential else "relational_observed"
+        if from_id:
+            _add_edge(
+                graph,
+                kind="identity_resource_access",
+                source_id=from_id,
+                target_id=resource_id,
+                evidence_refs=refs,
+                confidence=confidence,
+                metadata={"accessible": bool(row.get("from_accessible"))},
+            )
+        if to_id:
+            _add_edge(
+                graph,
+                kind="identity_resource_access",
+                source_id=to_id,
+                target_id=resource_id,
+                evidence_refs=refs,
+                confidence=confidence,
+                metadata={"accessible": bool(row.get("to_accessible"))},
+            )
+        if owner_id:
+            _add_edge(
+                graph,
+                kind="ownership",
+                source_id=owner_id,
+                target_id=resource_id,
+                evidence_refs=refs,
+                confidence="owner_declared",
+            )
+
+
+def _add_finding_nodes(graph: AttackGraph, findings: Iterable[Any]) -> None:
+    for finding in findings:
+        finding_id = model_get(finding, "id")
+        if finding_id is None:
+            continue
+        node_id = f"finding:{finding_id}"
+        if node_id in graph.nodes:
+            continue
+        confidence = str(model_get(finding, "confidence", Confidence.TENTATIVE.value))
+        graph.nodes[node_id] = AttackGraphNode(
+            id=node_id,
+            kind=AttackGraphNodeKind.FINDING,
+            label="finding",
+            status=confidence,
+            criticality=str(model_get(finding, "severity", "info")),
+            source_refs=[str(model_get(finding, "tool_name", "unknown"))],
+            metadata={"vuln_class": str(model_get(finding, "vuln_class", "unknown"))},
+        )
+        endpoint_identity = _endpoint_identity(model_get(finding, "url"))
+        if endpoint_identity:
+            endpoint_id = _mental_node_id("endpoint", endpoint_identity)
+            if endpoint_id in graph.nodes:
+                _add_edge(
+                    graph,
+                    kind="finding_affects",
+                    source_id=node_id,
+                    target_id=endpoint_id,
+                    evidence_refs=[f"finding:{finding_id}"],
+                    confidence=confidence,
+                )
+
+
+def _add_hypothesis_nodes(graph: AttackGraph, hypotheses: Iterable[Any]) -> None:
+    for hypothesis in hypotheses:
+        hypothesis_id = model_get(hypothesis, "id")
+        if hypothesis_id is None:
+            continue
+        node_id = f"hypothesis:{hypothesis_id}"
+        if node_id in graph.nodes:
+            continue
+        graph.nodes[node_id] = AttackGraphNode(
+            id=node_id,
+            kind=AttackGraphNodeKind.HYPOTHESIS,
+            label="hypothesis",
+            status=str(model_get(hypothesis, "status", "unexplored")),
+            criticality=str(model_get(hypothesis, "priority", "medium")),
+            source_refs=[str(model_get(hypothesis, "origin", "unknown"))],
+            metadata={"title": str(model_get(hypothesis, "title", ""))[:160]},
+        )
+        endpoint_identity = _endpoint_identity(model_get(hypothesis, "url"))
+        if endpoint_identity:
+            endpoint_id = _mental_node_id("endpoint", endpoint_identity)
+            if endpoint_id in graph.nodes:
+                _add_edge(
+                    graph,
+                    kind="hypothesis_targets",
+                    source_id=node_id,
+                    target_id=endpoint_id,
+                    evidence_refs=[f"hypothesis:{hypothesis_id}"],
+                    confidence="hypothesis",
+                )
+
+
+def build_attack_graph(
+    mental_model_state: Any = None,
+    *,
+    relational_evidence: Iterable[Any] = (),
+    findings: Iterable[Any] = (),
+    hypotheses: Iterable[Any] = (),
+) -> dict[str, Any]:
+    """Project current state into a deterministic, redacted Attack Graph."""
+
+    model: MentalModel = _coerce_to_mental_model(mental_model_state)
+    graph = AttackGraph(generated_from=["mental_model", "relational_evidence"])
+    for node_id, node in model.nodes.items():
+        graph.nodes[node_id] = _node_from_mental_model(node_id, node)
+
+    for edge in model.edges:
+        _add_edge(
+            graph,
+            kind=str(edge.kind),
+            source_id=str(edge.source_id),
+            target_id=str(edge.target_id),
+            evidence_refs=[edge.source_ref],
+            confidence="mental_model_observed",
+        )
+
+    _add_relational_edges(graph, relational_evidence)
+    _add_finding_nodes(graph, findings)
+    _add_hypothesis_nodes(graph, hypotheses)
+
+    if not graph.nodes:
+        graph.coverage_gaps.append("No typed target nodes were available for graph projection.")
+    if not graph.edges:
+        graph.coverage_gaps.append(
+            "No evidence-backed relationships were available for graph projection."
+        )
+    return graph.model_dump(mode="json")
+
+
+__all__ = ["build_attack_graph"]

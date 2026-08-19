@@ -1,0 +1,6 @@
+{
+  "status": "strict_gate_implemented_but_live_100_percent_coverage_not_proven",
+  "proof_bundle_model": "src/webpent/models/proof_bundle.py",
+  "report_gate": "src/webpent/shared/report_quality.py",
+  "sealed_replayable_confirmations": 0
+}

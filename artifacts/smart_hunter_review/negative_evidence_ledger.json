@@ -1,0 +1,6 @@
+{
+  "status": "implemented_and_contract-tested",
+  "entries": [],
+  "source": "NegativeEvidenceLedger",
+  "scope_policy": "same client required; cross engagement requires explicit same_client_cross_engagement marker"
+}

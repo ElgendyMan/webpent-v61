@@ -1,0 +1,215 @@
+# src/webpent/tools/recon/nuclei.py
+"""webpent.tools.recon.nuclei
+
+Wrapper around ProjectDiscovery's ``nuclei`` CLI for template-based
+vulnerability scanning.
+
+Nuclei emits results in JSON Lines format when invoked with ``-j`` (the
+short form of ``-json``, required by Nuclei v3.10+). Each record
+represents a single matched template (a finding). This module returns
+the parsed records as a list of dicts; downstream agents convert them
+to :class:`webpent.models.findings.Finding` instances.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from webpent.config.settings import get_settings
+from webpent.shared.exceptions import ToolExecutionError
+from webpent.tools.registry import register_tool
+from webpent.tools.utils.subprocess import run_command
+
+logger = logging.getLogger(__name__)
+
+
+@register_tool(name="nuclei", category="recon", description="Template-based vulnerability scanner")
+def run_nuclei(
+    target_url: str,
+    templates: list[str] | None = None,
+    stealth_mode: bool = False,
+    session_cookies: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Scan ``target_url`` with nuclei and return parsed JSON results.
+
+    Args:
+        target_url: Absolute URL of the target to scan.
+        templates: Optional list of template identifiers or paths. Each
+            entry is appended as ``-t <template>``. When ``None``,
+            nuclei uses its default template set (all installed
+            templates).
+        stealth_mode: V5 Sprint 6 — when True, insert randomized jitter
+            and enforce minimum inter-request spacing before launching
+            nuclei. Helps evade WAF/IDS rate-based detection.
+
+    Returns:
+        A list of dictionaries, one per valid JSONL record emitted by
+        nuclei. Lines that fail JSON parsing are silently skipped.
+
+    Raises:
+        ToolNotFoundError: If ``nuclei`` is not installed.
+        ToolExecutionError: If nuclei exits non-zero or times out.
+    """
+    # V10 P1-8 FIX: scope pre-flight. nuclei does NOT enforce the
+    # engagement scope itself — it will happily scan any URL passed via
+    # ``-u``, including out-of-scope hosts (e.g. a third-party CDN URL
+    # that crawled into a finding). The SSRF transport guards direct
+    # httpx requests, but nuclei spawns its own subprocess and bypasses
+    # the Python transport entirely. We must enforce scope HERE, before
+    # building the command, otherwise an out-of-scope target_url leads
+    # to nuclei sending real exploit-y HTTP probes at a host the
+    # operator never authorised — a program-rules violation.
+    from urllib.parse import urlparse
+
+    from webpent.shared.engagement_scope import is_engagement_target_host
+
+    target_host = urlparse(target_url).hostname
+    if not target_host or not is_engagement_target_host(target_host):
+        logger.warning(
+            "nuclei: REFUSING to scan %s — host %r is NOT in the "
+            "engagement scope. Returning empty result list (no scan "
+            "performed). This prevents nuclei from probing out-of-scope "
+            "hosts that may have crawled into a finding URL.",
+            target_url, target_host,
+        )
+        return []
+
+    # V5 Sprint 6: pre-tool stealth delay. Apply jitter + rate-limit
+    # before spawning the subprocess so the target sees a human-paced
+    # request burst rather than an immediate machine-paced one.
+    if stealth_mode:
+        from webpent.shared.stealth import (
+            apply_jitter,
+            enforce_min_interval,
+            extract_host,
+        )
+        apply_jitter(stealth_mode, label="nuclei")
+        enforce_min_interval(stealth_mode, extract_host(target_url))
+
+    settings = get_settings()
+
+    cmd = [
+        settings.nuclei_path,
+        "-u",
+        target_url,
+        "-silent",
+        "-j",  # Nuclei v3.10+ short form of -json; emits JSON Lines output
+    ]
+
+    if templates:
+        for template in templates:
+            template = template.strip()
+            if template:
+                cmd.extend(["-t", template])
+
+    # Keep nuclei aligned with the Python HTTP clients and the target's
+    # explicit lab allowlist. Without this header, WAPTLab's bot gate
+    # returns 403 before templates can exercise the application.
+    user_agent = (settings.http_user_agent or "").replace("\r", " ").replace("\n", " ").strip()
+    if user_agent:
+        cmd.extend(["-H", f"User-Agent: {user_agent}"])
+
+    # V7 Phase 4.4: Inject session cookies.
+    if session_cookies:
+        from webpent.shared.http import build_cookie_header
+        cookie_str = build_cookie_header(session_cookies)
+        if cookie_str:
+            cmd.extend(["-H", f"Cookie: {cookie_str}"])
+            logger.info(
+                "nuclei: injected %d session cookie(s) (names: %s)",
+                len(session_cookies), sorted(session_cookies.keys()),
+            )
+        else:
+            logger.warning(
+                "nuclei: session_cookies provided but all values empty "
+                "after CRLF sanitization — scanning UNAUTHENTICATED.",
+            )
+
+    # V4.5: Handle timeout with partial result processing.
+    # V10 P1-2: timeout is now env-configurable via NUCLEI_TIMEOUT
+    # (settings.nuclei_timeout, default 600). Preserves the previous
+    # hardcoded default as the fallback if settings load fails.
+    try:
+        from webpent.config.settings import get_settings as _get_settings
+        _nuclei_timeout = _get_settings().nuclei_timeout
+    except Exception:
+        _nuclei_timeout = 600
+    try:
+        raw_output = run_command(cmd, timeout=_nuclei_timeout)
+    except ToolExecutionError as exc:
+        # If this was a timeout, attempt to process partial stdout.
+        if "timed out" in (exc.stderr or "").lower() and exc.stdout:
+            logger.warning(
+                "nuclei timed out after %ds — processing %d bytes of partial output",
+                _nuclei_timeout, len(exc.stdout),
+            )
+            raw_output = exc.stdout
+        else:
+            logger.error(
+                "nuclei FAILED for %s (exit=%d, error_reason=%s)",
+                target_url, exc.returncode, (exc.stderr or "")[:200],
+            )
+            raise
+
+    results: list[dict[str, Any]] = []
+    for line in raw_output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            # Nuclei occasionally interleaves non-JSON progress/banner
+            # lines with -json output. Skipping keeps the pipeline
+            # resilient without masking genuine failures (which surface
+            # via the exit code in run_command).
+            continue
+        if isinstance(record, dict):
+            results.append(record)
+
+    # V7 Phase 6: Classify tool failure mode.
+    # V10 P0-3 (RCA follow-up): when nuclei produces no output OR
+    # crashes (panic/fatal), we MUST NOT return the (possibly partial)
+    # parsed records to the caller — those records are infra-failure
+    # noise, not vulnerability evidence. Previously they flowed through
+    # to _convert_nuclei_records → Finding(confidence=FIRM), producing
+    # High executive posture from unconfirmed recon rows. Now: return
+    # [] so zero Findings are constructed from a crashed/empty run.
+    # The engagement continues with other nodes; the operator sees the
+    # ERROR log and knows nuclei contributed nothing.
+    raw_output_lower = (raw_output or "").lower()
+    infra_failure = False
+    if not raw_output.strip():
+        logger.error(
+            "TOOL_INFRA_FAILURE: nuclei produced no output for %s. "
+            "Returning 0 records (no Findings will be constructed from "
+            "this invocation).", target_url,
+        )
+        infra_failure = True
+    elif "panic:" in raw_output_lower or "fatal" in raw_output_lower:
+        logger.error(
+            "TOOL_INFRA_FAILURE: nuclei crashed for %s (panic/fatal in "
+            "output). Returning 0 records (no Findings will be "
+            "constructed from this invocation).", target_url,
+        )
+        infra_failure = True
+
+    if infra_failure:
+        # V10 P0-3: quarantine — do NOT return parsed records from a
+        # crashed/empty run. They are not vulnerability evidence.
+        return []
+
+    # V10 P1-4: observability — log raw_count, parsed_count, promoted_count
+    # so the operator can see the funnel from raw JSONL lines to valid
+    # records. infra_failure=False here (we returned early above).
+    raw_line_count = len([line for line in raw_output.splitlines() if line.strip()])
+    logger.info(
+        "nuclei observability: raw_lines=%d, parsed_records=%d, "
+        "promoted_to_findings=pending (recon_node converts), "
+        "infra_failure=False",
+        raw_line_count, len(results),
+    )
+
+    return results

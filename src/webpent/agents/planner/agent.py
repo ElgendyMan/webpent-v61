@@ -1,0 +1,216 @@
+# src/webpent/agents/planner/agent.py
+"""LangGraph planner node with an optional advisory decision proposal.
+
+The original human-readable plan remains the compatibility output. Phase 7
+adds a feature-flagged, structured proposal that is parsed and gate-checked;
+it never controls graph routing and never carries executable commands.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+from webpent.config.settings import get_settings
+from webpent.memory.vectorstore import get_vector_store_manager
+from webpent.models.targets import Target
+from webpent.shared.llm import (
+    TaskType,
+    get_llm,  # legacy monkeypatch point; guarded by llm_enabled below
+    get_safety_system_instruction,
+    safe_prompt_format,
+    try_get_llm,
+)
+from webpent.shared.planner_decisions import (
+    build_planner_decision,
+    redact_prompt_target,
+)
+from webpent.state.state import PentestState
+
+logger = logging.getLogger(__name__)
+
+_SYSTEM_PROMPT = (
+    "You are a Senior Penetration Tester. Create a brief, 3-step recon "
+    "and scanning plan for the target."
+)
+
+_HUMAN_TEMPLATE = (
+    "Target URL: {url}\n"
+    "Target domain: {domain}\n\n"
+    "Reference Methodologies: {methodologies}\n\n"
+    "Produce a numbered, 3-step plan covering reconnaissance, scanning, "
+    "and vulnerability validation. Be concise — one or two sentences per "
+    "step. Do not include disclaimers or preamble."
+)
+
+_DECISION_SYSTEM_PROMPT = (
+    "You are an advisory penetration-testing planner. Return ONLY one valid "
+    "JSON object matching the requested schema. Do not include markdown, "
+    "URLs, shell commands, payloads, cookies, credentials, or extra keys. "
+    "Your proposal is not executable and must remain read-only and bounded."
+)
+
+_DECISION_HUMAN_TEMPLATE = (
+    "Known target reference: engagement_target\n"
+    "Known hypothesis references: {hypothesis_refs}\n"
+    "Known mental-model references: {target_refs}\n"
+    "Available tool categories: {tool_categories}\n\n"
+    "Return JSON with exactly these keys: action_type, target_ref, "
+    "hypothesis_ref, required_identity, expected_evidence, estimated_cost, "
+    "risk_level, rationale.\n"
+    "Allowed action_type values: observe_target, enumerate_surface, "
+    "run_read_only_tool, validate_hypothesis, revisit_surface, no_action.\n"
+    "Allowed risk_level values: low, medium, high, destructive."
+)
+
+_PORTSWIGGER_NOTE = (
+    "NOTE: This target is a PortSwigger Web Security Academy lab. "
+    "Skip infrastructure and subdomain reconnaissance. Focus strictly "
+    "on web application vulnerabilities (e.g., SQLi, XSS, SSRF, Logic Flaws)."
+)
+
+_FALLBACK_PLAN = (
+    "1. Reconnaissance: enumerate the target host and identify live "
+    "services.\n"
+    "2. Scanning: probe the target for known vulnerabilities using "
+    "Nuclei templates.\n"
+    "3. Validation: review findings and prepare a structured report.\n\n"
+    "(Fallback plan — LLM-based planning was unavailable.)"
+)
+
+_RAG_QUERY = "penetration testing methodology PTES NIST OWASP"
+
+
+def _retrieve_methodologies() -> str:
+    try:
+        manager = get_vector_store_manager()
+        results = manager.search_knowledge(_RAG_QUERY, k=3)
+        if not results:
+            logger.debug("RAG returned no methodologies — proceeding without context")
+            return ""
+        formatted = "\n---\n".join(results[:3])
+        logger.debug("RAG retrieved %d methodology chunk(s)", len(results))
+        return formatted
+    except Exception as exc:
+        logger.warning("RAG methodology retrieval failed: %s", exc)
+        return ""
+
+
+def _state_target_refs(state: PentestState) -> list[str]:
+    mental_model = state.get("mental_model") or {}
+    nodes = mental_model.get("nodes", {}) if isinstance(mental_model, dict) else {}
+    if not isinstance(nodes, dict):
+        return []
+    refs = []
+    for node_id, node in nodes.items():
+        kind = node.get("kind") if isinstance(node, dict) else getattr(node, "kind", "")
+        if str(getattr(kind, "value", kind)) in {"endpoint", "host", "service"}:
+            refs.append(f"node:{node_id}")
+    return refs[:32]
+
+
+def _state_hypothesis_refs(state: PentestState) -> list[str]:
+    refs = []
+    for hypothesis in state.get("hypotheses") or []:
+        value = (
+            hypothesis.get("id")
+            if isinstance(hypothesis, dict)
+            else getattr(hypothesis, "id", None)
+        )
+        if value:
+            refs.append(str(value))
+    return refs[:32]
+
+
+def _make_decision_prompt(state: PentestState) -> str:
+    settings = get_settings()
+    # Only identifiers and category names enter this prompt. Credentials,
+    # cookies, raw crawled responses, and target query values are excluded.
+    return safe_prompt_format(
+        _DECISION_HUMAN_TEMPLATE,
+        hypothesis_refs=", ".join(_state_hypothesis_refs(state)) or "(none)",
+        target_refs=", ".join(_state_target_refs(state)) or "(none)",
+        tool_categories=", ".join(sorted(getattr(settings, "planner_tool_categories", []) or []))
+        or "(runtime registry)",
+    )
+
+
+def planner_node(state: PentestState) -> dict:
+    """Generate the legacy plan and, optionally, a gated advisory proposal."""
+    target: Target = state["target"]
+    settings = get_settings()
+    safe_target = redact_prompt_target(target.url)
+    logger.info("Planner phase starting for target=%s", safe_target)
+    logger.info("Planner: generating plan (informational; graph topology remains fixed)")
+
+    methodologies = _retrieve_methodologies()
+    llm: Any = None
+    response: Any = None
+    try:
+        if settings.llm_enabled:
+            try:
+                # Preserve the historical module-level patch point for
+                # integrations while retaining the resilient helper fallback.
+                llm = get_llm(TaskType.AUTOMATION)
+            except Exception:
+                llm = try_get_llm(TaskType.AUTOMATION)
+        human_prompt = safe_prompt_format(
+            _HUMAN_TEMPLATE,
+            url=safe_target,
+            domain=target.domain or "(unknown)",
+            methodologies=methodologies or "(none available)",
+        )
+        if target.is_portswigger_lab:
+            logger.info("PortSwigger lab mode active for %s", safe_target)
+            human_prompt = f"{human_prompt}\n\n{_PORTSWIGGER_NOTE}"
+        invocation_messages = [
+            SystemMessage(content=get_safety_system_instruction()),
+            SystemMessage(content=_SYSTEM_PROMPT),
+            HumanMessage(content=human_prompt),
+        ]
+        if llm is None:
+            plan_text = _FALLBACK_PLAN
+            logger.info("Planner LLM unavailable; using deterministic fallback plan")
+        else:
+            response = llm.invoke(invocation_messages)
+            plan_text = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            )
+            logger.info("Planner phase completed; plan length=%d chars", len(plan_text))
+    except Exception as exc:
+        logger.error("All LLM providers failed for planner: %s. Using fallback plan.", exc)
+        plan_text = _FALLBACK_PLAN
+
+    result: dict[str, Any] = {
+        "messages": [AIMessage(content=plan_text)],
+        "current_phase": "recon",
+    }
+
+    if settings.enable_planner_decisions:
+        decision_response = None
+        if llm is not None:
+            try:
+                decision_response = llm.invoke(
+                    [
+                        SystemMessage(content=get_safety_system_instruction()),
+                        SystemMessage(content=_DECISION_SYSTEM_PROMPT),
+                        HumanMessage(content=_make_decision_prompt(state)),
+                    ]
+                )
+            except Exception as exc:
+                logger.warning("Structured planner proposal unavailable: %s", exc)
+        proposal, audit = build_planner_decision(
+            dict(state), raw_llm_response=decision_response, settings=settings
+        )
+        result["planner_decision"] = proposal.model_dump(mode="json")
+        result["planner_gate_audits"] = [audit.to_state()]
+        logger.info(
+            "Planner decision status=%s action=%s fallback=%s",
+            audit.status,
+            proposal.action_type,
+            audit.fallback_used,
+        )
+
+    return result

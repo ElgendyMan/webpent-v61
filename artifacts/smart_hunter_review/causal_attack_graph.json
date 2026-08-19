@@ -1,0 +1,5 @@
+{
+  "status": "partial_existing_attack_graph_plus_research_session_projection",
+  "causal_edges": [],
+  "qualification_note": "Full causal controller update loop remains incomplete."
+}

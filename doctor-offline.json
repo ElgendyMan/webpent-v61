@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "provider": "groq",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "openrouter",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "github",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "cerebras",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "zai",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "mistral",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "gemini",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "cohere",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    },
+    {
+      "provider": "cloudflare",
+      "status": "SKIPPED",
+      "latency_ms": null,
+      "detail": "LLM disabled; deterministic fallback is active"
+    }
+  ],
+  "dead_providers": {},
+  "summary": {
+    "active": 0,
+    "missing_key": 0,
+    "failing": 0,
+    "total": 9
+  }
+}

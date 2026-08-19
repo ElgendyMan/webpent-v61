@@ -1,0 +1,122 @@
+name: WebPent CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: src
+      # Keep CI deterministic and prevent accidental outbound LLM usage.
+      LLM_ENABLED: "false"
+      EMBEDDINGS_OFFLINE: "true"
+      DISABLE_RAG: "true"
+      AUTH_ENABLED: "false"
+      FFUF_ENABLED: "false"
+      WEBHOOK_ENABLED: "false"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Compile source
+        run: uv run python -m compileall -q src
+
+      - name: Verify preserved test surface
+        run: uv run python scripts/verify_test_count.py --minimum 498
+
+      - name: Verify dependency consistency
+        run: |
+          uv lock --check
+          uv run python -m pip check
+
+      - name: Run critical security contracts
+        run: >-
+          uv run pytest
+          tests/test_v63_vip_security_regression.py
+          tests/test_vip_audit_gap_closure.py
+          tests/test_v62_ingest_and_memory_isolation.py
+          tests/test_v61_cognitive_upgrade.py
+          --strict-markers
+          --tb=short
+
+      - name: Run unit and regression tests with coverage
+        run: >-
+          uv run pytest
+          --cov=webpent
+          --cov-report=term-missing
+          --cov-report=xml:coverage.xml
+          --cov-fail-under=35
+
+      - name: Lint touched P0/P1 surfaces
+        run: >-
+          uv run ruff check
+          src/webpent/config/settings.py
+          src/webpent/integrations/webhook.py
+          src/webpent/shared/preflight.py
+          src/webpent/tools/recon/ffuf.py
+          src/webpent/tools/registry.py
+          src/webpent/agents/validator/active_checks.py
+          scripts/verify_test_count.py
+          tests/test_p0_ffuf_preflight.py
+          tests/test_p0_p1_active_validators.py
+          tests/test_p0_secondary_identity_entrypoint.py
+          tests/test_p0_websocket_webhook.py
+          tests/test_p1_task_crypto_fail_closed.py
+          tests/test_v63_vip_security_regression.py
+          tests/test_vip_audit_gap_closure.py
+          tests/test_production_deployment_contract.py
+          --select E,F,I,RUF --ignore BLE001 --output-format concise
+
+      # The v60 tree has documented low/medium legacy Bandit findings
+      # (dynamic SQL, deliberate subprocess wrappers, and fail-soft cleanup).
+      # High-severity findings remain a hard gate; the full report is retained
+      # locally in audit/ for remediation tracking.
+      - name: Bandit high-severity security gate
+        run: uv run bandit -q -r src/webpent -x tests -lll
+
+      - name: Export locked dependencies for audit
+        run: uv export --locked --all-groups --no-emit-project --format requirements.txt --output-file requirements-audit.txt
+
+      - name: Dependency vulnerability audit
+        run: uv run pip-audit --strict --requirement requirements-audit.txt --format json --output pip-audit.json
+
+      - name: Upload quality artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webpent-quality-${{ github.run_id }}
+          path: |
+            coverage.xml
+            pip-audit.json
+            requirements-audit.txt
+          if-no-files-found: ignore
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webpent-coverage-${{ github.run_id }}
+          path: coverage.xml
+          if-no-files-found: ignore

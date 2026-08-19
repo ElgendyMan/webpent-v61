@@ -1,0 +1,1104 @@
+"""webpent.agents.validator.structural_checks
+
+V10 P1 (RCA follow-up): deterministic structural validators for the 8
+DVWA vuln classes that previously returned silent ``[]`` findings.
+
+Each function takes a ``Finding`` (already promoted from a path-classified
+hypothesis with ``deterministic_match=True``) plus the engagement's
+``session_cookies`` / ``target_url`` context, performs a deterministic
+HTTP/HTML check, and returns the finding with an updated
+``confidence_level``:
+
+  - ``"Tool-Confirmed"`` — the structural check found a real issue
+    (missing CSP, weak session ID, dangerous JS sink, etc.). This is
+    a deterministic confirmation — NO LLM is involved.
+
+  - ``"Not Scanned"`` — the structural check could NOT run (e.g. the
+    page returned a non-200 status, the fetch failed, no session
+    cookies were observed). This is the explicit operator signal
+    required by V10 P0-4: the operator sees ``count >= 1`` with a
+    clear ``confidence_level="Not Scanned"`` rather than a silent
+    ``[]``.
+
+  - ``"Clean"`` (V10 RESIDUAL FIX) — the structural check RAN
+    SUCCESSFULLY and found NO issue (e.g. CSP header present and not
+    trivially weak, no dangerous JS sinks, captcha present, throttling
+    active). Previously these cases were conflated with ``"Not
+    Scanned"`` — operators could not distinguish "detector ran clean"
+    from "detector could not run". ``"Clean"`` is never produced by
+    an LLM; it is the deterministic success path of a structural
+    validator that found no evidence of a vulnerability. Severity for
+    Clean findings is INFO.
+
+  - ``"AI-Assessed"`` — the structural check is not applicable to this
+    target (e.g. captcha detection on a non-form page). The finding
+    retains its default AI-Assessed level so the reporter can surface
+    it as a low-confidence observation.
+
+Design principles (per V10 hard constraints):
+  * LLM is NEVER called — all checks are deterministic HTTP + regex.
+  * All HTTP probes use ``make_safe_httpx_client`` (SSRF guard +
+    engagement-scope allowlist). No raw httpx.
+  * No destructive brute-force (brute_force validator does <= 3
+    controlled invalid-login probes with jitter, scoped to the target).
+  * Session cookies are attached so authenticated pages are reachable.
+  * Findings are persisted incrementally (validator_node calls
+    ``_persist_finding_incrementally`` after each finding is updated).
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import time
+from urllib.parse import parse_qs, urljoin, urlparse
+
+from webpent.models.findings import Confidence, Finding
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _fetch_page(
+    url: str,
+    cookies: dict[str, str] | None = None,
+    timeout: float = 10.0,
+) -> tuple[int, str, dict[str, str]] | None:
+    """Fetch a URL and return (status_code, body, headers).
+
+    Uses the SSRF-hardened httpx client. Returns None on network error.
+    """
+    try:
+        from webpent.shared.http import build_cookie_header, make_safe_httpx_client
+        headers: dict[str, str] = {}
+        if cookies:
+            headers["Cookie"] = build_cookie_header(cookies)
+        with make_safe_httpx_client(timeout=timeout, follow_redirects=False, verify=True) as client:
+            resp = client.get(url, headers=headers)
+        return resp.status_code, resp.text, dict(resp.headers)
+    except Exception as exc:
+        logger.debug("structural_checks: fetch failed for %s: %s", url, exc)
+        return None
+
+
+def _resolve_url(base_url: str, path: str) -> str:
+    """Resolve ``path`` against ``base_url`` preserving the base path prefix.
+
+    V10 P1-5 (RCA follow-up): ``urljoin(base_url, path)`` drops the
+    base URL's path when ``path`` starts with ``/``. For DVWA, this
+    means ``urljoin("http://host/dvwa/vulnerabilities/api/", "/api/v1/user")``
+    returns ``http://host/api/v1/user`` — losing the ``/dvwa/`` prefix.
+    This helper resolves relative to the base URL's directory, not the
+    host root, so ``/dvwa/`` is preserved.
+    """
+    if path.startswith(("http://", "https://")):
+        return path
+    parsed = urlparse(base_url)
+    if path.startswith("/"):
+        # Absolute path — resolve against the base URL's scheme + host
+        # ONLY (not the host root). This is wrong for DVWA; instead,
+        # treat it as relative to the base URL's first path segment
+        # (the application root, e.g. /dvwa/).
+        base_path = parsed.path
+        # Find the application root: the first path segment (e.g. /dvwa/).
+        segments = [s for s in base_path.split("/") if s]
+        app_root = "/" + segments[0] if segments else ""
+        return f"{parsed.scheme}://{parsed.netloc}{app_root}{path}"
+    # Relative path — use urljoin normally.
+    return urljoin(base_url, path)
+
+
+# ---------------------------------------------------------------------------
+# P1-1: CSP (Content-Security-Policy) — structural header check
+# ---------------------------------------------------------------------------
+
+def validate_csp(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Check the Content-Security-Policy header on the target URL.
+
+    Tool-Confirmed if:
+      - CSP header is entirely missing, OR
+      - CSP contains ``unsafe-inline`` without ``nonce-`` or ``'strict-dynamic'``, OR
+      - CSP contains ``unsafe-eval``, OR
+      - ``default-src`` or ``script-src`` is missing (trivially weak policy).
+
+    Not Scanned if the page returns non-200 or could not be fetched
+    (the detector could NOT run).
+    Clean if the CSP is present and not trivially weak (the detector
+    ran successfully and found no issue).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "CSP check: could not fetch the target URL (network error).",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"CSP check: target returned HTTP {status_code} (not 200).",
+            }
+        )
+
+    # Normalize header keys to lowercase for case-insensitive lookup.
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    csp = headers_lower.get("content-security-policy", "")
+
+    if not csp:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": "Content-Security-Policy: (missing)",
+                "reasoning": (
+                    "CSP check: the Content-Security-Policy header is "
+                    "entirely missing on this response. Without CSP, the "
+                    "page has no browser-enforced mitigation against "
+                    "injected scripts (XSS)."
+                ),
+            }
+        )
+
+    csp_lower = csp.lower()
+    issues: list[str] = []
+    if (
+        "unsafe-inline" in csp_lower
+        and "nonce-" not in csp_lower
+        and "'strict-dynamic'" not in csp_lower
+    ):
+        issues.append("unsafe-inline without nonce or strict-dynamic")
+    if "unsafe-eval" in csp_lower:
+        issues.append("unsafe-eval allows eval()")
+    if "default-src" not in csp_lower and "script-src" not in csp_lower:
+        issues.append("missing default-src and script-src directives")
+
+    if issues:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": f"Content-Security-Policy: {csp[:200]}",
+                "reasoning": (
+                    f"CSP check: weak Content-Security-Policy detected. "
+                    f"Issues: {'; '.join(issues)}. Full CSP: {csp[:200]}"
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: CSP is present and not trivially weak — the
+    # detector RAN SUCCESSFULLY and found no issue. Use 'Clean' (not
+    # 'Not Scanned') so operators can distinguish "checked, no issue"
+    # from "could not check".
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                f"CSP check: Content-Security-Policy is present and not "
+                f"trivially weak (no unsafe-inline/unsafe-eval, has "
+                f"default-src or script-src). Full CSP: {csp[:200]}"
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-2: Weak Session ID — structural session-id heuristics
+# ---------------------------------------------------------------------------
+
+def validate_weak_session(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Check for weak session IDs in Set-Cookie headers / session cookies.
+
+    Tool-Confirmed if:
+      - A session cookie value is very short (< 8 chars), OR
+      - A session cookie value is purely numeric (sequential/guessable), OR
+      - A session cookie lacks the Secure flag on an HTTPS response, OR
+      - A session cookie lacks the HttpOnly flag.
+
+    Not Scanned if the page could not be fetched or no session cookies
+    are observed (the detector could NOT run).
+    Clean if session cookies are observed but no structural weakness
+    is detected (the detector ran successfully and found no issue).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Weak session check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"Weak session check: target returned HTTP {status_code}.",
+            }
+        )
+
+    # Extract Set-Cookie headers (may be multiple).
+    set_cookies: list[str] = []
+    for k, v in headers.items():
+        if k.lower() == "set-cookie":
+            set_cookies.append(v)
+
+    # Also check operator-supplied session cookies (the ones in scope).
+    if cookies:
+        for name, value in cookies.items():
+            set_cookies.append(f"{name}={value}; HttpOnly; Secure")
+
+    if not set_cookies:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": (
+                    "Weak session check: no Set-Cookie headers observed "
+                    "(detector could not run)."
+                ),
+            }
+        )
+
+    issues: list[str] = []
+    for sc in set_cookies:
+        # Parse cookie name=value and attributes.
+        parts = sc.split(";")
+        if not parts:
+            continue
+        name_value = parts[0].strip()
+        if "=" not in name_value:
+            continue
+        name, _, value = name_value.partition("=")
+        name = name.strip()
+        value = value.strip()
+        attrs = [p.strip().lower() for p in parts[1:]]
+
+        # Heuristic: only inspect cookies that look like session IDs.
+        session_like_names = (
+            "phpsessid",
+            "session",
+            "sess",
+            "sid",
+            "jsessionid",
+            "aspnet_session",
+            "csrf",
+        )
+        if name.lower() not in session_like_names and len(value) < 32:
+            # Skip non-session cookies (e.g. theme=dark).
+            continue
+
+        # Check value weakness.
+        if len(value) < 8:
+            issues.append(f"{name}: session value too short ({len(value)} chars)")
+        if value.isdigit():
+            issues.append(f"{name}: session value is purely numeric (sequential/guessable)")
+        # Check flags.
+        if "httponly" not in attrs:
+            issues.append(f"{name}: missing HttpOnly flag")
+        if "secure" not in attrs and finding.url.startswith("https://"):
+            issues.append(f"{name}: missing Secure flag on HTTPS")
+
+    if issues:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": "; ".join(set_cookies)[:200],
+                "reasoning": (
+                    f"Weak session check: structural weaknesses detected. "
+                    f"Issues: {'; '.join(issues)}. Note: these are "
+                    f"heuristic checks — no entropy proof is claimed."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: session cookies observed, no weakness — Clean.
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "Weak session check: session cookies observed, no "
+                "structural weakness detected (values >= 8 chars, not "
+                "purely numeric, flags present). No entropy proof claimed."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-3: JavaScript surface — dangerous sink scan
+# ---------------------------------------------------------------------------
+
+# Regex patterns for dangerous JavaScript sinks. Bound to inline scripts
+# and same-origin <script src> content (max 5 scripts, 100KB each).
+_DANGEROUS_SINK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("innerHTML", re.compile(r"\.innerHTML\s*=", re.IGNORECASE)),
+    ("document.write", re.compile(r"document\.write\s*\(", re.IGNORECASE)),
+    ("eval", re.compile(r"\beval\s*\(", re.IGNORECASE)),
+    ("setTimeout(string)", re.compile(r"setTimeout\s*\(\s*['\"]", re.IGNORECASE)),
+    ("setInterval(string)", re.compile(r"setInterval\s*\(\s*['\"]", re.IGNORECASE)),
+    ("jQuery .html()", re.compile(r"\.html\s*\(", re.IGNORECASE)),
+    ("Function constructor", re.compile(r"\bnew\s+Function\s*\(", re.IGNORECASE)),
+)
+
+def validate_javascript(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Scan the target page + same-origin scripts for dangerous JS sinks.
+
+    Needs Human Review if a dangerous sink is found in static content.
+    A sink alone is an observation, not proof that attacker-controlled data
+    reaches it or that code execution is possible.  Tool-Confirmed requires
+    a separate runtime/taint proof from an approved validator.
+    Not Scanned if the page could not be fetched or returned non-200
+    (the detector could NOT run).
+    Clean if the page was fetched successfully but no dangerous sinks
+    were found in inline scripts or same-origin script files (the
+    detector ran successfully and found no issue).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "JavaScript check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"JavaScript check: target returned HTTP {status_code}.",
+            }
+        )
+
+    sinks_found: list[str] = []
+
+    # 1. Scan inline scripts in the HTML body.
+    inline_scripts = re.findall(r"<script[^>]*>(.*?)</script>", body, re.IGNORECASE | re.DOTALL)
+    for script_content in inline_scripts:
+        for sink_name, pattern in _DANGEROUS_SINK_PATTERNS:
+            if pattern.search(script_content):
+                sinks_found.append(f"inline:{sink_name}")
+
+    # 2. Fetch and scan same-origin <script src> URLs (bounded: max 5, 100KB each).
+    script_srcs = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', body, re.IGNORECASE)
+    base_url = finding.url
+    for src in script_srcs[:5]:
+        try:
+            script_url = _resolve_url(base_url, src)
+            # Only fetch same-origin scripts (avoid SSRF via external URLs).
+            if urlparse(script_url).netloc != urlparse(base_url).netloc:
+                continue
+            script_result = _fetch_page(script_url, cookies=cookies, timeout=10.0)
+            if script_result is None:
+                continue
+            _, script_body, _ = script_result
+            script_body = script_body[:100_000]  # cap at 100KB
+            for sink_name, pattern in _DANGEROUS_SINK_PATTERNS:
+                if pattern.search(script_body):
+                    sinks_found.append(f"{src}:{sink_name}")
+        except Exception as exc:
+            logger.debug("JavaScript check: failed to fetch script %s: %s", src, exc)
+
+    if sinks_found:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.TENTATIVE.value,
+                "confidence_level": "Needs Human Review",
+                "payload": "; ".join(sinks_found)[:200],
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "static_sink_observation": sinks_found[:20],
+                    "exploitability_unproven": True,
+                    "runtime_taint_validation_required": True,
+                },
+                "reasoning": (
+                    f"JavaScript check: dangerous sinks detected in static "
+                    f"content. Sinks: {'; '.join(sinks_found)}. This is a "
+                    "static observation only; user-controlled data flow and "
+                    "runtime exploitability were not proven."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: page fetched, no dangerous sinks — Clean.
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "JavaScript check: no dangerous sinks found in inline "
+                "scripts or same-origin script files. Note: this is a "
+                "static scan — dynamic taint analysis would be needed to "
+                "confirm exploitability."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-4: Auth Bypass — lab-safe logical differential checks
+# ---------------------------------------------------------------------------
+
+def validate_auth_bypass(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    target_url: str | None = None,
+) -> Finding:
+    """Lab-safe auth bypass differential check.
+
+    Compares the response when accessing the target URL:
+      1. WITH session cookies (authenticated).
+      2. WITHOUT session cookies (unauthenticated).
+
+    Tool-Confirmed if the unauthenticated request returns 200 with
+    substantial content (indicating the page is accessible without auth).
+
+    Not Scanned if either fetch fails (the detector could NOT run).
+    Clean if the unauthenticated request is redirected to login (302)
+    or returns 401/403 (auth is properly enforced — the detector ran
+    successfully and found no bypass).
+    """
+    # Authenticated fetch.
+    authed_result = _fetch_page(finding.url, cookies=cookies)
+    if authed_result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Auth bypass check: could not fetch the target URL with auth.",
+            }
+        )
+    authed_status, authed_body, _ = authed_result
+
+    # Unauthenticated fetch (no cookies).
+    unauthed_result = _fetch_page(finding.url, cookies=None)
+    if unauthed_result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Auth bypass check: could not fetch the target URL without auth.",
+            }
+        )
+    unauthed_status, unauthed_body, _ = unauthed_result
+
+    # If unauthenticated returns 200 with substantial content, auth bypass.
+    if unauthed_status == 200 and len(unauthed_body) > 100:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": f"unauth: {unauthed_status} ({len(unauthed_body)} bytes)",
+                "reasoning": (
+                    f"Auth bypass check: target returned HTTP 200 with "
+                    f"{len(unauthed_body)} bytes when accessed WITHOUT "
+                    f"session cookies. The endpoint does not enforce "
+                    f"authentication. Authenticated request returned "
+                    f"{authed_status} ({len(authed_body)} bytes)."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: auth properly enforced — Clean (not Not Scanned).
+    if unauthed_status in (301, 302, 401, 403):
+        return finding.model_copy(
+            update={
+                "confidence_level": "Clean",
+                "reasoning": (
+                    f"Auth bypass check: unauthenticated request returned "
+                    f"HTTP {unauthed_status} — authentication is properly "
+                    f"enforced (redirect to login or 401/403)."
+                ),
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Not Scanned",
+            "reasoning": (
+                f"Auth bypass check: unauthenticated request returned "
+                f"HTTP {unauthed_status} ({len(unauthed_body)} bytes). "
+                f"Could not determine auth enforcement from status alone."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-5: API issue — structural API probe (urljoin fix already in _resolve_url)
+# ---------------------------------------------------------------------------
+
+def validate_api_issue(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    target_url: str | None = None,
+) -> Finding:
+    """Fetch the API page and record API-like forms/endpoints discovered.
+
+    Needs Human Review if API-like content is discovered.  JSON, OpenAPI,
+    Swagger, or GraphQL indicators establish an API surface, not a security
+    vulnerability by themselves.  Tool-Confirmed requires a separate
+    authorization, schema, injection, or runtime-impact proof.
+
+    Not Scanned if the page could not be fetched or returned non-200
+    (the detector could NOT run).
+    Clean if the page was fetched successfully but no API-like content
+    was detected (the detector ran successfully and found no issue).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "API check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"API check: target returned HTTP {status_code}.",
+            }
+        )
+
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    content_type = headers_lower.get("content-type", "")
+    body_lower = body.lower()
+
+    issues: list[str] = []
+    # Check for JSON API response.
+    if "application/json" in content_type or body.strip().startswith(("{", "[")):
+        issues.append("JSON response detected (API endpoint)")
+    # Check for OpenAPI/Swagger.
+    if "swagger" in body_lower or '"openapi"' in body_lower or '"swagger"' in body_lower:
+        issues.append("OpenAPI/Swagger spec detected")
+    # Check for GraphQL (already probed by api_testing_node, but double-check).
+    if "__schema" in body or "queryType" in body:
+        issues.append("GraphQL introspection enabled")
+
+    if issues:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.TENTATIVE.value,
+                "confidence_level": "Needs Human Review",
+                "payload": "; ".join(issues)[:200],
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "api_surface_observation": issues[:20],
+                    "security_impact_unproven": True,
+                    "follow_up_required": True,
+                },
+                "reasoning": (
+                    f"API check: API-like surface detected. Indicators: "
+                    f"{'; '.join(issues)}. This is not a vulnerability "
+                    "confirmation; authorization, input handling, and "
+                    "security impact require a separate validation path."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: page fetched, no API content — Clean.
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "API check: no API-like content detected (no JSON, no "
+                "OpenAPI spec, no GraphQL). The page may be a plain HTML form."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-6: Cryptography — passive crypto checks
+# ---------------------------------------------------------------------------
+
+def validate_cryptography(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Passive cryptography checks.
+
+    Tool-Confirmed if:
+      - Password form submits over HTTP (not HTTPS), OR
+      - Password field has autocomplete enabled, OR
+      - Page uses a known weak cipher (TLS not checked here — header only).
+
+    Not Scanned if the page could not be fetched or returned non-200
+    (the detector could NOT run).
+    Clean if no password forms are found, or all password forms use
+    HTTPS with autocomplete=off (the detector ran successfully and
+    found no weak crypto practices).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Cryptography check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"Cryptography check: target returned HTTP {status_code}.",
+            }
+        )
+
+    issues: list[str] = []
+
+    # Check for password fields.
+    password_fields = re.findall(r'<input[^>]+type=["\']password["\'][^>]*>', body, re.IGNORECASE)
+    if password_fields:
+        # Check if the form action is over HTTP (cleartext password).
+        is_https = finding.url.startswith("https://")
+        if not is_https:
+            issues.append("password form submitted over HTTP (cleartext)")
+        # Check autocomplete.
+        for pf in password_fields:
+            if "autocomplete" not in pf.lower():
+                issues.append("password field missing autocomplete=off")
+            elif (
+                "autocomplete" in pf.lower()
+                and "off" not in pf.lower().split("autocomplete")[1][:10]
+            ):
+                issues.append("password field has autocomplete enabled")
+
+    if issues:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": "; ".join(issues)[:200],
+                "reasoning": (
+                    f"Cryptography check: weak crypto practices detected. "
+                    f"Issues: {'; '.join(issues)}."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: no weak crypto practices — Clean.
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "Cryptography check: no password forms found, or all "
+                "password forms use HTTPS with autocomplete=off. No "
+                "weak crypto practices detected."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-7: Captcha — detect presence/absence only
+# ---------------------------------------------------------------------------
+
+def validate_captcha(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Detect captcha presence/absence on the target page.
+
+    Tool-Confirmed if:
+      - The page is a login/sensitive form AND no captcha is present
+        (missing captcha on sensitive action).
+
+    Not Scanned if the page could not be fetched or returned non-200
+    (the detector could NOT run).
+    Clean if a captcha is present on the page, or the page has no
+    password form (captcha presence is not applicable — the detector
+    ran successfully and found no missing-captcha issue).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Captcha check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"Captcha check: target returned HTTP {status_code}.",
+            }
+        )
+
+    body_lower = body.lower()
+
+    # Check for captcha presence.
+    captcha_indicators = [
+        "captcha", "recaptcha", "hcaptcha", "g-recaptcha",
+        "h-captcha", "captcha_image", "captcha_code",
+    ]
+    has_captcha = any(ind in body_lower for ind in captcha_indicators)
+
+    # Check for form (login or sensitive).
+    has_form = "<form" in body_lower
+    has_password_field = 'type="password"' in body_lower or "type='password'" in body_lower
+
+    if has_form and has_password_field and not has_captcha:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": "missing captcha on password form",
+                "reasoning": (
+                    "Captcha check: the page contains a password form "
+                    "but no captcha is present. This makes the form "
+                    "susceptible to automated credential stuffing."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: captcha present OR no password form — Clean.
+    if has_captcha:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Clean",
+                "reasoning": (
+                    "Captcha check: a captcha is present on the page. "
+                    "No captcha-bypass automation is performed."
+                ),
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "Captcha check: no password form found on this page. "
+                "Captcha presence is not applicable."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-8: Brute Force — lab-safe throttling probe only
+# ---------------------------------------------------------------------------
+
+def validate_brute_force(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Lab-safe brute-force surface detection (NOT credential discovery).
+
+    Sends <= 3 controlled invalid-login probes with jitter, scoped to
+    the target URL. Tool-Confirmed if the login form accepts unlimited
+    attempts without lockout/captcha signals.
+
+    This does NOT attempt to discover valid credentials — it only checks
+    whether throttling/lockout exists. If unsafe to probe, returns Not Scanned.
+    Clean if throttling/lockout is active (the detector ran and found the
+    form is NOT brute-forceable).
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Brute force check: could not fetch the target URL.",
+            }
+        )
+    status_code, body, headers = result
+    if status_code != 200:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": f"Brute force check: target returned HTTP {status_code}.",
+            }
+        )
+
+    body_lower = body.lower()
+
+    # Check for a login form.
+    has_password_field = 'type="password"' in body_lower or "type='password'" in body_lower
+    if not has_password_field:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": (
+                    "Brute force check: no password form found on this "
+                    "page. Brute-force surface detection is not applicable."
+                ),
+            }
+        )
+
+    # Check if captcha is already present (if so, the form is protected).
+    if "captcha" in body_lower or "recaptcha" in body_lower:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Clean",
+                "reasoning": (
+                    "Brute force check: a captcha is present on the "
+                    "login form. The form is protected against automated "
+                    "brute force."
+                ),
+            }
+        )
+
+    # Extract the form action and method.
+    form_match = re.search(r'<form[^>]+action=["\']([^"\']+)["\']', body, re.IGNORECASE)
+    method_match = re.search(r'<form[^>]+method=["\']([^"\']+)["\']', body, re.IGNORECASE)
+    if not form_match:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Brute force check: could not extract form action.",
+            }
+        )
+
+    form_action = _resolve_url(finding.url, form_match.group(1))
+    form_method = (method_match.group(1).upper() if method_match else "POST")
+
+    # Send 3 controlled invalid-login probes with jitter.
+    # Use obviously-invalid credentials to avoid any chance of hitting a real account.
+    probe_results: list[int] = []
+    try:
+        from webpent.shared.http import build_cookie_header, make_safe_httpx_client
+        for i in range(3):
+            time.sleep(1.5)  # jitter — 1.5s between probes
+            fake_user = f"webpent_probe_invalid_{i}"
+            fake_pass = f"definitely_not_real_{i}"
+            headers_probe: dict[str, str] = {"Content-Type": "application/x-www-form-urlencoded"}
+            if cookies:
+                headers_probe["Cookie"] = build_cookie_header(cookies)
+            try:
+                with make_safe_httpx_client(
+                    timeout=10.0, follow_redirects=False, verify=True
+                ) as client:
+                    if form_method == "GET":
+                        resp = client.get(
+                            form_action,
+                            params={"username": fake_user, "password": fake_pass, "Login": "Login"},
+                            headers=headers_probe,
+                        )
+                    else:
+                        resp = client.post(
+                            form_action,
+                            data={"username": fake_user, "password": fake_pass, "Login": "Login"},
+                            headers=headers_probe,
+                        )
+                probe_results.append(resp.status_code)
+            except Exception as exc:
+                logger.debug("Brute force probe %d failed: %s", i, exc)
+                probe_results.append(0)
+    except ImportError:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Brute force check: SSRF-safe httpx client unavailable.",
+            }
+        )
+
+    # If all 3 probes returned 200 (no lockout, no captcha, no 429), the form is brute-forceable.
+    if all(s == 200 for s in probe_results):
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": f"3 invalid login probes: {probe_results}",
+                "reasoning": (
+                    "Brute force check: sent 3 controlled invalid-login "
+                    "probes with 1.5s jitter. All returned HTTP 200 (no "
+                    "lockout, no captcha, no 429 rate limit). The login "
+                    "form appears to accept unlimited attempts — it is a "
+                    "brute-forceable surface. NOTE: no credential "
+                    "discovery was attempted; this is throttling detection only."
+                ),
+            }
+        )
+
+    # V10 RESIDUAL FIX: throttling active — Clean (form is protected).
+    if any(s in (429, 403) for s in probe_results):
+        return finding.model_copy(
+            update={
+                "confidence_level": "Clean",
+                "reasoning": (
+                    f"Brute force check: at least one probe returned "
+                    f"429/403 — throttling/lockout is active. Probe "
+                    f"results: {probe_results}."
+                ),
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Not Scanned",
+            "reasoning": (
+                f"Brute force check: probe results {probe_results}. "
+                f"Could not determine throttling status definitively."
+            ),
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# P1-9: Information disclosure and IDOR structural checks
+# ---------------------------------------------------------------------------
+
+_SENSITIVE_ARTIFACT_RE = re.compile(
+    r"(?i)(?:^|[./_-])(?:\.env|composer\.lock(?:\.(?:bak|old|orig))?|"
+    r"(?:backup|dump|database|secret|config|debug|storage|snapshot)[^/]*|"
+    r"[^/]+\.(?:bak|old|orig|sql|sqlite|db|log|zip|tar|gz))$"
+)
+_DEBUG_MARKERS = (
+    "app_debug",
+    "laravel_framework",
+    "whoops\\\\\\\\exception",
+    "stack trace",
+    "environment variables",
+    "laravel version",
+)
+
+
+def validate_info_disclosure(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+) -> Finding:
+    """Check bounded public artifact/debug disclosure without an LLM.
+
+    A sensitive-looking resource is only reported when the target returns a
+    successful, non-empty response and either the path is an artifact suffix
+    or the body contains a bounded debug marker. This is a deterministic
+    observation; it does not claim secrets were exfiltrated beyond the capped
+    response metadata.
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "Information disclosure check: target could not be fetched.",
+            }
+        )
+    status_code, body, headers = result
+    parsed_path = urlparse(finding.url).path.rstrip("/")
+    path_match = bool(_SENSITIVE_ARTIFACT_RE.search(parsed_path))
+    body_sample = body[:16_384].lower()
+    debug_matches = [marker for marker in _DEBUG_MARKERS if marker in body_sample]
+    debug_error = 400 <= status_code < 600 and bool(debug_matches)
+    if status_code != 200 and not debug_error:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Clean",
+                "reasoning": (
+                    "Information disclosure check: sensitive-looking resource was not "
+                    f"publicly returned (HTTP {status_code})."
+                ),
+            }
+        )
+    content_type = str(headers.get("content-type", ""))[:120]
+    if body and (path_match or debug_matches):
+        evidence = {
+            **(finding.evidence or {}),
+            "status_code": status_code,
+            "content_length": len(body),
+            "content_type": content_type,
+            "path_signature": path_match,
+            "debug_markers": debug_matches[:10],
+            "response_body_capped": True,
+        }
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.CONFIRMED.value,
+                "confidence_level": "Tool-Confirmed",
+                "payload": parsed_path[-200:],
+                "evidence": evidence,
+                "reasoning": (
+                    "Information disclosure check: a public response exposed a "
+                    "sensitive artifact or debug surface (including bounded error "
+                    "responses). The response body was capped; no broader secret "
+                    "inventory is claimed."
+                ),
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "Information disclosure check: request succeeded, but no bounded "
+                "sensitive artifact or debug signature was observed."
+            ),
+        }
+    )
+
+
+def validate_idor(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+) -> Finding:
+    """Perform a conservative unauthenticated object-access differential.
+
+    Returning an object to an unauthenticated request is a strong candidate
+    signal, but it is not owner-vs-foreign proof. The result therefore stays
+    ``Needs Human Review`` until two approved identities and a negative
+    control establish the authorization boundary.
+    """
+    result = _fetch_page(finding.url, cookies=cookies)
+    if result is None:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Not Scanned",
+                "reasoning": "IDOR check: object endpoint could not be fetched.",
+            }
+        )
+    status_code, body, _headers = result
+    parsed = urlparse(finding.url)
+    path = parsed.path.lower()
+    query_keys = {key.lower() for key in parse_qs(parsed.query)}
+    path_segments = {segment for segment in path.split("/") if segment}
+    dashboard_object_surface = (
+        "dashboard" in path_segments
+        and (any(segment.isdigit() for segment in path_segments) or bool(
+            query_keys & {"db", "tenant", "tenant_id", "crm_id"}
+        ))
+    )
+    object_surface = dashboard_object_surface or any(
+        marker in path
+        for marker in ("download", "profile", "user", "tenant", "object", "invoice")
+    )
+    if status_code == 200 and body and object_surface and not cookies:
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "unauthenticated_status": status_code,
+                    "unauthenticated_content_length": len(body),
+                    "owner_foreign_oracle_required": True,
+                    "negative_control_required": True,
+                },
+                "reasoning": (
+                    "IDOR check: unauthenticated object access returned HTTP 200. "
+                    "This is a candidate signal only; owner-vs-foreign identity "
+                    "differential and a denial control are still required."
+                ),
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Clean",
+            "reasoning": (
+                "IDOR check: no unauthenticated successful object response was "
+                "observed; authenticated owner-vs-foreign proof was not attempted."
+            ),
+        }
+    )
+
+
+__all__ = [
+    "validate_auth_bypass",
+    "validate_api_issue",
+    "validate_brute_force",
+    "validate_captcha",
+    "validate_cryptography",
+    "validate_csp",
+    "validate_idor",
+    "validate_info_disclosure",
+    "validate_javascript",
+    "validate_weak_session",
+]

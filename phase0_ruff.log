@@ -1,0 +1,2414 @@
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/business_impact/agent.py:19:1
+   [1m[94m|[0m
+[1m[94m17[0m [1m[94m|[0m   """
+[1m[94m18[0m [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m from uuid import UUID
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m35[0m [1m[94m|[0m
+[1m[94m36[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m29[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m30[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m31[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m32[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m33[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/cvss_engine/agent.py:22:1
+   [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m   """
+[1m[94m21[0m [1m[94m|[0m
+[1m[94m22[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from uuid import UUID
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m38[0m [1m[94m|[0m
+[1m[94m39[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m32[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m33[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m34[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m35[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m36[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/devils_advocate/agent.py:26:1
+   [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m   """
+[1m[94m25[0m [1m[94m|[0m
+[1m[94m26[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from uuid import UUID
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.grounding import verify_all_citations
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m38[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m39[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m43[0m [1m[94m|[0m
+[1m[94m44[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m37[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m38[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m39[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m40[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m41[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+  [1m[94m--> [0msrc/webpent/agents/disclosed_report_intel/agent.py:33:17
+   [1m[94m|[0m
+[1m[94m31[0m [1m[94m|[0m           elif isinstance(item, dict):
+[1m[94m32[0m [1m[94m|[0m               for key, child in item.items():
+[1m[94m33[0m [1m[94m|[0m [1m[91m/[0m                 if str(key).lower() in {"url", "endpoint", "request_url", "route"} and isinstance(
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m                     child, str
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m                 ):
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m                     if child not in seen:
+   [1m[94m|[0m [1m[91m|_________________________________________^[0m
+[1m[94m37[0m [1m[94m|[0m                           seen.add(child)
+[1m[94m38[0m [1m[94m|[0m                           found.append(child)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/execution_sandbox/agent.py:19:1
+   [1m[94m|[0m
+[1m[94m17[0m [1m[94m|[0m   """
+[1m[94m18[0m [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m import contextlib
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m import time
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import urlparse
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from uuid import UUID
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from webpent.memory.db import get_db_manager
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Confidence, Finding, VulnClass
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.poc_policy import evaluate_execution_gate, derive_execution_risk
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m35[0m [1m[94m|[0m
+[1m[94m36[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m31[0m [1m[94m|[0m from webpent.models.findings import Confidence, Finding, VulnClass
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.shared.poc_policy import [0m[1m[31mevaluate_execution_gate,[0m[0m[31m [0m[1m[31mderive_execution_risk[0m[0m[31m
+[0m[1m[94m32[0m [1m[32m+[0m [32mfrom webpent.shared.poc_policy import [0m[1m[32mderive_execution_risk,[0m[0m[32m [0m[1m[32mevaluate_execution_gate[0m[0m[32m
+[0m[1m[94m33[0m [1m[94m|[0m from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/executive_summary/agent.py:21:1
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m   """
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding, Severity
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m36[0m [1m[94m|[0m
+[1m[94m37[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m31[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m32[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m33[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m34[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/exploit_chainer/agent.py:52:1
+   [1m[94m|[0m
+[1m[94m50[0m [1m[94m|[0m   """
+[1m[94m51[0m [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m53[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m54[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m55[0m [1m[94m|[0m [1m[91m|[0m from itertools import combinations
+[1m[94m56[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m57[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import urlsplit
+[1m[94m58[0m [1m[94m|[0m [1m[91m|[0m from uuid import uuid4
+[1m[94m59[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m60[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import HumanMessage, SystemMessage
+[1m[94m61[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m62[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[1m[94m63[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m64[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m65[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m66[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m67[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m68[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m69[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.reducers import model_get
+[1m[94m70[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m71[0m [1m[94m|[0m
+[1m[94m72[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m65[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m66[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m67[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m68[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/hypothesis_analyzer/agent.py:56:1
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m   """
+[1m[94m55[0m [1m[94m|[0m
+[1m[94m56[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m57[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m58[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m59[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m60[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m61[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import parse_qs, urljoin, urlparse
+[1m[94m62[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m63[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage
+[1m[94m64[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m65[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m66[0m [1m[94m|[0m [1m[91m|[0m from webpent.memory.vectorstore import get_vector_store_manager
+[1m[94m67[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding, Severity, VulnClass
+[1m[94m68[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.memory import MemoryBudget, MemoryKind
+[1m[94m69[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.memory_boundary import MemoryBoundary
+[1m[94m70[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.hypothesis import Hypothesis, HypothesisOrigin
+[1m[94m71[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m72[0m [1m[94m|[0m
+[1m[94m73[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m67[0m [1m[94m|[0m from webpent.models.findings import Finding, Severity, VulnClass
+[1m[94m68[0m [1m[32m+[0m [32mfrom webpent.models.hypothesis import Hypothesis, HypothesisOrigin
+[0m[1m[94m69[0m [1m[94m|[0m from webpent.models.memory import MemoryBudget, MemoryKind
+[1m[94m70[0m [1m[94m|[0m from webpent.shared.memory_boundary import MemoryBoundary
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.models.hypothesis import Hypothesis, HypothesisOrigin
+[0m[1m[94m71[0m [1m[94m|[0m from webpent.state.state import PentestState
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/payload_generator/agent.py:28:1
+   [1m[94m|[0m
+[1m[94m26[0m [1m[94m|[0m   """
+[1m[94m27[0m [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import EXPLOITABLE_CLASSES, Finding, Severity, VulnClass
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.grounding import generate_canary_token
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m38[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m39[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m43[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m44[0m [1m[94m|[0m
+[1m[94m45[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m38[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m39[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m40[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m41[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m42[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0msrc/webpent/agents/payload_generator/agent.py:404:9
+    [1m[94m|[0m
+[1m[94m402[0m [1m[94m|[0m     # + allowlist + bounded lookups + TLS verification).
+[1m[94m403[0m [1m[94m|[0m     try:
+[1m[94m404[0m [1m[94m|[0m         from webpent.shared.skill_selector import select_skills, get_skill_reference
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m405[0m [1m[94m|[0m         matched_skills = select_skills("payload_generation", vuln_class)
+[1m[94m406[0m [1m[94m|[0m         for skill in matched_skills:
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m403[0m [1m[94m|[0m     try:
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.skill_selector import [0m[1m[31mselect_skills,[0m[0m[31m [0m[1m[31mget_skill_reference[0m[0m[31m
+[0m[1m[94m404[0m [1m[32m+[0m [32m        from webpent.shared.skill_selector import [0m[1m[32mget_skill_reference,[0m[0m[32m [0m[1m[32mselect_skills[0m[0m[32m
+[0m[1m[94m405[0m [1m[94m|[0m         matched_skills = select_skills("payload_generation", vuln_class)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mN806[0m[1m Variable `MAX_REFERENCE_CHARS` in function should be lowercase[0m
+   [1m[94m--> [0msrc/webpent/agents/payload_generator/agent.py:427:5
+    [1m[94m|[0m
+[1m[94m425[0m [1m[94m|[0m     # Join the snippets and wrap in an untrusted-data block.
+[1m[94m426[0m [1m[94m|[0m     # V7 Phase 4: Token budget enforcement.
+[1m[94m427[0m [1m[94m|[0m     MAX_REFERENCE_CHARS = 4000
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m428[0m [1m[94m|[0m     joined = "\n---\n".join(snippets)
+[1m[94m429[0m [1m[94m|[0m     if len(joined) > MAX_REFERENCE_CHARS:
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/payload_optimizer/agent.py:14:1
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m   """
+[1m[94m13[0m [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import (
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m     EXPLOITABLE_CLASSES,
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m     Confidence,
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m     Finding,
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m     Severity,
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m34[0m [1m[94m|[0m
+[1m[94m35[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m29[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m30[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m31[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m32[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mN806[0m[1m Variable `_SQLI_SYNTHETIC_MARKER` in function should be lowercase[0m
+   [1m[94m--> [0msrc/webpent/agents/payload_optimizer/agent.py:315:9
+    [1m[94m|[0m
+[1m[94m313[0m [1m[94m|[0m         # confirmation. Without this skip, the optimizer wastes an LLM
+[1m[94m314[0m [1m[94m|[0m         # call trying to "improve" a sentinel string.
+[1m[94m315[0m [1m[94m|[0m         _SQLI_SYNTHETIC_MARKER = "__SQLMAP_TOOL_DRIVEN__"
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m316[0m [1m[94m|[0m         if (
+[1m[94m317[0m [1m[94m|[0m             len(failed) == 1
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/planner/agent.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from webpent.memory.vectorstore import get_vector_store_manager
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.targets import Target
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m     get_llm,  # legacy monkeypatch point; guarded by llm_enabled below
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.planner_decisions import (
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m     build_planner_decision,
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m     redact_prompt_target,
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m31[0m [1m[94m|[0m
+[1m[94m32[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m     get_llm,  # legacy monkeypatch point; guarded by llm_enabled below
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m22[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m23[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m24[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m25[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mN806[0m[1m Variable `_FALLBACK_PARAM_WORDLIST` in function should be lowercase[0m
+   [1m[94m--> [0msrc/webpent/agents/recon/agent.py:635:5
+    [1m[94m|[0m
+[1m[94m633[0m [1m[94m|[0m     # has no ingested SecLists content). Curated from Arjun's default
+[1m[94m634[0m [1m[94m|[0m     # wordlist — covers the most common hidden parameters.
+[1m[94m635[0m [1m[94m|[0m     _FALLBACK_PARAM_WORDLIST: list[str] = [
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m636[0m [1m[94m|[0m         "id", "debug", "test", "admin", "user", "username", "password",
+[1m[94m637[0m [1m[94m|[0m         "token", "key", "secret", "api", "cmd", "exec", "command",
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/reflection/agent.py:38:1
+   [1m[94m|[0m
+[1m[94m36[0m [1m[94m|[0m   """
+[1m[94m37[0m [1m[94m|[0m
+[1m[94m38[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m39[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m43[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m44[0m [1m[94m|[0m [1m[91m|[0m from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+[1m[94m45[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m46[0m [1m[94m|[0m [1m[91m|[0m from webpent.memory.vectorstore import get_vector_store_manager
+[1m[94m47[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding
+[1m[94m48[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.llm import (
+[1m[94m49[0m [1m[94m|[0m [1m[91m|[0m     TaskType,
+[1m[94m50[0m [1m[94m|[0m [1m[91m|[0m     try_get_llm,
+[1m[94m51[0m [1m[94m|[0m [1m[91m|[0m     get_safety_system_instruction,
+[1m[94m52[0m [1m[94m|[0m [1m[91m|[0m     safe_prompt_format,
+[1m[94m53[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m54[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.state import PentestState
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[94m55[0m [1m[94m|[0m
+[1m[94m56[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m49[0m [1m[94m|[0m     TaskType,
+[1m[94m  [0m [1m[31m-[0m [31m    try_get_llm,
+[0m[1m[94m50[0m [1m[94m|[0m     get_safety_system_instruction,
+[1m[94m51[0m [1m[94m|[0m     safe_prompt_format,
+[1m[94m52[0m [1m[32m+[0m [32m    try_get_llm,
+[0m[1m[94m53[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0msrc/webpent/agents/scope_enforcer/agent.py:194:9
+    [1m[94m|[0m
+[1m[94m192[0m [1m[94m|[0m     mental_model_update: dict[str, Any] = {"nodes": {}, "edges": []}
+[1m[94m193[0m [1m[94m|[0m     try:
+[1m[94m194[0m [1m[94m|[0m         from webpent.models.mental_model import _coerce_to_mental_model, NodeKind
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m195[0m [1m[94m|[0m         mental_model_state = state.get("mental_model") or {}
+[1m[94m196[0m [1m[94m|[0m         model = _coerce_to_mental_model(mental_model_state)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m193[0m [1m[94m|[0m     try:
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.mental_model import [0m[1m[31m_coerce_to_mental_model,[0m[0m[31m [0m[1m[31mNodeKind[0m[0m[31m
+[0m[1m[94m194[0m [1m[32m+[0m [32m        from webpent.models.mental_model import [0m[1m[32mNodeKind,[0m[0m[32m [0m[1m[32m_coerce_to_mental_model[0m[0m[32m
+[0m[1m[94m195[0m [1m[94m|[0m         mental_model_state = state.get("mental_model") or {}
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/agents/smart_campaigns/agent.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import hashlib
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from contextlib import contextmanager
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Mapping
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import quote, urlsplit
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import ScanMode, get_settings
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.evidence import redact_sensitive
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.action_authority import ActionAuthority, ActionRisk
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.campaign_executor import (
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m     CampaignExecutor,
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m     CampaignTask,
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m     CampaignTaskStatus,
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m     NextBestActionEngine,
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.campaign_planner import build_campaign_plan
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.coverage_ledger import project_coverage_ledger
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.engagement_scope import (
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m     clear_engagement_target_hosts,
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m     set_engagement_target_hosts,
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.http import make_safe_httpx_client
+   [1m[94m|[0m [1m[91m|______________________________________________________^[0m
+[1m[94m35[0m [1m[94m|[0m
+[1m[94m36[0m [1m[94m|[0m   _DEFAULT_TASK_CAP = 3
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m import hashlib
+[1m[94m12[0m [1m[32m+[0m [32mfrom collections.abc import Mapping
+[0m[1m[94m13[0m [1m[94m|[0m from contextlib import contextmanager
+[1m[94m  [0m [1m[31m-[0m [31mfrom collections.abc import Mapping
+[0m[1m[94m14[0m [1m[94m|[0m from typing import Any
+[1m[94m15[0m [1m[94m|[0m from urllib.parse import quote, urlsplit
+[1m[94m16[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m17[0m [1m[94m|[0m from webpent.config.settings import ScanMode, get_settings
+[1m[94m18[0m [1m[94m|[0m from webpent.models.evidence import redact_sensitive
+[1m[94m19[0m [1m[32m+[0m [32mfrom webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m20[0m [1m[94m|[0m from webpent.shared.action_authority import ActionAuthority, ActionRisk
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM117[0m [[1m[96m*[0m][1m Use a single `with` statement with multiple contexts instead of nested `with` statements[0m
+   [1m[94m--> [0msrc/webpent/agents/smart_campaigns/agent.py:525:9
+    [1m[94m|[0m
+[1m[94m523[0m [1m[94m|[0m       request_url = f"{swagger_url}?url={quote('http://[::1]/', safe='')}"
+[1m[94m524[0m [1m[94m|[0m       try:
+[1m[94m525[0m [1m[94m|[0m [1m[91m/[0m         with _declared_target_scope(root):
+[1m[94m526[0m [1m[94m|[0m [1m[91m|[0m             with make_safe_httpx_client(
+[1m[94m527[0m [1m[94m|[0m [1m[91m|[0m                 timeout=10.0,
+[1m[94m528[0m [1m[94m|[0m [1m[91m|[0m                 follow_redirects=False,
+[1m[94m529[0m [1m[94m|[0m [1m[91m|[0m                 headers=headers,
+[1m[94m530[0m [1m[94m|[0m [1m[91m|[0m             ) as client:
+    [1m[94m|[0m [1m[91m|________________________^[0m
+[1m[94m531[0m [1m[94m|[0m                   response = client.get(request_url)
+[1m[94m532[0m [1m[94m|[0m       except Exception:
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `with` statements[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m524[0m [1m[94m|[0m     try:
+[1m[94m   [0m [1m[31m-[0m [31m        with [0m[1m[31m_declared_target_scope(root):[0m[0m[31m
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m            with[0m[0m[31m make_safe_httpx_client(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mtimeout=10.0,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mfollow_redirects=False,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mheaders=headers,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m            [0m[0m[31m) as client:
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mresponse = client.get(request_url)
+[0m[1m[94m525[0m [1m[32m+[0m [32m        with [0m[1m[32m_declared_target_scope(root),[0m[0m[32m make_safe_httpx_client(
+[0m[1m[94m526[0m [1m[32m+[0m [1m[32m            [0m[0m[32mtimeout=10.0,
+[0m[1m[94m527[0m [1m[32m+[0m [1m[32m            [0m[0m[32mfollow_redirects=False,
+[0m[1m[94m528[0m [1m[32m+[0m [1m[32m            [0m[0m[32mheaders=headers,
+[0m[1m[94m529[0m [1m[32m+[0m [1m[32m        [0m[0m[32m) as client:
+[0m[1m[94m530[0m [1m[32m+[0m [1m[32m            [0m[0m[32mresponse = client.get(request_url)
+[0m[1m[94m531[0m [1m[94m|[0m     except Exception:
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM117[0m [[1m[96m*[0m][1m Use a single `with` statement with multiple contexts instead of nested `with` statements[0m
+   [1m[94m--> [0msrc/webpent/agents/smart_campaigns/agent.py:601:9
+    [1m[94m|[0m
+[1m[94m599[0m [1m[94m|[0m           if method == "POST" and content_type:
+[1m[94m600[0m [1m[94m|[0m               headers["Content-Type"] = content_type
+[1m[94m601[0m [1m[94m|[0m [1m[91m/[0m         with _declared_target_scope(root):
+[1m[94m602[0m [1m[94m|[0m [1m[91m|[0m             with make_safe_httpx_client(
+[1m[94m603[0m [1m[94m|[0m [1m[91m|[0m                 timeout=10.0,
+[1m[94m604[0m [1m[94m|[0m [1m[91m|[0m                 follow_redirects=False,
+[1m[94m605[0m [1m[94m|[0m [1m[91m|[0m                 headers=headers,
+[1m[94m606[0m [1m[94m|[0m [1m[91m|[0m             ) as client:
+    [1m[94m|[0m [1m[91m|________________________^[0m
+[1m[94m607[0m [1m[94m|[0m                   if method == "GET":
+[1m[94m608[0m [1m[94m|[0m                       response = client.get(task.target_url)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `with` statements[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m600[0m [1m[94m|[0m             headers["Content-Type"] = content_type
+[1m[94m   [0m [1m[31m-[0m [31m        with [0m[1m[31m_declared_target_scope(root):[0m[0m[31m
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m            with[0m[0m[31m make_safe_httpx_client(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mtimeout=10.0,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mfollow_redirects=False,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mheaders=headers,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m            [0m[0m[31m) as client:
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31mif method == "GET":
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mresponse = client.get(task.target_url)
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31melif method == "HEAD":
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mresponse = client.head(task.target_url)
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31melif method == "OPTIONS":
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mresponse = client.options(task.target_url)
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                [0m[0m[31melif method == "POST":
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mbody = task.metadata.get("request_body")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mif body is None:
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mraise ValueError("active_body_evidence_required")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31mif task.action_family == "file_upload":
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif not isinstance(body, Mapping):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mraise ValueError("multipart_body_schema_required")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mfile_spec = body.get("file") or body.get("upload")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif not isinstance(file_spec, Mapping):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mraise ValueError("multipart_file_evidence_required")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mfield_name = str(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mfile_spec.get("field") or file_spec.get("name") or "file"
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31m)[:80]
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mfilename = str(file_spec.get("filename") or "fixture.bin")[:160]
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mcontent = file_spec.get("content", b"")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif isinstance(content, str):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mcontent = content.encode("utf-8")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif not isinstance(content, bytes) or len(content) > 1_048_576:
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mraise ValueError("bounded_upload_content_required")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mfields = body.get("fields") or {}
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif not isinstance(fields, Mapping):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mfields = {}
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mupload_type = str(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mfile_spec.get("content_type") or "application/octet-stream"
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31m)[:120]
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mresponse = client.post(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mtask.target_url,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mdata={
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                                [0m[0m[31mstr(key)[:80]: str(value)[:1000]
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                                [0m[0m[31mfor key, value in fields.items()
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31m},
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mfiles={field_name: (filename, content, upload_type)},
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31m)
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31melif (
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mtask.body_schema in {"form", "urlencoded"}
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mor "application/x-www-form-urlencoded" in content_type.lower()
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31m):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mif not isinstance(body, Mapping):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mraise ValueError("form_body_schema_required")
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mresponse = client.post(
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mtask.target_url,
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31mdata={
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                                [0m[0m[31mstr(key)[:80]: str(value)[:1000]
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                                [0m[0m[31mfor key, value in body.items()
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                            [0m[0m[31m},
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31m)
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    [0m[0m[31melif isinstance(body, Mapping):
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        [0m[0m[31mresponse = client.post(task.target_url, json=dict(body))
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                    else:[0m[0m[31m
+[0m[1m[94m   [0m [1m[31m-[0m [1m[31m                        response = client.post(task.target_url, content=body)[0m[0m[31m
+[0m[1m[94m601[0m [1m[32m+[0m [32m        with [0m[1m[32m_declared_target_scope(root),[0m[0m[32m make_safe_httpx_client(
+[0m[1m[94m602[0m [1m[32m+[0m [1m[32m            [0m[0m[32mtimeout=10.0,
+[0m[1m[94m603[0m [1m[32m+[0m [1m[32m            [0m[0m[32mfollow_redirects=False,
+[0m[1m[94m604[0m [1m[32m+[0m [1m[32m            [0m[0m[32mheaders=headers,
+[0m[1m[94m605[0m [1m[32m+[0m [1m[32m        [0m[0m[32m) as client:
+[0m[1m[94m606[0m [1m[32m+[0m [1m[32m            [0m[0m[32mif method == "GET":
+[0m[1m[94m607[0m [1m[32m+[0m [1m[32m                [0m[0m[32mresponse = client.get(task.target_url)
+[0m[1m[94m608[0m [1m[32m+[0m [1m[32m            [0m[0m[32melif method == "HEAD":
+[0m[1m[94m609[0m [1m[32m+[0m [1m[32m                [0m[0m[32mresponse = client.head(task.target_url)
+[0m[1m[94m610[0m [1m[32m+[0m [1m[32m            [0m[0m[32melif method == "OPTIONS":
+[0m[1m[94m611[0m [1m[32m+[0m [1m[32m                [0m[0m[32mresponse = client.options(task.target_url)
+[0m[1m[94m612[0m [1m[32m+[0m [1m[32m            [0m[0m[32melif method == "POST":
+[0m[1m[94m613[0m [1m[32m+[0m [1m[32m                [0m[0m[32mbody = task.metadata.get("request_body")
+[0m[1m[94m614[0m [1m[32m+[0m [1m[32m                [0m[0m[32mif body is None:
+[0m[1m[94m615[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mraise ValueError("active_body_evidence_required")
+[0m[1m[94m616[0m [1m[32m+[0m [1m[32m                [0m[0m[32mif task.action_family == "file_upload":
+[0m[1m[94m617[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif not isinstance(body, Mapping):
+[0m[1m[94m618[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mraise ValueError("multipart_body_schema_required")
+[0m[1m[94m619[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mfile_spec = body.get("file") or body.get("upload")
+[0m[1m[94m620[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif not isinstance(file_spec, Mapping):
+[0m[1m[94m621[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mraise ValueError("multipart_file_evidence_required")
+[0m[1m[94m622[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mfield_name = str(
+[0m[1m[94m623[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mfile_spec.get("field") or file_spec.get("name") or "file"
+[0m[1m[94m624[0m [1m[32m+[0m [1m[32m                    [0m[0m[32m)[:80]
+[0m[1m[94m625[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mfilename = str(file_spec.get("filename") or "fixture.bin")[:160]
+[0m[1m[94m626[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mcontent = file_spec.get("content", b"")
+[0m[1m[94m627[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif isinstance(content, str):
+[0m[1m[94m628[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mcontent = content.encode("utf-8")
+[0m[1m[94m629[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif not isinstance(content, bytes) or len(content) > 1_048_576:
+[0m[1m[94m630[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mraise ValueError("bounded_upload_content_required")
+[0m[1m[94m631[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mfields = body.get("fields") or {}
+[0m[1m[94m632[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif not isinstance(fields, Mapping):
+[0m[1m[94m633[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mfields = {}
+[0m[1m[94m634[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mupload_type = str(
+[0m[1m[94m635[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mfile_spec.get("content_type") or "application/octet-stream"
+[0m[1m[94m636[0m [1m[32m+[0m [1m[32m                    [0m[0m[32m)[:120]
+[0m[1m[94m637[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mresponse = client.post(
+[0m[1m[94m638[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mtask.target_url,
+[0m[1m[94m639[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mdata={
+[0m[1m[94m640[0m [1m[32m+[0m [1m[32m                            [0m[0m[32mstr(key)[:80]: str(value)[:1000]
+[0m[1m[94m641[0m [1m[32m+[0m [1m[32m                            [0m[0m[32mfor key, value in fields.items()
+[0m[1m[94m642[0m [1m[32m+[0m [1m[32m                        [0m[0m[32m},
+[0m[1m[94m643[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mfiles={field_name: (filename, content, upload_type)},
+[0m[1m[94m644[0m [1m[32m+[0m [1m[32m                    [0m[0m[32m)
+[0m[1m[94m645[0m [1m[32m+[0m [1m[32m                [0m[0m[32melif (
+[0m[1m[94m646[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mtask.body_schema in {"form", "urlencoded"}
+[0m[1m[94m647[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mor "application/x-www-form-urlencoded" in content_type.lower()
+[0m[1m[94m648[0m [1m[32m+[0m [1m[32m                [0m[0m[32m):
+[0m[1m[94m649[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mif not isinstance(body, Mapping):
+[0m[1m[94m650[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mraise ValueError("form_body_schema_required")
+[0m[1m[94m651[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mresponse = client.post(
+[0m[1m[94m652[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mtask.target_url,
+[0m[1m[94m653[0m [1m[32m+[0m [1m[32m                        [0m[0m[32mdata={
+[0m[1m[94m654[0m [1m[32m+[0m [1m[32m                            [0m[0m[32mstr(key)[:80]: str(value)[:1000]
+[0m[1m[94m655[0m [1m[32m+[0m [1m[32m                            [0m[0m[32mfor key, value in body.items()
+[0m[1m[94m656[0m [1m[32m+[0m [1m[32m                        [0m[0m[32m},
+[0m[1m[94m657[0m [1m[32m+[0m [1m[32m                    [0m[0m[32m)
+[0m[1m[94m658[0m [1m[32m+[0m [1m[32m                [0m[0m[32melif isinstance(body, Mapping):
+[0m[1m[94m659[0m [1m[32m+[0m [1m[32m                    [0m[0m[32mresponse = client.post(task.target_url, json=dict(body))
+[0m[1m[94m660[0m [1m[94m|[0m                 else:
+[1m[94m   [0m [1m[31m-[0m [31m                    raise ValueError("unsupported_smart_http_method")
+[0m[1m[94m661[0m [1m[32m+[0m [32m                    response = client.post(task.target_url, content=body)
+[0m[1m[94m662[0m [1m[32m+[0m [32m            else:
+[0m[1m[94m663[0m [1m[32m+[0m [32m                raise ValueError("unsupported_smart_http_method")
+[0m[1m[94m664[0m [1m[94m|[0m         observation = {
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM105[0m[1m Use `contextlib.suppress(FileNotFoundError)` instead of `try`-`except`-`pass`[0m
+   [1m[94m--> [0msrc/webpent/cli/manifest.py:130:9
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m           os.replace(temp_name, path)
+[1m[94m129[0m [1m[94m|[0m       finally:
+[1m[94m130[0m [1m[94m|[0m [1m[91m/[0m         try:
+[1m[94m131[0m [1m[94m|[0m [1m[91m|[0m             os.unlink(temp_name)
+[1m[94m132[0m [1m[94m|[0m [1m[91m|[0m         except FileNotFoundError:
+[1m[94m133[0m [1m[94m|[0m [1m[91m|[0m             pass
+    [1m[94m|[0m [1m[91m|________________^[0m
+[1m[94m134[0m [1m[94m|[0m       return path
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `try`-`except`-`pass` with `with contextlib.suppress(FileNotFoundError): ...`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/memory/decision_log.py:25:1
+   [1m[94m|[0m
+[1m[94m23[0m [1m[94m|[0m   """
+[1m[94m24[0m [1m[94m|[0m
+[1m[94m25[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m import sqlite3
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m import threading
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterator
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from contextlib import contextmanager
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from uuid import UUID
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.decision_log import DecisionLogEntry, DecisionType
+   [1m[94m|[0m [1m[91m|______________________________________________________________________^[0m
+[1m[94m38[0m [1m[94m|[0m
+[1m[94m39[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m32[0m [1m[94m|[0m from contextlib import contextmanager
+[1m[94m33[0m [1m[32m+[0m [32mfrom pathlib import Path
+[0m[1m[94m34[0m [1m[94m|[0m from typing import Any
+[1m[94m  [0m [1m[31m-[0m [31mfrom pathlib import Path
+[0m[1m[94m35[0m [1m[94m|[0m from uuid import UUID
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0msrc/webpent/models/authorization_matrix.py:3:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m   """Typed, report-safe authorization comparison matrix models."""
+[1m[94m2[0m [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m from typing import Literal
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m7[0m [1m[94m|[0m [1m[91m|[0m from pydantic import BaseModel, ConfigDict, Field, field_validator
+  [1m[94m|[0m [1m[91m|__________________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m8[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m9[0m [1m[94m|[0m AccessExpectation = Literal["allow", "deny", "unknown"]
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/authorization_matrix.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterable, Mapping
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import urlsplit, urlunsplit
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.authorization_matrix import (
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m     AuthorizationComparison,
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m     AuthorizationMatrix,
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m     AuthorizationMatrixRow,
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m )
+   [1m[94m|[0m [1m[91m|_^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m21[0m [1m[94m|[0m _SENSITIVE_QUERY_KEYS = {
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/disclosed_report_intel.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import hashlib
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterable
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import urlparse
+   [1m[94m|[0m [1m[91m|_________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m import re
+[1m[94m13[0m [1m[32m+[0m [32mfrom collections.abc import Iterable
+[0m[1m[94m14[0m [1m[94m|[0m from typing import Any
+[1m[94m  [0m [1m[31m-[0m [31mfrom collections.abc import Iterable
+[0m[1m[94m15[0m [1m[94m|[0m from urllib.parse import urlparse
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m16[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/http_discovery.py:10:1
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m   """
+[1m[94m 9[0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from collections import deque
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from html.parser import HTMLParser
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m21[0m [1m[94m|[0m _DEFAULT_ROUTE_SEEDS = (
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/jwt_deep_testing.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import base64
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import binascii
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m import hashlib
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m import hmac
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterable
+   [1m[94m|[0m [1m[91m|____________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m import re
+[1m[94m  [0m [1m[31m-[0m [31mfrom typing import Any
+[0m[1m[94m17[0m [1m[94m|[0m from collections.abc import Iterable
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m18[0m [1m[32m+[0m [32mfrom typing import Any
+[0m[1m[94m19[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/memory_boundary.py:1:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 2[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Callable, Iterable
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m from uuid import uuid4
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.memory import (
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m     FeedbackStatus,
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m     MemoryBudget,
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m     MemoryFeedback,
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m     MemoryKind,
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m     MemoryRecord,
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m     MemoryRetrieval,
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.evidence import redact_sensitive
+   [1m[94m|[0m [1m[91m|____________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m6 [0m [1m[94m|[0m
+[1m[94m7 [0m [1m[32m+[0m [32mfrom webpent.models.evidence import redact_sensitive
+[0m[1m[94m8 [0m [1m[94m|[0m from webpent.models.memory import (
+--------------------------------------------------------------------------------
+[1m[94m15[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.models.evidence import redact_sensitive
+[0m[1m[94m16[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/rate_governor.py:38:1
+   [1m[94m|[0m
+[1m[94m36[0m [1m[94m|[0m   """
+[1m[94m37[0m [1m[94m|[0m
+[1m[94m38[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m39[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m import threading
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m from collections import defaultdict
+[1m[94m43[0m [1m[94m|[0m [1m[91m|[0m from contextlib import contextmanager
+[1m[94m44[0m [1m[94m|[0m [1m[91m|[0m from dataclasses import dataclass
+[1m[94m45[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m46[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterator
+   [1m[94m|[0m [1m[91m|____________________________________^[0m
+[1m[94m47[0m [1m[94m|[0m
+[1m[94m48[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m42[0m [1m[94m|[0m from collections import defaultdict
+[1m[94m43[0m [1m[32m+[0m [32mfrom collections.abc import Iterator
+[0m[1m[94m44[0m [1m[94m|[0m from contextlib import contextmanager
+[1m[94m45[0m [1m[94m|[0m from dataclasses import dataclass
+[1m[94m46[0m [1m[94m|[0m from typing import Any
+[1m[94m  [0m [1m[31m-[0m [31mfrom collections.abc import Iterator
+[0m[1m[94m47[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/recon_triage.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from collections import defaultdict
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from dataclasses import dataclass
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+   [1m[94m|[0m [1m[91m|___________________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m16[0m [1m[94m|[0m _SIGNAL_WEIGHTS: dict[str, int] = {
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/shared/report_quality.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterable
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from pydantic import BaseModel, ConfigDict, Field
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from webpent.state.reducers import model_get
+   [1m[94m|[0m [1m[91m|____________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m
+[1m[94m11[0m [1m[32m+[0m [32mfrom collections.abc import Iterable
+[0m[1m[94m12[0m [1m[94m|[0m from typing import Any
+[1m[94m  [0m [1m[31m-[0m [31mfrom collections.abc import Iterable
+[0m[1m[94m13[0m [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m from pydantic import BaseModel, ConfigDict, Field
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m from webpent.state.reducers import model_get
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m17[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM105[0m[1m Use `contextlib.suppress(TypeError, ValueError)` instead of `try`-`except`-`pass`[0m
+   [1m[94m--> [0msrc/webpent/shared/self_critique.py:337:17
+    [1m[94m|[0m
+[1m[94m335[0m [1m[94m|[0m               cost = getattr(h, "estimated_cost", None)
+[1m[94m336[0m [1m[94m|[0m               if cost is not None:
+[1m[94m337[0m [1m[94m|[0m [1m[91m/[0m                 try:
+[1m[94m338[0m [1m[94m|[0m [1m[91m|[0m                     budget_sum += float(cost)
+[1m[94m339[0m [1m[94m|[0m [1m[91m|[0m                 except (TypeError, ValueError):
+[1m[94m340[0m [1m[94m|[0m [1m[91m|[0m                     pass
+    [1m[94m|[0m [1m[91m|________________________^[0m
+[1m[94m341[0m [1m[94m|[0m           except Exception:
+[1m[94m342[0m [1m[94m|[0m               continue
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `try`-`except`-`pass` with `with contextlib.suppress(TypeError, ValueError): ...`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0msrc/webpent/shared/self_critique.py:398:9
+    [1m[94m|[0m
+[1m[94m396[0m [1m[94m|[0m       """
+[1m[94m397[0m [1m[94m|[0m       try:
+[1m[94m398[0m [1m[94m|[0m [1m[91m/[0m         from langchain_core.messages import HumanMessage, SystemMessage
+[1m[94m399[0m [1m[94m|[0m [1m[91m|[0m         from webpent.shared.llm import (
+[1m[94m400[0m [1m[94m|[0m [1m[91m|[0m             TaskType,
+[1m[94m401[0m [1m[94m|[0m [1m[91m|[0m             try_get_llm,
+[1m[94m402[0m [1m[94m|[0m [1m[91m|[0m             get_safety_system_instruction,
+[1m[94m403[0m [1m[94m|[0m [1m[91m|[0m             safe_prompt_format,
+[1m[94m404[0m [1m[94m|[0m [1m[91m|[0m         )
+    [1m[94m|[0m [1m[91m|_________^[0m
+[1m[94m405[0m [1m[94m|[0m       except Exception as exc:
+[1m[94m406[0m [1m[94m|[0m           logger.debug("Self-Critique LLM import failed: %s", exc)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m398[0m [1m[94m|[0m         from langchain_core.messages import HumanMessage, SystemMessage
+[1m[94m399[0m [1m[32m+[0m[32m
+[0m[1m[94m400[0m [1m[94m|[0m         from webpent.shared.llm import (
+[1m[94m401[0m [1m[94m|[0m             TaskType,
+[1m[94m   [0m [1m[31m-[0m [31m            try_get_llm,
+[0m[1m[94m402[0m [1m[94m|[0m             get_safety_system_instruction,
+[1m[94m403[0m [1m[94m|[0m             safe_prompt_format,
+[1m[94m404[0m [1m[32m+[0m [32m            try_get_llm,
+[0m[1m[94m405[0m [1m[94m|[0m         )
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+  [1m[94m--> [0msrc/webpent/shared/skill_selector.py:32:9
+   [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m           if skill.get("applies_to_phase") != current_phase:
+[1m[94m31[0m [1m[94m|[0m               continue
+[1m[94m32[0m [1m[94m|[0m [1m[91m/[0m         if vuln_class:
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m             if vuln_class not in skill.get("applies_to_vuln_class", []):
+   [1m[94m|[0m [1m[91m|________________________________________________________________________^[0m
+[1m[94m34[0m [1m[94m|[0m                   continue
+[1m[94m35[0m [1m[94m|[0m           matched.append(skill)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/state/reducers.py:10:1
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m   """
+[1m[94m 9[0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from typing import Any, TypeVar
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding
+   [1m[94m|[0m [1m[91m|___________________________________________^[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m   _T = TypeVar("_T")
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m from typing import Any, TypeVar
+[1m[94m14[0m [1m[32m+[0m[32m
+[0m[1m[94m15[0m [1m[94m|[0m from webpent.models.findings import Finding
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/exploitation/dalfox.py:28:1
+   [1m[94m|[0m
+[1m[94m26[0m [1m[94m|[0m   """
+[1m[94m27[0m [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import urlencode
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.registry import register_tool
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m37[0m [1m[94m|[0m
+[1m[94m38[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m34[0m [1m[94m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m35[0m [1m[32m+[0m [32mfrom webpent.tools.registry import register_tool
+[0m[1m[94m36[0m [1m[94m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.tools.registry import register_tool
+[0m[1m[94m37[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/exploitation/dalfox.py:95:5
+   [1m[94m|[0m
+[1m[94m93[0m [1m[94m|[0m       # declared target, we run dalfox WITHOUT --follow-redirects so it
+[1m[94m94[0m [1m[94m|[0m       # cannot be redirected to internal hosts.
+[1m[94m95[0m [1m[94m|[0m [1m[91m/[0m     from urllib.parse import urlparse
+[1m[94m96[0m [1m[94m|[0m [1m[91m|[0m     from webpent.shared.engagement_scope import is_engagement_target_host
+   [1m[94m|[0m [1m[91m|_________________________________________________________________________^[0m
+[1m[94m97[0m [1m[94m|[0m       _parsed = urlparse(url)
+[1m[94m98[0m [1m[94m|[0m       _host = (_parsed.hostname or "").lower()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m95[0m [1m[94m|[0m     from urllib.parse import urlparse
+[1m[94m96[0m [1m[32m+[0m[32m
+[0m[1m[94m97[0m [1m[94m|[0m     from webpent.shared.engagement_scope import is_engagement_target_host
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/exploitation/sqlmap.py:24:1
+   [1m[94m|[0m
+[1m[94m22[0m [1m[94m|[0m   """
+[1m[94m23[0m [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.registry import register_tool
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m34[0m [1m[94m|[0m
+[1m[94m35[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m31[0m [1m[94m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m32[0m [1m[32m+[0m [32mfrom webpent.tools.registry import register_tool
+[0m[1m[94m33[0m [1m[94m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.tools.registry import register_tool
+[0m[1m[94m34[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mN806[0m[1m Variable `_NEGATIVE_PATTERNS` in function should be lowercase[0m
+   [1m[94m--> [0msrc/webpent/tools/exploitation/sqlmap.py:176:5
+    [1m[94m|[0m
+[1m[94m174[0m [1m[94m|[0m     # Check for the negative form FIRST and bail out if the ONLY
+[1m[94m175[0m [1m[94m|[0m     # "injectable" mention is in a "not ... injectable" sentence.
+[1m[94m176[0m [1m[94m|[0m     _NEGATIVE_PATTERNS = (
+    [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m177[0m [1m[94m|[0m         "all tested parameters do not appear to be injectable",
+[1m[94m178[0m [1m[94m|[0m         "does not appear to be injectable",
+    [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/recon/httpx.py:9:1
+   [1m[94m|[0m
+[1m[94m 7[0m [1m[94m|[0m   """
+[1m[94m 8[0m [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.registry import register_tool
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m19[0m [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m17[0m [1m[32m+[0m [32mfrom webpent.tools.registry import register_tool
+[0m[1m[94m18[0m [1m[94m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.tools.registry import register_tool
+[0m[1m[94m19[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/recon/httpx.py:73:5
+   [1m[94m|[0m
+[1m[94m71[0m [1m[94m|[0m       # service banners into the recon data. Gate: only probe domains
+[1m[94m72[0m [1m[94m|[0m       # whose hostname matches the engagement's declared target host.
+[1m[94m73[0m [1m[94m|[0m [1m[91m/[0m     from webpent.shared.engagement_scope import is_engagement_target_host
+[1m[94m74[0m [1m[94m|[0m [1m[91m|[0m     from urllib.parse import urlparse
+   [1m[94m|[0m [1m[91m|_____________________________________^[0m
+[1m[94m75[0m [1m[94m|[0m       _scoped_domains: list[str] = []
+[1m[94m76[0m [1m[94m|[0m       _dropped_count = 0
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m72[0m [1m[94m|[0m     # whose hostname matches the engagement's declared target host.
+[1m[94m  [0m [1m[31m-[0m [31m    from webpent.shared.engagement_scope import is_engagement_target_host
+[0m[1m[94m73[0m [1m[94m|[0m     from urllib.parse import urlparse
+[1m[94m74[0m [1m[32m+[0m[32m
+[0m[1m[94m75[0m [1m[32m+[0m [32m    from webpent.shared.engagement_scope import is_engagement_target_host
+[0m[1m[94m76[0m [1m[94m|[0m     _scoped_domains: list[str] = []
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/recon/katana.py:26:1
+   [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m   """
+[1m[94m25[0m [1m[94m|[0m
+[1m[94m26[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m27[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m28[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m29[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m30[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+[1m[94m31[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.registry import register_tool
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m36[0m [1m[94m|[0m
+[1m[94m37[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m33[0m [1m[94m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m34[0m [1m[32m+[0m [32mfrom webpent.tools.registry import register_tool
+[0m[1m[94m35[0m [1m[94m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.tools.registry import register_tool
+[0m[1m[94m36[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0msrc/webpent/tools/recon/katana.py:112:5
+    [1m[94m|[0m
+[1m[94m110[0m [1m[94m|[0m       # off-target crawling, AND post-filter discovered endpoints to
+[1m[94m111[0m [1m[94m|[0m       # drop any whose host is NOT the engagement's own target.
+[1m[94m112[0m [1m[94m|[0m [1m[91m/[0m     from urllib.parse import urlparse
+[1m[94m113[0m [1m[94m|[0m [1m[91m|[0m     from webpent.shared.engagement_scope import is_engagement_target_host
+    [1m[94m|[0m [1m[91m|_________________________________________________________________________^[0m
+[1m[94m114[0m [1m[94m|[0m       _seed_host = (urlparse(url).hostname or "").lower()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m112[0m [1m[94m|[0m     from urllib.parse import urlparse
+[1m[94m113[0m [1m[32m+[0m[32m
+[0m[1m[94m114[0m [1m[94m|[0m     from webpent.shared.engagement_scope import is_engagement_target_host
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0msrc/webpent/tools/recon/katana.py:223:13
+    [1m[94m|[0m
+[1m[94m221[0m [1m[94m|[0m                   )
+[1m[94m222[0m [1m[94m|[0m                   continue
+[1m[94m223[0m [1m[94m|[0m [1m[91m/[0m             if ep_host != _seed_host:
+[1m[94m224[0m [1m[94m|[0m [1m[91m|[0m                 if not is_engagement_target_host(ep_host):
+    [1m[94m|[0m [1m[91m|__________________________________________________________^[0m
+[1m[94m225[0m [1m[94m|[0m                       dropped_offscope += 1
+[1m[94m226[0m [1m[94m|[0m                       logger.warning(
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/tools/recon/subfinder.py:10:1
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m   """
+[1m[94m 9[0m [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import get_settings
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m from webpent.tools.registry import register_tool
+   [1m[94m|[0m [1m[91m|________________________________________________^[0m
+[1m[94m18[0m [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m   logger = logging.getLogger(__name__)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m from webpent.shared.exceptions import ToolExecutionError
+[1m[94m16[0m [1m[32m+[0m [32mfrom webpent.tools.registry import register_tool
+[0m[1m[94m17[0m [1m[94m|[0m from webpent.tools.utils.subprocess import run_command
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.tools.registry import register_tool
+[0m[1m[94m18[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM105[0m[1m Use `contextlib.suppress(AttributeError, TypeError)` instead of `try`-`except`-`pass`[0m
+   [1m[94m--> [0msrc/webpent/utils/compliance.py:173:5
+    [1m[94m|[0m
+[1m[94m171[0m [1m[94m|[0m       """
+[1m[94m172[0m [1m[94m|[0m       tags = tag_finding(finding)
+[1m[94m173[0m [1m[94m|[0m [1m[91m/[0m     try:
+[1m[94m174[0m [1m[94m|[0m [1m[91m|[0m         # Pydantic V2 models are immutable by default, but model_copy
+[1m[94m175[0m [1m[94m|[0m [1m[91m|[0m         # is the canonical way to "mutate". We use setattr for non-
+[1m[94m176[0m [1m[94m|[0m [1m[91m|[0m         # Pydantic objects and return the finding for Pydantic callers
+[1m[94m177[0m [1m[94m|[0m [1m[91m|[0m         # to handle via model_copy if needed.
+[1m[94m178[0m [1m[94m|[0m [1m[91m|[0m         object.__setattr__(finding, "compliance_tags", tags)
+[1m[94m179[0m [1m[94m|[0m [1m[91m|[0m     except (AttributeError, TypeError):
+[1m[94m180[0m [1m[94m|[0m [1m[91m|[0m         # Pydantic V2 frozen model — caller should use model_copy.
+[1m[94m181[0m [1m[94m|[0m [1m[91m|[0m         pass
+    [1m[94m|[0m [1m[91m|____________^[0m
+[1m[94m182[0m [1m[94m|[0m       return finding
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `try`-`except`-`pass` with `with contextlib.suppress(AttributeError, TypeError): ...`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mtests/test_p1_config_contracts.py:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m2[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m3[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m from webpent.config.settings import Settings, get_settings
+  [1m[94m|[0m [1m[91m|__________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m6[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m7[0m [1m[94m|[0m ROOT = Path(__file__).resolve().parents[1]
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mtests/test_p1_tls_enforcement.py:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m2[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m3[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m7[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.http import make_safe_httpx_async_client, make_safe_httpx_client
+  [1m[94m|[0m [1m[91m|____________________________________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m8[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m9[0m [1m[94m|[0m PROJECT_ROOT = Path(__file__).resolve().parents[1]
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_audit_fixes.py:31:9
+   [1m[94m|[0m
+[1m[94m29[0m [1m[94m|[0m       def test_init_scan_registry_called_on_import(self, tmp_path):
+[1m[94m30[0m [1m[94m|[0m           """Importing webpent.api.app should call init_scan_registry."""
+[1m[94m31[0m [1m[94m|[0m [1m[91m/[0m         from webpent.memory.db import DatabaseManager
+[1m[94m32[0m [1m[94m|[0m [1m[91m|[0m         from webpent.api import scan_registry
+   [1m[94m|[0m [1m[91m|_____________________________________________^[0m
+[1m[94m33[0m [1m[94m|[0m
+[1m[94m34[0m [1m[94m|[0m           db = DatabaseManager(f"sqlite:///{tmp_path}/test_c1.db")
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m         """Importing webpent.api.app should call init_scan_registry."""
+[1m[94m31[0m [1m[32m+[0m [32m        from webpent.api import scan_registry
+[0m[1m[94m32[0m [1m[94m|[0m         from webpent.memory.db import DatabaseManager
+[1m[94m  [0m [1m[31m-[0m [31m        from webpent.api import scan_registry
+[0m[1m[94m33[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_audit_fixes.py:53:9
+   [1m[94m|[0m
+[1m[94m51[0m [1m[94m|[0m       def test_test_finding_payloads_accepts_thread_id(self):
+[1m[94m52[0m [1m[94m|[0m           """The function signature must include thread_id parameter."""
+[1m[94m53[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.execution_sandbox.agent import _test_finding_payloads
+[1m[94m54[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+   [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m55[0m [1m[94m|[0m
+[1m[94m56[0m [1m[94m|[0m           sig = inspect.signature(_test_finding_payloads)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m         """The function signature must include thread_id parameter."""
+[1m[94m  [0m [1m[31m-[0m [31m        from webpent.agents.execution_sandbox.agent import _test_finding_payloads
+[0m[1m[94m53[0m [1m[94m|[0m         import inspect
+[1m[94m54[0m [1m[94m|[0m
+[1m[94m55[0m [1m[32m+[0m [32m        from webpent.agents.execution_sandbox.agent import _test_finding_payloads
+[0m[1m[94m56[0m [1m[32m+[0m[32m
+[0m[1m[94m57[0m [1m[94m|[0m         sig = inspect.signature(_test_finding_payloads)
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:189:9
+    [1m[94m|[0m
+[1m[94m187[0m [1m[94m|[0m       def test_dalfox_no_follow_redirects_for_non_target(self):
+[1m[94m188[0m [1m[94m|[0m           """dalfox --follow-redirects only added when host is engagement target."""
+[1m[94m189[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.exploitation.dalfox import run_dalfox
+[1m[94m190[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m191[0m [1m[94m|[0m
+[1m[94m192[0m [1m[94m|[0m           source = inspect.getsource(run_dalfox)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m188[0m [1m[94m|[0m         """dalfox --follow-redirects only added when host is engagement target."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m189[0m [1m[94m|[0m         import inspect
+[1m[94m190[0m [1m[94m|[0m
+[1m[94m191[0m [1m[32m+[0m [32m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m192[0m [1m[32m+[0m[32m
+[0m[1m[94m193[0m [1m[94m|[0m         source = inspect.getsource(run_dalfox)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:200:9
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m       def test_katana_drops_offscope_endpoints(self):
+[1m[94m199[0m [1m[94m|[0m           """katana must post-filter discovered endpoints by engagement scope."""
+[1m[94m200[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.recon.katana import run_katana
+[1m[94m201[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m202[0m [1m[94m|[0m
+[1m[94m203[0m [1m[94m|[0m           source = inspect.getsource(run_katana)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m199[0m [1m[94m|[0m         """katana must post-filter discovered endpoints by engagement scope."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.recon.katana import run_katana
+[0m[1m[94m200[0m [1m[94m|[0m         import inspect
+[1m[94m201[0m [1m[94m|[0m
+[1m[94m202[0m [1m[32m+[0m [32m        from webpent.tools.recon.katana import run_katana
+[0m[1m[94m203[0m [1m[32m+[0m[32m
+[0m[1m[94m204[0m [1m[94m|[0m         source = inspect.getsource(run_katana)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:260:9
+    [1m[94m|[0m
+[1m[94m258[0m [1m[94m|[0m         dict_finding = {"id": uuid.uuid4(), "title": "from-checkpoint"}
+[1m[94m259[0m [1m[94m|[0m         # A Finding instance (as a live node would produce).
+[1m[94m260[0m [1m[94m|[0m         from webpent.models.findings import Finding, Severity, Confidence, VulnClass
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m261[0m [1m[94m|[0m
+[1m[94m262[0m [1m[94m|[0m         live_finding = Finding(
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m259[0m [1m[94m|[0m         # A Finding instance (as a live node would produce).
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import [0m[31mFinding, Severity, [0m[1m[31mConfidence, [0m[0m[31mVulnClass
+[0m[1m[94m260[0m [1m[32m+[0m [32m        from webpent.models.findings import [0m[1m[32mConfidence, [0m[0m[32mFinding, Severity, [0m[32mVulnClass
+[0m[1m[94m261[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:364:9
+    [1m[94m|[0m
+[1m[94m363[0m [1m[94m|[0m       def test_collect_sqli_accepts_session_cookies(self):
+[1m[94m364[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[1m[94m365[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m366[0m [1m[94m|[0m
+[1m[94m367[0m [1m[94m|[0m           sig = inspect.signature(_collect_sqli_post_exploitation)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m363[0m [1m[94m|[0m     def test_collect_sqli_accepts_session_cookies(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m364[0m [1m[94m|[0m         import inspect
+[1m[94m365[0m [1m[94m|[0m
+[1m[94m366[0m [1m[32m+[0m [32m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m367[0m [1m[32m+[0m[32m
+[0m[1m[94m368[0m [1m[94m|[0m         sig = inspect.signature(_collect_sqli_post_exploitation)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:371:9
+    [1m[94m|[0m
+[1m[94m370[0m [1m[94m|[0m       def test_collect_rce_accepts_session_cookies(self):
+[1m[94m371[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.post_exploit.agent import _collect_rce_post_exploitation
+[1m[94m372[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m373[0m [1m[94m|[0m
+[1m[94m374[0m [1m[94m|[0m           sig = inspect.signature(_collect_rce_post_exploitation)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m370[0m [1m[94m|[0m     def test_collect_rce_accepts_session_cookies(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.post_exploit.agent import _collect_rce_post_exploitation
+[0m[1m[94m371[0m [1m[94m|[0m         import inspect
+[1m[94m372[0m [1m[94m|[0m
+[1m[94m373[0m [1m[32m+[0m [32m        from webpent.agents.post_exploit.agent import _collect_rce_post_exploitation
+[0m[1m[94m374[0m [1m[32m+[0m[32m
+[0m[1m[94m375[0m [1m[94m|[0m         sig = inspect.signature(_collect_rce_post_exploitation)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:378:9
+    [1m[94m|[0m
+[1m[94m377[0m [1m[94m|[0m       def test_post_exploitation_node_reads_cookies_from_state(self):
+[1m[94m378[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.post_exploit.agent import post_exploitation_node
+[1m[94m379[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m380[0m [1m[94m|[0m
+[1m[94m381[0m [1m[94m|[0m           source = inspect.getsource(post_exploitation_node)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m377[0m [1m[94m|[0m     def test_post_exploitation_node_reads_cookies_from_state(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.post_exploit.agent import post_exploitation_node
+[0m[1m[94m378[0m [1m[94m|[0m         import inspect
+[1m[94m379[0m [1m[94m|[0m
+[1m[94m380[0m [1m[32m+[0m [32m        from webpent.agents.post_exploit.agent import post_exploitation_node
+[0m[1m[94m381[0m [1m[32m+[0m[32m
+[0m[1m[94m382[0m [1m[94m|[0m         source = inspect.getsource(post_exploitation_node)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:403:9
+    [1m[94m|[0m
+[1m[94m402[0m [1m[94m|[0m       def test_get_cached_graph_uses_lock(self):
+[1m[94m403[0m [1m[94m|[0m [1m[91m/[0m         from webpent.api import app as app_module
+[1m[94m404[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m405[0m [1m[94m|[0m
+[1m[94m406[0m [1m[94m|[0m           source = inspect.getsource(app_module._get_cached_graph)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m402[0m [1m[94m|[0m     def test_get_cached_graph_uses_lock(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.api import app as app_module
+[0m[1m[94m403[0m [1m[94m|[0m         import inspect
+[1m[94m404[0m [1m[94m|[0m
+[1m[94m405[0m [1m[32m+[0m [32m        from webpent.api import app as app_module
+[0m[1m[94m406[0m [1m[32m+[0m[32m
+[0m[1m[94m407[0m [1m[94m|[0m         source = inspect.getsource(app_module._get_cached_graph)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:421:9
+    [1m[94m|[0m
+[1m[94m420[0m [1m[94m|[0m       def test_ipv6_link_local_blocked(self):
+[1m[94m421[0m [1m[94m|[0m [1m[91m/[0m         import ipaddress
+[1m[94m422[0m [1m[94m|[0m [1m[91m|[0m         from webpent.shared.http import BLOCKED_NETWORKS
+    [1m[94m|[0m [1m[91m|________________________________________________________^[0m
+[1m[94m423[0m [1m[94m|[0m
+[1m[94m424[0m [1m[94m|[0m           fe80 = ipaddress.ip_address("fe80::1")
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m421[0m [1m[94m|[0m         import ipaddress
+[1m[94m422[0m [1m[32m+[0m[32m
+[0m[1m[94m423[0m [1m[94m|[0m         from webpent.shared.http import BLOCKED_NETWORKS
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:430:9
+    [1m[94m|[0m
+[1m[94m429[0m [1m[94m|[0m       def test_ipv4_mapped_ipv6_blocked(self):
+[1m[94m430[0m [1m[94m|[0m [1m[91m/[0m         import ipaddress
+[1m[94m431[0m [1m[94m|[0m [1m[91m|[0m         from webpent.shared.http import BLOCKED_NETWORKS
+    [1m[94m|[0m [1m[91m|________________________________________________________^[0m
+[1m[94m432[0m [1m[94m|[0m
+[1m[94m433[0m [1m[94m|[0m           mapped = ipaddress.ip_address("::ffff:169.254.169.254")
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m430[0m [1m[94m|[0m         import ipaddress
+[1m[94m431[0m [1m[32m+[0m[32m
+[0m[1m[94m432[0m [1m[94m|[0m         from webpent.shared.http import BLOCKED_NETWORKS
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:448:9
+    [1m[94m|[0m
+[1m[94m447[0m [1m[94m|[0m       def test_no_continue_fallback_in_exception_handler(self):
+[1m[94m448[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared import http as http_module
+[1m[94m449[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m450[0m [1m[94m|[0m
+[1m[94m451[0m [1m[94m|[0m           # Find the _ssrf_route_handler source.
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m447[0m [1m[94m|[0m     def test_no_continue_fallback_in_exception_handler(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared import http as http_module
+[0m[1m[94m448[0m [1m[94m|[0m         import inspect
+[1m[94m449[0m [1m[94m|[0m
+[1m[94m450[0m [1m[32m+[0m [32m        from webpent.shared import http as http_module
+[0m[1m[94m451[0m [1m[32m+[0m[32m
+[0m[1m[94m452[0m [1m[94m|[0m         # Find the _ssrf_route_handler source.
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_audit_fixes.py:570:9
+    [1m[94m|[0m
+[1m[94m569[0m [1m[94m|[0m       def test_check_graph_state_paused_returns_true_for_sandbox(self):
+[1m[94m570[0m [1m[94m|[0m [1m[91m/[0m         from webpent.workers.pentest_worker import _check_graph_state_paused
+[1m[94m571[0m [1m[94m|[0m [1m[91m|[0m         from webpent.graph.builder import NODE_EXECUTION_SANDBOX
+    [1m[94m|[0m [1m[91m|________________________________________________________________^[0m
+[1m[94m572[0m [1m[94m|[0m
+[1m[94m573[0m [1m[94m|[0m           mock_graph = MagicMock()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m569[0m [1m[94m|[0m     def test_check_graph_state_paused_returns_true_for_sandbox(self):
+[1m[94m570[0m [1m[32m+[0m [32m        from webpent.graph.builder import NODE_EXECUTION_SANDBOX
+[0m[1m[94m571[0m [1m[94m|[0m         from webpent.workers.pentest_worker import _check_graph_state_paused
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.graph.builder import NODE_EXECUTION_SANDBOX
+[0m[1m[94m572[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:60:9
+   [1m[94m|[0m
+[1m[94m58[0m [1m[94m|[0m       def test_route_after_validator_dict_findings(self):
+[1m[94m59[0m [1m[94m|[0m           """route_after_validator must not crash on dict-shaped findings."""
+[1m[94m60[0m [1m[94m|[0m [1m[91m/[0m         from webpent.graph.builder import (
+[1m[94m61[0m [1m[94m|[0m [1m[91m|[0m             route_after_validator,
+[1m[94m62[0m [1m[94m|[0m [1m[91m|[0m             NODE_PAYLOAD_OPTIMIZER,
+[1m[94m63[0m [1m[94m|[0m [1m[91m|[0m             NODE_DEVILS_ADVOCATE,
+[1m[94m64[0m [1m[94m|[0m [1m[91m|[0m         )
+   [1m[94m|[0m [1m[91m|_________^[0m
+[1m[94m65[0m [1m[94m|[0m
+[1m[94m66[0m [1m[94m|[0m           state = {
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m60[0m [1m[94m|[0m         from webpent.graph.builder import (
+[1m[94m61[0m [1m[32m+[0m [32m            NODE_DEVILS_ADVOCATE,
+[0m[1m[94m62[0m [1m[32m+[0m [32m            NODE_PAYLOAD_OPTIMIZER,
+[0m[1m[94m63[0m [1m[94m|[0m             route_after_validator,
+[1m[94m  [0m [1m[31m-[0m [31m            NODE_PAYLOAD_OPTIMIZER,
+[0m[1m[94m  [0m [1m[31m-[0m [31m            NODE_DEVILS_ADVOCATE,
+[0m[1m[94m64[0m [1m[94m|[0m         )
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:79:9
+   [1m[94m|[0m
+[1m[94m77[0m [1m[94m|[0m     def test_route_after_chainer_dict_findings(self):
+[1m[94m78[0m [1m[94m|[0m         """route_after_chainer must not crash on dict-shaped findings."""
+[1m[94m79[0m [1m[94m|[0m         from webpent.graph.builder import route_after_chainer, NODE_PAYLOAD_GENERATOR
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m80[0m [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m         state = {
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m78[0m [1m[94m|[0m         """route_after_chainer must not crash on dict-shaped findings."""
+[1m[94m  [0m [1m[31m-[0m [31m        from webpent.graph.builder import [0m[1m[31mroute_after_chainer,[0m[0m[31m [0m[1m[31mNODE_PAYLOAD_GENERATOR[0m[0m[31m
+[0m[1m[94m79[0m [1m[32m+[0m [32m        from webpent.graph.builder import [0m[1m[32mNODE_PAYLOAD_GENERATOR,[0m[0m[32m [0m[1m[32mroute_after_chainer[0m[0m[32m
+[0m[1m[94m80[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:91:9
+   [1m[94m|[0m
+[1m[94m89[0m [1m[94m|[0m     def test_route_after_hypothesis_dict_hypotheses(self):
+[1m[94m90[0m [1m[94m|[0m         """route_after_hypothesis must detect open hypotheses in dict form."""
+[1m[94m91[0m [1m[94m|[0m         from webpent.graph.builder import route_after_hypothesis, NODE_ACCESS_CONTROL
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m92[0m [1m[94m|[0m
+[1m[94m93[0m [1m[94m|[0m         state = {
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m90[0m [1m[94m|[0m         """route_after_hypothesis must detect open hypotheses in dict form."""
+[1m[94m  [0m [1m[31m-[0m [31m        from webpent.graph.builder import [0m[1m[31mroute_after_hypothesis,[0m[0m[31m [0m[1m[31mNODE_ACCESS_CONTROL[0m[0m[31m
+[0m[1m[94m91[0m [1m[32m+[0m [32m        from webpent.graph.builder import [0m[1m[32mNODE_ACCESS_CONTROL,[0m[0m[32m [0m[1m[32mroute_after_hypothesis[0m[0m[32m
+[0m[1m[94m92[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:116:9
+    [1m[94m|[0m
+[1m[94m114[0m [1m[94m|[0m       def test_promote_hypothesis_to_finding_dict_shaped(self):
+[1m[94m115[0m [1m[94m|[0m           """promote_hypothesis_to_finding must not crash on dict-shaped hypothesis."""
+[1m[94m116[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.prioritization import promote_hypothesis_to_finding
+[1m[94m117[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import VulnClass
+    [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[94m118[0m [1m[94m|[0m
+[1m[94m119[0m [1m[94m|[0m           h = self._dict_hypothesis(vuln_class=VulnClass.SQLI.value, deterministic_match=True)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m         """promote_hypothesis_to_finding must not crash on dict-shaped hypothesis."""
+[1m[94m116[0m [1m[32m+[0m [32m        from webpent.models.findings import VulnClass
+[0m[1m[94m117[0m [1m[94m|[0m         from webpent.shared.prioritization import promote_hypothesis_to_finding
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import VulnClass
+[0m[1m[94m118[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:161:9
+    [1m[94m|[0m
+[1m[94m159[0m [1m[94m|[0m           probabilistic score gate it can mathematically never clear
+[1m[94m160[0m [1m[94m|[0m           (see Hypothesis.deterministic_match docstring)."""
+[1m[94m161[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.prioritization import recommend_action, PrioritizationAction
+[1m[94m162[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import VulnClass
+    [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[94m163[0m [1m[94m|[0m
+[1m[94m164[0m [1m[94m|[0m           h = self._dict_hypothesis(
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m160[0m [1m[94m|[0m         (see Hypothesis.deterministic_match docstring)."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.prioritization import recommend_action, PrioritizationAction
+[0m[1m[94m161[0m [1m[94m|[0m         from webpent.models.findings import VulnClass
+[1m[94m162[0m [1m[32m+[0m [32m        from webpent.shared.prioritization import PrioritizationAction, recommend_action
+[0m[1m[94m163[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:204:9
+    [1m[94m|[0m
+[1m[94m202[0m [1m[94m|[0m           """The transport must raise SSRFRedirectBlockedError when
+[1m[94m203[0m [1m[94m|[0m           pinned_ip is None — not fall through to un-pinned request."""
+[1m[94m204[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.http import SSRFRedirectBlockedError, SSRFPinningTransport
+[1m[94m205[0m [1m[94m|[0m [1m[91m|[0m         import httpx
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m206[0m [1m[94m|[0m
+[1m[94m207[0m [1m[94m|[0m           mock_wrapped = MagicMock()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m203[0m [1m[94m|[0m         pinned_ip is None — not fall through to un-pinned request."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.http import SSRFRedirectBlockedError, SSRFPinningTransport
+[0m[1m[94m204[0m [1m[94m|[0m         import httpx
+[1m[94m205[0m [1m[94m|[0m
+[1m[94m206[0m [1m[32m+[0m [32m        from webpent.shared.http import SSRFPinningTransport, SSRFRedirectBlockedError
+[0m[1m[94m207[0m [1m[32m+[0m[32m
+[0m[1m[94m208[0m [1m[94m|[0m         mock_wrapped = MagicMock()
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:218:9
+    [1m[94m|[0m
+[1m[94m216[0m [1m[94m|[0m       def test_mock_wrapped_not_called_on_blocked(self):
+[1m[94m217[0m [1m[94m|[0m           """When SSRF blocks, the wrapped transport must NOT be called."""
+[1m[94m218[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.http import SSRFPinningTransport
+[1m[94m219[0m [1m[94m|[0m [1m[91m|[0m         import httpx
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m220[0m [1m[94m|[0m
+[1m[94m221[0m [1m[94m|[0m           mock_wrapped = MagicMock()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m217[0m [1m[94m|[0m         """When SSRF blocks, the wrapped transport must NOT be called."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.http import SSRFPinningTransport
+[0m[1m[94m218[0m [1m[94m|[0m         import httpx
+[1m[94m219[0m [1m[94m|[0m
+[1m[94m220[0m [1m[32m+[0m [32m        from webpent.shared.http import SSRFPinningTransport
+[0m[1m[94m221[0m [1m[32m+[0m[32m
+[0m[1m[94m222[0m [1m[94m|[0m         mock_wrapped = MagicMock()
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM105[0m[1m Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:226:13
+    [1m[94m|[0m
+[1m[94m224[0m [1m[94m|[0m           with patch("webpent.shared.http._resolve_first_ip", return_value=None):
+[1m[94m225[0m [1m[94m|[0m               request = httpx.Request("GET", "http://evil.com/")
+[1m[94m226[0m [1m[94m|[0m [1m[91m/[0m             try:
+[1m[94m227[0m [1m[94m|[0m [1m[91m|[0m                 transport.handle_request(request)
+[1m[94m228[0m [1m[94m|[0m [1m[91m|[0m             except Exception:
+[1m[94m229[0m [1m[94m|[0m [1m[91m|[0m                 pass
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m230[0m [1m[94m|[0m               mock_wrapped.handle_request.assert_not_called()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:242:9
+    [1m[94m|[0m
+[1m[94m240[0m [1m[94m|[0m       async def test_async_no_unpinned_fallthrough(self):
+[1m[94m241[0m [1m[94m|[0m           """Async twin: must raise, not fall through, when pinned_ip is None."""
+[1m[94m242[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.http import SSRFRedirectBlockedError, AsyncSSRFPinningTransport
+[1m[94m243[0m [1m[94m|[0m [1m[91m|[0m         from unittest.mock import AsyncMock
+[1m[94m244[0m [1m[94m|[0m [1m[91m|[0m         import httpx
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m245[0m [1m[94m|[0m
+[1m[94m246[0m [1m[94m|[0m           mock_wrapped = MagicMock()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m241[0m [1m[94m|[0m         """Async twin: must raise, not fall through, when pinned_ip is None."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.http import SSRFRedirectBlockedError, AsyncSSRFPinningTransport
+[0m[1m[94m242[0m [1m[94m|[0m         from unittest.mock import AsyncMock
+[1m[94m243[0m [1m[32m+[0m[32m
+[0m[1m[94m244[0m [1m[94m|[0m         import httpx
+[1m[94m245[0m [1m[94m|[0m
+[1m[94m246[0m [1m[32m+[0m [32m        from webpent.shared.http import AsyncSSRFPinningTransport, SSRFRedirectBlockedError
+[0m[1m[94m247[0m [1m[32m+[0m[32m
+[0m[1m[94m248[0m [1m[94m|[0m         mock_wrapped = MagicMock()
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:257:9
+    [1m[94m|[0m
+[1m[94m255[0m [1m[94m|[0m       async def test_async_mock_wrapped_not_called_on_blocked(self):
+[1m[94m256[0m [1m[94m|[0m           """Async twin: wrapped transport must NOT be called when blocked."""
+[1m[94m257[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.http import AsyncSSRFPinningTransport
+[1m[94m258[0m [1m[94m|[0m [1m[91m|[0m         from unittest.mock import AsyncMock
+[1m[94m259[0m [1m[94m|[0m [1m[91m|[0m         import httpx
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m260[0m [1m[94m|[0m
+[1m[94m261[0m [1m[94m|[0m           mock_wrapped = MagicMock()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m256[0m [1m[94m|[0m         """Async twin: wrapped transport must NOT be called when blocked."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.http import AsyncSSRFPinningTransport
+[0m[1m[94m257[0m [1m[94m|[0m         from unittest.mock import AsyncMock
+[1m[94m258[0m [1m[32m+[0m[32m
+[0m[1m[94m259[0m [1m[94m|[0m         import httpx
+[1m[94m260[0m [1m[94m|[0m
+[1m[94m261[0m [1m[32m+[0m [32m        from webpent.shared.http import AsyncSSRFPinningTransport
+[0m[1m[94m262[0m [1m[32m+[0m[32m
+[0m[1m[94m263[0m [1m[94m|[0m         mock_wrapped = MagicMock()
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM105[0m[1m Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:267:13
+    [1m[94m|[0m
+[1m[94m265[0m [1m[94m|[0m           with patch("webpent.shared.http._resolve_first_ip", return_value=None):
+[1m[94m266[0m [1m[94m|[0m               request = httpx.Request("GET", "http://evil.com/")
+[1m[94m267[0m [1m[94m|[0m [1m[91m/[0m             try:
+[1m[94m268[0m [1m[94m|[0m [1m[91m|[0m                 await transport.handle_async_request(request)
+[1m[94m269[0m [1m[94m|[0m [1m[91m|[0m             except Exception:
+[1m[94m270[0m [1m[94m|[0m [1m[91m|[0m                 pass
+    [1m[94m|[0m [1m[91m|____________________^[0m
+[1m[94m271[0m [1m[94m|[0m               mock_wrapped.handle_async_request.assert_not_called()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:327:9
+    [1m[94m|[0m
+[1m[94m325[0m [1m[94m|[0m           degenerating into testing the wrong branch again.
+[1m[94m326[0m [1m[94m|[0m           """
+[1m[94m327[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.authentication import agent as auth_agent
+[1m[94m328[0m [1m[94m|[0m [1m[91m|[0m         import webpent.shared.http
+    [1m[94m|[0m [1m[91m|__________________________________^[0m
+[1m[94m329[0m [1m[94m|[0m
+[1m[94m330[0m [1m[94m|[0m           original = webpent.shared.http.make_safe_httpx_client
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m326[0m [1m[94m|[0m         """
+[1m[94m327[0m [1m[32m+[0m [32m        import webpent.shared.http
+[0m[1m[94m328[0m [1m[94m|[0m         from webpent.agents.authentication import agent as auth_agent
+[1m[94m   [0m [1m[31m-[0m [31m        import webpent.shared.http
+[0m[1m[94m329[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:354:9
+    [1m[94m|[0m
+[1m[94m353[0m [1m[94m|[0m       def test_cvss_appends_to_existing_reasoning(self):
+[1m[94m354[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.cvss_engine.agent import _score_finding
+[1m[94m355[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import Finding, Severity, Confidence, VulnClass
+    [1m[94m|[0m [1m[91m|____________________________________________________________________________________^[0m
+[1m[94m356[0m [1m[94m|[0m
+[1m[94m357[0m [1m[94m|[0m           finding = Finding(
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m354[0m [1m[94m|[0m         from webpent.agents.cvss_engine.agent import _score_finding
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import [0m[31mFinding, Severity, [0m[1m[31mConfidence, [0m[0m[31mVulnClass
+[0m[1m[94m355[0m [1m[32m+[0m [32m        from webpent.models.findings import [0m[1m[32mConfidence, [0m[0m[32mFinding, Severity, [0m[32mVulnClass
+[0m[1m[94m356[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:403:9
+    [1m[94m|[0m
+[1m[94m402[0m [1m[94m|[0m       def test_empty_output_marks_infra_failure(self):
+[1m[94m403[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.validator import agent as validator_agent
+[1m[94m404[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import Finding, Severity, Confidence, VulnClass
+    [1m[94m|[0m [1m[91m|____________________________________________________________________________________^[0m
+[1m[94m405[0m [1m[94m|[0m
+[1m[94m406[0m [1m[94m|[0m           finding = Finding(
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m403[0m [1m[94m|[0m         from webpent.agents.validator import agent as validator_agent
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import [0m[31mFinding, Severity, [0m[1m[31mConfidence, [0m[0m[31mVulnClass
+[0m[1m[94m404[0m [1m[32m+[0m [32m        from webpent.models.findings import [0m[1m[32mConfidence, [0m[0m[32mFinding, Severity, [0m[32mVulnClass
+[0m[1m[94m405[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:444:9
+    [1m[94m|[0m
+[1m[94m443[0m [1m[94m|[0m       def test_no_query_string_skips_stage0(self):
+[1m[94m444[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.validator import agent as validator_agent
+[1m[94m445[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m446[0m [1m[94m|[0m
+[1m[94m447[0m [1m[94m|[0m           source = inspect.getsource(validator_agent._validate_with_tool)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m443[0m [1m[94m|[0m     def test_no_query_string_skips_stage0(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.validator import agent as validator_agent
+[0m[1m[94m444[0m [1m[94m|[0m         import inspect
+[1m[94m445[0m [1m[94m|[0m
+[1m[94m446[0m [1m[32m+[0m [32m        from webpent.agents.validator import agent as validator_agent
+[0m[1m[94m447[0m [1m[32m+[0m[32m
+[0m[1m[94m448[0m [1m[94m|[0m         source = inspect.getsource(validator_agent._validate_with_tool)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_exhaustive_audit.py:522:9
+    [1m[94m|[0m
+[1m[94m520[0m [1m[94m|[0m           as 'unproductive' via substring match."""
+[1m[94m521[0m [1m[94m|[0m           # Verify the fix is present in the source code
+[1m[94m522[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared import self_critique
+[1m[94m523[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m524[0m [1m[94m|[0m
+[1m[94m525[0m [1m[94m|[0m           source = inspect.getsource(self_critique)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m521[0m [1m[94m|[0m         # Verify the fix is present in the source code
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared import self_critique
+[0m[1m[94m522[0m [1m[94m|[0m         import inspect
+[1m[94m523[0m [1m[94m|[0m
+[1m[94m524[0m [1m[32m+[0m [32m        from webpent.shared import self_critique
+[0m[1m[94m525[0m [1m[32m+[0m[32m
+[0m[1m[94m526[0m [1m[94m|[0m         source = inspect.getsource(self_critique)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:203:13
+    [1m[94m|[0m
+[1m[94m201[0m [1m[94m|[0m               celery_state = mock_celery.AsyncResult.return_value.state
+[1m[94m202[0m [1m[94m|[0m               # P0-0 fix: STARTED → running (never completed)
+[1m[94m203[0m [1m[94m|[0m [1m[91m/[0m             if celery_state in ("PENDING", "STARTED", "RETRY"):
+[1m[94m204[0m [1m[94m|[0m [1m[91m|[0m                 # P0-1 H10 fix: only PENDING + graph-completed trusts graph
+[1m[94m205[0m [1m[94m|[0m [1m[91m|[0m                 if not (celery_state == "PENDING" and state_info["status"] == "completed"):
+[1m[94m206[0m [1m[94m|[0m [1m[91m|[0m                     if state_info["status"] != "paused":
+    [1m[94m|[0m [1m[91m|________________________________________________________^[0m
+[1m[94m207[0m [1m[94m|[0m                           state_info["status"] = "running"
+[1m[94m208[0m [1m[94m|[0m               assert state_info["status"] == "running", (
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:205:17
+    [1m[94m|[0m
+[1m[94m203[0m [1m[94m|[0m               if celery_state in ("PENDING", "STARTED", "RETRY"):
+[1m[94m204[0m [1m[94m|[0m                   # P0-1 H10 fix: only PENDING + graph-completed trusts graph
+[1m[94m205[0m [1m[94m|[0m [1m[91m/[0m                 if not (celery_state == "PENDING" and state_info["status"] == "completed"):
+[1m[94m206[0m [1m[94m|[0m [1m[91m|[0m                     if state_info["status"] != "paused":
+    [1m[94m|[0m [1m[91m|________________________________________________________^[0m
+[1m[94m207[0m [1m[94m|[0m                           state_info["status"] = "running"
+[1m[94m208[0m [1m[94m|[0m               assert state_info["status"] == "running", (
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:370:9
+    [1m[94m|[0m
+[1m[94m368[0m [1m[94m|[0m       def test_collect_sqli_uses_normalize_sqli_url(self):
+[1m[94m369[0m [1m[94m|[0m           """_collect_sqli_post_exploitation must call normalize_sqli_url."""
+[1m[94m370[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[1m[94m371[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m372[0m [1m[94m|[0m
+[1m[94m373[0m [1m[94m|[0m           source = inspect.getsource(_collect_sqli_post_exploitation)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m369[0m [1m[94m|[0m         """_collect_sqli_post_exploitation must call normalize_sqli_url."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m370[0m [1m[94m|[0m         import inspect
+[1m[94m371[0m [1m[94m|[0m
+[1m[94m372[0m [1m[32m+[0m [32m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m373[0m [1m[32m+[0m[32m
+[0m[1m[94m374[0m [1m[94m|[0m         source = inspect.getsource(_collect_sqli_post_exploitation)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:380:9
+    [1m[94m|[0m
+[1m[94m378[0m [1m[94m|[0m       def test_collect_sqli_passes_p_id(self):
+[1m[94m379[0m [1m[94m|[0m           """The sqlmap command must include -p id for DVWA-style endpoints."""
+[1m[94m380[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[1m[94m381[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m382[0m [1m[94m|[0m
+[1m[94m383[0m [1m[94m|[0m           source = inspect.getsource(_collect_sqli_post_exploitation)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m379[0m [1m[94m|[0m         """The sqlmap command must include -p id for DVWA-style endpoints."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m380[0m [1m[94m|[0m         import inspect
+[1m[94m381[0m [1m[94m|[0m
+[1m[94m382[0m [1m[32m+[0m [32m        from webpent.agents.post_exploit.agent import _collect_sqli_post_exploitation
+[0m[1m[94m383[0m [1m[32m+[0m[32m
+[0m[1m[94m384[0m [1m[94m|[0m         source = inspect.getsource(_collect_sqli_post_exploitation)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:398:9
+    [1m[94m|[0m
+[1m[94m397[0m [1m[94m|[0m       def test_optimizer_skips_synthetic_marker(self):
+[1m[94m398[0m [1m[94m|[0m [1m[91m/[0m         from webpent.agents.payload_optimizer.agent import payload_optimizer_node
+[1m[94m399[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m400[0m [1m[94m|[0m
+[1m[94m401[0m [1m[94m|[0m           source = inspect.getsource(payload_optimizer_node)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m397[0m [1m[94m|[0m     def test_optimizer_skips_synthetic_marker(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.agents.payload_optimizer.agent import payload_optimizer_node
+[0m[1m[94m398[0m [1m[94m|[0m         import inspect
+[1m[94m399[0m [1m[94m|[0m
+[1m[94m400[0m [1m[32m+[0m [32m        from webpent.agents.payload_optimizer.agent import payload_optimizer_node
+[0m[1m[94m401[0m [1m[32m+[0m[32m
+[0m[1m[94m402[0m [1m[94m|[0m         source = inspect.getsource(payload_optimizer_node)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_hostile_fixes.py:419:9
+    [1m[94m|[0m
+[1m[94m418[0m [1m[94m|[0m       def test_katana_drops_empty_hostname(self):
+[1m[94m419[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.recon.katana import run_katana
+[1m[94m420[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m421[0m [1m[94m|[0m
+[1m[94m422[0m [1m[94m|[0m           source = inspect.getsource(run_katana)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m418[0m [1m[94m|[0m     def test_katana_drops_empty_hostname(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.recon.katana import run_katana
+[0m[1m[94m419[0m [1m[94m|[0m         import inspect
+[1m[94m420[0m [1m[94m|[0m
+[1m[94m421[0m [1m[32m+[0m [32m        from webpent.tools.recon.katana import run_katana
+[0m[1m[94m422[0m [1m[32m+[0m[32m
+[0m[1m[94m423[0m [1m[94m|[0m         source = inspect.getsource(run_katana)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_p0_reauth_vault_and_emergency_persist.py:39:1
+   [1m[94m|[0m
+[1m[94m37[0m [1m[94m|[0m   sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+[1m[94m38[0m [1m[94m|[0m
+[1m[94m39[0m [1m[94m|[0m [1m[91m/[0m from webpent.agents.validator import agent as validator_agent  # noqa: E402
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m from webpent.auth.reauth_vault import (  # noqa: E402
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m     clear_reauth_secret,
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m     seal_reauth_secret,
+[1m[94m43[0m [1m[94m|[0m [1m[91m|[0m     unseal_reauth_secret,
+[1m[94m44[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m45[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Confidence, Finding, VulnClass  # noqa: E402
+   [1m[94m|[0m [1m[91m|__________________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m46[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m47[0m [1m[94m|[0m # --------------------------------------------------------------------------
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:194:13
+    [1m[94m|[0m
+[1m[94m192[0m [1m[94m|[0m               state_info = mock_graph_status.return_value
+[1m[94m193[0m [1m[94m|[0m               celery_state = mock_celery.AsyncResult("celery-task-id").state
+[1m[94m194[0m [1m[94m|[0m [1m[91m/[0m             if celery_state in ("PENDING", "STARTED", "RETRY"):
+[1m[94m195[0m [1m[94m|[0m [1m[91m|[0m                 if state_info["status"] != "paused":
+    [1m[94m|[0m [1m[91m|____________________________________________________^[0m
+[1m[94m196[0m [1m[94m|[0m                       state_info["status"] = "running"
+[1m[94m197[0m [1m[94m|[0m                       state_info["next"] = [f"(celery:{celery_state})"]
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:223:13
+    [1m[94m|[0m
+[1m[94m221[0m [1m[94m|[0m               state_info = mock_graph_status.return_value
+[1m[94m222[0m [1m[94m|[0m               celery_state = mock_celery.AsyncResult("celery-task-id").state
+[1m[94m223[0m [1m[94m|[0m [1m[91m/[0m             if celery_state == "SUCCESS":
+[1m[94m224[0m [1m[94m|[0m [1m[91m|[0m                 if state_info["status"] == "pending":
+    [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[94m225[0m [1m[94m|[0m                       state_info["status"] = "error"
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:414:9
+    [1m[94m|[0m
+[1m[94m412[0m [1m[94m|[0m       def test_dalfox_has_follow_redirects(self):
+[1m[94m413[0m [1m[94m|[0m           """dalfox argv must include --follow-redirects."""
+[1m[94m414[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.exploitation.dalfox import run_dalfox
+[1m[94m415[0m [1m[94m|[0m [1m[91m|[0m         # Inspect the source — we can't easily run dalfox in CI.
+[1m[94m416[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m417[0m [1m[94m|[0m           source = inspect.getsource(run_dalfox)
+[1m[94m418[0m [1m[94m|[0m           assert "--follow-redirects" in source, (
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m413[0m [1m[94m|[0m         """dalfox argv must include --follow-redirects."""
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m414[0m [1m[94m|[0m         # Inspect the source — we can't easily run dalfox in CI.
+[1m[94m415[0m [1m[94m|[0m         import inspect
+[1m[94m416[0m [1m[32m+[0m[32m
+[0m[1m[94m417[0m [1m[32m+[0m [32m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m418[0m [1m[94m|[0m         source = inspect.getsource(run_dalfox)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:423:9
+    [1m[94m|[0m
+[1m[94m422[0m [1m[94m|[0m       def test_dalfox_has_deep(self):
+[1m[94m423[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.exploitation.dalfox import run_dalfox
+[1m[94m424[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m425[0m [1m[94m|[0m           source = inspect.getsource(run_dalfox)
+[1m[94m426[0m [1m[94m|[0m           assert "--deep" in source
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m422[0m [1m[94m|[0m     def test_dalfox_has_deep(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m423[0m [1m[94m|[0m         import inspect
+[1m[94m424[0m [1m[32m+[0m[32m
+[0m[1m[94m425[0m [1m[32m+[0m [32m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m426[0m [1m[94m|[0m         source = inspect.getsource(run_dalfox)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:429:9
+    [1m[94m|[0m
+[1m[94m428[0m [1m[94m|[0m       def test_dalfox_has_skip_boring(self):
+[1m[94m429[0m [1m[94m|[0m [1m[91m/[0m         from webpent.tools.exploitation.dalfox import run_dalfox
+[1m[94m430[0m [1m[94m|[0m [1m[91m|[0m         import inspect
+    [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[94m431[0m [1m[94m|[0m           source = inspect.getsource(run_dalfox)
+[1m[94m432[0m [1m[94m|[0m           assert "--skip-boring" in source
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m428[0m [1m[94m|[0m     def test_dalfox_has_skip_boring(self):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m429[0m [1m[94m|[0m         import inspect
+[1m[94m430[0m [1m[32m+[0m[32m
+[0m[1m[94m431[0m [1m[32m+[0m [32m        from webpent.tools.exploitation.dalfox import run_dalfox
+[0m[1m[94m432[0m [1m[94m|[0m         source = inspect.getsource(run_dalfox)
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:446:9
+    [1m[94m|[0m
+[1m[94m444[0m [1m[94m|[0m       def _make_hypothesis(self, status="unexplored", vuln_class="sqli"):
+[1m[94m445[0m [1m[94m|[0m           """Build a minimal Hypothesis-like object."""
+[1m[94m446[0m [1m[94m|[0m [1m[91m/[0m         from webpent.models.hypothesis import (
+[1m[94m447[0m [1m[94m|[0m [1m[91m|[0m             Hypothesis,
+[1m[94m448[0m [1m[94m|[0m [1m[91m|[0m             HypothesisOrigin,
+[1m[94m449[0m [1m[94m|[0m [1m[91m|[0m         )
+[1m[94m450[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import VulnClass
+    [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[94m451[0m [1m[94m|[0m           try:
+[1m[94m452[0m [1m[94m|[0m               vc = VulnClass(vuln_class)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m445[0m [1m[94m|[0m         """Build a minimal Hypothesis-like object."""
+[1m[94m446[0m [1m[32m+[0m [32m        from webpent.models.findings import VulnClass
+[0m[1m[94m447[0m [1m[94m|[0m         from webpent.models.hypothesis import (
+[1m[94m448[0m [1m[94m|[0m             Hypothesis,
+[1m[94m449[0m [1m[94m|[0m             HypothesisOrigin,
+[1m[94m450[0m [1m[94m|[0m         )
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import VulnClass
+[0m[1m[94m451[0m [1m[94m|[0m         try:
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:599:9
+    [1m[94m|[0m
+[1m[94m597[0m [1m[94m|[0m           db = DatabaseManager(f"sqlite:///{tmp_path}/test4.db")
+[1m[94m598[0m [1m[94m|[0m           db.init_db()
+[1m[94m599[0m [1m[94m|[0m [1m[91m/[0m         from webpent.workers.pentest_worker import _persist_findings
+[1m[94m600[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+    [1m[94m|[0m [1m[91m|____________________________________________________________________________________^[0m
+[1m[94m601[0m [1m[94m|[0m
+[1m[94m602[0m [1m[94m|[0m           tid = f"thread-{uuid.uuid4()}"
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m598[0m [1m[94m|[0m         db.init_db()
+[1m[94m599[0m [1m[32m+[0m [32m        from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m600[0m [1m[94m|[0m         from webpent.workers.pentest_worker import _persist_findings
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m601[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0_status_sqlmap_skiprecon_findings.py:658:9
+    [1m[94m|[0m
+[1m[94m656[0m [1m[94m|[0m           db = DatabaseManager(f"sqlite:///{tmp_path}/e2e.db")
+[1m[94m657[0m [1m[94m|[0m           db.init_db()
+[1m[94m658[0m [1m[94m|[0m [1m[91m/[0m         from webpent.workers.pentest_worker import _persist_findings
+[1m[94m659[0m [1m[94m|[0m [1m[91m|[0m         from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+    [1m[94m|[0m [1m[91m|____________________________________________________________________________________^[0m
+[1m[94m660[0m [1m[94m|[0m
+[1m[94m661[0m [1m[94m|[0m           tid = f"e2e-{uuid.uuid4()}"
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m657[0m [1m[94m|[0m         db.init_db()
+[1m[94m658[0m [1m[32m+[0m [32m        from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m659[0m [1m[94m|[0m         from webpent.workers.pentest_worker import _persist_findings
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m660[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_p0p1_rca_followup.py:27:1
+   [1m[94m|[0m
+[1m[94m25[0m [1m[94m|[0m sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+[1m[94m26[0m [1m[94m|[0m
+[1m[94m27[0m [1m[94m|[0m from webpent.models.findings import Confidence, Finding, Severity, VulnClass  # noqa: E402
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m29[0m [1m[94m|[0m # ---------------------------------------------------------------------------
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+   [1m[94m--> [0mtests/test_v10_p0p1_rca_followup.py:317:9
+    [1m[94m|[0m
+[1m[94m316[0m [1m[94m|[0m       def test_governor_uses_settings(self, monkeypatch):
+[1m[94m317[0m [1m[94m|[0m [1m[91m/[0m         from webpent.shared.rate_governor import get_rate_governor, _GOVERNOR_LOCK
+[1m[94m318[0m [1m[94m|[0m [1m[91m|[0m         import webpent.shared.rate_governor as rg_mod
+    [1m[94m|[0m [1m[91m|_____________________________________________________^[0m
+[1m[94m319[0m [1m[94m|[0m
+[1m[94m320[0m [1m[94m|[0m           # Reset the singleton.
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m316[0m [1m[94m|[0m     def test_governor_uses_settings(self, monkeypatch):
+[1m[94m   [0m [1m[31m-[0m [31m        from webpent.shared.rate_governor import get_rate_governor, _GOVERNOR_LOCK
+[0m[1m[94m317[0m [1m[94m|[0m         import webpent.shared.rate_governor as rg_mod
+[1m[94m318[0m [1m[32m+[0m [32m        from webpent.shared.rate_governor import _GOVERNOR_LOCK, get_rate_governor
+[0m[1m[94m319[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v10_p1_rca_followup.py:32:1
+   [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m   sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+[1m[94m31[0m [1m[94m|[0m
+[1m[94m32[0m [1m[94m|[0m [1m[91m/[0m from webpent.agents.hypothesis_analyzer.agent import (  # noqa: E402
+[1m[94m33[0m [1m[94m|[0m [1m[91m|[0m     _analyze_url_for_hypotheses,
+[1m[94m34[0m [1m[94m|[0m [1m[91m|[0m     _classify_by_url_path,
+[1m[94m35[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m36[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import (  # noqa: E402
+[1m[94m37[0m [1m[94m|[0m [1m[91m|[0m     EXPLOITABLE_CLASSES,
+[1m[94m38[0m [1m[94m|[0m [1m[91m|[0m     Finding,
+[1m[94m39[0m [1m[94m|[0m [1m[91m|[0m     Severity,
+[1m[94m40[0m [1m[94m|[0m [1m[91m|[0m     VulnClass,
+[1m[94m41[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m42[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.hypothesis import Hypothesis  # noqa: E402
+[1m[94m43[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.prioritization import (  # noqa: E402
+[1m[94m44[0m [1m[94m|[0m [1m[91m|[0m     PrioritizationAction,
+[1m[94m45[0m [1m[94m|[0m [1m[91m|[0m     promote_hypothesis_to_finding,
+[1m[94m46[0m [1m[94m|[0m [1m[91m|[0m     recommend_action,
+[1m[94m47[0m [1m[94m|[0m [1m[91m|[0m )
+   [1m[94m|[0m [1m[91m|_^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m48[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m49[0m [1m[94m|[0m # ---------------------------------------------------------------------------
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mtests/test_v12_takeover_cloud.py:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m2[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m3[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m from webpent.agents.cloud_storage import agent as cloud_agent
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m from webpent.agents.subdomain_takeover import agent as takeover_agent
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.targets import Target
+  [1m[94m|[0m [1m[91m|_________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m2[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m3[0m [1m[94m|[0m from webpent.agents.cloud_storage import agent as cloud_agent
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mB017[0m[1m Do not assert blind exception: `Exception`[0m
+  [1m[94m--> [0mtests/test_v14_entrypoint_wiring.py:53:10
+   [1m[94m|[0m
+[1m[94m51[0m [1m[94m|[0m     source = tmp_path / "bad.json"
+[1m[94m52[0m [1m[94m|[0m     source.write_text(json.dumps({"text": "not a list"}), encoding="utf-8")
+[1m[94m53[0m [1m[94m|[0m     with pytest.raises(Exception):
+   [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m54[0m [1m[94m|[0m         _load_json_list(str(source), label="corpus", max_items=2)
+   [1m[94m|[0m
+
+[1m[91mB017[0m[1m Do not assert blind exception: `Exception`[0m
+  [1m[94m--> [0mtests/test_v14_entrypoint_wiring.py:60:10
+   [1m[94m|[0m
+[1m[94m58[0m [1m[94m|[0m     source = tmp_path / "too-large.json"
+[1m[94m59[0m [1m[94m|[0m     source.write_text(json.dumps(["x", "y", "z"]), encoding="utf-8")
+[1m[94m60[0m [1m[94m|[0m     with pytest.raises(Exception):
+   [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m61[0m [1m[94m|[0m         _load_json_list(str(source), label="corpus", max_items=2)
+   [1m[94m|[0m
+
+[1m[91mB017[0m[1m Do not assert blind exception: `Exception`[0m
+  [1m[94m--> [0mtests/test_v14_entrypoint_wiring.py:65:10
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m def test_cli_json_loader_missing_file_fails_closed(tmp_path) -> None:
+[1m[94m65[0m [1m[94m|[0m     with pytest.raises(Exception):
+   [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m66[0m [1m[94m|[0m         _load_json_list(str(tmp_path / "missing.json"), label="corpus", max_items=2)
+   [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mtests/test_v23_cli_commands.py:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m [1m[91m/[0m import json
+[1m[94m2[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m3[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m from typer.testing import CliRunner
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m from webpent.cli import app
+  [1m[94m|[0m [1m[91m|___________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m[31m
+[0m[1m[94m8[0m [1m[94m|[0m runner = CliRunner()
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_v27_memory_boundary.py:1:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 2[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m|[0m from types import SimpleNamespace
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import pytest
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m from webpent.agents.hypothesis_analyzer import agent as hypothesis_agent
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.hypothesis import HypothesisOrigin
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.memory import FeedbackStatus, MemoryBudget, MemoryKind, MemoryRecord
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from webpent.shared.memory_boundary import MemoryBoundary
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.targets import Target
+   [1m[94m|[0m [1m[91m|_________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m9 [0m [1m[94m|[0m from webpent.models.memory import FeedbackStatus, MemoryBudget, MemoryKind, MemoryRecord
+[1m[94m10[0m [1m[32m+[0m [32mfrom webpent.models.targets import Target
+[0m[1m[94m11[0m [1m[94m|[0m from webpent.shared.memory_boundary import MemoryBoundary
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.models.targets import Target
+[0m[1m[94m12[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_validator_merge_back.py:11:1
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m   """
+[1m[94m10[0m [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m import sys
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m import os
+   [1m[94m|[0m [1m[91m|_________^[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m   sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m
+[1m[94m13[0m [1m[32m+[0m [32mimport os
+[0m[1m[94m14[0m [1m[94m|[0m import sys
+[1m[94m  [0m [1m[31m-[0m [31mimport os
+[0m[1m[94m15[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mtests/test_validator_merge_back.py:18:1
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m   sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+[1m[94m17[0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m [1m[91m/[0m from uuid import uuid4
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m from webpent.models.findings import Finding, Severity, VulnClass, Confidence
+   [1m[94m|[0m [1m[91m|____________________________________________________________________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m from uuid import uuid4
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.models.findings import Finding, Severity, VulnClass, Confidence
+[0m[1m[94m19[0m [1m[94m|[0m
+[1m[94m20[0m [1m[32m+[0m [32mfrom webpent.models.findings import Confidence, Finding, Severity, VulnClass
+[0m[1m[94m21[0m [1m[32m+[0m[32m
+[0m[1m[94m22[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mSIM114[0m [[1m[96m*[0m][1m Combine `if` branches using logical `or` operator[0m
+  [1m[94m--> [0mtests/test_validator_merge_back.py:57:5
+   [1m[94m|[0m
+[1m[94m55[0m [1m[94m|[0m       # --- BEFORE FIX (old code) ---
+[1m[94m56[0m [1m[94m|[0m       old_findings_by_id = dict(findings_by_id)
+[1m[94m57[0m [1m[94m|[0m [1m[91m/[0m     if updated_finding.confidence == Confidence.CONFIRMED.value:
+[1m[94m58[0m [1m[94m|[0m [1m[91m|[0m         old_findings_by_id[finding_id] = updated_finding
+[1m[94m59[0m [1m[94m|[0m [1m[91m|[0m     elif updated_finding.confidence_level == "AI-Assessed":
+[1m[94m60[0m [1m[94m|[0m [1m[91m|[0m         old_findings_by_id[finding_id] = updated_finding
+   [1m[94m|[0m [1m[91m|________________________________________________________^[0m
+[1m[94m61[0m [1m[94m|[0m       # else: NOT written back — stale Pending finding persists
+[1m[94m62[0m [1m[94m|[0m       assert old_findings_by_id[finding_id].confidence_level == "Pending", (
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` branches[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m56[0m [1m[94m|[0m     old_findings_by_id = dict(findings_by_id)
+[1m[94m  [0m [1m[31m-[0m [31m    if updated_finding.confidence == [0m[1m[31mConfidence.CONFIRMED.value:[0m[0m[31m
+[0m[1m[94m  [0m [1m[31m-[0m [1m[31m        old_findings_by_id[finding_id][0m[0m[31m [0m[1m[31m= updated_finding[0m[0m[31m
+[0m[1m[94m  [0m [1m[31m-[0m [1m[31m    elif[0m[0m[31m updated_finding.confidence_level == "AI-Assessed":
+[0m[1m[94m57[0m [1m[32m+[0m [32m    if updated_finding.confidence == [0m[1m[32mConfidence.CONFIRMED.value[0m[0m[32m [0m[1m[32mor[0m[0m[32m updated_finding.confidence_level == "AI-Assessed":
+[0m[1m[94m58[0m [1m[94m|[0m         old_findings_by_id[finding_id] = updated_finding
+[1m[94m  [0m [1m[94m|[0m
+
+Found 104 errors.
+[[36m*[0m] 85 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

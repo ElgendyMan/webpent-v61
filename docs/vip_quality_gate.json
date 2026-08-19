@@ -1,0 +1,135 @@
+{
+  "checks": [
+    {
+      "command": [
+        "/home/ubuntu/webpent_v60/.venv/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "scripts"
+      ],
+      "name": "compileall",
+      "passed": true,
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/home/ubuntu/webpent_v60/.venv/bin/ruff",
+        "check",
+        "src/webpent/models/campaigns.py",
+        "src/webpent/models/application_intent.py",
+        "src/webpent/models/evidence_ledger.py",
+        "src/webpent/models/proof_engine.py",
+        "src/webpent/models/surface_graph.py",
+        "src/webpent/models/surface_security.py",
+        "src/webpent/models/workflow_replay.py",
+        "src/webpent/models/workflows.py",
+        "src/webpent/shared/application_intent.py",
+        "src/webpent/shared/application_intent_graph.py",
+        "src/webpent/shared/campaign_planner.py",
+        "src/webpent/shared/evidence_ledger.py",
+        "src/webpent/shared/proof_engine.py",
+        "src/webpent/shared/surface_evidence_graph.py",
+        "src/webpent/shared/surface_security.py",
+        "src/webpent/shared/validator_plugins.py",
+        "src/webpent/shared/offline_validator_fixtures.py",
+        "src/webpent/shared/workflow_replay.py",
+        "src/webpent/shared/workflow_understanding.py",
+        "src/webpent/shared/adaptive_hunt.py",
+        "src/webpent/state/initial_state.py",
+        "src/webpent/state/state.py",
+        "src/webpent/agents/validator/agent.py",
+        "scripts/capture_vip_baseline.py",
+        "scripts/run_vip_quality_gate.py",
+        "scripts/run_waptlab_regression.py",
+        "tests/test_vip_application_intent_graph.py",
+        "tests/test_vip_baseline.py",
+        "tests/test_vip_campaign_planner.py",
+        "tests/test_vip_proof_engine.py",
+        "tests/test_vip_shared_reauth_vault.py",
+        "tests/test_vip_surface_intent.py",
+        "tests/test_vip_validator_plugins.py",
+        "tests/test_vip_offline_validator_fixtures.py",
+        "tests/test_vip_waptlab_regression.py",
+        "tests/test_vip_workflow_replay.py"
+      ],
+      "name": "ruff",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "\u001b[1;32mAll checks passed!\u001b[0m"
+      ]
+    },
+    {
+      "command": [
+        "/home/ubuntu/webpent_v60/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "name": "pytest",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "",
+        "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
+        "  /home/ubuntu/webpent_v60/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the :class:`~langchain-huggingface package and should be used instead. To use it run `pip install -U :class:`~langchain-huggingface` and import as `from :class:`~langchain_huggingface import HuggingFaceEmbeddings``.",
+        "    embeddings = HuggingFaceEmbeddings(**kwargs)",
+        "",
+        "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
+        "tests/test_v58_post_form_hypotheses.py::test_post_form_does_not_duplicate_existing_endpoint_hypothesis",
+        "  /home/ubuntu/webpent_v60/.venv/lib/python3.12/site-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
+        "    return self.model_fields  # pydantic 2.x",
+        "",
+        "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+        "633 passed, 66 warnings in 24.67s"
+      ]
+    },
+    {
+      "command": [
+        "/home/ubuntu/webpent_v60/.venv/bin/python",
+        "scripts/verify_test_count.py",
+        "--minimum",
+        "498"
+      ],
+      "name": "test-function-count",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "    \"tests/test_vip_shared_reauth_vault.py\": 4,",
+        "    \"tests/test_vip_surface_intent.py\": 2,",
+        "    \"tests/test_vip_validator_plugins.py\": 5,",
+        "    \"tests/test_vip_waptlab_regression.py\": 2,",
+        "    \"tests/test_vip_workflow_replay.py\": 3,",
+        "    \"tests/test_waptlab_catalog_manifest.py\": 6,",
+        "    \"tests/test_waptlab_detector_improvements.py\": 51",
+        "  },",
+        "  \"minimum\": 498,",
+        "  \"total_test_functions\": 594",
+        "}",
+        "OK: preserved test-function count 594 >= minimum 498"
+      ]
+    }
+  ],
+  "generated_at": "2026-08-18T13:16:46.629828+00:00",
+  "known_blockers": [
+    "worker critical-path coverage remains 23% versus the 85% target",
+    "LangChain/LangGraph advisory set remains documented in pip-audit-production.json",
+    "WAPTLab regression is local contract-only; no campaign is confirmed by this gate"
+  ],
+  "passed": true,
+  "project": "WebPent v60",
+  "schema_version": "vip-quality-gate-v1",
+  "waptlab_artifact_safety": {
+    "campaign_count": 20,
+    "passed": true,
+    "summary": {
+      "inconclusive": 13,
+      "missing-validator": 7
+    },
+    "target_contacted": false,
+    "waptlab_modified": false
+  }
+}

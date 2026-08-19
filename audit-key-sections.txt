@@ -1,0 +1,149 @@
+23:5. سجل البجز المكتشف حسب الأولوية  —  P0 → P1 → P2 → P3 مع موقع الكود وتأثيره
+24:6. الفجوات أمام التارجتس المعقدة  —  SPA · GraphQL · Stateless JWT · Multi-tenant BAC · WebSocket · Microservices
+25:7. توصيات الإصلاح وأولوياتها  —  خارطة طريق من 12 خطوة لرفع جودة الإطار إلى مستوى production
+29:نتيجة التدقيق الشامل: الإطار متماسك تصميميًا لكنه غير مُتساوٍ في التنفيذ. الـ agents الحتمية (recon, crawler, validator, scope_enforcer, authentication) بمستوى production. الـ agents الذكية (hypothesis_analyzer, cross_reasoning, waf_detector, request_smuggling, api_testing) مُطبَّعة على مختبر DVWA وتُنتج إيجابيات كاذبة على التارجتس الحقيقية. طبقة الـ shared تحمي جيدًا ضد SSRF لكنها تحتوي على ثغرة prefix-match في reference_lookup. طبقة API+auth+worker+memory تحتوي على IDOR ومفاتيح افتراضية وضعيفة. طبقة الاختبارات مكثفة لكنها تُثبت سلوك الـ happy-path أكثر مما تُثبت قدرة الإطار على اكتشاف ثغرات حقيقية.
+34:P0
+37:P0
+38:tests/ground_truth/ + tests/byte_level.py
+39:هدف FastAPI لـ 13 صنف ثغرة موجود في tests/ground_truth لكنه غير مُغطى بأي pytest — الاختبارات تمرّ دون لمس الـ real target.
+40:P1
+42:master_report_hash غير قابل لإعادة الحساب رياضيًا (Hash محسوب على data يحوي hash سابق) — الـ cryptographic audit trail مكذوب.
+43:P1
+44:agents/cross_reasoning/agent.py:300
+46:P1
+47:tools/exploitation/ysoserial.py + phpggc.py
+49:P1
+51:IDOR: endpoints /findings و /status و /risk-summary تستخدم get_current_user فقط دون التحقق من ملكية thread_id للمستخدم.
+52:P1
+53:auth/reauth_vault.py:65
+54:الـ "sealed vault" هو مجرد dict في الذاكرة — لا تشفير ولا mlock ولا zeroization; البيانات محفوظة عبر HITL pause.
+55:P1
+56:shared/reference_lookup.py
+58:P1
+61:P2
+73:SSRF guard قوي لكن reference_lookup bypassed؛ الـ vault وهمي؛ IDOR في API؛ defaults ضعيفة.
+76:validator ممتاز ودال الخدمة، لكن hypothesis_analyzer مُنحاز لـ DVWA، و cross_reasoning يرقّي LLM بدون evidence.
+82:ضعيف على SPA و GraphQL و Stateless JWT و WebSocket و Microservices — أغلب الـ validators تتطلب server-rendered HTML.
+88:الجودة العامة للإطار 6.5/10. الإطار ليس مشروعًا صغيرًا أو تجريبيًا — هو مشروع ناضج تم ترقيته عبر نسخ V3→V10 ثم V55→V62 بكم هائل من audit-rounds. أدلة ذلك كثيرة: reducers.py يوثق عشرات الـ P0/P1 fixes (V6 Absolute-Flawless، V9 P0-B-2، V10 AUDIT FIX C5/C6/M3)، state.py يحمل 60+ حقلاً كلٌ مدروس بدقة، و graph/builder.py يحتوي 31 node + 1 optional مع fail-closed على كل routing. لكن تقييمي الفعلي أنحدر بالدرجة بسبب أربعة عوامل:
+89:•  Ruff يصرخ بـ 468 مخالفة (128 قابل autofix) — هذا يتناقض مباشرةً مع عبارة README: "All checks passed".
+95:•  Validator (أقوى agent): يستخدم differential baseline+probe، OOB callbacks بعلامة per-finding (V5 Sprint 8 fix)، incremental persistence (V10 C3)، و scoring مُحكم عبر confidence.py. لكنه يفشل على SPA/GraphQL/Stateless JWT/WSE، ودال تأكيد sqlmap يعتمد على نص "is vulnerable" (line 2454-2461) الذي يحسب أي 200 = bypass.
+101:الـ validator قوي على reflected XSS/SQLi عبر GET في تطبيقات server-rendered. على الـ modern stack (SPA + JWT + GraphQL + API gateway) يتحول الإطار من مُؤكد إلى مُخمّن. تأكيد الثغرات الحديثة يحتاج تطوير validators خاصة لـ GraphQL و JWT و WebSocket.
+103:الإجابة المختصرة: لا، ليس بمستوى production. الإطار صُمِّم أصلاً حول DVWA و PortSwigger labs (هذا واضح من _VULN_PATH_PATTERNS، من _LOGIN_PAGE_INDICATORS، من ground_truth/app.py الذي يحاكي DVWA). الـ agents تحاول التكيف لكنها تنهار أمام أربعة أصناف من التعقيد:
+110:GraphQL
+112:لا يوجد validator مخصص. أي GraphQL endpoint يقع في validate_api_issue التي تتحقق من headers فقط. لا introspection query ولا batching abuse ولا field-suggestion abuse ولا persisted-query bypass.
+116:Multi-tenant BAC / IDOR
+119:WebSocket-heavy
+121:لا يوجد agent أو validator لـ WebSocket message fuzzing. WebSocket SSRF guard في Playwright (V6 P0-1) لكن لا fuzzing for the protocol itself.
+134:validator و scope_enforcer و authentication قوية. cross_reasoning و hypothesis_analyzer و waf_detector و api_testing و request_smuggling ضعيفة.
+138:http.py SSRF guard قوي و llm.py circuit breaker قوي. لكن reference_lookup prefix-match bypassed و exceptions.py يطلق credentials في الأخطاء.
+142:registry lazy صحيح. لكن subprocess.py timeout sentinel هش؛ sqlmap/dalfox ملاحظات كود قديمة؛ ysoserial/phpggc ثغرة حقن أوامر.
+150:Jinja2 autoescape مُفعّل صحيحًا. لكن master_report_hash غير قابل لإعادة الحساب و dual rendering paths divergent.
+154:FastAPI لكن IDOR على findings endpoints؛ default admin/admin؛ rate_limit ربما غير مُطبَّق فعلًا.
+156:1 vault
+158:الـ reauth_vault "مغلق" لكنه dict بلا تشفير ولا mlock — يكفي persistence عبر HITL pause.
+174:task_crypto.py KDF مُخصّص (SHA256(secret)) — ليس PBKDF2/scrypt؛ session_cookies غير مشفرة على الإطلاق.
+186:اختبارات سلوكية في بعض الأحيان لكن happy-path ثقيل؛ ground_truth غير مُغطى بـ pytest؛ inspect.getsource() كثير.
+193:planner  → auth  → recon → crawler → [javascript_intelligence] → subdomain_takeover  → cloud_storage → [target_understanding] → scope_enforcer → waf_detector  → hypothesis  → access_control → api_testing → business_logic_fuzzer → request_smuggling  → disclosed_report_intel → [attack_graph] → strategist  → payload_generator  → execution_sandbox [HITL افتراضيًا]  → validator  → [payload_optimizer عند الحاجة]  → devils_advocate  → exploit_chainer → post_exploit → rabbit_hole  → cvss_engine → business_impact → cross_reasoning  → executive_summary → reporter → reflection
+201:•  طبقة Scoring & Reporting: cvss_engine يحسب، business_impact يقيّم، cross_reasoning يربط، executive_summary يكتب للـ C-Suite، reporter يُصدّر، reflection يتعلّم.
+208:•  merge_auth_state: upsert-by-name على auth_state["cookies"] (V9 P0-B-2 fix لمنع cookies مكررة).
+211:هذا العقد قوي ومتماسك وتم اختباره بعمق. الإطار يحترمه — كل node يُعيد dict بالشكل المتوقع ولا يتحور state مباشرة (باستثناء validator/agent.py:2210-2243 الذي يتحور session_cookies و auth_state["cookies"] in-place — وهذه ثغرة P2 لأن الـ mutation غير مرئي لـ SqliteSaver حتى يُعيد الـ node النتيجة، فإذا قُتل worker mid-loop فُقد التغيير.
+214:هذه أكبر طبقة وأكثرها تأثيرًا على قدرة الإطار. 33 agent في 16k LOC. التقييم المنهجي أفصح عن أربعة أنماط متكررة: (1) DVWA-overfit، (2) getattr على dict-shaped state بعد checkpoint resume، (3) LLM output يُعامل كـ evidence في cross_reasoning، (4) rate_governor غير مُستخدم بصورة متسقة.
+218:•  authentication: SSRF guard على Playwright context (V6 P0-1)، DNS pinning عبر --host-resolver-rules لمنع DNS-rebinding TOCTOU، password scrubbed بعد login ناجح، reauth vault worker-only.
+222:•  request_smuggling: P0: ctx.verify_mode = ssl.CERT_NONE على probes الـ raw-socket (line 69-72) — MITM-vulnerable. detection ساذج (CL.TE / TE.TE pattern matching على نص الـ response).
+223:•  cross_reasoning: P1: deterministic_match=True (line 300) يرقّي LLM-proposed attack chains إلى Findings دون تأكيد بأداة — يكسر عقد "LLM output is never evidence".
+224:•  hypothesis_analyzer: P1: _VULN_PATH_PATTERNS خريطة DVWA حرفيًا؛ أي target حقيقي بإندبوينتس /api/v2 أو /graphql ينتج فرضيات XSS عامة فقط.
+226:•  api_testing: P1: _probe_jwt_alg_none يلوّج أي 200 = critical auth bypass دون baseline مقارنة. P1: يقع لـ httpx.Client الخام (يتجاوز SSRF guard) إذا استيراد make_safe_httpx_client فشل.
+227:•  crawler: P1: في non-structure-aware path، curated_endpoints = llm_selected دون فلترة ضد raw_endpoints — LLM يمكن أن يحشو attacker-controlled URLs في قائمة الـ endpoints (محدود بـ _TOP_N_ENDPOINTS=5).
+228:•  post_exploit: P1: sqlmap subprocess argv يحوي --cookie <value> خام؛ stdout/stderr المحفوظ قد يطلق قيمة الكوكي إلى الـ DB.
+229:•  rabbit_hole: P1: scope re-check ينطلق فقط لـ URLs http/https على ARTIFACT nodes — relative URLs تُتبع دون فحص scope.
+236:هذه الطبقة هي العمود الفقري للإطار. أقوى جزء فيها هو http.py (SSRF guard) و llm.py (router مع circuit breaker). أضعف جزء هو reference_lookup.py (prefix-match bypass) و exceptions.py (credential leak) و grounding.py (citation substring match ضعيف).
+239:ثغرة reference_lookup.py (P1)
+241:هذا يسمح بـ https://hacktricks.xyz.attacker.com/ لأنها تبدأ بـ https://hacktricks.xyz. الـ SSRF guard downstream يمنع internal IPs لكنه لا يمنع attacker-controlled public IPs. إذا تمكن target مُخترَق من حقن روابط في النص الذي يمر إلى reference_lookup، يستطيع تشغيل LLM-supervised context مع reference لـ attacker-controlled domain، الذي قد يرجع تعليمات مُتأذية. الإصلاح: استخدم urllib.parse + مقارنة hostname equality، لا prefix-match.
+242:ثغرة exceptions.py (P1)
+244:ثغرة grounding.py (P2)
+245:verify_citation يستخدم substring match. V5 Sprint 14 P1 "fix" أزال min_citation_length، فتحوية 1-char citation تطابق أي output تقريبًا. الـ grounding check ضعيف جدًا — الـ LLM يستطيع وضع citation قصيرة وتمر. الإصلاح: min_citation_length=20 chars + overlap ratio.
+246:ثغرة http_discovery.py و grounding.py memory exhaustion (P2)
+256:ysoserial.py:119-122 و phpggc.py:92-94 يحويان ثغرة P0/P1: command parameter من الـ LLM يُنفّذ على الـ target دون allowlist أو length cap أو shell-metacharacter rejection. الـ docstring يكذب: "no LLM in the loop" — بينما الـ LLM يبني الـ command. هذا ثغرة حقن أوامر موجّهة. الإصلاح: allowlist صريح + escape + cap length + signature approval.
+262:•  P1: master_report_hash (export.py:224-230) غير قابل لإعادة الحساب رياضيًا — hash محسوب على report_data الذي يحوي hash سابق. لا fixed point. الـ cryptographic audit trail claim مكذوب.
+263:•  P2: dual HTML rendering paths: agents/reporter/agent.py و reporter/export.py كلاهما يبني HTML، لكن agent.py يتجاوز _redact_report_value. سلوك متباين حسب المسار.
+264:•  P3: version drift: html.j2:184 يقول "Framework V3"، report.html.j2:476 يقول "V5". الكود فعليًا V6/V7/V8/V9/V10.
+265:•  P3: html.j2:129-130 يرجع إلى critical_count/high_count التي يبنيها فقط agents/reporter/agent.py — لا توفرها reporter/export.py. template قد يتعطل في مسار الـ CLI.
+268:P1 — IDOR: app.py:1075-1158 endpoints /findings و /status و /risk-summary تستخدم Depends(get_current_user) فقط دون التحقق من أن thread_id يخص المستخدم. أي user مصدّق يستطيع سحب نتائج scans ملك مستخدمين آخرين. الإصلاح: انشاء جدول scan_ownership، تحقق في كل endpoint.
+269:P2 — OOB secret في URL path: app.py:1418 route /api/oob/{finding_id}/{secret} يُسجّل بواسطة uvicorn/nginx/cloudflared. الإصلاح: ضع secret في header أو استخدم HMAC-signed single-use tokens. P1 — docker-compose.dev.yml:49,53,62 يربط 0.0.0.0:8000 مع AUTH_ENABLED=false. أي شخص على الـ network يستطيع بدء scan.
+270:Auth Vault (reauth_vault.py)
+271:P1: الـ vault "مغلق" لكنه _VAULT: dict[str, str] = {} — لا تشفير، لا mlock، لا zeroization. البيانات محفوظة عبر HITL pause. أي process dump أو coredump يكشف كلمات السر. الإصلاح: استخدم Fernet أو AES-GCM مع مفتاح مشتق من secret worker env var، مع zeroization بعد الاستخدام.
+275:P1 — Alembic fallback يخفي migration failures: db.py:427-456 يstamp alembic_version إلى head حتى عند الفشل. هذا يخفي schema drift. الـ README يدّعي "Database initialized via Alembic migration" لكن في الحقيقة قد يكون قد تم تخطّي الـ migration. P2 — lessons.py RAG poisoning: any finding's text يمكن أن يدخل الـ vector store و يؤثر على scans مستقبلية. allowlist localhost/127.0.0.1:8000/api:8000 فقط؛ 192.168.x.x ينجو إلى الـ store. embeddings model ليس pinned — HuggingFaceEmbeddings يستخدم مسارًا deprecated.
+277:cli/__init__.py يحوي 762 سطر، --creds admin:password يظهر في --help (تسريب credentials افتراضية). utils/task_crypto.py:92-100 يستخدم SHA-256(secret) كـ KDF مُخصّص — ليس PBKDF2/scrypt، قابل لـ brute force على مفاتيح ضعيفة. session_cookies غير مشفرة على الإطلاق في Celery payload. utils/crypto.py يستخدم Fernet (AES-128-CBC + HMAC) صحيح لكن IV reuse محتمل إذا تم إنشاء Fernet من secret ضعيف.
+282:•  P0: tests/ground_truth/ يحوي FastAPI target بـ 13 vuln class لكنها غير مُغطاة بأي pytest — فقط بـ Docker runner يدوي. الاختبارات تمرّ دون لمس الـ real target.
+283:•  P1: 27 اختبارًا يستخدم inspect.getsource() لمقارنة نص الـ source — يثبت أن الكود يحمل نصوصًا، لا أن السلوك صحيح.
+284:•  P2: mocks دائرية (_FakeContext/_FakeWebSocket) في test_byte_level.py؛ skip-on-missing-tool يخفي ثغرات integration.
+285:•  P3: 8 أعداد اختبارات متضاربة في delivery notes (274/335/353/359/385/398/442/446/453) — لا source of truth واحد.
+289:P0 doc-vs-code lie في checkpoints.py: docstring (line 65-67) يقول إن كلا المسارين يطبّقان PRAGMA busy_timeout=30000، لكن في الحقيقة فقط المسار fallback يفعله. المسار الموصى به from_conn_string لا يحمى من SQLite busy under Celery — فقد checkpoint corruption. P1: لا يوجد thread_id validation قبل تحميل state — cross-engagement data leak risk. P1: لا توجد schema-version migration safety — تغيير state schema mid-engagement قد يكسر resume.
+290:5. سجل البجز المكتشف حسب الأولوية
+291:P0 — Critical (يمنع الـ production أو يكسر claim أساسي)
+292:P0 — CERT_NONE على TLS
+294:P0 — busy_timeout مكذوب
+296:P0 — هدف 13 vuln غير مُختبَر
+297:📍 tests/ground_truth/⚡ الأثر: الاختبارات تمرّ دون لمس الـ real target؛ ادعاء الـ coverage مُضخّم.
+298:P0 — LLM command injection
+299:📍 ysoserial.py:119-122 + phpggc.py:92-94⚡ الأثر: LLM-supplied command يُنفّذ على target دون allowlist. Prompt-injection vector لـ RCE على الـ target.
+300:P1 — High (يفسد evidence/finding أو يكسر invariant)
+301:P1 — master_report_hash غير قابل لإعادة الحساب
+303:P1 — deterministic_match=True يرقّي LLM chains
+304:📍 agents/cross_reasoning/agent.py:300⚡ الأثر: LLM-proposed attack chains ترتقي إلى Findings دون تأكيد بأداة — يكسر عقد الـ evidence.
+305:P1 — alg=none probe يلوّج أي 200
+307:P1 — fallback لـ httpx.Client الخام
+309:P1 — curated_endpoints = llm_selected دون فلترة
+311:P1 — sqlmap --cookie <value> خام
+313:P1 — getattr(h, "origin") على dict hypothesis
+315:P1 — annotation فقط على HOST/ENDPOINT
+317:P1 — scope re-check فقط http/https URLs
+319:P1 — prefix-match URL allowlist
+320:📍 shared/reference_lookup.py⚡ الأثر: https://hacktricks.xyz.attacker.com يمر. SSRF downstream يمنع internal IPs لكن يسمح بـ attacker public.
+321:P1 — ToolExecutionError.__str__ يطلق credentials
+323:P1 — IDOR على findings endpoints
+325:P1 — vault = dict بلا تشفير
+326:📍 auth/reauth_vault.py:65⚡ الأثر: process dump يكشف كلمات السر. البيانات محفوظة عبر HITL pause.
+327:P1 — AUTH_ENABLED=false على 0.0.0.0:8000
+329:P1 — start_new_session claim كاذب
+331:P1 — timeout sentinel هش
+333:P1 — Alembic fallback يخفي migration failures
+335:P1 — _VULN_PATH_PATTERNS مُنحاز لـ DVWA
+337:P2 — Medium (degraded behavior أو coverage gap)
+338:P2 — substring match ضعيف
+340:P2 — response.text memory exhaustion
+342:P2 — 200 requests بدون rate_governor
+344:P2 — baseline+probe بدون cookies
+346:P2 — 160 requests + O(n) lookups
+348:P2 — OOB poll timeout غير محدود
+350:P2 — OOB probe لا يصل لـ POST body
+352:P2 — in-place mutation غير مرئي للـ SqliteSaver
+354:P2 — sqlmap "is vulnerable" authoritative
+356:P2 — LFI probe فقط /etc/passwd
+358:P2 — SSTI probe فقط {{17*23}}
+360:P2 — NoSQLi probe كـ GET query
+362:P2 — SHA-256(secret) KDF
+364:P2 — session_cookies غير مشفرة
+366:(و 7 ثغرة P2 إضافية موثّقة في الـ worklog الكامل.)
+367:P3 — Style / Fragility / Dead code
+380:validator/agent.py:956-994 CSRF validator يخفّض إلى "Needs Human Review" إذا Playwright لم يرسم. XSS validator يُحوّل إلى dalfox الذي لا يرسم JS. katana يرسم لكن discovered endpoints تُفلتر إلى top-5 بواسطة LLM — SPA routes خلف click handlers قد لا تُكتشف. crawler/agent.py:209-244 _fetch_and_analyze_js يفحص content-type: text لكن text/html يمر و HTML كامل يُفحص regex عن secrets — false positives. الإطار يفترض server-rendered في معظم الـ agents.
+381:6.2 GraphQL
+382:لا يوجد validator مخصص. أي GraphQL endpoint يقع في validate_api_issue التي تتحقق من headers فقط. لا introspection query probing، لا batching abuse، لا field-suggestion abuse، لا persisted-query bypass، لا alias-based batching detection، لا mutation depth/complexity analysis. jwt_deep_testing.py كـ shared module لكنه ليس موصولًا لـ validator.
+385:6.4 Multi-tenant BAC / IDOR
+387:6.5 WebSocket
+388:لا يوجد agent أو validator لـ WebSocket message fuzzing. WebSocket SSRF guard في Playwright (V6 P0-1) يحمي الـ transport لكن لا fuzzing for the protocol itself. لا CSWSH (cross-site WebSocket hijacking) probe. لا origin header check.
+395:7. توصيات الإصلاح وأولوياتها
+397:أولوية 1 — P0 stop-the-bleed (أسبوع)
+400:•  أضف pytest coverage لـ tests/ground_truth/app.py: استخدم TestClient من fastapi + تنفيذ targets على Docker كل أسبوع في CI.
+401:•  أصلح ysoserial.py + phpggc.py command injection: allowlist + length cap + escape + signature approval قبل التنفيذ.
+402:أولوية 2 — P1 evidence & security (أسبوعين)
+403:•  أصلح master_report_hash: احسب hash على canonicalized data WITHOUT previous hash field؛ أو استخدم merkle-tree.
+404:•  أصلح cross_reasoning deterministic_match=True: لا ترقّي LLM-proposed chains إلى Findings دون tool confirmation. اعتبرها "chains_to_test" و ضعها في payload_generator فقط.
+411:•  أصلح reference_lookup prefix-match: استخدم urllib.parse + hostname equality.
+413:•  أصلح api IDOR: أنشئ scan_ownership table + تحقق في كل endpoint.
+414:•  أصلح reauth_vault: استخدم Fernet أو AES-GCM مع مفتاح مشتق من worker env var + zeroization بعد الاستخدام.
+420:أولوية 3 — P2 modern targets (شهر)
+421:•  أضف GraphQL validator مخصص: introspection probe + batching abuse + field-suggestion + persisted-query + alias batching + depth/complexity analysis.
+423:•  أضف WebSocket validator: CSWSH probe + origin header check + message fuzzing.
+431:•  أضف NoSQLi coverage: POST body JSON operators + GraphQL injection patterns.
+434:أولوية 4 — P3 hygiene (مستمر)

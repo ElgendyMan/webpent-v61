@@ -1,0 +1,90 @@
+# knowledge_sources.yaml
+#
+# V8 P0 B1: Replaced the fake/404 commit SHAs from the V7 version of
+# this file with real, verified commit SHAs fetched via
+# `git ls-remote <repo> HEAD` on 2026-07-31. The previous SHAs were
+# sequential-pattern strings (e.g. "a3f5e2b1c4d6f8a9b0c1d2e3f4a5b6c7d8e9f0a1")
+# that did not correspond to any real commit — manual ingestion would
+# 404 on every path.
+#
+# Also fixed the third repo: the V7 file referenced
+# `dwisiswant0/awesome-bugbounty-writeups` which does not exist on
+# GitHub (404). The canonical repo is
+# `devanshbatham/Awesome-Bugbounty-Writeups` (verified via GitHub
+# search).
+#
+# The SHAs below are pinned to the HEAD of each repo's default branch
+# as of 2026-07-31. Operators who want to pin to a specific older
+# release can replace the SHA with a tagged-release commit — but
+# should re-verify the paths still exist at that commit before
+# committing the change.
+sources:
+  - type: git_repo
+    repo: swisskyrepo/PayloadsAllTheThings
+    commit: "434cc897f9b1e561f3804631e40643e6c82c3d14"
+    doc_type: payload
+    paths:
+      - path: "XSS Injection/README.md"
+        category: xss
+        stack: generic
+      - path: "SQL Injection/README.md"
+        category: sqli
+        stack: generic
+      - path: "Server Side Request Forgery/README.md"
+        category: ssrf
+        stack: generic
+      - path: "File Inclusion/README.md"
+        category: lfi
+        stack: php
+  - type: git_repo
+    repo: danielmiessler/SecLists
+    # V8 P0 B1: Pinned to the 2024.4 release tag
+    # (45499242ec0164c7f91cbcf8bd509404fc0b99f3) rather than HEAD,
+    # because the repo was restructured between 2024.4 and 2026.1:
+    # the Fuzzing/XSS/XSS-Jhaddix.txt path moved to
+    # Fuzzing/XSS/robot-friendly/XSS-Jhaddix.txt (a new subdir split),
+    # and Fuzzing/SQLi/Generic-SQLi.txt was removed entirely. Pinning
+    # to 2024.4 keeps both files reachable at their canonical paths
+    # AND gives operators a stable, reproducible knowledge base.
+    # Operators who want the latest content can bump to a newer tag
+    # but must update the paths below to match the new structure.
+    commit: "45499242ec0164c7f91cbcf8bd509404fc0b99f3"
+    doc_type: payload
+    paths:
+      - path: "Fuzzing/XSS/robot-friendly/XSS-Jhaddix.txt"
+        category: xss
+        stack: generic
+      - path: "Fuzzing/SQLi/Generic-SQLi.txt"
+        category: sqli
+        stack: generic
+  - type: git_repo
+    repo: devanshbatham/Awesome-Bugbounty-Writeups
+    commit: "72010067cd49196f8f45b9137d1c0d06ad5ba915"
+    doc_type: methodology
+    paths:
+      - path: "README.md"
+        category: methodology
+        stack: generic
+
+live_references:
+  - name: hacktricks
+    base_url: "https://book.hacktricks.xyz"
+    allowed_paths: ["/basic-credential-access", "/pentesting-web"]
+    trust_note: "Community-maintained, untrusted content."
+
+skills:
+  - name: jwt_alg_confusion
+    applies_to_phase: identity_auth
+    applies_to_vuln_class: [jwt, auth_bypass]
+    reference_source: hacktricks
+    tool: identity_auth_agent
+  - name: xss_payload_selection
+    applies_to_phase: payload_generation
+    applies_to_vuln_class: [xss]
+    reference_source: payload_corpus
+    tool: payload_generator
+  - name: sqli_payload_selection
+    applies_to_phase: payload_generation
+    applies_to_vuln_class: [sqli, sql_injection]
+    reference_source: payload_corpus
+    tool: payload_generator

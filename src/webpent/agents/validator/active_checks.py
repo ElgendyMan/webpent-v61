@@ -1,0 +1,431 @@
+"""Deterministic, bounded validators for injection and redirect candidates.
+
+These checks are intentionally conservative.  A candidate is only promoted to
+``Tool-Confirmed`` when a replay produces a class-specific, reproducible signal
+that was absent from the baseline response.  Network failures and ambiguous
+responses remain explicit ``Not Scanned``/``Needs Human Review`` outcomes;
+``AI-Assessed`` is never used as a substitute for a missing validator here.
+
+All requests go through WebPent's SSRF-pinned HTTP client and never follow
+redirects.  Evidence contains response metadata and hashes/markers only; it
+never stores Cookie, Authorization, Set-Cookie, or raw response bodies.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import time
+from dataclasses import dataclass
+from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+from webpent.models.findings import Confidence, Finding
+
+logger = logging.getLogger(__name__)
+
+_MAX_BODY_BYTES = 2_000_000
+_SAFE_RESPONSE_HEADERS = frozenset(
+    {"content-type", "content-length", "location", "server", "x-powered-by"}
+)
+
+
+@dataclass(frozen=True)
+class Replay:
+    method: str
+    url: str
+    request_body: str | None
+    status_code: int
+    body: str
+    headers: dict[str, str]
+    elapsed_ms: int
+
+
+def _body_digest(body: str) -> str:
+    return hashlib.sha256(body.encode("utf-8", "replace")).hexdigest()
+
+
+def _safe_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Keep harmless response metadata and drop all credential material."""
+    return {
+        key.lower(): str(value)[:300]
+        for key, value in headers.items()
+        if key.lower() in _SAFE_RESPONSE_HEADERS
+    }
+
+
+def _redact_query_url(url: str) -> str:
+    """Return a stable URL shape without exposing query values."""
+    parsed = urlparse(url)
+    params = parse_qsl(parsed.query, keep_blank_values=True)
+    if not params:
+        return url
+    return urlunparse(
+        parsed._replace(query=urlencode([(name, "[REDACTED]") for name, _ in params]))
+    )
+
+
+def _candidate_parameter(finding: Finding) -> str | None:
+    if finding.target_param:
+        return finding.target_param
+    parsed = urlparse(finding.url)
+    params = parse_qsl(parsed.query, keep_blank_values=True)
+    if params:
+        return params[0][0]
+    for name in ("file", "path", "filename", "template", "url", "redirect", "next", "cmd", "query"):
+        if name in finding.request_data:
+            return name
+    if finding.request_data:
+        return next(iter(finding.request_data))
+    return None
+
+
+def _build_request(
+    finding: Finding, parameter: str, value: str
+) -> tuple[str, str, dict[str, str], str | None]:
+    """Build a bounded GET/form replay from a Finding's structured context."""
+    method = str(finding.request_method or "GET").upper()
+    if method not in {"GET", "POST", "PUT", "PATCH"}:
+        method = "GET"
+    parsed = urlparse(finding.url)
+    headers: dict[str, str] = {}
+    if method == "GET":
+        params = parse_qsl(parsed.query, keep_blank_values=True)
+        replaced = False
+        new_params: list[tuple[str, str]] = []
+        for name, old_value in params:
+            if not replaced and name == parameter:
+                new_params.append((name, value))
+                replaced = True
+            else:
+                new_params.append((name, old_value))
+        if not replaced:
+            new_params.append((parameter, value))
+        return method, urlunparse(parsed._replace(query=urlencode(new_params))), headers, None
+
+    form = dict(finding.request_data or {})
+    form[parameter] = value
+    headers["Content-Type"] = "application/x-www-form-urlencoded"
+    return method, finding.url, headers, urlencode(form)
+
+
+def _replay(
+    finding: Finding,
+    parameter: str,
+    value: str,
+    cookies: dict[str, str] | None,
+) -> Replay | None:
+    method, url, headers, body = _build_request(finding, parameter, value)
+    try:
+        from webpent.shared.http import build_cookie_header, make_safe_httpx_client
+
+        if cookies:
+            headers["Cookie"] = build_cookie_header(cookies)
+        started = time.monotonic()
+        with make_safe_httpx_client(timeout=10.0, follow_redirects=False, verify=True) as client:
+            if method == "GET":
+                response = client.get(url, headers=headers)
+            else:
+                response = client.request(method, url, headers=headers, content=body)
+        raw_body = response.content[:_MAX_BODY_BYTES]
+        decoded = raw_body.decode(response.encoding or "utf-8", "replace")
+        return Replay(
+            method=method,
+            url=url,
+            request_body=body,
+            status_code=response.status_code,
+            body=decoded,
+            headers=dict(response.headers),
+            elapsed_ms=int((time.monotonic() - started) * 1000),
+        )
+    except Exception as exc:
+        logger.debug("active validator replay failed for %s: %s", finding.id, type(exc).__name__)
+        return None
+
+
+def _evidence(
+    baseline: Replay | None,
+    probe: Replay | None,
+    *,
+    validator: str,
+    parameter: str | None,
+    payload_label: str,
+    matched_marker: str | None = None,
+) -> dict[str, Any]:
+    """Create evidence without raw bodies, cookies, auth headers, or OOB URLs."""
+    result: dict[str, Any] = {
+        "validator": validator,
+        "parameter": parameter,
+        "payload_label": payload_label,
+        "matched_marker": matched_marker,
+        "replay": "baseline_then_candidate",
+    }
+    if baseline is not None:
+        result["baseline"] = {
+            "method": baseline.method,
+            "url": _redact_query_url(baseline.url),
+            "status_code": baseline.status_code,
+            "body_length": len(baseline.body),
+            "body_sha256": _body_digest(baseline.body),
+            "headers": _safe_headers(baseline.headers),
+            "elapsed_ms": baseline.elapsed_ms,
+        }
+    if probe is not None:
+        result["candidate"] = {
+            "method": probe.method,
+            "url": _redact_query_url(probe.url),
+            "status_code": probe.status_code,
+            "body_length": len(probe.body),
+            "body_sha256": _body_digest(probe.body),
+            "headers": _safe_headers(probe.headers),
+            "elapsed_ms": probe.elapsed_ms,
+        }
+    return result
+
+
+def _confirmed(
+    finding: Finding, evidence: dict[str, Any], reasoning: str, payload_label: str
+) -> Finding:
+    return finding.model_copy(
+        update={
+            "confidence": Confidence.CONFIRMED.value,
+            "confidence_level": "Tool-Confirmed",
+            "payload": payload_label,
+            "evidence": {**(finding.evidence or {}), **evidence},
+            "evidence_bundle": {
+                "request": {
+                    "method": evidence.get("candidate", {}).get("method"),
+                    "url": evidence.get("candidate", {}).get("url"),
+                    "headers": evidence.get("candidate", {}).get("headers", {}),
+                    "body": "[REDACTED-FORM-BODY]"
+                    if evidence.get("candidate", {}).get("method") != "GET"
+                    else None,
+                },
+                "response": evidence.get("candidate", {}),
+            },
+            "reasoning": reasoning,
+        }
+    )
+
+
+def _ambiguous(
+    finding: Finding,
+    evidence: dict[str, Any],
+    reasoning: str,
+    *,
+    not_scanned: bool = False,
+) -> Finding:
+    merged_evidence = {**(finding.evidence or {}), **evidence}
+    # A deterministic validator that cannot build the replay (missing
+    # parameter context or failed transport) is an infrastructure/coverage
+    # limitation, not an AI assessment. Preserve the v58 evidence contract
+    # so reports and downstream retry logic can distinguish it from a clean
+    # negative replay.
+    if not_scanned or evidence.get("validation_unavailable"):
+        merged_evidence.setdefault("tool_infra_failure", True)
+    if evidence.get("validation_unavailable"):
+        merged_evidence.setdefault("missing_validator_class", evidence.get("validator"))
+    if (
+        evidence.get("validation_unavailable") or not_scanned
+    ) and "not confirmation" not in reasoning.lower():
+        reasoning = (
+            f"{reasoning} This is not confirmation; it is a validation "
+            "coverage or infrastructure limitation."
+        )
+    return finding.model_copy(
+        update={
+            "confidence_level": "Not Scanned" if not_scanned else "Needs Human Review",
+            "evidence": merged_evidence,
+            "reasoning": reasoning,
+        }
+    )
+
+
+def _inband_marker_check(
+    finding: Finding,
+    vuln_class: str,
+    payload: str,
+    markers: tuple[str, ...],
+    cookies: dict[str, str] | None,
+) -> Finding:
+    parameter = _candidate_parameter(finding)
+    if not parameter:
+        return _ambiguous(
+            finding,
+            {
+                "validator": vuln_class,
+                "validation_unavailable": True,
+                "reason": "no_parameter_context",
+            },
+            f"{vuln_class.upper()} validator could not run: no target parameter was available.",
+        )
+    baseline = _replay(finding, parameter, str(finding.request_data.get(parameter, "")), cookies)
+    probe = _replay(finding, parameter, payload, cookies)
+    if baseline is None or probe is None:
+        return _ambiguous(
+            finding,
+            _evidence(
+                baseline, probe, validator=vuln_class, parameter=parameter, payload_label=payload
+            ),
+            f"{vuln_class.upper()} validator could not complete a baseline/candidate replay.",
+            not_scanned=True,
+        )
+    lowered = probe.body.lower()
+    baseline_lowered = baseline.body.lower()
+    marker = next(
+        (
+            item
+            for item in markers
+            if item.lower() in lowered and item.lower() not in baseline_lowered
+        ),
+        None,
+    )
+    evidence = _evidence(
+        baseline,
+        probe,
+        validator=vuln_class,
+        parameter=parameter,
+        payload_label=payload,
+        matched_marker=marker,
+    )
+    if marker:
+        return _confirmed(
+            finding,
+            evidence,
+            f"{vuln_class.upper()} replay produced marker {marker!r} only after the controlled "
+            "payload was injected; the baseline did not contain that marker.",
+            payload,
+        )
+    return _ambiguous(
+        finding,
+        evidence,
+        f"{vuln_class.upper()} replay completed but produced no class-specific marker "
+        "absent from the baseline. No automated confirmation is claimed.",
+    )
+
+
+def validate_lfi(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    return _inband_marker_check(
+        finding,
+        "lfi",
+        "/etc/passwd",
+        ("root:x:0:0", "root:x:"),
+        cookies,
+    )
+
+
+def validate_path_traversal(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    return _inband_marker_check(
+        finding,
+        "path_traversal",
+        "../../../../../../etc/passwd",
+        ("root:x:0:0", "root:x:"),
+        cookies,
+    )
+
+
+def validate_ssti(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Confirm server-side expression evaluation with a baseline differential."""
+    parameter = _candidate_parameter(finding)
+    if not parameter:
+        return _ambiguous(
+            finding,
+            {"validator": "ssti", "validation_unavailable": True, "reason": "no_parameter_context"},
+            "SSTI validator could not run: no template-like parameter was available.",
+        )
+    # The expression is deliberately harmless and does not execute a command.
+    payload = "{{17*23}}"
+    baseline = _replay(finding, parameter, str(finding.request_data.get(parameter, "")), cookies)
+    probe = _replay(finding, parameter, payload, cookies)
+    evidence = _evidence(
+        baseline,
+        probe,
+        validator="ssti",
+        parameter=parameter,
+        payload_label="arithmetic_expression",
+        matched_marker="391",
+    )
+    if baseline is None or probe is None:
+        return _ambiguous(
+            finding,
+            evidence,
+            "SSTI validator could not complete a baseline/candidate replay.",
+            not_scanned=True,
+        )
+    if "391" in probe.body and "391" not in baseline.body:
+        return _confirmed(
+            finding,
+            evidence,
+            "SSTI replay evaluated a harmless arithmetic expression to 391; the "
+            "baseline did not contain 391.",
+            payload,
+        )
+    return _ambiguous(
+        finding,
+        evidence,
+        "SSTI replay completed without a new arithmetic-evaluation marker. "
+        "No automated confirmation is claimed.",
+    )
+
+
+def validate_nosql_injection(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+    """Use a bounded type-confusion differential; never dump or enumerate data."""
+    parameter = _candidate_parameter(finding)
+    if not parameter:
+        return _ambiguous(
+            finding,
+            {
+                "validator": "nosql_injection",
+                "validation_unavailable": True,
+                "reason": "no_parameter_context",
+            },
+            "NoSQL injection validator could not run: no query-like parameter was available.",
+        )
+    baseline_value = str(finding.request_data.get(parameter, "invalid-webpent-value"))
+    baseline = _replay(finding, parameter, baseline_value, cookies)
+    candidate = json.dumps({"$ne": None}, separators=(",", ":"))
+    probe = _replay(finding, parameter, candidate, cookies)
+    evidence = _evidence(
+        baseline,
+        probe,
+        validator="nosql_injection",
+        parameter=parameter,
+        payload_label="json_operator_ne_null",
+    )
+    if baseline is None or probe is None:
+        return _ambiguous(
+            finding,
+            evidence,
+            "NoSQL validator could not complete a baseline/candidate replay.",
+            not_scanned=True,
+        )
+    auth_boundary = baseline.status_code in {401, 403} and 200 <= probe.status_code < 300
+    materially_changed = abs(len(probe.body) - len(baseline.body)) >= max(
+        32, int(len(baseline.body) * 0.10)
+    )
+    if auth_boundary and materially_changed:
+        evidence["differential"] = "unauthorized_baseline_to_success_candidate"
+        return _confirmed(
+            finding,
+            evidence,
+            "NoSQL type-confusion replay changed an unauthorized baseline (401/403) "
+            "to a materially different 2xx response. This is a bounded authorization "
+            "differential; no data enumeration was performed.",
+            candidate,
+        )
+    evidence["differential"] = "no_confirming_authorization_boundary"
+    return _ambiguous(
+        finding,
+        evidence,
+        "NoSQL replay completed without a strong unauthorized-to-success differential. "
+        "No automated confirmation is claimed.",
+    )
+
+
+__all__ = [
+    "validate_lfi",
+    "validate_nosql_injection",
+    "validate_path_traversal",
+    "validate_ssti",
+]

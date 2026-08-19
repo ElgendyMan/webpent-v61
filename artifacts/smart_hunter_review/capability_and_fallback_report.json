@@ -1,0 +1,13 @@
+{
+  "status": "implemented_lazy_registry_contract_tested",
+  "source": "src/webpent/shared/capability_manifest.py:83",
+  "fail_closed": true,
+  "fallbacks": {
+    "browser": "human_review_only",
+    "httpx": "native_http",
+    "katana": "native_crawler",
+    "nuclei": "native_validator",
+    "ffuf": "native_parameter_probe",
+    "oob": "inconclusive_without_controlled_callback"
+  }
+}

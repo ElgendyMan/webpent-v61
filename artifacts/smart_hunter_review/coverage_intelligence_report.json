@@ -1,0 +1,7 @@
+{
+  "status": "implemented_report_safe_projection",
+  "source": "src/webpent/shared/coverage_ledger.py:55",
+  "controller_consumption": "partial_not_fully_proven",
+  "entries": [],
+  "gaps": []
+}

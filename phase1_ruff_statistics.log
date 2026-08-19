@@ -1,0 +1,9 @@
+[1m82[0m	[1;31mI001[0m  	[[36m*[0m] unsorted-imports
+[1m 7[0m	[1;31mSIM102[0m	[ ] collapsible-if
+[1m 5[0m	[1;31mSIM105[0m	[ ] suppressible-exception
+[1m 4[0m	[1;31mN806[0m  	[ ] non-lowercase-variable-in-function
+[1m 3[0m	[1;31mB017[0m  	[ ] assert-raises-exception
+[1m 2[0m	[1;31mSIM117[0m	[[36m*[0m] multiple-with-statements
+[1m 1[0m	[1;31mSIM114[0m	[[36m*[0m] if-with-same-arms
+Found 104 errors.
+[[36m*[0m] 85 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

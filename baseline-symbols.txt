@@ -1,0 +1,360 @@
+src/webpent/shared/bac_identity_tester.py:1:"""Evidence-first multi-identity BAC/IDOR primitives.
+src/webpent/shared/bac_identity_tester.py:19:from webpent.models.evidence import RelationalEvidence
+src/webpent/shared/bac_identity_tester.py:165:    """Create a non-reversible response fingerprint for differential evidence."""
+src/webpent/shared/bac_identity_tester.py:199:def build_relational_evidence(
+src/webpent/shared/bac_identity_tester.py:219:            # Keep the edge even when access is equal: relational evidence
+src/webpent/shared/bac_identity_tester.py:221:            evidence_refs = [
+src/webpent/shared/bac_identity_tester.py:237:            relation = RelationalEvidence(
+src/webpent/shared/bac_identity_tester.py:253:                evidence_refs=evidence_refs,
+src/webpent/shared/bac_identity_tester.py:264:    """Classify a differential without promoting ambiguous evidence."""
+src/webpent/shared/bac_identity_tester.py:335:    "build_relational_evidence",
+src/webpent/shared/memory_boundary.py:16:from webpent.models.evidence import redact_sensitive
+src/webpent/shared/memory_boundary.py:24:    every hypothesis with target evidence before promoting it.
+src/webpent/shared/memory_boundary.py:64:    def add_target_fact(self, *, content: str, source_ref: str = "", evidence_refs: list[str] | None = None, relevance: float = 1.0) -> MemoryRecord | None:
+src/webpent/shared/memory_boundary.py:76:                "evidence_refs": evidence_refs or [],
+src/webpent/shared/surface_security.py:1:"""Passive surface-security coverage for evidence-first hunting.
+src/webpent/shared/surface_security.py:94:    evidence: Iterable[str] = (),
+src/webpent/shared/surface_security.py:107:    evs = list(dict.fromkeys(str(x)[:160] for x in evidence if x))[:_MAX_REFS]
+src/webpent/shared/surface_security.py:116:            evidence_refs=evs,
+src/webpent/shared/surface_security.py:118:            human_review_required=human,
+src/webpent/shared/surface_security.py:190:            _add(observations, SurfaceSecurityCategory.DOM, SurfaceObservationStatus.CANDIDATE, "DOM/client-side sink candidate", "Static JavaScript review found a client-side sink; source-to-sink data-flow and runtime proof are required.", [str(x.get("source_asset", "")) for x in dom_sinks], [str(x.get("category", "")) for x in dom_sinks], [str(x.get("evidence_ref", "")) for x in dom_sinks], active=True, limit=max_observations)
+src/webpent/shared/surface_security.py:193:        # intelligence layer. Keep this projection evidence-only: expose the
+src/webpent/shared/surface_security.py:194:        # detector kind, source asset, and stable evidence reference, but never
+src/webpent/shared/surface_security.py:201:        secret_evidence = [
+src/webpent/shared/surface_security.py:202:            str(x.get("evidence_ref", ""))
+src/webpent/shared/surface_security.py:204:            if x.get("evidence_ref")
+src/webpent/shared/surface_security.py:221:            secret_evidence,
+src/webpent/shared/javascript_intelligence.py:4:produces typed observations that are suitable for evidence-first triage; a
+src/webpent/shared/javascript_intelligence.py:118:def _evidence_ref(kind: str, source_asset: str, locator: str) -> str:
+src/webpent/shared/javascript_intelligence.py:217:            evidence_ref=_evidence_ref("route", asset_url, f"{kind}:{offset}:{route}"),
+src/webpent/shared/javascript_intelligence.py:249:                evidence_ref=_evidence_ref("sink", asset_url, f"{sink_name}:{line}"),
+src/webpent/shared/javascript_intelligence.py:269:                evidence_ref=_evidence_ref("secret", asset_url, f"{kind}:{line}:{_sha256(raw_value)}"),
+src/webpent/shared/javascript_intelligence.py:287:                evidence_ref=_evidence_ref("auth", asset_url, f"{hint}:{identifier}:{line}"),
+src/webpent/shared/tool_adapters.py:18:from webpent.models.evidence import (
+src/webpent/shared/tool_adapters.py:20:    EvidenceRef,
+src/webpent/shared/tool_adapters.py:25:    make_evidence_ref,
+src/webpent/shared/tool_adapters.py:124:        output_ref: EvidenceRef | None = None
+src/webpent/shared/tool_adapters.py:128:            output_ref = make_evidence_ref(
+src/webpent/shared/tool_adapters.py:158:            ref = make_evidence_ref(
+src/webpent/shared/tool_adapters.py:179:                    evidence_refs=[ref.id],
+src/webpent/shared/http_discovery.py:7:recon; validators still need independent, tool-backed evidence.
+src/webpent/shared/confidence.py:13:  * **Deterministic weighted formula** — base score from evidence type
+src/webpent/shared/confidence.py:33:  * ``evidence_type`` — one of ``"heuristic"``, ``"tool_confirmed"``,
+src/webpent/shared/confidence.py:38:    like ``+0.3`` ("tool-confirmed evidence found for a related
+src/webpent/shared/confidence.py:63:class EvidenceType(str, Enum):
+src/webpent/shared/confidence.py:64:    """Closed set of evidence types that feed the confidence formula.
+src/webpent/shared/confidence.py:68:    — adding a new evidence type is a code change, not an LLM output.
+src/webpent/shared/confidence.py:94:# Phase 4 step 2: "base score from evidence type (heuristic match vs.
+src/webpent/shared/confidence.py:100:#   * HEURISTIC = 0.30 — a regex match is weak evidence; the belief
+src/webpent/shared/confidence.py:104:#     which is weak positive evidence the belief is plausible (a
+src/webpent/shared/confidence.py:110:#     belief. This is the strongest evidence type short of a human
+src/webpent/shared/confidence.py:114:    EvidenceType.HEURISTIC.value: 0.30,
+src/webpent/shared/confidence.py:115:    EvidenceType.RAG_INFORMED.value: 0.40,
+src/webpent/shared/confidence.py:116:    EvidenceType.LLM_ASSESSED.value: 0.55,
+src/webpent/shared/confidence.py:117:    EvidenceType.TOOL_CONFIRMED.value: 0.85,
+src/webpent/shared/confidence.py:124:# (a debunking is strong negative evidence the belief is wrong).
+src/webpent/shared/confidence.py:133:# shifts gradually as evidence accumulates, which is the auditability
+src/webpent/shared/confidence.py:135:_ONLINE_LEARNING_DELTA_POSITIVE: float = 0.10   # e.g. tool-confirmed related evidence
+src/webpent/shared/confidence.py:141:# noisy evidence stream. Symmetric for negative deltas.
+src/webpent/shared/confidence.py:152:    evidence_type: EvidenceType | str,
+src/webpent/shared/confidence.py:164:        evidence_type: The :class:`EvidenceType` (or its string
+src/webpent/shared/confidence.py:184:            base = _BASE_SCORE_BY_EVIDENCE_TYPE[evidence_type]
+src/webpent/shared/confidence.py:192:    # Normalise evidence_type to its string value.
+src/webpent/shared/confidence.py:193:    if isinstance(evidence_type, EvidenceType):
+src/webpent/shared/confidence.py:194:        et_str = evidence_type.value
+src/webpent/shared/confidence.py:196:        et_str = str(evidence_type).lower()
+src/webpent/shared/confidence.py:197:    base = _BASE_SCORE_BY_EVIDENCE_TYPE.get(et_str, _BASE_SCORE_BY_EVIDENCE_TYPE[EvidenceType.HEURISTIC.value])
+src/webpent/shared/confidence.py:236:def evidence_type_from_origin(origin: Any) -> EvidenceType:
+src/webpent/shared/confidence.py:237:    """Map a :class:`HypothesisOrigin` to its :class:`EvidenceType`.
+src/webpent/shared/confidence.py:240:    themselves. ``HEURISTIC`` origin -> ``HEURISTIC`` evidence type;
+src/webpent/shared/confidence.py:244:    hypothesis is treated as the strongest non-tool evidence type,
+src/webpent/shared/confidence.py:252:        HypothesisOrigin.HEURISTIC.value: EvidenceType.HEURISTIC,
+src/webpent/shared/confidence.py:253:        HypothesisOrigin.RAG_INFORMED.value: EvidenceType.RAG_INFORMED,
+src/webpent/shared/confidence.py:254:        HypothesisOrigin.RABBIT_HOLE.value: EvidenceType.LLM_ASSESSED,
+src/webpent/shared/confidence.py:255:        HypothesisOrigin.CROSS_REASONS.value: EvidenceType.LLM_ASSESSED,
+src/webpent/shared/confidence.py:256:        HypothesisOrigin.HUMAN.value: EvidenceType.TOOL_CONFIRMED,
+src/webpent/shared/confidence.py:258:    return mapping.get(origin_str, EvidenceType.HEURISTIC)
+src/webpent/shared/confidence.py:269:    Convenience helper that pulls ``evidence_type`` from the
+src/webpent/shared/confidence.py:270:    hypothesis's ``origin`` field (via :func:`evidence_type_from_origin`)
+src/webpent/shared/confidence.py:286:    evidence_type = evidence_type_from_origin(getattr(hypothesis, "origin", None))
+src/webpent/shared/confidence.py:288:        evidence_type=evidence_type,
+src/webpent/shared/report_quality.py:1:"""Deterministic report quality gates for evidence-first findings.
+src/webpent/shared/report_quality.py:95:def _evidence_dict(finding: Any) -> dict[str, Any]:
+src/webpent/shared/report_quality.py:96:    evidence = model_get(finding, "evidence")
+src/webpent/shared/report_quality.py:97:    return _as_dict(evidence)
+src/webpent/shared/report_quality.py:100:def _has_reproduction(finding: Any, evidence: dict[str, Any], bundle: Any) -> bool:
+src/webpent/shared/report_quality.py:101:    if _nested_value(evidence, "reproduction", "steps_to_reproduce", "proof"):
+src/webpent/shared/report_quality.py:110:    """Map legacy categorical fields to the shared evidence lifecycle."""
+src/webpent/shared/report_quality.py:112:    evidence = _evidence_dict(finding)
+src/webpent/shared/report_quality.py:113:    bundle = model_get(finding, "evidence_bundle")
+src/webpent/shared/report_quality.py:114:    has_evidence = bool(evidence or bundle)
+src/webpent/shared/report_quality.py:115:    has_reproduction = _has_reproduction(finding, evidence, bundle)
+src/webpent/shared/report_quality.py:125:    if has_evidence:
+src/webpent/shared/report_quality.py:126:        return "Evidence"
+src/webpent/shared/report_quality.py:128:        evidence, "hypothesis", "hypothesis_id", "hypothesis_ref"
+src/webpent/shared/report_quality.py:141:    tokens, payloads, or evidence bodies.
+src/webpent/shared/report_quality.py:145:    evidence = _evidence_dict(finding)
+src/webpent/shared/report_quality.py:146:    bundle = model_get(finding, "evidence_bundle")
+src/webpent/shared/report_quality.py:167:        or _nested_value(evidence, "hypothesis", "hypothesis_id", "hypothesis_ref")
+src/webpent/shared/report_quality.py:170:    if not evidence and not _as_dict(bundle):
+src/webpent/shared/report_quality.py:171:        blocking.append("evidence_refs")
+src/webpent/shared/report_quality.py:172:    if not _has_reproduction(finding, evidence, bundle):
+src/webpent/shared/report_quality.py:180:            evidence,
+src/webpent/shared/report_quality.py:190:        _nested_value(evidence, "related_findings", "related_paths", "attack_path")
+src/webpent/shared/workflow_understanding.py:5:state, or infer a vulnerability without prerequisites and evidence references.
+src/webpent/shared/workflow_understanding.py:17:from webpent.models.evidence import canonical_json, redact_sensitive
+src/webpent/shared/workflow_understanding.py:140:    """Extract unique, evidence-referenced workflow transitions passively."""
+src/webpent/shared/workflow_understanding.py:196:        evidence_ref = f"workflow:{fingerprint[:16]}"
+src/webpent/shared/workflow_understanding.py:217:            evidence_refs=[evidence_ref],
+src/webpent/shared/workflow_understanding.py:228:def generate_business_logic_hypotheses(
+src/webpent/shared/workflow_understanding.py:281:                        "object identifier evidence",
+src/webpent/shared/workflow_understanding.py:297:                        "safe rejection evidence",
+src/webpent/shared/workflow_understanding.py:328:        for kind, statement, expected, evidence_needed, action_type, score in candidates:
+src/webpent/shared/workflow_understanding.py:345:                    evidence_needed=evidence_needed,
+src/webpent/shared/workflow_understanding.py:349:                    evidence_refs=observation.evidence_refs,
+src/webpent/shared/workflow_understanding.py:384:                "reason": "No redirect/state-transition evidence was observed.",
+src/webpent/shared/workflow_understanding.py:403:    "generate_business_logic_hypotheses",
+src/webpent/shared/disclosed_report_intel.py:18:    "business_logic": ("race condition", "workflow", "business logic", "checkout", "coupon", "negative quantity"),
+src/webpent/shared/disclosed_report_intel.py:127:            "rationale": "Historical pattern is a lead only; validate with target-specific evidence before reporting.",
+src/webpent/shared/stealth.py:11:    (Nuclei, Dalfox, etc.) and the validator's OOB probes.
+src/webpent/shared/stealth.py:74:    (``run_nuclei``, ``run_dalfox``, …), the validator's OOB probe
+src/webpent/shared/jwt_deep_testing.py:1:"""Deterministic, evidence-first JWT deep-testing helpers.
+src/webpent/shared/jwt_deep_testing.py:147:    credential material.  ``weak_secret_match`` is strong offline evidence;
+src/webpent/shared/jwt_deep_testing.py:162:            "evidence": "Captured token declares alg=none; endpoint acceptance is not proven offline.",
+src/webpent/shared/jwt_deep_testing.py:178:                "evidence": "The captured signature verifies offline with a bounded common-secret candidate.",
+src/webpent/shared/jwt_deep_testing.py:192:            "evidence": "An asymmetric JWT and a target public key are available; algorithm-confusion acceptance still requires an approved probe.",
+src/webpent/shared/adaptive_hunt.py:5:HITL, scope enforcement, evidence capture, and reporting contracts are
+src/webpent/shared/adaptive_hunt.py:46:# Cost, impact, evidence, and novelty remain explicit constants so a report
+src/webpent/shared/adaptive_hunt.py:50:    "evidence": 0.20,
+src/webpent/shared/adaptive_hunt.py:59:    "weak_evidence": 0.08,
+src/webpent/shared/adaptive_hunt.py:117:def _evidence_dict(finding: Any) -> dict[str, Any]:
+src/webpent/shared/adaptive_hunt.py:118:    evidence = _get(finding, "evidence")
+src/webpent/shared/adaptive_hunt.py:119:    return evidence if isinstance(evidence, dict) else {}
+src/webpent/shared/adaptive_hunt.py:123:    evidence = _evidence_dict(finding)
+src/webpent/shared/adaptive_hunt.py:131:        "evidence": evidence,
+src/webpent/shared/adaptive_hunt.py:132:        "evidence_refs": list(_get(finding, "evidence_refs", []) or []),
+src/webpent/shared/adaptive_hunt.py:144:    evidence = context.get("evidence") or {}
+src/webpent/shared/adaptive_hunt.py:146:        value = _safe_context_value(evidence.get(key))
+src/webpent/shared/adaptive_hunt.py:193:    refs.extend(str(ref) for ref in context.get("evidence_refs", []) if ref)
+src/webpent/shared/adaptive_hunt.py:203:        evidence_refs=list(dict.fromkeys(refs)),
+src/webpent/shared/adaptive_hunt.py:217:    relational_evidence: Iterable[Any] | None = None,
+src/webpent/shared/adaptive_hunt.py:225:    uses explicit evidence keys for auth, object, workflow, role, and JS-route
+src/webpent/shared/adaptive_hunt.py:263:            reason="New finding evidence warrants a bounded revalidation of the same endpoint.",
+src/webpent/shared/adaptive_hunt.py:324:    for relation in relational_evidence or []:
+src/webpent/shared/adaptive_hunt.py:343:            reason=f"Relational evidence {relation_type} links a new surface to an existing finding.",
+src/webpent/shared/adaptive_hunt.py:376:def _evidence_score(context: dict[str, Any]) -> float:
+src/webpent/shared/adaptive_hunt.py:379:    evidence = context.get("evidence") or {}
+src/webpent/shared/adaptive_hunt.py:380:    if evidence:
+src/webpent/shared/adaptive_hunt.py:382:    if context.get("evidence_refs"):
+src/webpent/shared/adaptive_hunt.py:393:    """Score one task with deterministic impact/evidence/chain/information terms."""
+src/webpent/shared/adaptive_hunt.py:396:    evidence = _evidence_score(context)
+src/webpent/shared/adaptive_hunt.py:413:    weak_evidence = 1.0 - evidence
+src/webpent/shared/adaptive_hunt.py:416:        + _SCORE_WEIGHTS["evidence"] * evidence
+src/webpent/shared/adaptive_hunt.py:423:        - _PENALTY_WEIGHTS["weak_evidence"] * weak_evidence
+src/webpent/shared/adaptive_hunt.py:427:        f"impact={impact:.2f}; evidence={evidence:.2f}; exploitability={exploitability:.2f}; "
+src/webpent/shared/adaptive_hunt.py:429:        f"penalties(repetition={repetition:.2f}, cost={cost:.2f}, weak_evidence={weak_evidence:.2f})"
+src/webpent/shared/adaptive_hunt.py:433:        evidence_strength=evidence,
+src/webpent/shared/adaptive_hunt.py:440:        weak_evidence_penalty=weak_evidence,
+src/webpent/shared/adaptive_hunt.py:503:        "evidence_refs": list(dict.fromkeys([*task.evidence_refs, *outcome.evidence_refs])),
+src/webpent/shared/adaptive_hunt.py:535:        relational_evidence=state.get("relational_evidence") or [],
+src/webpent/shared/adaptive_hunt.py:563:    decision_log = [{
+src/webpent/shared/adaptive_hunt.py:570:        "entity_refs": [task.id, *task.evidence_refs],
+src/webpent/shared/adaptive_hunt.py:587:        "decision_log": decision_log,
+src/webpent/shared/planner_decisions.py:118:            expected_evidence=["reproducible_request", "response_delta", "scope_check"],
+src/webpent/shared/planner_decisions.py:121:            rationale="A bounded hypothesis exists; validate it through the existing evidence pipeline.",
+src/webpent/shared/planner_decisions.py:128:            expected_evidence=["endpoint_observation", "method_and_parameter_inventory"],
+src/webpent/shared/planner_decisions.py:137:        expected_evidence=["target_identity", "scope_decision"],
+src/webpent/shared/attack_graph.py:147:    evidence_refs: Iterable[Any] = (),
+src/webpent/shared/attack_graph.py:153:    refs = [str(ref)[:240] for ref in evidence_refs if ref][:50]
+src/webpent/shared/attack_graph.py:164:            evidence_refs=refs,
+src/webpent/shared/attack_graph.py:194:            source_refs=["relational_evidence"],
+src/webpent/shared/attack_graph.py:200:def _add_relational_edges(graph: AttackGraph, relational_evidence: Iterable[Any]) -> None:
+src/webpent/shared/attack_graph.py:201:    for row in relational_evidence:
+src/webpent/shared/attack_graph.py:213:                    source_refs=["relational_evidence"],
+src/webpent/shared/attack_graph.py:224:                    source_refs=["relational_evidence"],
+src/webpent/shared/attack_graph.py:231:        refs = row.get("evidence_refs") or []
+src/webpent/shared/attack_graph.py:240:                evidence_refs=refs,
+src/webpent/shared/attack_graph.py:250:                evidence_refs=refs,
+src/webpent/shared/attack_graph.py:260:                evidence_refs=refs,
+src/webpent/shared/attack_graph.py:292:                    evidence_refs=[f"finding:{finding_id}"],
+src/webpent/shared/attack_graph.py:323:                    evidence_refs=[f"hypothesis:{hypothesis_id}"],
+src/webpent/shared/attack_graph.py:331:    relational_evidence: Iterable[Any] = (),
+src/webpent/shared/attack_graph.py:338:    graph = AttackGraph(generated_from=["mental_model", "relational_evidence"])
+src/webpent/shared/attack_graph.py:348:            evidence_refs=[edge.source_ref],
+src/webpent/shared/attack_graph.py:352:    _add_relational_edges(graph, relational_evidence)
+src/webpent/shared/attack_graph.py:360:            "No evidence-backed relationships were available for graph projection."
+src/webpent/shared/self_critique.py:69:  :func:`_write_decision_log_entry` function here is a stable-signature
+src/webpent/shared/self_critique.py:166:def _write_decision_log_entry(
+src/webpent/shared/self_critique.py:181:    :func:`webpent.memory.decision_log.log_decision` with a
+src/webpent/shared/self_critique.py:183:    persisted to the SQLite ``decision_log`` table AND appended to
+src/webpent/shared/self_critique.py:184:    ``state["decision_log"]`` for in-graph consumers.
+src/webpent/shared/self_critique.py:191:        from webpent.memory.decision_log import log_decision
+src/webpent/shared/self_critique.py:562:            _write_decision_log_entry(
+src/webpent/shared/self_critique.py:585:        _write_decision_log_entry(
+src/webpent/shared/self_critique.py:627:    _write_decision_log_entry(
+src/webpent/shared/cognitive_components.py:12:  * **Evidence Quality Assessment** — :func:`compute_evidence_quality_score`
+src/webpent/shared/cognitive_components.py:38:# 1. Evidence Quality Assessment
+src/webpent/shared/cognitive_components.py:42:# that already exist: presence of ``evidence_bundle`` (mini-HAR),
+src/webpent/shared/cognitive_components.py:43:# presence and validity of ``evidence_hash``, whether ``canary_token``
+src/webpent/shared/cognitive_components.py:46:# No new evidence-capture mechanism is needed — this phase is purely
+src/webpent/shared/cognitive_components.py:49:# Evidence quality component weights — deterministic, code-change-only.
+src/webpent/shared/cognitive_components.py:56:def compute_evidence_quality_score(
+src/webpent/shared/cognitive_components.py:58:    has_evidence_bundle: bool = False,
+src/webpent/shared/cognitive_components.py:59:    evidence_hash_valid: bool = False,
+src/webpent/shared/cognitive_components.py:63:    """Compute a deterministic evidence-quality score in [0, 1].
+src/webpent/shared/cognitive_components.py:68:    for direct use as the ``evidence_quality`` input to
+src/webpent/shared/cognitive_components.py:72:        has_evidence_bundle: True if the finding has a non-None
+src/webpent/shared/cognitive_components.py:73:            ``evidence_bundle`` (mini-HAR dict).
+src/webpent/shared/cognitive_components.py:74:        evidence_hash_valid: True if ``evidence_hash`` is present
+src/webpent/shared/cognitive_components.py:75:            AND matches a re-computation over ``evidence_bundle``.
+src/webpent/shared/cognitive_components.py:91:    if has_evidence_bundle:
+src/webpent/shared/cognitive_components.py:93:    if evidence_hash_valid:
+src/webpent/shared/cognitive_components.py:282:# node producing new evidence emits a small, fixed-size confidence
+src/webpent/shared/cognitive_components.py:284:# 'tool-confirmed evidence found for a related hypothesis: +0.3';
+src/webpent/shared/cognitive_components.py:315:    TOOL_CONFIRMED_RELATED_EVIDENCE = "tool_confirmed_related_evidence"
+src/webpent/shared/recon_triage.py:74:            "evidence_refs": ["obs://recon/structure-aware-triage"],
+src/webpent/shared/recon_triage.py:90:    # Do not persist arbitrary long identifiers or file names as evidence.
+src/webpent/shared/grounding.py:11:     Catches LLM hallucinations where the model fabricates evidence.
+src/webpent/shared/grounding.py:17:  3. :func:`capture_evidence_bundle` — Evidence Bundle: build a
+src/webpent/shared/grounding.py:74:        f"have fabricated evidence."
+src/webpent/shared/grounding.py:86:    evidence in ``<quote>`` tags. This eliminates the bypass vector
+src/webpent/shared/grounding.py:176:# 3. Evidence Bundle — mini-HAR capture
+src/webpent/shared/grounding.py:179:class EvidenceBundle:
+src/webpent/shared/grounding.py:180:    """Structured evidence container for confirmed findings.
+src/webpent/shared/grounding.py:184:    tool. Serialised to JSON for persistence in the ``evidence_bundle``
+src/webpent/shared/grounding.py:223:        """Serialise to a JSON-safe dict for Finding.evidence_bundle."""
+src/webpent/shared/grounding.py:232:def capture_evidence_bundle(
+src/webpent/shared/grounding.py:244:    """Build an evidence bundle dict from an HTTP exchange + tool output.
+src/webpent/shared/grounding.py:248:    ``Finding.evidence_bundle``.
+src/webpent/shared/grounding.py:269:    bundle = EvidenceBundle(
+src/webpent/shared/authorization_matrix.py:1:"""Deterministic, evidence-first authorization matrix projection.
+src/webpent/shared/authorization_matrix.py:126:            evidence_refs=[str(item) for item in (raw.get("evidence_refs") or []) if item][:16],
+src/webpent/shared/authorization_matrix.py:180:                        evidence_refs=sorted(set(left_model.evidence_refs + right_model.evidence_refs))[:32],
+src/webpent/shared/prioritization.py:14:  * evidence quality (Phase 6 batch — stub returns 0.5 until Phase 6
+src/webpent/shared/prioritization.py:162:#     + W_EVIDENCE    * evidence_quality       (0-1, Phase 6 stub = 0.5)
+src/webpent/shared/prioritization.py:164:#     + W_NOVELTY     * novelty_bonus          (0-0.2, capped)
+src/webpent/shared/prioritization.py:195:# webpent.shared.cognitive_components and webpent.memory.decision_log.
+src/webpent/shared/prioritization.py:197:def _evidence_quality_score(hypothesis: Hypothesis, state: Any) -> float:
+src/webpent/shared/prioritization.py:198:    """Phase 6 Evidence Quality Assessment — wired to the real implementation.
+src/webpent/shared/prioritization.py:200:    Composes a score from: presence of ``evidence_bundle`` (mini-HAR),
+src/webpent/shared/prioritization.py:201:    presence and validity of ``evidence_hash``, whether
+src/webpent/shared/prioritization.py:205:    passed. No new evidence-capture mechanism is needed — Phase 6 is
+src/webpent/shared/prioritization.py:209:    The function reads Finding-level evidence fields via ``state``
+src/webpent/shared/prioritization.py:210:    (the hypothesis's evidence_refs point at Findings; we look up the
+src/webpent/shared/prioritization.py:211:    first related Finding and score its evidence). A hypothesis with
+src/webpent/shared/prioritization.py:213:    there's no evidence to score either way.
+src/webpent/shared/prioritization.py:217:            compute_evidence_quality_score,
+src/webpent/shared/prioritization.py:223:    # hypothesis.evidence_refs (finding IDs) or via Finding.hypothesis_id
+src/webpent/shared/prioritization.py:241:    # Fall back to evidence_refs (finding IDs in the hypothesis's list).
+src/webpent/shared/prioritization.py:242:    if related_finding is None and hypothesis.evidence_refs:
+src/webpent/shared/prioritization.py:245:                if str(f.id) in hypothesis.evidence_refs:
+src/webpent/shared/prioritization.py:256:    has_bundle = getattr(related_finding, "evidence_bundle", None) is not None
+src/webpent/shared/prioritization.py:257:    evidence_hash = getattr(related_finding, "evidence_hash", None)
+src/webpent/shared/prioritization.py:260:    if has_bundle and evidence_hash:
+src/webpent/shared/prioritization.py:262:            from webpent.utils.crypto import hash_evidence_bundle
+src/webpent/shared/prioritization.py:263:            hash_valid = hash_evidence_bundle(related_finding.evidence_bundle) == evidence_hash
+src/webpent/shared/prioritization.py:275:    return compute_evidence_quality_score(
+src/webpent/shared/prioritization.py:276:        has_evidence_bundle=has_bundle,
+src/webpent/shared/prioritization.py:277:        evidence_hash_valid=hash_valid,
+src/webpent/shared/prioritization.py:283:def _write_decision_log_entry(
+src/webpent/shared/prioritization.py:296:    this calls :func:`webpent.memory.decision_log.log_decision` with
+src/webpent/shared/prioritization.py:298:    persisted to the SQLite ``decision_log`` table AND appended to
+src/webpent/shared/prioritization.py:299:    ``state["decision_log"]`` for in-graph consumers.
+src/webpent/shared/prioritization.py:306:        from webpent.memory.decision_log import log_decision
+src/webpent/shared/prioritization.py:336:    novelty_bonus: float = 0.0,
+src/webpent/shared/prioritization.py:349:            criticality) and to pass to the Phase 6 evidence-quality
+src/webpent/shared/prioritization.py:352:            Phase 6 needs to read Finding-level evidence fields.
+src/webpent/shared/prioritization.py:353:        novelty_bonus: Optional pre-computed novelty bonus in [0,
+src/webpent/shared/prioritization.py:364:                + W_EVIDENCE * evidence_quality
+src/webpent/shared/prioritization.py:380:    # Evidence quality (Phase 6 stub).
+src/webpent/shared/prioritization.py:381:    evidence = _evidence_quality_score(hypothesis, state)
+src/webpent/shared/prioritization.py:391:    novelty = max(0.0, min(_NOVELTY_CAP, float(novelty_bonus or 0.0)))
+src/webpent/shared/prioritization.py:416:        + W_EVIDENCE * evidence
+src/webpent/shared/prioritization.py:489:        novelty_lookup: Optional ``{hypothesis_id_str: novelty_bonus}``
+src/webpent/shared/prioritization.py:490:            map. Hypotheses not in the map get novelty_bonus=0.0.
+src/webpent/shared/prioritization.py:520:        score = score_hypothesis(h, state, novelty_bonus=novelty)
+src/webpent/shared/prioritization.py:565:# confidence=0.5, evidence=0.5, cost=0.5, novelty=0, crit=2 (HIGH)
+src/webpent/shared/prioritization.py:580:# disclosure is fetched and evidenced.
+src/webpent/shared/prioritization.py:617:    novelty_bonus: float = 0.0,
+src/webpent/shared/prioritization.py:635:        novelty_bonus: Optional pre-computed novelty bonus.
+src/webpent/shared/prioritization.py:681:    score = score_hypothesis(hypothesis, state, novelty_bonus=novelty_bonus)
+src/webpent/shared/prioritization.py:730:    _write_decision_log_entry(
+src/webpent/shared/prioritization.py:845:                _write_decision_log_entry(
+src/webpent/shared/prioritization.py:912:        _write_decision_log_entry(
+src/webpent/graph/builder.py:17:* **Evidence pipeline:** ``payload_generator`` -> HITL-gated
+src/webpent/graph/builder.py:21:  feed only bounded loops back into the evidence pipeline; scoring, impact,
+src/webpent/graph/builder.py:32:and the existing evidence/approval contracts. ``interrupt_before`` is placed
+src/webpent/graph/builder.py:49:from webpent.agents.business_logic_fuzzer.agent import business_logic_fuzzer_node
+src/webpent/graph/builder.py:73:from webpent.agents.target_understanding.agent import target_understanding_node
+src/webpent/graph/builder.py:127:NODE_BUSINESS_LOGIC_FUZZER = "business_logic_fuzzer"
+src/webpent/graph/builder.py:132:NODE_TARGET_UNDERSTANDING = "target_understanding"
+src/webpent/graph/builder.py:183:def _target_understanding_enabled() -> bool:
+src/webpent/graph/builder.py:187:        return bool(get_settings().enable_target_understanding)
+src/webpent/graph/builder.py:210:    return NODE_TARGET_UNDERSTANDING if _target_understanding_enabled() else NODE_SCOPE_ENFORCER
+src/webpent/graph/builder.py:222:        if _target_understanding_enabled():
+src/webpent/graph/builder.py:256:    allows promotion without nuclei evidence — no strategist change
+src/webpent/graph/builder.py:264:    (access_control, api_testing, business_logic_fuzzer,
+src/webpent/graph/builder.py:442:        # bounded engagement. Retrying payloads cannot create evidence, so
+src/webpent/graph/builder.py:445:        evidence = model_get(finding, "evidence") or {}
+src/webpent/graph/builder.py:448:        if isinstance(evidence, dict) and (
+src/webpent/graph/builder.py:449:            evidence.get("validation_unavailable")
+src/webpent/graph/builder.py:450:            or evidence.get("tool_infra_failure")
+src/webpent/graph/builder.py:502:    graph.add_node(NODE_TARGET_UNDERSTANDING, target_understanding_node)
+src/webpent/graph/builder.py:538:    graph.add_node(NODE_BUSINESS_LOGIC_FUZZER, business_logic_fuzzer_node)
+src/webpent/graph/builder.py:591:    # access_control -> api_testing -> business_logic_fuzzer -> request_smuggling
+src/webpent/agents/access_control/agent.py:1:"""Evidence-first multi-identity access-control mapper.
+src/webpent/agents/access_control/agent.py:23:    build_relational_evidence,
+src/webpent/agents/access_control/agent.py:143:    evidence: dict[str, Any] | None = None,
+src/webpent/agents/access_control/agent.py:160:        evidence=evidence,
+src/webpent/agents/access_control/agent.py:251:                    "evidence_refs": [
+src/webpent/agents/access_control/agent.py:260:        edges = build_relational_evidence(rows, owner_identity=owner_identity, object_id=object_id)
+src/webpent/agents/access_control/agent.py:281:            evidence = {
+src/webpent/agents/access_control/agent.py:294:                evidence=evidence,
+src/webpent/agents/access_control/agent.py:370:        "relational_evidence": relational_out,
+src/webpent/agents/payload_generator/agent.py:96:# and low-value findings (no evidence, no chain context, low-severity
+src/webpent/agents/payload_generator/agent.py:146:# Evidence (agents/validator/agent.py:_validate_with_tool dispatch):
+src/webpent/agents/payload_generator/agent.py:154:#   - ssrf/rce -> _validate_via_oob(finding, vuln_class) — no
+src/webpent/agents/payload_generator/agent.py:168:# because run_sqlmap()/_validate_csrf()/_validate_via_oob() ignore the
+src/webpent/agents/payload_generator/agent.py:210:      * **evidence quality bonus** (0-3): evidence_bundle present=+2,
+src/webpent/agents/payload_generator/agent.py:211:        evidence_hash present=+1, canary_token present=+1 (capped at 3).
+src/webpent/agents/payload_generator/agent.py:229:    # Evidence quality bonus (capped at 3).
+src/webpent/agents/payload_generator/agent.py:230:    evidence_bonus = 0
+src/webpent/agents/payload_generator/agent.py:231:    if finding.evidence_bundle:
+src/webpent/agents/payload_generator/agent.py:232:        evidence_bonus += 2
+src/webpent/agents/payload_generator/agent.py:233:    if finding.evidence_hash:
+src/webpent/agents/payload_generator/agent.py:234:        evidence_bonus += 1
+src/webpent/agents/payload_generator/agent.py:236:        evidence_bonus += 1
+src/webpent/agents/payload_generator/agent.py:237:    score += min(evidence_bonus, 3)
+src/webpent/agents/payload_generator/agent.py:459:    # let the evidence pipeline decide whether an installed validator can
+src/webpent/agents/payload_generator/agent.py:613:    (vuln_class usefulness + severity + confidence_level + evidence
+src/webpent/agents/payload_generator/agent.py:618:    calls for — low-value findings (no evidence, no chain context,
+src/webpent/agents/payload_generator/agent.py:652:            "(low-ranked: no evidence, no chain context, or low-usefulness "
+src/webpent/agents/payload_generator/agent.py:686:        _finding_evidence = dict(finding.evidence or {})
+src/webpent/agents/payload_generator/agent.py:688:            _finding_evidence.get("validation_attempted")
+src/webpent/agents/payload_generator/agent.py:691:            _finding_evidence.get("validation_requeue")
+src/webpent/agents/payload_generator/agent.py:705:            or _finding_evidence.get("tool_infra_failure")
+src/webpent/agents/payload_generator/agent.py:706:            or _finding_evidence.get("validation_unavailable")
+src/webpent/agents/payload_generator/agent.py:732:        # is tool/OOB-driven rather than payload-string-driven — see
+src/webpent/agents/payload_generator/agent.py:733:        # _PAYLOAD_CONSUMING_CLASSES docstring above for the evidence.
+src/webpent/agents/payload_generator/agent.py:736:        # the CSRF structural check / the OOB poller), they just don't
+src/webpent/agents/hypothesis_analyzer/agent.py:518:        Form metadata is discovery evidence only; it does not promote a
+src/webpent/agents/hypothesis_analyzer/agent.py:567:    # hypothesis or grants it an evidence-backed confidence bonus.
+src/webpent/agents/hypothesis_analyzer/agent.py:661:    # evidence type or confidence; only target evidence can do that.
+src/webpent/agents/hypothesis_analyzer/agent.py:759:    # evidence-bearing hypothesis of its own. This is target-agnostic: the
+src/webpent/agents/hypothesis_analyzer/agent.py:794:            # detector; confirmation still requires Dalfox/tool evidence.
+src/webpent/agents/reporter/agent.py:98:    "5. **Supporting Material** — evidence (request/response snippets, "
+src/webpent/agents/reporter/agent.py:159:            "| Parameter | URL | Evidence |",
+src/webpent/agents/reporter/agent.py:166:                f"{p.get('evidence', '—')} |"
+src/webpent/agents/reporter/agent.py:216:    decision_log: list[dict[str, Any]] | None = None,
+src/webpent/agents/reporter/agent.py:221:    ``decision_log`` is non-empty, so the legacy Markdown path also
+src/webpent/agents/reporter/agent.py:235:    if decision_log:
+src/webpent/agents/reporter/agent.py:246:        for i, entry in enumerate(decision_log, 1):
+src/webpent/agents/reporter/agent.py:414:                "lack required evidence contract fields. Review the "
+src/webpent/agents/reporter/agent.py:445:    decision_log: list[dict[str, Any]] = list(state.get("decision_log") or [])
+src/webpent/agents/reporter/agent.py:491:        markdown = _compose_markdown(target_url, findings, executive_summary, decision_log=decision_log)
+src/webpent/agents/reporter/agent.py:529:            decision_log=decision_log,
+src/webpent/agents/reporter/agent.py:532:            relational_evidence=list(state.get("relational_evidence") or []),
+src/webpent/agents/reporter/agent.py:630:                "Bug-bounty report blocked by the evidence quality gate. "
+src/webpent/agents/planner/agent.py:61:    "hypothesis_ref, required_identity, expected_evidence, estimated_cost, "
+src/webpent/agents/business_impact/agent.py:67:        # Preserve the evidence-backed finding without inventing impact text.
+src/webpent/agents/cvss_engine/agent.py:191:    # finding's reasoning (e.g. the validator's evidence summary, the

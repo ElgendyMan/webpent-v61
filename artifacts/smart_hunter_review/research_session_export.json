@@ -1,0 +1,20 @@
+{
+  "status": "schema_and_state_projection_present",
+  "source": "src/webpent/shared/research_intelligence.py:546",
+  "fields": [
+    "objective",
+    "current_theory",
+    "supporting_evidence",
+    "contradicting_evidence",
+    "open_questions",
+    "failed_paths",
+    "promising_paths",
+    "coverage_gaps",
+    "identity_context",
+    "causal_attack_graph",
+    "next_best_actions",
+    "stop_criteria",
+    "revisit_criteria"
+  ],
+  "qualification_note": "Future-engagement verified-memory behavior requires separate runtime qualification."
+}
