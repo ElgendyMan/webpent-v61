@@ -162,25 +162,15 @@ def _ttl_seconds() -> int:
     return ttl
 
 
-def _fernet():
-    """Build the vault cipher from the shared runtime payload secret."""
-    from cryptography.fernet import Fernet
-
-    from webpent.config.settings import get_settings
-    from webpent.utils.task_crypto import _derive_fernet_key
-
-    secret = str(get_settings().celery_payload_key or "")
-    if not secret or len(secret) < 32:
-        raise RuntimeError("runtime vault key is missing or too short")
-    return Fernet(_derive_fernet_key(secret))
-
-
 def _encrypt(value: str) -> tuple[str, float] | None:
+    """Encrypt a vault value with the current versioned KDF envelope."""
     ttl = _ttl_seconds()
     if ttl <= 0 or not value:
         return None
     try:
-        token = _fernet().encrypt(value.encode("utf-8")).decode("ascii")
+        from webpent.utils.task_crypto import _encrypt_value
+
+        token = _encrypt_value(value)
     except Exception as exc:
         logger.error("Reauth vault encryption failed; secret was not retained: %s", exc)
         return None
@@ -188,13 +178,31 @@ def _encrypt(value: str) -> tuple[str, float] | None:
 
 
 def _decrypt(record: tuple[str, float] | None) -> str | None:
+    """Decrypt current envelopes and legacy raw Fernet vault records."""
     if not record:
         return None
     token, expires_at = record
     if time.time() >= expires_at:
         return None
     try:
-        return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
+        from cryptography.fernet import Fernet
+
+        from webpent.utils.task_crypto import (
+            _configured_secrets,
+            _decrypt_value,
+            _derive_fernet_key,
+        )
+
+        if token.startswith("enc:"):
+            return _decrypt_value(token)
+        for secret in _configured_secrets():
+            try:
+                return Fernet(_derive_fernet_key(secret)).decrypt(
+                    token.encode("ascii")
+                ).decode("utf-8")
+            except Exception:
+                continue
+        raise ValueError("legacy vault decryption failed")
     except Exception as exc:
         logger.error("Reauth vault decryption failed; secret was not released: %s", exc)
         return None

@@ -346,6 +346,18 @@ def _analyze_captured_jwts(
         for item in clean_analysis.get("observations") or []:
             if item.get("type") != "weak_secret_match":
                 continue
+            if not (
+                item.get("causal_signal") is True
+                and item.get("negative_control_complete") is True
+            ):
+                coverage_gaps.append(
+                    {
+                        "type": "jwt_confirmation_proof_incomplete",
+                        "reason": "Weak-secret evidence lacked a completed negative control.",
+                        "token_fingerprint": item.get("token_fingerprint"),
+                    }
+                )
+                continue
             try:
                 findings.append(
                     Finding(
@@ -366,6 +378,9 @@ def _analyze_captured_jwts(
                             "algorithm": item.get("algorithm"),
                             "secret_fingerprint": item.get("secret_fingerprint"),
                             "verification": "offline_hmac_signature_match",
+                            "causal_signal": item.get("causal_signal"),
+                            "negative_control_complete": item.get("negative_control_complete"),
+                            "negative_control": item.get("negative_control"),
                         },
                         reasoning=(
                             "The captured token signature matched one bounded offline "

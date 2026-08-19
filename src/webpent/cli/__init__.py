@@ -30,10 +30,16 @@ from webpent.api.scan_registry import (
     register_scan,
 )
 from webpent.cli.loaders import load_cookie_file, load_creds_file, load_payload_file
-from webpent.config.settings import ScanMode, get_settings
+from webpent.config.settings import (
+    ScanMode,
+    ScanProfile,
+    get_settings,
+    resolve_scan_profile,
+)
 from webpent.graph.builder import build_graph
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
+from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.coverage_ledger import CoverageIntelligence
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
 from webpent.shared.persistent_finding_ledger import (
@@ -196,8 +202,16 @@ def scan(
         None,
         "--mode",
         help=(
-            "Per-engagement authority profile: legacy, safe-smart, or "
-            "authorized-active. Defaults to settings/environment."
+            "Per-engagement authority mode: legacy, smart, safe-smart, or "
+            "authorized-active. 'smart' maps to safe-smart."
+        ),
+    ),
+    profile: str | None = typer.Option(
+        None,
+        "--profile",
+        help=(
+            "Composition profile: legacy, smart, smart-observe, authorized-active, "
+            "or vip-qualification."
         ),
     ),
     thread_id: str | None = typer.Option(
@@ -292,10 +306,40 @@ def scan(
         err_console.print("[red]Error:[/red] URL must start with http:// or https://")
         raise typer.Exit(1)
     try:
-        resolved_mode = ScanMode(mode) if mode is not None else get_settings().scan_mode
+        configured_mode = get_settings().scan_mode
+        if profile is not None:
+            resolved_profile, profile_mode = resolve_scan_profile(profile)
+        else:
+            mode_value = str(mode or "").strip().lower()
+            if mode_value == "smart":
+                resolved_profile, profile_mode = resolve_scan_profile(ScanProfile.SMART)
+            elif mode_value:
+                profile_mode = ScanMode(mode_value)
+                resolved_profile = {
+                    ScanMode.LEGACY: ScanProfile.LEGACY,
+                    ScanMode.SAFE_SMART: ScanProfile.SMART_OBSERVE,
+                    ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
+                }[profile_mode]
+            else:
+                profile_mode = configured_mode
+                resolved_profile = {
+                    ScanMode.LEGACY: ScanProfile.LEGACY,
+                    ScanMode.SAFE_SMART: ScanProfile.SMART_OBSERVE,
+                    ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
+                }[profile_mode]
+        if mode is not None and str(mode).strip().lower() == "smart":
+            mode_for_check = ScanMode.SAFE_SMART
+        elif mode is not None:
+            mode_for_check = ScanMode(str(mode).strip().lower())
+        else:
+            mode_for_check = profile_mode
+        if mode_for_check != profile_mode:
+            raise ValueError("--mode and --profile select conflicting authority modes")
+        resolved_mode = profile_mode
     except ValueError as exc:
         err_console.print(
-            "[red]Error:[/red] --mode must be one of: legacy, safe-smart, authorized-active"
+            "[red]Error:[/red] choose --profile legacy, smart, smart-observe, "
+            "authorized-active, vip-qualification; or a compatible --mode"
         )
         raise typer.Exit(1) from exc
 
@@ -377,6 +421,7 @@ def scan(
     header.add_row("Engagement ID", resolved_engagement_id)
     header.add_row("Auto-Approve", "Yes" if auto_approve else "No")
     header.add_row("Mode", resolved_mode.value)
+    header.add_row("Profile", resolved_profile.value)
     header.add_row("PortSwigger", "Yes" if portswigger else "No")
     header.add_row(
         "Credentials",
@@ -489,6 +534,7 @@ def scan(
                 skip_recon=skip_recon,
                 stealth_mode=stealth,
                 scan_mode=resolved_mode,
+                profile=resolved_profile,
                 action_ledger_path=str(settings.action_ledger_path),
             )
 
@@ -692,6 +738,78 @@ def preflight() -> None:
 
     if not pw_ok:
         console.print("\n[yellow]⚠ Playwright is disabled — sandbox will skip gracefully.[/yellow]")
+
+
+@app.command("status")
+def status(
+    profile: str = typer.Option(
+        "legacy",
+        "--profile",
+        help=(
+            "Composition profile to inspect: legacy, smart, smart-observe, "
+            "authorized-active, vip-qualification."
+        ),
+    ),
+) -> None:
+    """Show effective policy, capabilities, budgets, and safe blockers."""
+    try:
+        resolved_profile, resolved_mode = resolve_scan_profile(profile)
+    except ValueError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(2) from exc
+
+    settings = get_settings()
+    manifest = CapabilityRegistry(settings).ensure_discovered()
+    table = Table(title="Effective WebPent Status", border_style="grey50")
+    table.add_column("Area", style="bold cyan")
+    table.add_column("Effective value")
+    table.add_row("Composition profile", resolved_profile.value)
+    table.add_row("Authority mode", resolved_mode.value)
+    table.add_row(
+        "Environment",
+        getattr(settings.environment_profile, "value", str(settings.environment_profile)),
+    )
+    table.add_row("LLM", "enabled" if settings.llm_enabled else "disabled; deterministic fallback")
+    table.add_row("Action budget", f"{settings.smart_action_budget:g}")
+    table.add_row("Max autonomous actions", str(settings.smart_max_actions))
+    table.add_row(
+        "Proof posture",
+        "required" if settings.smart_require_proof_bundle else "candidate downgrade allowed",
+    )
+    table.add_row("Scope", "provided per engagement; canonical origin enforcement")
+    table.add_row("Identities / tenants", "provided per engagement; not inferred from profile")
+    console.print(table)
+
+    capability_table = Table(title="Capability Readiness", border_style="grey50")
+    capability_table.add_column("Capability", style="bold cyan")
+    capability_table.add_column("State")
+    capability_table.add_column("Safe fallback / blocker")
+    fallback_names = {
+        "browser": "human_review_only",
+        "httpx": "native_http",
+        "katana": "native_crawler",
+        "nuclei": "native_validator",
+        "ffuf": "native_parameter_probe",
+        "oob": "inconclusive_without_controlled_callback",
+    }
+    for name, record in sorted((manifest.get("capabilities") or {}).items()):
+        ready = bool(record.get("available"))
+        state = "available and ready" if ready else str(record.get("status") or "unsupported")
+        fallback = "—" if ready else fallback_names.get(name, "safe_stop")
+        capability_table.add_row(name, state, fallback)
+    console.print(capability_table)
+    blockers = manifest.get("blockers") or []
+    if blockers:
+        console.print(
+            Panel(
+                "\n".join(
+                    f"{item.get('capability', 'unknown')}: {item.get('reason', 'unavailable')}"
+                    for item in blockers
+                ),
+                title="Blocked prerequisites",
+                border_style="yellow",
+            )
+        )
 
 
 def main() -> None:

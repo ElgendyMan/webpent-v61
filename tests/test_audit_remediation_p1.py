@@ -85,7 +85,7 @@ def test_resume_capability_expires(capability_settings, monkeypatch):
 
 def test_session_cookie_map_is_encrypted_and_fail_closed(capability_settings):
     encrypted = task_crypto.encrypt_secret_map_for_task({"PHPSESSID": "secret-cookie"})
-    assert encrypted["PHPSESSID"].startswith("enc:v1:")
+    assert encrypted["PHPSESSID"].startswith("enc:v2:")
     assert "secret-cookie" not in encrypted["PHPSESSID"]
     assert task_crypto.decrypt_secret_map_from_task(encrypted) == {"PHPSESSID": "secret-cookie"}
     corrupted = {"PHPSESSID": "enc:v1:not-a-valid-token"}

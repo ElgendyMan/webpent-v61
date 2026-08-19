@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from webpent.config.settings import ScanMode, get_settings
+from webpent.config.settings import ScanMode, ScanProfile, get_settings, resolve_scan_profile
 from webpent.shared.campaign_planner import build_campaign_plan
 from webpent.shared.campaigns import build_waptlab_campaign_ledger
 from webpent.shared.capability_manifest import build_capability_manifest
@@ -59,6 +59,7 @@ def build_initial_state(
     auto_approve: bool = False,
     enable_autonomous_controller: bool = False,
     scan_mode: str | ScanMode | None = None,
+    profile: str | ScanProfile | None = None,
     root_goal_nodes: dict[str, Any] | None = None,
     action_ledger_path: str | None = None,
 ) -> dict[str, Any]:
@@ -74,11 +75,22 @@ def build_initial_state(
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
     settings = get_settings()
     resolved_scan_mode = settings.scan_mode
-    if scan_mode is not None:
-        resolved_scan_mode = ScanMode(str(getattr(scan_mode, "value", scan_mode)))
+    if profile is not None:
+        resolved_profile, resolved_scan_mode = resolve_scan_profile(profile)
         settings = settings.model_copy(update={"scan_mode": resolved_scan_mode})
+    else:
+        if scan_mode is not None:
+            resolved_scan_mode = ScanMode(str(getattr(scan_mode, "value", scan_mode)))
+            settings = settings.model_copy(update={"scan_mode": resolved_scan_mode})
+        resolved_profile = {
+            ScanMode.LEGACY: ScanProfile.LEGACY,
+            ScanMode.SAFE_SMART: ScanProfile.SMART_OBSERVE,
+            ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
+        }[resolved_scan_mode]
     capability_manifest = build_capability_manifest(settings)
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
+    profile_value = getattr(resolved_profile, "value", resolved_profile)
+    governance_profile = profile_value if profile is not None else str(scan_mode_value)
     normalized_payloads = [
         str(item).strip()
         for item in list(custom_payloads or [])
@@ -168,9 +180,12 @@ def build_initial_state(
         "enable_autonomous_controller": bool(enable_autonomous_controller),
         "skip_recon": bool(skip_recon),
         "scan_mode": str(scan_mode_value),
+        "profile": str(profile_value),
         "capability_manifest": capability_manifest,
         "smart_governance": {
-            "profile": str(scan_mode_value),
+            "profile": str(governance_profile),
+            "public_profile": str(profile_value),
+            "authority_mode": str(scan_mode_value),
             "fail_closed": True,
             "auto_approve_requested": bool(auto_approve),
             "smart_auto_approve": bool(settings.smart_auto_approve),

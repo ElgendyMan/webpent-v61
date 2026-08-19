@@ -134,7 +134,7 @@ def verify_cloud_storage(
                         tool_name="cloud_storage_agent",
                         payload=None,
                         url=url,
-                        confidence_level="Tool-Confirmed",
+                        confidence_level="Needs Human Review",
                         vuln_class="cloud_storage_exposure",
                         reasoning=(
                             "HTTP 200 plus provider-specific listing markers were observed "
@@ -146,6 +146,9 @@ def verify_cloud_storage(
                             "status_code": response.status_code,
                             "matched_evidence": matched,
                             "headers": _safe_headers(response),
+                            "causal_signal": False,
+                            "negative_control_complete": False,
+                            "promotion_guard": "blocked_missing_negative_control",
                         },
                         references=["https://owasp.org/www-project-api-security/"],
                         business_impact=(

@@ -39,7 +39,7 @@ def test_assessment_requires_explicit_owner_for_tool_confirmation():
     assert result["confidence_level"] == "Needs Human Review"
 
 
-def test_assessment_confirms_owner_and_foreign_success():
+def test_assessment_confirms_only_with_foreign_denied_negative_control():
     rows = [
         sanitise_probe_result(
             profile=IdentityProfile(name="alice", role="user"),
@@ -52,6 +52,12 @@ def test_assessment_confirms_owner_and_foreign_success():
             url="http://lab.local/orders/1001",
             status_code=200,
             content_length=42,
+        ),
+        sanitise_probe_result(
+            profile=IdentityProfile(name="charlie", role="user"),
+            url="http://lab.local/orders/1001",
+            status_code=403,
+            content_length=0,
         ),
     ]
     result = assess_access_control(rows, owner_identity="alice")
@@ -88,6 +94,7 @@ def test_access_control_node_emits_confirmed_finding_only_with_owner_metadata(mo
         "identity_profiles": {
             "alice": {"role": "user", "cookies": {"session": "alice-secret"}},
             "bob": {"role": "user", "cookies": {"session": "bob-secret"}},
+            "charlie": {"role": "user", "cookies": {"session": "charlie-secret"}},
         },
     }
     result = access_agent.access_control_node(state)

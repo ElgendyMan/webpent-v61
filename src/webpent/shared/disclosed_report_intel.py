@@ -106,26 +106,6 @@ def ingest_disclosed_reports(
     return records
 
 
-def search_disclosed_reports(
-    records: Iterable[dict[str, Any]], query: str, *, limit: int = 20
-) -> list[dict[str, Any]]:
-    """Search normalized records by terms without external retrieval."""
-    terms = {term for term in re.findall(r"[a-z0-9_-]+", query.lower()) if term}
-    scored: list[tuple[int, dict[str, Any]]] = []
-    for record in records:
-        haystack = " ".join(
-            [
-                str(record.get("title", "")),
-                str(record.get("excerpt", "")),
-                " ".join(str(tag) for tag in record.get("tags", [])),
-            ]
-        ).lower()
-        score = sum(1 for term in terms if term in haystack)
-        if score:
-            scored.append((score, record))
-    scored.sort(key=lambda pair: (-pair[0], str(pair[1].get("report_id", ""))))
-    return [record for _, record in scored[: max(0, limit)]]
-
 
 def build_advisories(
     target_url: str,

@@ -45,6 +45,8 @@ from webpent.shared.research_intelligence import (
     ResearchSession,
     SmartNextBestActionEngine,
 )
+from webpent.validators.causal_validator import validate_causal_observation
+from webpent.validators.proof_validator import validate_proof_bundle
 
 _DEFAULT_TASK_CAP = 3
 
@@ -379,6 +381,13 @@ def _information_task_from_record(
     fingerprint = str(record.get("fingerprint") or "").strip()[:160]
     idempotency_key = f"research-information:{fingerprint or action_id}"
     requires_approval = bool(record.get("requires_approval", False))
+    raw_preconditions = record.get("preconditions", ())
+    if isinstance(raw_preconditions, str):
+        preconditions = (raw_preconditions[:160],) if raw_preconditions else ()
+    elif isinstance(raw_preconditions, (list, tuple, set, frozenset)):
+        preconditions = tuple(str(item)[:160] for item in raw_preconditions if str(item))[:8]
+    else:
+        preconditions = ()
     try:
         cost = max(0.1, min(2.0, float(record.get("cost", 1.0) or 1.0)))
     except (TypeError, ValueError):
@@ -396,7 +405,7 @@ def _information_task_from_record(
         source_evidence_ids=(),
         vulnerability_class="research_information",
         hypothesis_id=f"research-gap:{action_id}",
-        preconditions=(),
+        preconditions=preconditions,
         identity_context=str(record.get("identity_context") or "anonymous")[:80],
         workflow_state=str(record.get("workflow_state") or "unknown")[:120],
         probe_family="bounded_information_action",
@@ -462,6 +471,14 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     settings = state.get("settings")
     governance = state.get("smart_governance") or {}
     profile = governance.get("profile") if isinstance(governance, Mapping) else None
+    public_profile = governance.get("public_profile") if isinstance(governance, Mapping) else None
+    known_smart_profiles = {
+        "smart",
+        "smart-observe",
+        "safe-smart",
+        "authorized-active",
+        "vip-qualification",
+    }
     explicitly_disabled = (
         state.get("smart_mode") is False or state.get("enable_smart_campaigns") is False
     )
@@ -470,15 +487,13 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         and (
             state.get("smart_mode")
             or state.get("enable_smart_campaigns")
-            or profile in {"safe-smart", "authorized-active"}
-            or str(state.get("scan_mode", "legacy")) in {"safe-smart", "authorized-active"}
+            or profile in known_smart_profiles
+            or public_profile in known_smart_profiles
+            or str(state.get("scan_mode", "legacy")) in known_smart_profiles
         )
     )
     if settings is not None and not explicitly_disabled:
-        enabled = enabled or str(getattr(settings, "scan_mode", "legacy")) in {
-            "safe-smart",
-            "authorized-active",
-        }
+        enabled = enabled or str(getattr(settings, "scan_mode", "legacy")) in known_smart_profiles
     if not enabled:
         return {
             "campaign_task_outcomes": [],
@@ -654,6 +669,16 @@ def _finding_value(finding: Any, key: str, default: Any = None) -> Any:
     return getattr(finding, key, default)
 
 
+def _swagger_promotion_is_proven(state: Mapping[str, Any]) -> bool:
+    """Require independent causal and sealed proof before confirmation."""
+    causal_observation = state.get("causal_observation")
+    proof_bundle = state.get("proof_bundle")
+    return validate_causal_observation(causal_observation) and validate_proof_bundle(
+        proof_bundle,
+        require_negative_control=True,
+    )
+
+
 def _swagger_ssrf_finding(
     state: Mapping[str, Any],
     response: Any,
@@ -694,6 +719,16 @@ def _swagger_ssrf_finding(
         "returned the application-specific IPv6-loopback SSRF marker. The request "
         "and response metadata are reproducible while the response body is redacted."
     )
+    promotion_proven = _swagger_promotion_is_proven(state)
+    promotion_status = (
+        "tool_confirmed"
+        if promotion_proven
+        else "blocked_missing_causal_signal_or_negative_control"
+    )
+    promoted_confidence = (
+        Confidence.CONFIRMED.value if promotion_proven else Confidence.TENTATIVE.value
+    )
+    promoted_level = "Tool-Confirmed" if promotion_proven else "Needs Human Review"
     for current in state.get("findings") or []:
         if (
             str(_finding_value(current, "vuln_class", "")) == VulnClass.SSRF.value
@@ -710,10 +745,37 @@ def _swagger_ssrf_finding(
                     )
                 return base.model_copy(
                     update={
-                        "confidence": Confidence.CONFIRMED.value,
-                        "confidence_level": "Tool-Confirmed",
+                        "confidence": (
+                            Confidence.CONFIRMED.value
+                            if promotion_proven
+                            else str(base.confidence or Confidence.TENTATIVE.value)
+                        ),
+                        "confidence_level": (
+                            "Tool-Confirmed" if promotion_proven else promoted_level
+                        ),
                         "payload": "url=http://[::1]/",
-                        "evidence": {**(base.evidence or {}), **evidence},
+                        "evidence": {
+                            **(base.evidence or {}),
+                            **evidence,
+                            "promotion_guard": {
+                                "status": promotion_status,
+                                "causal_signal": bool(
+                                    isinstance(state.get("causal_observation"), Mapping)
+                                    and state["causal_observation"].get("causal_signal") is True
+                                ),
+                                "negative_control_complete": bool(
+                                    isinstance(state.get("causal_observation"), Mapping)
+                                    and state["causal_observation"].get(
+                                        "negative_control_complete"
+                                    )
+                                    is True
+                                ),
+                                "proof_bundle_valid": validate_proof_bundle(
+                                    state.get("proof_bundle"),
+                                    require_negative_control=True,
+                                ),
+                            },
+                        },
                         "evidence_bundle": {
                             "request": {
                                 "method": "GET",
@@ -742,12 +804,20 @@ def _swagger_ssrf_finding(
         request_data={"url": "http://[::1]/"},
         target_param="url",
         url=request_url,
-        confidence=Confidence.CONFIRMED.value,
-        evidence=evidence,
+        confidence=promoted_confidence,
         references=["https://cwe.mitre.org/data/definitions/918.html"],
         vuln_class=VulnClass.SSRF.value,
-        confidence_level="Tool-Confirmed",
+        confidence_level=promoted_level,
         reasoning=reasoning,
+        evidence={
+            **evidence,
+            "promotion_guard": {
+                "status": promotion_status,
+                "causal_signal": False,
+                "negative_control_complete": False,
+                "proof_bundle_valid": False,
+            },
+        },
     )
 
 
@@ -1001,7 +1071,17 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         outcomes.append(executor.execute(task, handler, preconditions_met=ready))
 
     for information_task, information_record in information_tasks:
-        information_outcome = executor.execute(information_task, handler, preconditions_met=True)
+        information_ready, _ = resolve_preconditions(
+            information_task,
+            observed_preconditions=state_observed_preconditions,
+            blocked_preconditions=state_blocked_preconditions,
+            require_observations=True,
+        )
+        information_outcome = executor.execute(
+            information_task,
+            handler,
+            preconditions_met=information_ready,
+        )
         outcomes.append(information_outcome)
         status = str(information_outcome.get("status") or "")
         outcome_name = "executed" if status == CampaignTaskStatus.EXECUTED.value else "blocked"

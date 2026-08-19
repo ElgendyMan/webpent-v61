@@ -30,6 +30,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from webpent.memory.db import get_db_manager
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
 from webpent.models.findings import Confidence, Finding
+from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.deserialization import build_oob_command_templates
 from webpent.shared.evidence_contract import contract_required, evaluate_contract
 from webpent.shared.evidence_ledger import merge_evidence_ledger
@@ -177,17 +178,21 @@ def _validate_generic_evidence_contract(finding: Finding) -> Finding | None:
     if not isinstance(contract_evidence, dict):
         contract_evidence = evidence
     evaluation = evaluate_contract(finding.evidence_contract, contract_evidence)
+    proof_bundle_valid = validate_proof_bundle(
+        contract_evidence.get("proof_bundle"), require_negative_control=True
+    )
+    evaluation["proof_bundle_valid"] = proof_bundle_valid
     evidence["evidence_contract_evaluation"] = evaluation
     evidence["validation_attempted"] = True
     evidence["validation_requeue"] = False
-    if evaluation.get("satisfied"):
+    if evaluation.get("satisfied") and proof_bundle_valid:
         return finding.model_copy(
             update={
                 "confidence": Confidence.CONFIRMED.value,
                 "confidence_level": "Tool-Confirmed",
                 "evidence": evidence,
                 "reasoning": (
-                    "Generic Evidence Contract satisfied: "
+                    "Generic Evidence Contract and sealed ProofBundle satisfied: "
                     f"{evaluation.get('reason', 'all primitives satisfied')}."
                 ),
             }
@@ -196,7 +201,11 @@ def _validate_generic_evidence_contract(finding: Finding) -> Finding | None:
         {
             "validation_unavailable": True,
             "tool_infra_failure": False,
-            "validation_failure_reason": "evidence_contract_unsatisfied",
+            "validation_failure_reason": (
+                "evidence_contract_unsatisfied"
+                if not evaluation.get("satisfied")
+                else "proof_bundle_invalid"
+            ),
         }
     )
     return finding.model_copy(
@@ -931,7 +940,10 @@ def _validate_csrf(
     #   1. Playwright rendered the DOM (JS-injected tokens visible)
     #   2. No SameSite cookies detected
     #   3. Structural check found a vulnerable form (missing token)
-    can_tool_confirm = used_playwright and not samesite_detected
+    # A rendered tokenless form is only a structural signal. Without an
+    # actual cross-site state-changing replay and a denied negative control,
+    # automated confirmation would overclaim exploitability.
+    can_tool_confirm = False
 
     if is_vulnerable and can_tool_confirm:
         logger.info(
@@ -2853,7 +2865,7 @@ def _apply_validation_failure_learning(
 
 
 def _validate_known_swagger_ssrf(finding: Finding, state: PentestState) -> Finding | None:
-    """Accept only a Swagger SSRF proof already produced by the central executor."""
+    """Accept only a fully validated Swagger SSRF proof from the executor."""
     del state
     if finding.vuln_class != "ssrf" or "/swagger_ui" not in str(finding.url):
         return None
@@ -2861,6 +2873,12 @@ def _validate_known_swagger_ssrf(finding: Finding, state: PentestState) -> Findi
     if evidence.get("action_executor_probe") is not True:
         return None
     if finding.confidence != Confidence.CONFIRMED.value:
+        return None
+    if evidence.get("causal_signal") is not True:
+        return None
+    if evidence.get("negative_control_complete") is not True:
+        return None
+    if not validate_proof_bundle(evidence.get("proof_bundle"), require_negative_control=True):
         return None
     return finding
 
@@ -3408,29 +3426,46 @@ def _validate_open_redirect(
         "baseline": {"status_code": baseline_status, "location_host": baseline_host or None},
         "candidate": {"status_code": candidate_status, "location_host": candidate_host or None},
         "follow_redirects": False,
+        "causal_signal": bool(confirmed),
+        "negative_control_complete": bool(baseline_host.lower() != canary_host),
     }
     if confirmed:
-        return finding.model_copy(
-            update={
-                "confidence": Confidence.CONFIRMED.value,
-                "confidence_level": "Tool-Confirmed",
-                "payload": "external_redirect_canary",
-                "evidence": {**(finding.evidence or {}), **evidence},
-                "evidence_bundle": {
-                    "request": {
-                        "method": "GET",
-                        "url": "[REDACTED-QUERY]",
-                        "headers": {},
+        bundle = build_proof_bundle(
+            engagement_id=str(evidence.get("engagement_id") or "runtime-unbound"),
+            finding_id=str(finding.id),
+            evidence=[evidence["baseline"], evidence["candidate"]],
+            evidence_refs=["open_redirect:baseline", "open_redirect:candidate"],
+            negative_control=evidence["baseline"],
+        ).seal(actor="open_redirect_validator")
+        if validate_proof_bundle(bundle, require_negative_control=True):
+            evidence["proof_bundle_sealed"] = True
+            evidence["proof_bundle"] = bundle.model_dump(mode="json")
+            evidence["promotion_guard"] = {"status": "passed", "proof_bundle_sealed": True}
+            return finding.model_copy(
+                update={
+                    "confidence": Confidence.CONFIRMED.value,
+                    "confidence_level": "Tool-Confirmed",
+                    "payload": "external_redirect_canary",
+                    "evidence": {**(finding.evidence or {}), **evidence},
+                    "evidence_bundle": {
+                        "request": {
+                            "method": "GET",
+                            "url": "[REDACTED-QUERY]",
+                            "headers": {},
+                        },
+                        "response": evidence["candidate"],
                     },
-                    "response": evidence["candidate"],
-                },
-                "reasoning": (
-                    "The candidate parameter produced a 3xx redirect to a "
-                    "controlled external canary host, while the baseline did not. "
-                    "Redirects were not followed."
-                ),
-            }
-        )
+                    "reasoning": (
+                        "The candidate parameter produced a 3xx redirect to a "
+                        "controlled external canary host, while the baseline did not. "
+                        "Redirects were not followed and the sealed replay proof passed."
+                    ),
+                }
+            )
+        evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "proof_bundle_validation_failed",
+        }
     return finding.model_copy(
         update={
             "confidence_level": "Needs Human Review",

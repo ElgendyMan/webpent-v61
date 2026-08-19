@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from webpent.models.findings import Confidence, Finding
+from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -187,12 +188,60 @@ def _evidence(
 def _confirmed(
     finding: Finding, evidence: dict[str, Any], reasoning: str, payload_label: str
 ) -> Finding:
+    merged_evidence = {**(finding.evidence or {}), **evidence}
+    if not (
+        bool(merged_evidence.get("causal_signal"))
+        and bool(merged_evidence.get("negative_control_complete"))
+    ):
+        merged_evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "causal_signal_and_negative_control_required",
+        }
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": merged_evidence,
+                "reasoning": (
+                    f"{reasoning} Automated promotion was blocked because the replay "
+                    "did not provide both causal signal and a completed negative control."
+                ),
+            }
+        )
+
+    baseline = merged_evidence.get("baseline")
+    candidate = merged_evidence.get("candidate")
+    bundle = build_proof_bundle(
+        engagement_id=str(merged_evidence.get("engagement_id") or "runtime-unbound"),
+        finding_id=str(finding.id),
+        evidence=[item for item in (baseline, candidate) if isinstance(item, dict)],
+        evidence_refs=[
+            f"replay:{merged_evidence.get('validator', 'unknown')}:baseline",
+            f"replay:{merged_evidence.get('validator', 'unknown')}:candidate",
+        ],
+        negative_control=baseline,
+    ).seal(actor="active_validator")
+    if not validate_proof_bundle(bundle, require_negative_control=True):
+        merged_evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "proof_bundle_seal_validation_failed",
+        }
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": merged_evidence,
+                "reasoning": f"{reasoning} Automated promotion was blocked by proof validation.",
+            }
+        )
+
+    merged_evidence["proof_bundle_sealed"] = True
+    merged_evidence["proof_bundle"] = bundle.model_dump(mode="json")
+    merged_evidence["promotion_guard"] = {"status": "passed", "proof_bundle_sealed": True}
     return finding.model_copy(
         update={
             "confidence": Confidence.CONFIRMED.value,
             "confidence_level": "Tool-Confirmed",
             "payload": payload_label,
-            "evidence": {**(finding.evidence or {}), **evidence},
+            "evidence": merged_evidence,
             "evidence_bundle": {
                 "request": {
                     "method": evidence.get("candidate", {}).get("method"),
@@ -289,6 +338,10 @@ def _inband_marker_check(
         payload_label=payload,
         matched_marker=marker,
     )
+    evidence["causal_signal"] = bool(marker)
+    evidence["negative_control_complete"] = bool(
+        marker and baseline is not None and marker.lower() not in baseline_lowered
+    )
     if marker:
         return _confirmed(
             finding,
@@ -353,6 +406,8 @@ def validate_ssti(finding: Finding, cookies: dict[str, str] | None = None) -> Fi
             "SSTI validator could not complete a baseline/candidate replay.",
             not_scanned=True,
         )
+    evidence["causal_signal"] = "391" in probe.body and "391" not in baseline.body
+    evidence["negative_control_complete"] = bool("391" not in baseline.body)
     if "391" in probe.body and "391" not in baseline.body:
         return _confirmed(
             finding,
@@ -404,6 +459,8 @@ def validate_nosql_injection(finding: Finding, cookies: dict[str, str] | None = 
     materially_changed = abs(len(probe.body) - len(baseline.body)) >= max(
         32, int(len(baseline.body) * 0.10)
     )
+    evidence["causal_signal"] = bool(auth_boundary and materially_changed)
+    evidence["negative_control_complete"] = bool(baseline.status_code in {401, 403})
     if auth_boundary and materially_changed:
         evidence["differential"] = "unauthorized_baseline_to_success_candidate"
         return _confirmed(

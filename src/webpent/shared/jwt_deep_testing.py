@@ -41,6 +41,7 @@ DEFAULT_WEAK_SECRET_CANDIDATES: tuple[str, ...] = (
 )
 
 _SUPPORTED_HMAC = {"HS256": hashlib.sha256, "HS384": hashlib.sha384, "HS512": hashlib.sha512}
+_NEGATIVE_CONTROL_SECRET = "__webpent_invalid_control_secret__"
 
 
 def _b64url_decode(value: str) -> bytes:
@@ -185,6 +186,7 @@ def analyze_captured_jwt(
             (candidate for candidate in candidates if _verify_hmac(token, candidate, algorithm)),
             None,
         )
+        negative_control_rejected = not _verify_hmac(token, _NEGATIVE_CONTROL_SECRET, algorithm)
         if matched is not None:
             observations.append(
                 {
@@ -192,6 +194,12 @@ def analyze_captured_jwt(
                     "algorithm": algorithm,
                     "token_fingerprint": metadata["token_fingerprint"],
                     "secret_fingerprint": hashlib.sha256(matched.encode("utf-8")).hexdigest()[:16],
+                    "causal_signal": True,
+                    "negative_control_complete": negative_control_rejected,
+                    "negative_control": {
+                        "type": "wrong_secret_rejected",
+                        "observed": negative_control_rejected,
+                    },
                     "evidence": (
                         "The captured signature verifies offline with a bounded "
                         "common-secret candidate."

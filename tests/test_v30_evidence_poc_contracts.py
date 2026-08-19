@@ -101,6 +101,9 @@ def test_owner_foreign_contract_requires_both_access_paths() -> None:
         {
             "owner": {"accessible": True},
             "foreign": {"accessible": True},
+            "causal_signal": True,
+            "negative_control_complete": True,
+            "proof_bundle_sealed": True,
         },
     )
     clean = evaluate_contract(

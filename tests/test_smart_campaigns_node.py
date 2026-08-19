@@ -415,7 +415,9 @@ def test_authorized_active_file_upload_is_bounded_and_typed(monkeypatch) -> None
 # End of typed authorized-action regression coverage.
 
 
-def test_authorized_active_direct_swagger_probe_confirms_existing_finding(monkeypatch) -> None:
+def test_authorized_active_direct_swagger_probe_requires_proof_bundle_for_confirmation(
+    monkeypatch,
+) -> None:
     from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 
     class Response:
@@ -459,9 +461,13 @@ def test_authorized_active_direct_swagger_probe_confirms_existing_finding(monkey
     result = smart_campaigns_execution_node(state)
     direct = [item for item in result["findings"] if item.id == existing.id]
     assert len(direct) == 1
-    assert direct[0].confidence == Confidence.CONFIRMED.value
-    assert direct[0].confidence_level == "Tool-Confirmed"
+    assert direct[0].confidence == Confidence.TENTATIVE.value
+    assert direct[0].confidence_level == "Needs Human Review"
     assert direct[0].evidence["matched_marker"] == "ipv6-loopback"
+    assert (
+        direct[0].evidence["promotion_guard"]["status"]
+        == "blocked_missing_causal_signal_or_negative_control"
+    )
     assert "body" not in direct[0].evidence["response"]
     assert direct[0].id == existing.id
     assert any(

@@ -90,7 +90,10 @@ from webpent.config.policies import RabbitHolePolicy
 from webpent.models.findings import VulnClass
 from webpent.models.goal_tree import (
     GoalType,
+    count_goal_nodes,
     create_rabbit_hole_branch_goal,
+    curiosity_budget_consumed,
+    find_root_goal_id,
 )
 from webpent.models.hypothesis import Hypothesis, HypothesisOrigin
 from webpent.models.mental_model import (
@@ -754,10 +757,10 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
             ),
             estimated_cost=estimated_cost,
             parent_hypothesis_id=None,  # top-level Rabbit Hole hypothesis
-            # V10 AUDIT FIX (H3): set deterministic_match=True so the
-            # Strategist's promotion threshold is bypassed (the
-            # confidence_score of 0.4 is below the 0.5 threshold).
-            deterministic_match=True,
+            # RAG/LLM-informed rabbit-hole branches are research proposals,
+            # not deterministic validators. They must pass the normal causal
+            # signal and negative-control gates before promotion.
+            deterministic_match=False,
         )
         new_hypotheses.append(new_hypothesis)
 
@@ -825,68 +828,18 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
 # Helpers
 # ---------------------------------------------------------------------------
 def _count_rabbit_hole_branches(goal_tree_state: Any) -> int:
-    """Count RABBIT_HOLE_BRANCH goal nodes in the Goal Tree."""
-    if not goal_tree_state:
-        return 0
-    raw_nodes = goal_tree_state.get("nodes") if isinstance(goal_tree_state, dict) else None
-    if not raw_nodes:
-        return 0
-    count = 0
-    for nd in raw_nodes.values():
-        try:
-            gt = nd.get("goal_type") if isinstance(nd, dict) else None
-            if gt == GoalType.RABBIT_HOLE_BRANCH.value:
-                count += 1
-        except Exception:
-            continue
-    return count
+    """Compatibility wrapper around the canonical GoalTree counter."""
+    return count_goal_nodes(goal_tree_state, GoalType.RABBIT_HOLE_BRANCH)
 
 
 def _estimate_curiosity_budget_consumed(goal_tree_state: Any) -> float:
-    """Estimate the curiosity budget consumed as a fraction in [0, 1].
-
-    Conservative approximation: the fraction of total Goal Tree
-    budget_consumed attributable to RABBIT_HOLE_BRANCH goals. The
-    real budget tracker is the Goal Tree node's budget_consumed field,
-    accumulated across the engagement by increment_budget_consumed.
-    """
-    if not goal_tree_state:
-        return 0.0
-    raw_nodes = goal_tree_state.get("nodes") if isinstance(goal_tree_state, dict) else None
-    if not raw_nodes:
-        return 0.0
-    total_consumed = 0
-    rabbit_consumed = 0
-    for nd in raw_nodes.values():
-        try:
-            if not isinstance(nd, dict):
-                continue
-            consumed = int(nd.get("budget_consumed", 0))
-            total_consumed += consumed
-            if nd.get("goal_type") == GoalType.RABBIT_HOLE_BRANCH.value:
-                rabbit_consumed += consumed
-        except Exception:
-            continue
-    if total_consumed == 0:
-        return 0.0
-    return min(1.0, rabbit_consumed / total_consumed)
+    """Compatibility wrapper around the canonical GoalTree budget ratio."""
+    return curiosity_budget_consumed(goal_tree_state)
 
 
 def _find_root_goal_id(goal_tree_state: Any) -> str | None:
-    """Find the ROOT goal node ID in the Goal Tree."""
-    if not goal_tree_state:
-        return None
-    raw_nodes = goal_tree_state.get("nodes") if isinstance(goal_tree_state, dict) else None
-    if not raw_nodes:
-        return None
-    for nid, nd in raw_nodes.items():
-        try:
-            gt = nd.get("goal_type") if isinstance(nd, dict) else None
-            if gt == GoalType.ROOT.value:
-                return str(nid)
-        except Exception:
-            continue
-    return None
+    """Compatibility wrapper around the canonical GoalTree root selector."""
+    return find_root_goal_id(goal_tree_state)
 
 
 def _log_rabbit_hole_decision(

@@ -40,14 +40,17 @@ of the ``credentials["password"]`` field only:
 readable lets operators debug task payloads in Celery monitoring
 tools (e.g. Flower) without decrypting anything.
 
-The Fernet key is derived from ``Settings.celery_payload_key`` via
-SHA-256 -> urlsafe-base64, so operators configure any sufficiently
-long passphrase (same UX as ``jwt_secret_key`` / ``audit_secret_key``)
-rather than being required to hand-generate a raw 32-byte Fernet key.
+The current Fernet key is derived from ``Settings.celery_payload_key`` via
+versioned PBKDF2-HMAC-SHA256 with a per-message random salt. Operators still
+configure a passphrase, while each broker envelope carries only its salt and
+ciphertext. Legacy ``enc:v1:`` envelopes (the former SHA-256 derivation) remain
+readable during rotation, and an optional previous key can be configured with
+``CELERY_PAYLOAD_KEY_PREVIOUS`` or ``WEBPENT_CELERY_PAYLOAD_KEY_PREVIOUS``.
+New dispatches always use ``enc:v2:``.
 
 Both functions are idempotent / defensive by design:
   * :func:`decrypt_credentials_from_task` only attempts decryption when
-    the password carries the ``enc:v1:`` marker this module writes —
+    the password carries a recognized ``enc:v2:`` or legacy ``enc:v1:`` marker —
     a plaintext password (e.g. from a test harness, the CLI, or a task
     dispatched before this fix shipped) passes through unchanged.
   * Both functions fail CLOSED on error: if encryption fails, the
@@ -79,6 +82,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import os
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -86,18 +91,119 @@ logger = logging.getLogger(__name__)
 # can tell an encrypted payload apart from a plaintext one (idempotency —
 # see module docstring). Chosen to be exceedingly unlikely to collide with
 # a real plaintext password.
-_ENCRYPTED_MARKER = "enc:v1:"
+_LEGACY_ENCRYPTED_MARKER = "enc:v1:"
+_ENCRYPTED_MARKER = "enc:v2:"
+_KDF_VERSION = 2
+_KDF_SALT_BYTES = 16
+_KDF_ITERATIONS = 600_000
+_PREVIOUS_KEY_ENV_NAMES = (
+    "CELERY_PAYLOAD_KEY_PREVIOUS",
+    "WEBPENT_CELERY_PAYLOAD_KEY_PREVIOUS",
+    "CELERY_PAYLOAD_KEY_OLD",
+    "WEBPENT_CELERY_PAYLOAD_KEY_OLD",
+)
 
 
 def _derive_fernet_key(secret: str) -> bytes:
-    """Derive a valid 32-byte urlsafe-base64 Fernet key from any string.
-
-    Fernet requires an exact key format; operators should not need to
-    hand-generate one. SHA-256 always produces exactly 32 bytes, which
-    urlsafe_b64encode turns into a valid Fernet key deterministically.
-    """
+    """Derive the legacy SHA-256 Fernet key for v1 migration reads only."""
     digest = hashlib.sha256(secret.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(digest)
+
+
+def derive_v2_fernet_key(secret: str, salt: bytes) -> bytes:
+    """Derive a Fernet key with the versioned PBKDF2-HMAC-SHA256 policy."""
+    if not secret or not isinstance(salt, bytes) or len(salt) < _KDF_SALT_BYTES:
+        raise ValueError("PBKDF2 key derivation requires a secret and a 16-byte salt")
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        secret.encode("utf-8"),
+        salt,
+        _KDF_ITERATIONS,
+        dklen=32,
+    )
+    return base64.urlsafe_b64encode(digest)
+
+
+def _configured_secrets() -> tuple[str, ...]:
+    """Return current and explicitly configured previous secrets, deduplicated."""
+    try:
+        from webpent.config.settings import get_settings
+
+        settings = get_settings()
+        current = str(settings.celery_payload_key or "")
+        previous = str(getattr(settings, "celery_payload_key_previous", "") or "")
+    except Exception:
+        current = ""
+        previous = ""
+    values = [current, previous]
+    for env_name in _PREVIOUS_KEY_ENV_NAMES:
+        value = os.getenv(env_name, "").strip()
+        if value:
+            values.append(value)
+    return tuple(dict.fromkeys(value for value in values if value))
+
+
+def _encrypt_value(value: str, *, marker: str = _ENCRYPTED_MARKER) -> str:
+    """Encrypt one value using the current versioned KDF envelope."""
+    from cryptography.fernet import Fernet
+
+    secrets_for_use = _configured_secrets()
+    if not secrets_for_use:
+        raise RuntimeError("celery payload key is not configured")
+    salt = secrets.token_bytes(_KDF_SALT_BYTES)
+    token = Fernet(derive_v2_fernet_key(secrets_for_use[0], salt)).encrypt(
+        value.encode("utf-8")
+    ).decode("ascii")
+    salt_text = base64.urlsafe_b64encode(salt).decode("ascii").rstrip("=")
+    return f"enc:v2:{salt_text}:{token}"
+
+
+def _decode_v2_envelope(payload: str) -> tuple[bytes, str]:
+    """Decode ``enc:v2:<salt>:<token>`` without accepting ambiguous fields."""
+    prefix = _ENCRYPTED_MARKER
+    if not payload.startswith(prefix):
+        raise ValueError("not a v2 envelope")
+    remainder = payload[len(prefix) :]
+    salt_text, separator, token = remainder.partition(":")
+    if not separator or not salt_text or not token:
+        raise ValueError("malformed v2 envelope")
+    padded = salt_text + "=" * (-len(salt_text) % 4)
+    salt = base64.urlsafe_b64decode(padded.encode("ascii"))
+    if len(salt) != _KDF_SALT_BYTES:
+        raise ValueError("invalid v2 salt length")
+    return salt, token
+
+
+def _decrypt_value(payload: str) -> str:
+    """Decrypt v2 or legacy v1; caller handles the fail-closed exception."""
+    from cryptography.fernet import Fernet
+
+    candidates = _configured_secrets()
+    if payload.startswith(_ENCRYPTED_MARKER):
+        salt, token = _decode_v2_envelope(payload)
+        for secret in candidates:
+            try:
+                return Fernet(derive_v2_fernet_key(secret, salt)).decrypt(
+                    token.encode("ascii")
+                ).decode("utf-8")
+            except Exception:
+                continue
+        raise ValueError("v2 decryption failed")
+    if payload.startswith(_LEGACY_ENCRYPTED_MARKER):
+        token = payload[len(_LEGACY_ENCRYPTED_MARKER) :]
+        if not token:
+            raise ValueError("empty legacy envelope")
+        for secret in candidates:
+            try:
+                return Fernet(_derive_fernet_key(secret)).decrypt(
+                    token.encode("ascii")
+                ).decode("utf-8")
+            except Exception:
+                continue
+        raise ValueError("legacy decryption failed")
+    if payload.startswith("enc:"):
+        raise ValueError("unsupported encrypted envelope version")
+    return payload
 
 
 def encrypt_credentials_for_task(
@@ -121,14 +227,8 @@ def encrypt_credentials_for_task(
     if not password:
         return dict(credentials)
     try:
-        from cryptography.fernet import Fernet
-
-        from webpent.config.settings import get_settings
-
-        key = _derive_fernet_key(get_settings().celery_payload_key)
-        token = Fernet(key).encrypt(password.encode("utf-8")).decode("ascii")
         out = dict(credentials)
-        out["password"] = _ENCRYPTED_MARKER + token
+        out["password"] = _encrypt_value(password)
         return out
     except Exception as exc:
         logger.error(
@@ -167,18 +267,11 @@ def decrypt_credentials_from_task(
     if not credentials:
         return {}
     password = credentials.get("password", "")
-    if not password.startswith(_ENCRYPTED_MARKER):
+    if not password.startswith("enc:"):
         return dict(credentials)
     try:
-        from cryptography.fernet import Fernet
-
-        from webpent.config.settings import get_settings
-
-        key = _derive_fernet_key(get_settings().celery_payload_key)
-        token = password[len(_ENCRYPTED_MARKER) :]
-        plaintext = Fernet(key).decrypt(token.encode("ascii")).decode("utf-8")
         out = dict(credentials)
-        out["password"] = plaintext
+        out["password"] = _decrypt_value(password)
         return out
     except Exception as exc:
         logger.error(
@@ -201,20 +294,13 @@ def encrypt_secret_map_for_task(
     if not values:
         return {}
     try:
-        from cryptography.fernet import Fernet
-
-        from webpent.config.settings import get_settings
-
-        key = _derive_fernet_key(get_settings().celery_payload_key)
-        fernet = Fernet(key)
         out: dict[str, str] = {}
         for name, value in values.items():
             text = str(value)
-            if not text or text.startswith(_ENCRYPTED_MARKER):
+            if not text or text.startswith("enc:"):
                 out[str(name)] = text
                 continue
-            token = fernet.encrypt(text.encode("utf-8")).decode("ascii")
-            out[str(name)] = _ENCRYPTED_MARKER + token
+            out[str(name)] = _encrypt_value(text)
         return out
     except Exception as exc:
         logger.error(
@@ -232,20 +318,10 @@ def decrypt_secret_map_from_task(
     if not values:
         return {}
     try:
-        from cryptography.fernet import Fernet
-
-        from webpent.config.settings import get_settings
-
-        key = _derive_fernet_key(get_settings().celery_payload_key)
-        fernet = Fernet(key)
         out: dict[str, str] = {}
         for name, value in values.items():
             text = str(value)
-            if not text.startswith(_ENCRYPTED_MARKER):
-                out[str(name)] = text
-                continue
-            token = text[len(_ENCRYPTED_MARKER) :]
-            out[str(name)] = fernet.decrypt(token.encode("ascii")).decode("utf-8")
+            out[str(name)] = _decrypt_value(text) if text.startswith("enc:") else text
         return out
     except Exception as exc:
         logger.error(

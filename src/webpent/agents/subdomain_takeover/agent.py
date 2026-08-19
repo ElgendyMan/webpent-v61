@@ -166,7 +166,7 @@ def verify_subdomain_takeover(
                     tool_name="subdomain_takeover_agent",
                     payload=None,
                     url=url,
-                    confidence_level="Tool-Confirmed",
+                    confidence_level="Needs Human Review",
                     vuln_class="subdomain_takeover",
                     reasoning=(
                         "CNAME provider signature and provider-specific HTTP fingerprint matched."
@@ -178,6 +178,9 @@ def verify_subdomain_takeover(
                         "status_code": response.status_code,
                         "matched_markers": matched,
                         "headers": _safe_headers(response),
+                        "causal_signal": False,
+                        "negative_control_complete": False,
+                        "promotion_guard": "blocked_missing_negative_control_and_ownership_proof",
                     },
                     references=[
                         "https://owasp.org/www-community/attacks/Hostile_subdomain_takeover"

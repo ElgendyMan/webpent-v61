@@ -194,7 +194,13 @@ def _smart_campaigns_enabled(state: PentestState) -> bool:
     return bool(
         state.get("smart_mode")
         or state.get("enable_smart_campaigns")
-        or profile in {"safe-smart", "authorized-active"}
+        or profile in {
+            "smart",
+            "smart-observe",
+            "safe-smart",
+            "authorized-active",
+            "vip-qualification",
+        }
     )
 
 

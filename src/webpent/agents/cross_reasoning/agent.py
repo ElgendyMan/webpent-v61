@@ -241,7 +241,8 @@ def cross_reasoning_node(state: PentestState) -> dict:
     # (atomic type migration — no mixed-type list window). The chain
     # is LLM-proposed narrative, so origin=CROSS_REASONS and
     # confidence_score=0.3 (same base as a heuristic match — the LLM
-    # drafted it, but no tool has confirmed it).
+    # drafted it, but no tool has confirmed it). It must remain a proposal
+    # until a tool-backed causal signal and negative control are validated.
     # V10 P3-1 FIX: Previously ALL cross-reasoning chain hypotheses got
     # vuln_class=UNKNOWN, which is NOT in EXPLOITABLE_CLASSES — so the
     # Strategist's promote_hypothesis_to_finding (prioritization.py)
@@ -252,9 +253,8 @@ def cross_reasoning_node(state: PentestState) -> dict:
     # findings list is empty OR the top-severity finding's vuln_class
     # is not in EXPLOITABLE_CLASSES (no clear mapping), fall back to
     # VulnClass.SSRF.value (same default as rabbit_hole's
-    # _infer_rabbit_hole_vuln_class). Also set deterministic_match=True
-    # so the Strategist's promotion bypass fires — the chain is
-    # grounded in confirmed findings, not a pure heuristic.
+    # _infer_rabbit_hole_vuln_class). The chain is still an LLM-synthesized
+    # narrative and cannot receive deterministic promotion from links alone.
     _chain_vuln_class: str = VulnClass.SSRF.value  # safe default
     if findings:
         _sorted_for_class = sorted(
@@ -282,12 +282,12 @@ def cross_reasoning_node(state: PentestState) -> dict:
                 confidence_score=compute_initial_hypothesis_confidence(
                     HypothesisOrigin.CROSS_REASONS,
                     source_kind="cross_reasoning",
-                    deterministic_match=True,
+                    deterministic_match=False,
                 ),
-                # V10 P3-1 FIX: bypass the Strategist's probabilistic
-                # promotion threshold — the chain is grounded in
-                # confirmed findings, not a pure heuristic.
-                deterministic_match=True,
+                # LLM narrative synthesis is not a deterministic validator.
+                # Promotion remains gated by tool-backed causal evidence and
+                # a completed negative control in the normal pipeline.
+                deterministic_match=False,
             )
         )
 
