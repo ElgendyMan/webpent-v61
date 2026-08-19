@@ -2785,6 +2785,33 @@ def _apply_validation_failure_learning(
 
     updated_hypothesis = matched_hypothesis.model_copy(update={"confidence_score": new_score})
 
+    critique_action = "continue"
+    critique_rule = "self_critique_unavailable"
+    try:
+        from webpent.shared.self_critique import (
+            SelfCritiqueCheckpoint,
+            recommend_self_critique_action,
+        )
+
+        critique_state = {
+            "hypotheses": hypotheses,
+            "findings": [],
+            "decision_log": [],
+        }
+        recommendation, critique_rule, _ = recommend_self_critique_action(
+            critique_state,
+            checkpoint=SelfCritiqueCheckpoint.VALIDATION_FAILURE,
+            hypothesis=matched_hypothesis,
+            branch_id=str(hypothesis_id),
+        )
+        critique_action = recommendation.value
+    except Exception as exc:
+        logger.debug(
+            "Validator self-critique checkpoint unavailable for %s: %s",
+            hypothesis_id,
+            exc,
+        )
+
     # Decision Log entry — uses "self_critique" decision_type (the
     # existing type for confidence-adjustment decisions). The
     # rule_fired string is deterministic and auditable.
@@ -2796,7 +2823,7 @@ def _apply_validation_failure_learning(
         ),
         "outcome": (
             f"confidence_score {current_score:.3f} -> {new_score:.3f} "
-            f"for hypothesis {hypothesis_id}"
+            f"for hypothesis {hypothesis_id}; self_critique={critique_action}"
         ),
         "entity_refs": [str(hypothesis_id), str(finding.id)],
         "branch_id": str(hypothesis_id),
@@ -2807,6 +2834,8 @@ def _apply_validation_failure_learning(
             "previous_confidence": current_score,
             "new_confidence": new_score,
             "finding_id": str(finding.id),
+            "self_critique_action": critique_action,
+            "self_critique_rule": critique_rule,
         },
     }
 

@@ -173,6 +173,19 @@
             {% endif %}
         </section>
 
+        {% if authorization_matrix_appendix and authorization_matrix_appendix.row_count %}
+        <section>
+            <h2>Authorization Matrix Appendix</h2>
+            <div class="summary-box">
+                <p>Read-only access-control coverage generated from the observed identity matrix.</p>
+                <p>Identities: {{ authorization_matrix_appendix.identity_count }} · Roles: {{ authorization_matrix_appendix.role_count }} · Endpoints: {{ authorization_matrix_appendix.endpoint_count }} · Comparisons: {{ authorization_matrix_appendix.comparison_count }}</p>
+                {% if authorization_matrix_appendix.coverage_gaps %}
+                <p class="impact-text">Coverage gaps: {{ authorization_matrix_appendix.coverage_gaps|join(', ') }}</p>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
         {% if hypotheses %}
         <section>
             <h2>Attack Chains &amp; Hypotheses</h2>

@@ -277,6 +277,47 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
     coverage_entries: dict[str, dict[str, Any]] = {}
     promoted_count = 0
     abandoned_count = 0
+    cadence_overrides: dict[str, tuple[Any, str]] = {}
+    cadence_discovery_count: int | None = None
+
+    # Phase 1.4: run the recurring discovery-cadence checkpoint against the
+    # highest-ranked branch. The checkpoint is bounded and only changes the
+    # disposition of that one candidate; it never authorizes execution.
+    try:
+        from webpent.shared.self_critique import (
+            SelfCritiqueAction,
+            SelfCritiqueCheckpoint,
+            recommend_self_critique_action,
+            should_fire_every_n_discoveries,
+        )
+
+        last_check_count = int(state.get("self_critique_last_discovery_count") or 0)
+        mental_model = state.get("mental_model") or {}
+        discovery_count = len(mental_model.get("nodes") or {})
+        if ranked and should_fire_every_n_discoveries(
+            state,
+            last_check_count=last_check_count,
+        ):
+            cadence_hypothesis = ranked[0][0]
+            critique_action, critique_rule, _ = recommend_self_critique_action(
+                state,
+                checkpoint=SelfCritiqueCheckpoint.EVERY_N_DISCOVERIES,
+                hypothesis=cadence_hypothesis,
+                branch_id=str(model_get(cadence_hypothesis, "id", "")),
+            )
+            if critique_action is SelfCritiqueAction.ABANDON:
+                cadence_overrides[str(model_get(cadence_hypothesis, "id", ""))] = (
+                    PrioritizationAction.ABANDON,
+                    critique_rule,
+                )
+            elif critique_action is SelfCritiqueAction.DEPRIORITIZE:
+                cadence_overrides[str(model_get(cadence_hypothesis, "id", ""))] = (
+                    PrioritizationAction.DEFER,
+                    critique_rule,
+                )
+            cadence_discovery_count = discovery_count
+    except Exception as exc:
+        logger.warning("Strategist: discovery-cadence checkpoint failed: %s", exc)
 
     def record_coverage(
         hypothesis: Any,
@@ -328,6 +369,12 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
                 state,
                 rabbit_hole_available=is_re_entry,
             )
+            cadence_override = cadence_overrides.get(
+                str(model_get(hypothesis, "id", ""))
+            )
+            if cadence_override is not None:
+                action, cadence_rule = cadence_override
+                rule = f"{rule}; self_critique={cadence_rule}"
         except Exception as exc:
             logger.debug(
                 "Strategist: recommend_action failed for %s: %s",
@@ -573,4 +620,6 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
     # router bounds the loop.
     if is_re_entry:
         result["rabbit_hole_loop_back_count"] = new_count
+    if cadence_discovery_count is not None:
+        result["self_critique_last_discovery_count"] = cadence_discovery_count
     return result

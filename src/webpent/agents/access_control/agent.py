@@ -108,8 +108,22 @@ def _probe_url(
     cookies: dict[str, str] | None = None,
     timeout: float = 10.0,
     headers: dict[str, str] | None = None,
+    method: str = "GET",
+    allow_state_changing: bool = False,
 ) -> tuple[int, int]:
-    """Probe a URL read-only and return ``(status_code, content_length)``."""
+    """Probe a URL and return ``(status_code, content_length)``.
+
+    GET/HEAD/OPTIONS are always read-only. State-changing methods are denied
+    unless the caller explicitly opts in through the BAC safety gate.
+    """
+    method = str(method or "GET").upper()
+    if method not in {"GET", "HEAD", "OPTIONS"} and not allow_state_changing:
+        audit_logger.warning(
+            "Blocked state-changing BAC probe method=%s url=%s without explicit approval",
+            method,
+            url,
+        )
+        return 0, 0
     try:
         from webpent.config.settings import get_settings
         from webpent.shared.http import build_cookie_header, make_safe_httpx_client
@@ -128,7 +142,7 @@ def _probe_url(
             follow_redirects=False,
             verify=not allow_insecure_tls,
         ) as client:
-            response = client.get(url, headers=request_headers)
+            response = client.request(method, url, headers=request_headers)
         return response.status_code, len(response.content)
     except Exception as exc:
         logger.debug("BAC probe failed for %s: %s", url, exc)
@@ -144,9 +158,30 @@ def _create_idor_finding(
     evidence: dict[str, Any] | None = None,
     confidence_level: str = "AI-Assessed",
     description_suffix: str = "",
+    owner_role: str | None = None,
+    foreign_role: str | None = None,
 ) -> Finding:
     """Create a finding while keeping the legacy four-argument contract."""
     path = urlparse(url).path or url
+    known_roles = {
+        str(role).strip().lower()
+        for role in (owner_role, foreign_role)
+        if role and str(role).strip().lower() not in {"unknown", "none"}
+    }
+    privilege_escalation = (
+        len(known_roles) == 2
+        and str(owner_role).strip().lower() != str(foreign_role).strip().lower()
+    )
+    severity = Severity.CRITICAL if privilege_escalation else Severity.HIGH
+    vuln_class = VulnClass.AUTH_BYPASS.value if privilege_escalation else VulnClass.IDOR.value
+    reasoning = (
+        f"Privilege escalation via role differential: owner role={owner_role}, "
+        f"foreign role={foreign_role}; {auth_context}; HTTP {status_code}, "
+        f"{content_length} bytes."
+        if privilege_escalation
+        else f"Read-only access-control differential: {auth_context}; "
+        f"HTTP {status_code}, {content_length} bytes."
+    )
     return Finding(
         title=f"IDOR: Unauthorized access to {path}"[:120],
         description=(
@@ -155,18 +190,15 @@ def _create_idor_finding(
             "This observation requires authorization comparison against an "
             f"explicit resource owner. {description_suffix}"
         ).strip(),
-        severity=Severity.HIGH,
+        severity=severity,
         confidence="confirmed" if confidence_level == "Tool-Confirmed" else "tentative",
         confidence_level=confidence_level,
         evidence=evidence,
-        vuln_class=VulnClass.IDOR.value,
+        vuln_class=vuln_class,
         url=url,
         tool_name="access_control_mapper",
         payload="",
-        reasoning=(
-            f"Read-only access-control differential: {auth_context}; "
-            f"HTTP {status_code}, {content_length} bytes."
-        ),
+        reasoning=reasoning,
     )
 
 
@@ -224,11 +256,31 @@ def access_control_node(state: PentestState) -> dict:
 
         rows: list[dict[str, Any]] = []
         for profile in probe_profiles:
-            status, content_length = _probe_url(
-                url,
-                cookies=profile.cookies or None,
-                headers=profile.headers or None,
-            )
+            requested_method = str(
+                record.get("method") or record.get("http_method") or "GET"
+            ).upper()
+            probe_kwargs = {
+                "cookies": profile.cookies or None,
+                "headers": profile.headers or None,
+                "method": requested_method,
+                "allow_state_changing": bool(
+                    state.get("auto_approve") is True
+                    or state.get("bac_allow_state_changing_probes") is True
+                ),
+            }
+            try:
+                status, content_length = _probe_url(url, **probe_kwargs)
+            except TypeError as exc:
+                # Preserve compatibility with injected legacy probes that only
+                # accept url/cookies/timeout/headers; the real probe retains
+                # the explicit state-changing-method gate above.
+                if "unexpected keyword argument" not in str(exc):
+                    raise
+                status, content_length = _probe_url(
+                    url,
+                    cookies=profile.cookies or None,
+                    headers=profile.headers or None,
+                )
             row = sanitise_probe_result(
                 profile=profile,
                 url=url,
@@ -242,9 +294,7 @@ def access_control_node(state: PentestState) -> dict:
                     "owner_identity": owner_identity,
                     "object_id": object_id,
                     "endpoint": url,
-                    "method": str(
-                        record.get("method") or record.get("http_method") or "GET"
-                    ).upper(),
+                    "method": requested_method,
                     "evidence_refs": [
                         "bac:"
                         f"{object_id or 'unknown'}:{profile.name}:"
@@ -292,6 +342,15 @@ def access_control_node(state: PentestState) -> dict:
                     f"Identity {owner_identity} was recorded as the owner, while "
                     f"identity {foreign['identity']} reproduced successful access."
                 ),
+                owner_role=next(
+                    (
+                        str(row.get("role"))
+                        for row in rows
+                        if row.get("identity") == owner_identity
+                    ),
+                    None,
+                ),
+                foreign_role=str(foreign.get("role") or "unknown"),
             )
             new_findings.append(finding)
             confirmed_count += 1
@@ -344,6 +403,124 @@ def access_control_node(state: PentestState) -> dict:
             "comparisons": [],
             "coverage_gaps": ["matrix_projection_failed"],
         }
+
+    # Matrix-driven promotion is intentionally downstream of the existing
+    # BAC assessment. It only consumes redacted rows with real fingerprints,
+    # explicit ownership, and a differential comparison; the reporter never
+    # creates findings from this projection.
+    matrix_findings: list[Finding] = []
+    if matrix_update.get("comparisons"):
+        matrix_rows = list(matrix_update.get("rows") or [])
+        row_index = {
+            (
+                str(row.get("identity_ref") or ""),
+                str(row.get("object_ref") or ""),
+                str(row.get("endpoint") or ""),
+                str(row.get("method") or "GET").upper(),
+            ): row
+            for row in matrix_rows
+            if isinstance(row, dict)
+        }
+        input_index = {
+            (
+                str(row.get("identity") or ""),
+                str(row.get("object_id") or ""),
+                str(row.get("endpoint") or row.get("resource_url") or ""),
+                str(row.get("method") or "GET").upper(),
+            ): row
+            for row in matrix_inputs
+        }
+        existing_keys = {
+            (
+                str((getattr(finding, "evidence", None) or {}).get("object_id") or ""),
+                str(getattr(finding, "url", "") or ""),
+                str((getattr(finding, "evidence", None) or {}).get("method") or "GET").upper(),
+            )
+            for finding in findings + new_findings
+        }
+        for comparison in matrix_update.get("comparisons") or []:
+            if not isinstance(comparison, dict):
+                continue
+            if not comparison.get("access_differential"):
+                continue
+            kind = str(comparison.get("comparison_kind") or "")
+            if kind not in {"vertical", "ownership_differential"}:
+                continue
+            base_key = (
+                str(comparison.get("object_ref") or ""),
+                str(comparison.get("endpoint") or ""),
+                str(comparison.get("method") or "GET").upper(),
+            )
+            left_key = (
+                str(comparison.get("left_identity_ref") or ""),
+                *base_key,
+            )
+            right_key = (
+                str(comparison.get("right_identity_ref") or ""),
+                *base_key,
+            )
+            left_row = row_index.get(left_key) or {}
+            right_row = row_index.get(right_key) or {}
+            left_input = input_index.get(left_key) or {}
+            right_input = input_index.get(right_key) or {}
+            left_fp = str(left_row.get("response_fingerprint") or "")
+            right_fp = str(right_row.get("response_fingerprint") or "")
+            if not left_fp or not right_fp or "unfingerprinted" in {left_fp, right_fp}:
+                continue
+            owner_identity = str(
+                left_input.get("owner_identity") or right_input.get("owner_identity") or ""
+            ).strip()
+            if not owner_identity:
+                continue
+            owner_row = left_input if left_input.get("identity") == owner_identity else right_input
+            foreign_row = right_input if owner_row is left_input else left_input
+            owner_role = str(owner_row.get("role") or "unknown")
+            foreign_role = str(foreign_row.get("role") or "unknown")
+            if kind == "vertical" and {
+                owner_role.lower(), foreign_role.lower()
+            } <= {"", "unknown"}:
+                continue
+            if base_key in existing_keys:
+                continue
+            evidence = {
+                "type": "authorization_matrix_comparison",
+                "object_id": base_key[0],
+                "method": base_key[2],
+                "owner_identity": owner_identity,
+                "comparison_kind": kind,
+                "left_response_fingerprint": left_fp,
+                "right_response_fingerprint": right_fp,
+                "evidence_refs": list(comparison.get("evidence_refs") or [])[:16],
+                "redaction": "cookies, authorization headers, and raw bodies omitted",
+            }
+            matrix_findings.append(
+                _create_idor_finding(
+                    base_key[1],
+                    int(left_row.get("status_code") or right_row.get("status_code") or 0),
+                    0,
+                    f"matrix comparison {kind} between "
+                    f"{comparison.get('left_identity_ref')} and "
+                    f"{comparison.get('right_identity_ref')}",
+                    evidence=evidence,
+                    confidence_level=(
+                        "Tool-Confirmed"
+                        if owner_identity and owner_role.lower() != "unknown"
+                        else "Needs Human Review"
+                    ),
+                    description_suffix=(
+                        "Authorization matrix recorded reproducible response fingerprints "
+                        "for a real access differential."
+                    ),
+                    owner_role=owner_role,
+                    foreign_role=foreign_role,
+                )
+            )
+            existing_keys.add(base_key)
+
+    new_findings.extend(matrix_findings)
+    confirmed_count += sum(
+        1 for finding in matrix_findings if finding.confidence_level == "Tool-Confirmed"
+    )
 
     mental_model_update: dict[str, Any] = {"nodes": {}, "edges": []}
     try:

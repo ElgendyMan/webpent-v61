@@ -46,6 +46,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from webpent.models.findings import EXPLOITABLE_CLASSES, Finding, VulnClass
 from webpent.models.hypothesis import Hypothesis, HypothesisOrigin
+from webpent.shared.confidence import compute_initial_hypothesis_confidence
 from webpent.shared.llm import (
     TaskType,
     get_safety_system_instruction,
@@ -278,7 +279,11 @@ def cross_reasoning_node(state: PentestState) -> dict:
                     "Attack chain proposed by cross_reasoning_node "
                     "via LLM narrative synthesis across confirmed findings."
                 ),
-                confidence_score=0.3,
+                confidence_score=compute_initial_hypothesis_confidence(
+                    HypothesisOrigin.CROSS_REASONS,
+                    source_kind="cross_reasoning",
+                    deterministic_match=True,
+                ),
                 # V10 P3-1 FIX: bypass the Strategist's probabilistic
                 # promotion threshold — the chain is grounded in
                 # confirmed findings, not a pure heuristic.

@@ -107,6 +107,7 @@ from webpent.shared.cognitive_components import (
     estimate_action_cost,
     record_visited_asset,
 )
+from webpent.shared.confidence import compute_initial_hypothesis_confidence
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -747,7 +748,10 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
                 f"(type={artifact_type}, action={action_type}). "
                 f"Forced HITL category: {forced_hitl_category or 'none'}."
             ),
-            confidence_score=0.4,  # RAG_INFORMED-equivalent base (Phase 4)
+            confidence_score=compute_initial_hypothesis_confidence(
+                HypothesisOrigin.RABBIT_HOLE,
+                source_kind="rag_informed",
+            ),
             estimated_cost=estimated_cost,
             parent_hypothesis_id=None,  # top-level Rabbit Hole hypothesis
             # V10 AUDIT FIX (H3): set deterministic_match=True so the

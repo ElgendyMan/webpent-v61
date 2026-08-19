@@ -627,6 +627,7 @@ def reporter_node(state: PentestState) -> dict:
             coverage_ledger=dict(state.get("coverage_ledger") or {}),
             campaign_ledger=campaign_ledger,
             proof_observability=dict(state.get("proof_observability") or {}),
+            authorization_matrix=dict(state.get("authorization_matrix") or {}),
         )
         export_ok = True
         logger.info(

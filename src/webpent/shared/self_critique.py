@@ -103,6 +103,7 @@ class SelfCritiqueCheckpoint(str, Enum):
     BEFORE_PROMOTION = "before_promotion"
     EVERY_N_DISCOVERIES = "every_n_discoveries"
     RABBIT_HOLE_BRANCH_ENTRY = "rabbit_hole_branch_entry"
+    VALIDATION_FAILURE = "validation_failure"
 
 
 # ---------------------------------------------------------------------------

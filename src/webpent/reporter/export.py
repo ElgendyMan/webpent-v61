@@ -134,6 +134,7 @@ def build_report_data(
     coverage_ledger: dict[str, Any] | None = None,
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
+    authorization_matrix: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the canonical report data structure used by all export formats.
 
@@ -170,6 +171,28 @@ def build_report_data(
             campaign_projection = candidate_projection
     smart_gate_ledger = campaign_projection or (coverage_ledger or {})
 
+    matrix = authorization_matrix if isinstance(authorization_matrix, dict) else {}
+    matrix_rows = [row for row in (matrix.get("rows") or []) if isinstance(row, dict)]
+    matrix_comparisons = [
+        item for item in (matrix.get("comparisons") or []) if isinstance(item, dict)
+    ]
+    comparison_summary: dict[str, int] = {}
+    for item in matrix_comparisons:
+        kind = str(item.get("comparison_kind") or "unknown")
+        comparison_summary[kind] = comparison_summary.get(kind, 0) + 1
+    authorization_appendix = {
+        "identity_count": len(
+            {str(row.get("identity_ref") or "") for row in matrix_rows if row.get("identity_ref")}
+        ),
+        "role_count": len({str(row.get("role") or "unknown") for row in matrix_rows}),
+        "endpoint_count": len(
+            {str(row.get("endpoint") or "") for row in matrix_rows if row.get("endpoint")}
+        ),
+        "coverage_gaps": list(matrix.get("coverage_gaps") or []),
+        "comparison_summary": comparison_summary,
+        "row_count": len(matrix_rows),
+        "comparison_count": len(matrix_comparisons),
+    }
     report_data: dict[str, Any] = {
         "target_url": target_url,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -191,6 +214,10 @@ def build_report_data(
         "bac_observations": _redact_report_value(bac_observations or []),
         "bac_coverage_gaps": _redact_report_value(bac_coverage_gaps or []),
         "relational_evidence": _redact_report_value(relational_evidence or []),
+        # Read-only BAC appendix; reporter never promotes findings from it.
+        "authorization_matrix_appendix": _redact_report_value(
+            authorization_appendix if matrix else {}
+        ),
         "bac_report_gate": {
             "status": "ready" if not bac_coverage_gaps else "partial",
             "requires_human_review": bool(bac_coverage_gaps),
@@ -248,8 +275,15 @@ def build_report_data(
     }
 
     # Apply one final redaction pass before hashing. This covers target URLs,
-    # summaries, decision metadata, and any newly-added report fields.
+    # summaries, decision metadata, and any newly-added report fields. The
+    # authorization appendix is a read-only aggregate, not a secret container;
+    # redact its nested values without masking the aggregate itself because the
+    # generic key matcher intentionally treats "authorization" as sensitive.
+    authorization_appendix = report_data.pop("authorization_matrix_appendix", {})
     report_data = _redact_report_value(report_data)
+    report_data["authorization_matrix_appendix"] = _redact_report_value(
+        authorization_appendix
+    )
 
     # Build the audit trail AFTER the report data is complete so the
     # master hash covers everything.
@@ -291,6 +325,7 @@ def export_to_json(
     coverage_ledger: dict[str, Any] | None = None,
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
+    authorization_matrix: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a JSON report with audit trail.
 
@@ -320,6 +355,7 @@ def export_to_json(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "report.json"
@@ -355,6 +391,7 @@ def export_to_html(
     coverage_ledger: dict[str, Any] | None = None,
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
+    authorization_matrix: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a professional HTML report via Jinja2.
 
@@ -390,6 +427,7 @@ def export_to_html(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
 
     template_dir = _TEMPLATE_PATH.parent
@@ -436,6 +474,7 @@ def export_to_pdf(
     coverage_ledger: dict[str, Any] | None = None,
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
+    authorization_matrix: dict[str, Any] | None = None,
 ) -> Path | None:
     """Export findings to a PDF report.
 
@@ -473,6 +512,7 @@ def export_to_pdf(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
     html_content = html_path.read_text(encoding="utf-8")
 
@@ -542,6 +582,7 @@ def export_all_formats(
     coverage_ledger: dict[str, Any] | None = None,
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
+    authorization_matrix: dict[str, Any] | None = None,
 ) -> dict[str, Path | None]:
     """Export findings to JSON + HTML + PDF in one call.
 
@@ -574,6 +615,7 @@ def export_all_formats(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
     html_path = export_to_html(
         target_url,
@@ -599,6 +641,7 @@ def export_all_formats(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
     pdf_path = export_to_pdf(
         target_url,
@@ -624,5 +667,6 @@ def export_all_formats(
         coverage_ledger=coverage_ledger,
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
+        authorization_matrix=authorization_matrix,
     )
     return {"json": json_path, "html": html_path, "pdf": pdf_path}

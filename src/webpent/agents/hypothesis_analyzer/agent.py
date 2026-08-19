@@ -67,10 +67,7 @@ from webpent.memory.vectorstore import get_vector_store_manager
 from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.models.hypothesis import Hypothesis, HypothesisOrigin
 from webpent.models.memory import MemoryBudget, MemoryKind
-from webpent.shared.confidence import (
-    compute_confidence_score,
-    evidence_type_from_origin,
-)
+from webpent.shared.confidence import compute_initial_hypothesis_confidence
 from webpent.shared.memory_boundary import MemoryBoundary
 from webpent.state.state import PentestState
 
@@ -89,21 +86,10 @@ def _initial_confidence_score(
     constructor through the shared confidence formula. They are not proof and
     never alter the validator's confirmation contract.
     """
-    evidence_type = evidence_type_from_origin(origin)
-    deltas: list[float] = []
-    if source_kind in {"endpoint_input", "post_form"}:
-        deltas.extend([0.10, 0.10])
-    if deterministic_match:
-        deltas.append(0.10)
-    if evidence_type.value == "rag_informed":
-        deltas.append(0.10)
-    return compute_confidence_score(
-        evidence_type=evidence_type,
-        online_learning_deltas=deltas,
-        evidence_signals={
-            "deterministic_match": deterministic_match,
-            "source_quality": 1.0 if source_kind != "heuristic" else 0.5,
-        },
+    return compute_initial_hypothesis_confidence(
+        origin,
+        source_kind=source_kind,
+        deterministic_match=deterministic_match,
     )
 
 

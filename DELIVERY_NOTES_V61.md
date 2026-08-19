@@ -14,19 +14,23 @@ The baseline was executed before v61 code changes. Compilation returned `COMPILE
 
 | Phase | Verification | Result |
 |---|---|---|
-| Phase 0 | Git initialized and baseline snapshot committed before v61 code changes | Pending at note creation; recorded below after commit |
-| Phase 1 | `compileall`, full pytest, and at least eight new tests across authorization matrix, confidence, self-critique, and report appendix | Pending |
+| Phase 0 | Git initialized and baseline snapshot committed before v61 code changes | Completed; baseline commit recorded in Git history |
+| Phase 1 | `compileall`, full pytest, and at least eight new tests across authorization matrix, confidence, self-critique, and report appendix | Completed: compileall OK; 742 passed, 112 warnings, 0 failures; 12 tests in `test_v61_phase1_remediation.py` |
 | Phase 2 | Multi-method BAC, role-aware severity, bounded candidate expansion, and opt-in enumeration tests; full suite | Pending |
 | Phase 3 | CVSS role context, cached LLM wiring, and cross-engagement lesson retrieval; full suite | Pending |
 | Final | Full commands from directive and GitHub remote/branch status | Pending |
 
 ## Files changed
 
-This table will be completed after each remediation commit. Every code change will have a separate conventional commit and a verification record.
+Phase 1 changed the access-control matrix-to-finding projection, role-aware severity, multi-method probe gating compatibility, reporter authorization appendix, confidence helper wiring in hypothesis-producing agents, strategist discovery cadence/self-critique checkpoints, validator self-critique wiring, and both active HTML report templates.
 
 ## Tests added
 
-This table will be completed after each remediation phase, including the exact test path and behavior proven.
+| Test file | Coverage |
+|---|---|
+| `tests/test_v61_phase1_remediation.py` | Authorization matrix appendix/redaction, bounded confidence, vertical versus horizontal role severity, state-changing probe approval, discovery cadence, deterministic self-critique cap, validator self-critique checkpoint, and non-authorizing empty appendix |
+
+Phase 1 verification was run from external cwd `/home/ubuntu` with `PYTHONPATH=/tmp/webpent_v60_smart_implementation/src`: `python -m compileall src -q` returned successfully and the full suite returned `742 passed, 112 warnings, 0 failures`.
 
 ## Known gaps
 

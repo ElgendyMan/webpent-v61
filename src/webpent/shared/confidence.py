@@ -311,6 +311,35 @@ def evidence_type_from_origin(origin: Any) -> EvidenceType:
     return mapping.get(origin_str, EvidenceType.HEURISTIC)
 
 
+def compute_initial_hypothesis_confidence(
+    origin: Any,
+    *,
+    source_kind: str = "heuristic",
+    deterministic_match: bool = False,
+) -> float:
+    """Compute a bounded initial hypothesis score from observable signals.
+
+    This construction helper never confirms a finding and never bypasses
+    validator, causal-signal, negative-control, or proof gates.
+    """
+    evidence_type = evidence_type_from_origin(origin)
+    deltas: list[float] = []
+    if source_kind in {"endpoint_input", "post_form"}:
+        deltas.extend([0.10, 0.10])
+    if deterministic_match:
+        deltas.append(0.10)
+    if evidence_type.value == EvidenceType.RAG_INFORMED.value:
+        deltas.append(0.10)
+    return compute_confidence_score(
+        evidence_type=evidence_type,
+        online_learning_deltas=deltas,
+        evidence_signals={
+            "deterministic_match": deterministic_match,
+            "source_quality": 1.0 if source_kind != "heuristic" else 0.5,
+        },
+    )
+
+
 def recompute_hypothesis_confidence(
     hypothesis: Any,
     *,
