@@ -1,13 +1,15 @@
-# WebPent v60 — VIP Audit Delivery Notes
+# WebPent VIP Audit Delivery Notes
+
+> **Historical delivery record:** This file records the earlier audit/remediation release. It is retained for audit history and is not the current v72 source of truth. For the current state, see [`v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) and [`v72_release_notes.md`](v72_release_notes.md).
 
 ## Verification
 
-This release was checked locally on 2026-08-18.
+This historical release was checked locally on 2026-08-18. The v72 follow-up verification is recorded separately and supersedes the numbers below where they differ.
 
 | Gate | Result |
 |---|---|
-| Full pytest suite | 576 passed, 66 warnings |
-| Preserved test-function verifier | 537 functions, minimum 498 |
+| Historical full pytest suite | 576 passed, 66 warnings |
+| Historical preserved test-function verifier | 537 functions, minimum 498 |
 | Ruff on remediation files | Passed |
 | Local WAPTLab regression | 20/20 dispositions; 13 inconclusive, 7 missing-validator; target-free |
 | WAPTLab source tree | Not modified |
@@ -18,6 +20,6 @@ The release includes the VIP authorization and deployment hardening, shared toke
 
 ## Honest limitations
 
-The compliance matrix at `docs/vip_audit_compliance_matrix.md` is the authoritative status record. In particular, the release does not claim that every WAPTLab class has a complete validator or that any local synthetic case is a confirmed vulnerability. The local harness records 13 campaigns as inconclusive and 7 as missing-validator; no target was contacted. Full-suite worker coverage remains 23%, below the audit target of 85%, and remains documented as partial/blocked because closing it safely requires a dedicated Celery/graph integration harness rather than superficial tests. LangChain/LangGraph dependency advisories also remain a documented blocker because a forced major upgrade would violate the project's compatibility requirement.
+The historical compliance matrix at `docs/vip_audit_compliance_matrix.md` is retained as an audit record. The current v72 status is in `docs/v72_plan_compliance_audit.md`. WebPent still does not claim that every WAPTLab class has a complete validator or that any local synthetic case is a confirmed vulnerability. The v72 dependency upgrade and strict pip-audit verification are complete; worker/Docker qualification and live WAPTLab qualification remain blocked and are not hidden by this historical note.
 
 Before production exposure, set strong random values for `AUDIT_SECRET_KEY` and `CELERY_PAYLOAD_KEY`, use TLS Redis, configure trusted proxies correctly, and perform an authorized deployment smoke test.

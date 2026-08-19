@@ -1,5 +1,7 @@
 # WebPent v70 Validation Report
 
+> **Historical validation report:** This document records the v62–v70 validation run and its original dependency findings. It is retained for audit history and is not the current v72 source of truth. See [`v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) and [`v72_release_notes.md`](v72_release_notes.md) for the v72 result.
+
 ## Scope
 
 This report records the validation status of the additive v62–v70 implementation in the WebPent repository. The changes preserve the existing execution path and add fail-closed projections, lifecycle contracts, proof validators, coverage metrics, bounded Copilot suggestions, benchmark metrics, and a read-only coverage CLI command.
@@ -67,4 +69,4 @@ PYTHONPATH=src "$venv/bin/python" scripts/run_vip_quality_gate.py
 
 ## Conclusion
 
-The v62–v70 implementation is internally validated for code behavior and release-contract wiring: the full suite passes, the new contracts are covered, and the WAPTLab safety constraints remain explicit. The complete release-security gate is **not green in this sandbox** because pip-audit found 17 known vulnerabilities in 9 packages; Bandit itself passed. This report is **not** evidence that the Autonomous Bug Hunter has achieved a fixed live target count; that remains a separate authorized benchmark and must not be inferred from offline or mock artifacts.
+The v62–v70 implementation was internally validated for code behavior and release-contract wiring at the time of this report. Its dependency findings were subsequently addressed by the v72 LangGraph/LangChain upgrade and strict pip-audit verification. This report is **not** evidence that the Autonomous Bug Hunter has achieved a fixed live target count; that remains a separate authorized benchmark and must not be inferred from offline or mock artifacts.

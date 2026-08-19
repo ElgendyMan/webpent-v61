@@ -1,5 +1,7 @@
 # v70 Plan Gap Audit — Follow-up Review
 
+> **Historical gap audit:** This document records the v62–v70 implementation review and is retained for audit history. It is not the current v72 source of truth. See [`v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) for the current implementation/partial/blocked checklist.
+
 ## Scope
 
 This audit compares `/home/ubuntu/upload/pasted_content_2.txt` with the repository after the v62–v70 release and the follow-up gap implementation. A plan item is marked complete only when source code and focused contracts demonstrate the behavior. The audit does not claim live findings or live qualification without an authorized run artifact.
@@ -24,13 +26,13 @@ This audit compares `/home/ubuntu/upload/pasted_content_2.txt` with the reposito
 | Benchmark metrics | `benchmark/metrics.py`, v66 tests | Complete; precision, recall, FPR, evidence quality, coverage, reproducibility |
 | Qualification schemas | `benchmark/qualification.py`, v71 remaining contracts | Complete as deterministic ground-truth/run schemas; no live claim |
 | CLI roadmap | `coverage`, `analyze`, `campaign`, `knowledge`, `replay`, `explain` and contract tests | Complete as local read-only/planning commands; no implicit network execution |
-| Release contracts | v70 tests, VIP gate, SBOM/release artifacts, v70 validation report | Complete for code and artifact contracts; dependency advisories remain a release blocker |
+| Release contracts | v70 tests, VIP gate, SBOM/release artifacts, v70 validation report | Complete for the historical v70 code/artifact contracts; dependency advisories were subsequently addressed in v72 |
 
 ## Remaining external or environmental blockers
 
 | Item | Reality | Correct treatment |
 |---|---|---|
-| Dependency security gate | `pip-audit` executes and reports 17 known vulnerabilities across 9 packages | Keep the release gate non-green until dependencies are upgraded or formally risk-accepted; do not suppress advisories |
+| Dependency security gate | Historical v70 run reported 17 known vulnerabilities across 9 packages | v72 resolved the lock-derived advisories and strict `pip-audit` is clean; future upgrades still require regression testing |
 | Container scanners | Availability of tools such as Trivy, Syft, or Grype depends on the release environment | Report unavailable scanners explicitly; do not claim their results |
 | PostgreSQL production qualification | The project currently supports SQLite through the canonical database manager | Keep PostgreSQL fail-closed and unqualified until a real deployment is tested |
 | Live Celery broker/DLQ qualification | Local contracts exist, but no authorized broker qualification artifact is present | Keep `qualified_live_broker=false` and do not claim operational qualification |
@@ -38,6 +40,6 @@ This audit compares `/home/ubuntu/upload/pasted_content_2.txt` with the reposito
 
 ## Verification snapshot
 
-The follow-up contracts pass in isolation and the full suite passes with **916 tests**. `compileall` and Ruff pass with zero errors under the project command. The implementation remains additive and no WAPTLab or Juice Shop source is modified by these changes.
+The follow-up contracts passed in isolation in the historical v70 run. In v72, the full suite passes with **934 tests**, compileall and Ruff pass with zero errors, and strict `pip-audit` reports no known vulnerabilities from the release requirements. The implementation remains additive and no WAPTLab or Juice Shop source is modified by these changes.
 
-The project is therefore complete with respect to the implementable v62–v70 software contracts. The remaining items are deployment, dependency, or authorized live-qualification gates rather than forgotten source modules.
+The v70 software-contract review is superseded by the v72 audit. Remaining items are deployment, worker/Docker qualification, or authorized live-qualification gates rather than silently omitted source modules.

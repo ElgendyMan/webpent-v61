@@ -251,6 +251,19 @@ def test_release_manifest_signature_is_operator_controlled() -> None:
     assert signature.get("note")
 
 
+def test_release_manifest_is_redacted_from_runtime_and_historical_outputs() -> None:
+    manifest = _read_json("release_manifest.json")
+    files = set(manifest["files"])
+    redaction = manifest["redaction"]
+
+    assert redaction["status"] == "applied"
+    assert not any(path.startswith(("memory/", "output/")) for path in files)
+    assert not any(path.startswith("docs/live_waptlab_output_") for path in files)
+    assert not any("/.pytest_cache/" in f"/{path}" for path in files)
+    assert not any("/.ruff_cache/" in f"/{path}" for path in files)
+    assert not any(path.endswith((".db", ".sqlite", ".sqlite3", ".log")) for path in files)
+
+
 def test_capability_statuses_are_bounded() -> None:
     statuses = set(_read_json("capability_report.json")["validator_status_counts"])
     assert statuses <= {"tested", "offline-fixture", "missing-validator"}

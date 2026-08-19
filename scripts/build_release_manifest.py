@@ -12,9 +12,46 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = PROJECT_ROOT / "docs" / "release_manifest.json"
-EXCLUDED_PARTS = {".git", ".venv", "__pycache__"}
-EXCLUDED_NAMES = {".env", "webpent.db", "action_ledger.db"}
-EXCLUDED_SUFFIXES = {".pyc"}
+EXCLUDED_PARTS = {
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+}
+EXCLUDED_ROOT_DIRS = {"memory", "output"}
+EXCLUDED_NAMES = {
+    ".env",
+    ".coverage",
+    "webpent.db",
+    "action_ledger.db",
+    "decision_log.db",
+    "lessons.db",
+}
+EXCLUDED_SUFFIXES = {".pyc", ".db", ".sqlite", ".sqlite3", ".log"}
+EXCLUDED_RELATIVE_PREFIXES = (
+    "docs/live_waptlab_output_",
+)
+
+
+def _is_excluded_relative(relative: Path) -> bool:
+    """Return whether a path is runtime, cache, secret, or raw-output data.
+
+    The release manifest is intentionally redacted. It inventories source,
+    tests, configuration templates, and selected evidence artifacts, but it
+    must never hash local credentials, mutable databases, caches, or historical
+    live-output directories that can contain target-specific data.
+    """
+    if relative.parts and relative.parts[0] in EXCLUDED_ROOT_DIRS:
+        return True
+    relative_text = relative.as_posix()
+    return any(
+        relative_text == prefix.rstrip("/")
+        or relative_text.startswith(prefix)
+        for prefix in EXCLUDED_RELATIVE_PREFIXES
+    )
+
 
 
 def _tracked_commit() -> str | None:
@@ -34,6 +71,8 @@ def _tracked_commit() -> str | None:
 def _included(path: Path) -> bool:
     relative = path.relative_to(PROJECT_ROOT)
     if any(part in EXCLUDED_PARTS for part in relative.parts):
+        return False
+    if _is_excluded_relative(relative):
         return False
     if path.name in EXCLUDED_NAMES or path.suffix in EXCLUDED_SUFFIXES:
         return False
@@ -142,6 +181,13 @@ def main() -> int:
         "qualification": _qualification(),
         "security": _security_status(),
         "signature": _signature_status(),
+        "redaction": {
+            "status": "applied",
+            "excluded_parts": sorted(EXCLUDED_PARTS | EXCLUDED_ROOT_DIRS),
+            "excluded_names": sorted(EXCLUDED_NAMES),
+            "excluded_suffixes": sorted(EXCLUDED_SUFFIXES),
+            "excluded_relative_prefixes": list(EXCLUDED_RELATIVE_PREFIXES),
+        },
         "release_decision": "blocked" if not _security_status()["gate_passed"] else "candidate",
     }
     OUTPUT.write_text(

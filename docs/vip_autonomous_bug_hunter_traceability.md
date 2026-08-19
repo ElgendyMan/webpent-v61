@@ -1,5 +1,7 @@
 # WebPent v60 — VIP Autonomous Bug Hunter Traceability Matrix
 
+> **Current v72 note:** This matrix is maintained as a technical traceability record. Current release numbers and final qualification status are in [`v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md). It is still forbidden to treat local fixtures, LLM narratives, or heuristic markers as confirmed findings.
+
 ## Purpose
 
 This document converts `pasted_content_3.txt` and the final audit plan into an executable backlog. A row is not considered complete merely because an enum, helper, or declarative list exists; completion requires a live code path, behavioral test, observable status, and a measurable acceptance condition.
@@ -32,7 +34,7 @@ This document converts `pasted_content_3.txt` and the final audit plan into an e
 | Re-auth vault TTL and cleanup | `auth/reauth_vault.py`, worker/CLI lifecycle | Bounded sweep, stats, terminal cleanup | Vault lifecycle tests | Expired entries are removed; terminal paths clear secrets | P1 | implemented/verify |
 | Registry failure visibility | `api/scan_registry.py`, `api/app.py` | Readiness/error state and degraded health | Registry health tests | Initialization failure is operator-visible and read/write paths fail closed | P1 | implemented |
 | Login throttling | `api/rate_limit.py`, `api/app.py` | Independent IP/account buckets and generic 429 | Login limiter tests | Brute-force attempts are bounded without user enumeration | P1 | implemented |
-| Dependency advisories | `uv.lock`, CI, audit evidence | Upgrade or explicit time-bounded exception | `pip-audit` evidence | No silent advisories; blocked upgrades are documented with owner and next review | P1 | blocked/documented |
+| Dependency advisories | `uv.lock`, CI, audit evidence | Resolved lock plus strict audit evidence | `docs/pip_audit_release.json`, `docs/sbom.cdx.json` | No known vulnerabilities in the lock-derived release requirements; future upgrades require regression testing | P1 | implemented/verified |
 
 ## Autonomous Bug Hunter foundations
 
@@ -43,9 +45,9 @@ This document converts `pasted_content_3.txt` and the final audit plan into an e
 | Browser/XHR/fetch/OpenAPI/GraphQL/multipart extraction | crawler and browser instrumentation | Additive extractors feeding the same surface graph | Local fixture tests | Each supported source creates graph nodes without duplicate side effects | P1 | partial |
 | Fixed top-N removal | strategist/crawler | Coverage-based selection and ledger | Top-N regression | Six or more candidates remain represented; only explicit safety budgets bound work | P1 | implemented |
 | Mandatory surface disposition | state and coverage ledger | `tested`, `tested-negative`, `missing-validator`, `blocked-by-auth`, `blocked-by-scope`, `inconclusive`, `not-observed` | Ledger regressions | No class disappears silently as “no finding” | P1 | implemented/partial |
-| Application Intent Model | new `models/intent.py` and intent builder | Actors, objects, fields, trust boundaries, sinks, transitions, jobs, services | Intent fixture tests | Route renaming/order changes do not erase core intent when evidence is equivalent | P1 | planned |
+| Application Intent Model | `models/application_intent.py`, `shared/application_intent_graph.py` | Actors, objects, fields, trust boundaries, sinks, transitions, jobs, services | `test_vip_application_intent_graph.py`, smart-wiring tests | Route renaming/order changes do not erase core intent when evidence is equivalent | P1 | implemented |
 | Identity Matrix | auth/workflow state | Anonymous, owner, foreign user, tenant admin, global admin contexts | Cross-identity fixture tests | Each identity has explicit preconditions and cleanup | P1 | partial |
-| Workflow replay and cleanup | workflow model/runner | Login, create/download, profile, upload/worker, tenant switch, Swagger fetch workflows | Replay fixture tests | Replay is bounded, isolated, and reports cleanup status | P1 | planned |
+| Workflow replay and cleanup | `models/workflow_replay.py`, `shared/workflow_replay.py` | Bounded replay plans for login, resource, upload/worker, tenant, and Swagger-fetch workflows | `test_vip_workflow_replay.py` | Replay plans are bounded and expose cleanup/identity requirements; live executor reachability remains target-dependent | P1 | partial |
 | LLM evidence discipline | strategist/intent builder | LLM may suggest/summarize only; evidence references required | Missing-evidence tests | LLM output cannot create or drop a campaign without evidence-backed disposition | P1 | partial |
 
 ## Campaign and validator traceability
@@ -81,8 +83,8 @@ This document converts `pasted_content_3.txt` and the final audit plan into an e
 
 | Gate | Minimum | Current evidence | Status |
 |---|---:|---|---|
-| Full pytest | At least 506 passed | 537 passed in previous release gate | implemented |
-| Ruff | Zero findings on modified files | Passed | implemented |
+| Full pytest | At least 916 passed | 934 passed, 0 failures in the v72 LangGraph/LangChain 1.x environment | implemented |
+| Ruff | Zero findings across `src`, `tests`, and `scripts` | Passed | implemented |
 | Surface discovery coverage | 95% | No reproducible full fixture measurement yet | planned |
 | Workflow coverage | 90% | No reproducible workflow fixture measurement yet | planned |
 | P0/P1 validator reachability | 100% | Several campaign families remain missing-validator | partial |
@@ -90,8 +92,8 @@ This document converts `pasted_content_3.txt` and the final audit plan into an e
 | Unexplained skip rate | 0 | Explicit dispositions exist; fixture measurement pending | partial |
 | Scope violations | 0 | Scope/origin regression suite passes | implemented |
 | Duplicate side effects | 0 | Atomic resume and bounded execution regressions pass | implemented |
-| Worker critical-path coverage | 85% | 23% measured in current suite | blocked |
-| CI reproducibility | 100% | CI/test-count/Ruff contracts present; external CI run pending | partial |
+| Worker/Docker qualification | Dedicated worker integration and permitted Docker runtime | Docker daemon access is denied in the current sandbox; live worker qualification is not claimed | blocked |
+| CI reproducibility | 100% | CI/test-count/Ruff contracts present; provider-specific external CI run pending | partial |
 
 ## Execution order
 

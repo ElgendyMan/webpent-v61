@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة v70 Smart Hunter مع إصلاحات remediation v61 وKnowledge Pack للـRAG، وإضافات Target Knowledge Model وAttack Graph projection وHypothesis lifecycle وProofBundle validators وCoverage Intelligence وحدود LLM Copilot وbenchmark contracts. آخر بوابة تحقق موثقة: **904 اختبارات ناجحة**، و`compileall` وRuff على `src` و`tests` و`scripts` ناجحان. بوابة release الموسعة وصلت إلى checks الكود والـqualification، وBandit عالي الخطورة نجح، لكن pip-audit strict وجد **17 ثغرة معروفة في 9 حزم**؛ لذلك لا تُعد بوابة الأمن الخضراء مكتملة بعد. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل ضمانًا لاكتشاف كل الثغرات على كل هدف. راجع [`docs/v70_validation.md`](docs/v70_validation.md) للتفاصيل والـblockers المعروفة.
+> **الحالة الحالية:** نسخة **v72 Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**. تشمل إصلاحات Sprint 0–4 الأمنية، Smart profiles، convergence rules، GoalTree، ProofBundle promotion guards، Knowledge Pack/RAG، Target Knowledge Model، Attack Graph، Hypothesis lifecycle، Coverage Intelligence، وحدود LLM Copilot. آخر بوابة تحقق موثقة: **934 اختبارًا ناجحًا و0 failures**، و`compileall` وRuff على `src` و`tests` و`scripts` ناجحان، وBandit high-severity ناجح، و`pip-audit --strict` لا يجد vulnerabilities معروفة في متطلبات الـlock. `hard_checks_passed=true`، لكن بوابة الإصدار العامة تبقى `passed=false` عمدًا لأن live WAPTLab qualification وworker/Docker qualification غير مثبتين. هذه النتائج تثبت العقود والـregressions المعروفة، ولا تضمن اكتشاف كل الثغرات على كل هدف. راجع [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md) و[`docs/v72_release_notes.md`](docs/v72_release_notes.md) للحالة الحالية والـblockers.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -20,7 +20,9 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 6. [`scripts/ingest_payloads.py`](scripts/ingest_payloads.py) — مسار الإدخال المعتمد للـknowledge pack.
 7. [`scripts/verify_rag_knowledge_pack.py`](scripts/verify_rag_knowledge_pack.py) — إثبات direct retrieval للأنواع الخمسة.
 8. [`DELIVERY_NOTES_V61.md`](DELIVERY_NOTES_V61.md) — سجل التنفيذ والبوابات والـGit history.
-9. [`docs/v70_validation.md`](docs/v70_validation.md) — تقرير تحقق v62–v70 وحدود الادعاءات.
+9. [`docs/v70_validation.md`](docs/v70_validation.md) — تقرير تاريخي عن v62–v70 وحدود الادعاءات.
+10. [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md) — مصدر الحقيقة لمراجعة خطة v72 وحالة كل بند.
+11. [`docs/v72_release_notes.md`](docs/v72_release_notes.md) — release notes والبوابات والحدود الحالية.
 
 ## ماذا يفعل WebPent؟
 
@@ -176,12 +178,13 @@ python main.py scan --help
 أمثلة التشغيل الأساسية:
 
 ```bash
-python main.py scan --url http://127.0.0.1:4280
-python main.py scan --url http://127.0.0.1:4280 --auto-approve
+python main.py status --profile smart-observe
+python main.py scan --url http://127.0.0.1:4280 --profile smart-observe
+python main.py scan --url http://127.0.0.1:4280 --profile smart --auto-approve
 python main.py preflight
 ```
 
-`--auto-approve` يزيل نقطة التوقف قبل `execution_sandbox`. استخدمه فقط على lab مصرح به أو pipeline تمت مراجعتها. الوضع الافتراضي يبقي Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
+`--profile` يحدد composition/policy الفعلية للحملة (`legacy` أو `smart` أو `smart-observe` أو `vip-qualification`)؛ وهو ليس flag شكليًا، بل يصل إلى graph builder وeffective policy. `status` read-only ويعرض capabilities وblockers. `--auto-approve` يزيل نقطة التوقف قبل `execution_sandbox`. استخدمه فقط على lab مصرح به أو pipeline تمت مراجعتها. الوضع الافتراضي يبقي Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
 
 لـAPI، صادق أولًا باستخدام مستخدم مضبوط صراحةً في `WEBPENT_USERS`:
 

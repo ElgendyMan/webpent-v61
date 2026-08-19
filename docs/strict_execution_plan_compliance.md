@@ -1,13 +1,15 @@
 # Strict Execution Plan v1.0 — Compliance Matrix
 
-**Project:** WebPent v60  
-**Assessment date:** 18 August 2026  
-**Scope:** مقارنة الخطة المرفقة `pasted_content_4.txt` بالحالة الفعلية للمشروع، قبل تنفيذ البنود المتبقية.  
+> **Historical baseline:** This document records the earlier strict-plan assessment and is retained for audit history. It is not the current v72 source of truth. See [`v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) and [`v72_release_notes.md`](v72_release_notes.md) for the current master-branch status.
+
+**Project:** WebPent v60 baseline
+**Assessment date:** 18 August 2026
+**Scope:** مقارنة الخطة المرفقة `pasted_content_4.txt` بالحالة الفعلية للمشروع، قبل تنفيذ البنود المتبقية.
 **Safety boundary:** WAPTLab لم يتم تعديله. الاختبار الحي تعذر بسبب قيد Docker/iptables في الـsandbox؛ لذلك أي recall في هذه المصفوفة يفرق بين live وmock.
 
-## Executive status
+## Executive status (historical)
 
-الخطة المرفقة **لم تُنفذ بالكامل**. الأجزاء الأساسية الخاصة بـVIP architecture وsecurity remediation وEvidence/Proof planning منفذة بدرجات قوية، لكن الخطة الصارمة تضيف gates تشغيلية وقياسات لا تزال غير مكتملة: ثلاثة baseline runs قابلة للإعادة، Docker runner مع seed/accounts، catalog YAML كامل، live WAPTLab qualification، owner-vs-foreign authorization proof، missing-validator صفر، وproduction release gates مثل Bandit policy وSBOM وartifact signing وpip-audit strict.
+الخطة المرفقة **لم تكن منفذة بالكامل وقت هذا التقييم التاريخي**. الأجزاء الأساسية الخاصة بـVIP architecture وsecurity remediation وEvidence/Proof planning منفذة بدرجات قوية، لكن الخطة الصارمة تضيف gates تشغيلية وقياسات لا تزال غير مكتملة: ثلاثة baseline runs قابلة للإعادة، Docker runner مع seed/accounts، catalog YAML كامل، live WAPTLab qualification، owner-vs-foreign authorization proof، missing-validator صفر، وproduction release gates مثل Bandit policy وSBOM وartifact signing وpip-audit strict.
 
 القرار الحالي وفق تعريف الخطة هو **Not Ready for VIP production**، مع أن المشروع في حالة **Extended Beta / strong local harness**. سبب القرار ليس فشل الاختبارات؛ بل عدم تحقق live qualification و15+/20 في ثلاث تشغيلات، وبقاء 7 campaign-level missing-validator contracts، ووجود quality/security gates غير مكتملة.
 

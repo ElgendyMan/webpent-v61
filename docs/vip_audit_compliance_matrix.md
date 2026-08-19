@@ -1,6 +1,8 @@
 # WebPent v60 VIP Audit Compliance Matrix
 
-**Source of truth:** `/home/ubuntu/upload/التدقيقالشاملالنهائيلـWebPentوتحويلهإلىVIPAutonomousBugHunter.md`
+> **Historical baseline:** هذه المصفوفة تسجل audit requirements وقرارات remediation السابقة. ليست مصدر الحقيقة لأرقام v72 الحالية؛ راجع [`docs/v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) و[`docs/v72_release_notes.md`](v72_release_notes.md). لا تزال قاعدة عدم ادعاء confirmation أو VIP سارية.
+
+**Original source:** `/home/ubuntu/upload/التدقيقالشاملالنهائيلـWebPentوتحويلهإلىVIPAutonomousBugHunter.md`
 
 **Review rule:** لا يُعتبر وجود enum أو helper دليلًا على دعم فعلي. الحالة `implemented` تحتاج implementation واختبارًا سلوكيًا. أي فئة لم تُجرَ عليها عملية discovery/execution/oracle/evidence كاملة تبقى `partial` أو `missing-validator` أو `not_observed`، ولا تُعرض كـconfirmed finding.
 
@@ -22,12 +24,12 @@
 | WEB-PROD-14 | opaque secret references in state | implemented/verify | `state/initial_state.py`, `secret_refs`, worker/CLI sealing, checkpoint tests | Legacy callers may still pass empty compatibility fields; plaintext secrets are scrubbed at persistence boundary |
 | WEB-PROD-15 | deny-by-default secret redaction | implemented | recursive state and metadata redaction plus api-key/totp/nested-key regressions | New secret-shaped fields should be added to the regression corpus when introduced |
 | WEB-PROD-16 | periodic/bounded vault sweep and terminal cleanup | implemented/verify | bounded `sweep_expired`/stats and worker lifecycle hooks | Process shutdown hooks remain deployment-process dependent |
-| WEB-QUAL-01 | dependency upgrades or explicit non-silent blocker | blocked, documented | `pip-audit-production.json`, strict CI audit, release notes | LangChain/LangGraph major upgrade currently conflicts with the resolver and was intentionally not forced |
+| WEB-QUAL-01 | dependency upgrades or explicit non-silent blocker | implemented/verified in v72 | `uv.lock`, `docs/pip_audit_release.json`, `docs/sbom.cdx.json` | v72 resolved the LangGraph/LangChain 1.x upgrade and strict pip-audit reports no known vulnerabilities; future upgrades still require regression testing |
 | WEB-QUAL-02 | CI/local environment contract | implemented | `.github/workflows/ci.yml`, deployment contract tests، deterministic offline flags | CI still needs its own external run for provider-specific behavior |
 | WEB-QUAL-03 | release-scoped Ruff zero | implemented | Ruff passed on all files modified in this remediation | None known |
 | WEB-QUAL-04 | broad exception classification/events | partial | critical security paths classify/restrict failures; registry and request paths are fail-closed | Historical non-critical broad catches remain and need a separate low-risk refactor |
 | WEB-QUAL-05 | behavioral tests instead of source inspection | partial | New gap, deployment, campaign, and security tests are behavioral | Historical source-inspection tests remain for legacy contracts |
-| WEB-QUAL-06 | worker critical-path coverage >=85% | blocked/partial | Full suite: `576 passed`; measured worker module coverage: **23%** | Reaching 85% requires a dedicated Celery/graph integration harness; the release does not misrepresent this gap |
+| WEB-QUAL-06 | worker critical-path coverage >=85% | blocked/partial | v72 quality gate records worker/Docker qualification as environment-blocked; Docker daemon access is denied in the current sandbox | Reaching 85% and validating worker behavior require a permitted Celery/graph integration environment; the release does not misrepresent this gap |
 | WEB-QUAL-07 | security helpers wired or explicitly NOT_WIRED | implemented/verify | SQLMap flag filter and safe RCE command allowlist are now enforced at live collector call sites | Unsupported future helpers must be marked `NOT_WIRED` before use |
 | WEB-QUAL-08 | validator plugin registry/contracts | implemented/verify | `agents/validator/registry.py`, deterministic capability matrix, seven-stage plugin contracts, and `shared/offline_validator_fixtures.py` with local evidence/oracle/cleanup adapters for the seven unsupported campaigns | Offline adapters are review-only and network-free; live executor/oracle reachability remains missing-validator until an authorized runtime path supplies real evidence |
 | WEB-QUAL-09 | Docker privilege-drop UID/filesystem test | implemented | `Dockerfile`, `entrypoint.sh`, compose and deployment contract tests | Runtime image execution should be smoke-tested in the production registry |
@@ -39,8 +41,8 @@
 
 The current release gates were executed locally as follows:
 
-- **Full pytest:** `576 passed, 66 warnings`.
-- **Preserved test-function count:** `537`, with CI minimum set to `498` because the verifier counts functions rather than parametrized cases.
+- **v72 full pytest:** `934 passed, 0 failed` in the LangGraph/LangChain 1.x environment.
+- **Preserved test-function count:** `881`, with the v72 gate minimum set to `818` because the verifier counts functions rather than parametrized cases.
 - **Ruff:** passed on all files modified in Phases 3–7.
 - **Local WAPTLab regression:** 20/20 campaign dispositions recorded; 13 `inconclusive`, 7 `missing-validator`, zero target contact, and zero WAPTLab modifications. The seven missing classes now also have offline evidence-contract adapters, but none can produce a live `tested` or confirmed status.
 - **Proof Engine regression:** 14 focused tests passed, including evidence-gap replanning, duplicate suppression, scope/approval gates, causal evidence, cleanup, and confidence transitions.

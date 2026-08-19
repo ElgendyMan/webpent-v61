@@ -18,7 +18,7 @@ The dependency set was upgraded to the resolved LangGraph/LangChain 1.x generati
 |---|---|
 | Compileall | Passed |
 | Ruff, project source/tests/scripts | Passed with 0 errors |
-| Pytest | 930 passed, 0 failed |
+| Pytest | 934 passed, 0 failed |
 | Bandit high severity | Passed |
 | pip-audit strict | Passed; no known vulnerabilities in the lock-derived requirements |
 | CycloneDX SBOM generation | Passed |
