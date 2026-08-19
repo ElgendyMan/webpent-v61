@@ -17,6 +17,7 @@ from urllib.parse import urljoin, urlparse
 from webpent.models.evidence import canonical_json, redact_sensitive
 from webpent.models.findings import VulnClass
 from webpent.models.workflows import BusinessLogicHypothesisSpec, WorkflowObservation
+from webpent.shared.confidence import EvidenceType, compute_confidence_score
 
 _SECRET_PARAM = re.compile(
     r"(?i)(?:token|secret|password|passwd|api[_-]?key|session|cookie|authorization|jwt)"
@@ -358,7 +359,7 @@ def generate_business_logic_hypotheses(
             continue
         signals = set(observation.signals)
         prereqs = list(observation.prerequisites)
-        candidates: list[tuple[str, str, str, list[str], str, float]] = []
+        candidates: list[tuple[str, str, str, list[str], str]] = []
         if observation.method in {"POST", "PUT", "PATCH", "DELETE"} and (
             "method_sequence" in signals or "form" in signals
         ):
@@ -379,7 +380,6 @@ def generate_business_logic_hypotheses(
                         "response comparison",
                     ],
                     "read_only_compare",
-                    0.48,
                 )
             )
         if "object_reference" in signals and (
@@ -402,7 +402,6 @@ def generate_business_logic_hypotheses(
                         "differential response",
                     ],
                     "approval_required",
-                    0.42,
                 )
             )
         if observation.authorization_boundary in {"cross_identity", "role_scoped"} or (
@@ -425,7 +424,6 @@ def generate_business_logic_hypotheses(
                         "differential denial response",
                     ],
                     "approval_required",
-                    0.4,
                 )
             )
         if "csrf_change" in signals or "token_change" in signals:
@@ -440,7 +438,6 @@ def generate_business_logic_hypotheses(
                         "safe rejection evidence",
                     ],
                     "read_only_compare",
-                    0.4,
                 )
             )
         if (
@@ -465,11 +462,24 @@ def generate_business_logic_hypotheses(
                         "authorization result",
                     ],
                     "approval_required",
-                    0.36,
                 )
             )
-        for kind, statement, expected, evidence_needed, action_type, score in candidates:
+        for kind, statement, expected, evidence_needed, action_type in candidates:
             from webpent.shared.evidence_contract import EvidenceContract
+            confidence_score = compute_confidence_score(
+                evidence_type=EvidenceType.HEURISTIC,
+                evidence_signals={
+                    "source_quality": min(1.0, 0.5 + 0.1 * len(signals)),
+                    "reproducibility": min(1.0, 0.5 + 0.1 * len(evidence_needed)),
+                    "identity_certainty": 1.0
+                    if observation.identity_ref or observation.identity_context
+                    else 0.5,
+                    "oracle_strength": 1.0
+                    if observation.authorization_boundary != "unknown"
+                    else 0.5,
+                    "deterministic_match": bool(observation.evidence_refs),
+                },
+            )
             contract = EvidenceContract.from_evidence_needed(
                 evidence_needed,
                 provenance=["business_logic", f"workflow:{kind}"],
@@ -501,7 +511,7 @@ def generate_business_logic_hypotheses(
                     risk_level="high" if action_type == "approval_required" else "low",
                     evidence_refs=observation.evidence_refs,
                     origin_detail=f"workflow_understanding:{kind}",
-                    confidence_score=score,
+                    confidence_score=confidence_score,
                 )
             )
     return specs

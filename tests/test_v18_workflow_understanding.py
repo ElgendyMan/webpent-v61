@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from webpent.agents.business_logic_fuzzer.agent import business_logic_fuzzer_node
 from webpent.models.hypothesis import Hypothesis
+from webpent.models.workflows import WorkflowObservation
 from webpent.shared.workflow_understanding import (
     extract_workflow_observations,
     generate_business_logic_hypotheses,
@@ -63,6 +64,46 @@ def test_workflow_hypotheses_are_bounded_and_not_findings() -> None:
     assert all(spec.request_budget <= 2 for spec in specs)
     assert all(spec.action_type in {"read_only_compare", "approval_required"} for spec in specs)
     assert all(not isinstance(spec, Hypothesis) for spec in specs)
+
+
+def test_business_logic_confidence_uses_observable_workflow_signals() -> None:
+    weak = WorkflowObservation(
+        fingerprint="weak-observation",
+        workflow_key="checkout",
+        transition_key="review-to-submit",
+        source_ref="workflow:weak",
+        endpoint="https://lab.example/checkout",
+        method="POST",
+        signals=["form"],
+        prerequisites=["authenticated_identity"],
+        evidence_refs=["workflow:weak:evidence"],
+        scope_decision="allowed",
+    )
+    strong = weak.model_copy(
+        update={
+            "fingerprint": "strong-observation",
+            "signals": [
+                "form",
+                "method_sequence",
+                "object_reference",
+                "role_boundary",
+                "workflow_intent",
+            ],
+            "identity_ref": "identity:hashed",
+            "identity_context": ["role:hashed"],
+            "authorization_boundary": "role_scoped",
+            "object_refs": ["object:hashed"],
+            "evidence_refs": ["workflow:strong:evidence", "workflow:strong:oracle"],
+        }
+    )
+
+    weak_specs = generate_business_logic_hypotheses([weak], target_url="https://lab.example")
+    strong_specs = generate_business_logic_hypotheses([strong], target_url="https://lab.example")
+
+    assert weak_specs and strong_specs
+    assert 0.0 <= weak_specs[0].confidence_score <= 1.0
+    assert 0.0 <= strong_specs[0].confidence_score <= 1.0
+    assert weak_specs[0].confidence_score != strong_specs[0].confidence_score
 
 
 def test_workflow_coverage_reports_missing_metadata_without_finding() -> None:
