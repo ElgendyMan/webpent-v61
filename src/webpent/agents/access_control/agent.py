@@ -9,10 +9,11 @@ never treated as confirmation.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from langchain_core.messages import AIMessage
 
@@ -41,9 +42,132 @@ _ID_PATTERN = re.compile(
     r")",
     re.IGNORECASE,
 )
+_ID_KEY_PATTERN = re.compile(r"^(?:id|.*[_-]id|.*Id)$", re.IGNORECASE)
+_OWNERSHIP_HEADER_KEYS = frozenset(
+    {"x-user-id", "x-owner-id", "x-account-id", "x-tenant-id", "x-actor-id"}
+)
+_MAX_IDENTIFIER_VALUES = 32
 
 
-def _extract_candidate_records(crawled_data: Any) -> list[dict[str, Any]]:
+def _scalar_identifier(value: Any) -> str | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (str, int)):
+        candidate = str(value).strip()
+        return candidate[:200] if candidate else None
+    return None
+
+
+def _iter_id_like_values(payload: Any) -> list[tuple[str, str]]:
+    """Return bounded id-like values from nested request metadata."""
+    found: list[tuple[str, str]] = []
+
+    def walk(value: Any, path: str = "") -> None:
+        if len(found) >= _MAX_IDENTIFIER_VALUES:
+            return
+        if isinstance(value, dict):
+            for key, child in list(value.items())[:_MAX_IDENTIFIER_VALUES]:
+                key_text = str(key)
+                child_path = f"{path}.{key_text}" if path else key_text
+                scalar = _scalar_identifier(child)
+                if _ID_KEY_PATTERN.match(key_text) and scalar is not None:
+                    found.append((child_path, scalar))
+                elif isinstance(child, (dict, list)):
+                    walk(child, child_path)
+        elif isinstance(value, list):
+            for index, child in enumerate(value[:_MAX_IDENTIFIER_VALUES]):
+                if isinstance(child, (dict, list)):
+                    walk(child, f"{path}[{index}]")
+
+    walk(payload)
+    return found[:_MAX_IDENTIFIER_VALUES]
+
+
+def _request_identifier_sources(record: dict[str, Any], url: str) -> list[tuple[str, str]]:
+    """Collect redaction-safe source labels and id-like values from a record."""
+    sources: list[tuple[str, str]] = []
+    parsed = urlparse(url)
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        scalar = _scalar_identifier(value)
+        if _ID_KEY_PATTERN.match(key) and scalar is not None:
+            sources.append((f"query:{key}", scalar))
+
+    for field in ("body", "request_data", "json_body", "data"):
+        payload = record.get(field)
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                payload = None
+        if isinstance(payload, (dict, list)):
+            sources.extend(
+                (f"{field}:{path}", value)
+                for path, value in _iter_id_like_values(payload)
+            )
+
+    headers = record.get("headers") or record.get("request_headers")
+    if isinstance(headers, dict):
+        for key, value in headers.items():
+            if str(key).lower() not in _OWNERSHIP_HEADER_KEYS:
+                continue
+            scalar = _scalar_identifier(value)
+            if scalar is not None:
+                sources.append((f"header:{key}", scalar))
+    return list(dict.fromkeys(sources))[:_MAX_IDENTIFIER_VALUES]
+
+
+def _graphql_projection_records(javascript_intelligence: Any) -> list[dict[str, Any]]:
+    """Bridge redacted GraphQL operation metadata into BAC records."""
+    if hasattr(javascript_intelligence, "model_dump"):
+        javascript_intelligence = javascript_intelligence.model_dump(mode="json")
+    if not isinstance(javascript_intelligence, dict):
+        return []
+    operations: list[Any] = []
+    for key in ("graphql_operations", "graphql_queries", "operations"):
+        value = javascript_intelligence.get(key)
+        if isinstance(value, list):
+            operations.extend(value)
+    for route in javascript_intelligence.get("routes") or []:
+        if isinstance(route, dict) and str(route.get("discovery_kind", "")).lower() == "graphql":
+            operations.append(route)
+    records: list[dict[str, Any]] = []
+    for operation in operations[:_MAX_IDENTIFIER_VALUES]:
+        if not isinstance(operation, dict):
+            continue
+        url = operation.get("url") or operation.get("route") or operation.get("endpoint")
+        if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+            continue
+        variables = operation.get("variables") or operation.get("variable_values")
+        variable_names = operation.get("variable_names") or operation.get("graphql_variables")
+        identifiers = _iter_id_like_values(variables)
+        if isinstance(variable_names, list):
+            identifiers.extend(
+                (f"graphql:{name}", str(name))
+                for name in variable_names[:_MAX_IDENTIFIER_VALUES]
+                if _ID_KEY_PATTERN.match(str(name))
+            )
+        if not identifiers:
+            continue
+        records.append(
+            {
+                "url": url,
+                "method": str(operation.get("method") or "POST").upper(),
+                "graphql_variables": [path for path, _ in identifiers[:_MAX_IDENTIFIER_VALUES]],
+                "object_id": next(
+                    (value for path, value in identifiers if not path.startswith("graphql:")),
+                    None,
+                ),
+                "candidate_sources": [f"graphql:{path}" for path, _ in identifiers],
+                "request_data": variables if isinstance(variables, dict) else None,
+            }
+        )
+    return records
+
+
+def _extract_candidate_records(
+    crawled_data: Any,
+    javascript_intelligence: Any = None,
+) -> list[dict[str, Any]]:
     """Extract dynamic resource records from common crawler shapes.
 
     Structured crawler artifacts may provide ``owner_identity`` or
@@ -66,6 +190,7 @@ def _extract_candidate_records(crawled_data: Any) -> list[dict[str, Any]]:
                     values.append(key)
     elif isinstance(crawled_data, list):
         values.extend(crawled_data)
+    values.extend(_graphql_projection_records(javascript_intelligence))
 
     for value in values:
         if isinstance(value, dict):
@@ -76,14 +201,37 @@ def _extract_candidate_records(crawled_data: Any) -> list[dict[str, Any]]:
         else:
             url = str(value)
             record = {}
-        if not url.startswith("http") or not _ID_PATTERN.search(urlparse(url).path):
+        if not url.startswith(("http://", "https://")):
             continue
-        canonical = url.rstrip("/")
+        identifiers = _request_identifier_sources(record, url)
+        has_path_id = bool(_ID_PATTERN.search(urlparse(url).path))
+        if not has_path_id and not identifiers:
+            continue
+        record["url"] = url
+        identifier_object_id = next(
+            (value for source, value in identifiers if not source.startswith("header:")),
+            None,
+        )
+        record["object_id"] = (
+            record.get("object_id") or identifier_object_id or extract_object_id(url)
+        )
+        record["candidate_sources"] = list(
+            dict.fromkeys(
+                list(record.get("candidate_sources") or [])
+                + [source for source, _ in identifiers]
+                + (["path"] if has_path_id else [])
+            )
+        )
+        if identifiers:
+            record["candidate_identifiers"] = [value for _, value in identifiers]
+        method = str(record.get("method") or record.get("http_method") or "GET").upper()
+        record["method"] = method
+        canonical = "|".join(
+            (url.rstrip("/"), method, str(record.get("object_id") or ""))
+        )
         if canonical in seen:
             continue
         seen.add(canonical)
-        record["url"] = url
-        record.setdefault("object_id", extract_object_id(url))
         owner = (
             record.get("owner_identity")
             or record.get("owner")
@@ -98,12 +246,61 @@ def _extract_candidate_records(crawled_data: Any) -> list[dict[str, Any]]:
     return records
 
 
-def _extract_idor_candidates(crawled_data: dict[str, Any]) -> list[str]:
+def _extract_idor_candidates(
+    crawled_data: dict[str, Any], javascript_intelligence: Any = None
+) -> list[str]:
     """Backward-compatible URL-only candidate extractor."""
-    return [str(record["url"]) for record in _extract_candidate_records(crawled_data)]
+    return [
+        str(record["url"])
+        for record in _extract_candidate_records(crawled_data, javascript_intelligence)
+    ]
+
+
+def _enumerate_adjacent_ids(record: dict[str, Any], profile: Any) -> list[str]:
+    """Return a bounded list of numeric neighboring IDs; UUIDs are skipped."""
+    raw_id = str(record.get("object_id") or extract_object_id(str(record.get("url") or "")) or "")
+    if not raw_id.isdigit():
+        return []
+    try:
+        base = int(raw_id)
+    except ValueError:
+        return []
+    configured = profile.get("max_neighbors", 2) if isinstance(profile, dict) else 2
+    limit = max(1, min(int(configured), 10))
+    neighbors: list[str] = []
+    for delta in range(1, limit + 1):
+        for candidate in (base - delta, base + delta):
+            if candidate >= 0:
+                neighbors.append(str(candidate))
+    return neighbors[:limit]
+
+
+def _replace_candidate_id(url: str, old_id: str, new_id: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.replace(f"/{old_id}", f"/{new_id}", 1)
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    changed = False
+    replaced_query: list[tuple[str, str]] = []
+    for key, value in query:
+        if not changed and _ID_KEY_PATTERN.match(key) and value == old_id:
+            replaced_query.append((key, new_id))
+            changed = True
+        else:
+            replaced_query.append((key, value))
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            path,
+            parsed.params,
+            urlencode(replaced_query),
+            parsed.fragment,
+        )
+    )
 
 
 def _probe_url(
+
     url: str,
     cookies: dict[str, str] | None = None,
     timeout: float = 10.0,
@@ -217,7 +414,12 @@ def access_control_node(state: PentestState) -> dict:
     target = state.get("target")
     findings: list[Finding] = list(state.get("findings") or [])
     crawled_data: Any = state.get("crawled_data") or {}
-    records = _extract_candidate_records(crawled_data)
+    javascript_intelligence = (
+        state.get("javascript_intelligence")
+        or state.get("js_intelligence")
+        or {}
+    )
+    records = _extract_candidate_records(crawled_data, javascript_intelligence)
     if not records:
         logger.info("Access Control Mapper: no IDOR candidates found")
         return {
@@ -233,6 +435,46 @@ def access_control_node(state: PentestState) -> dict:
     max_candidates = int(state.get("bac_max_candidates") or 20)
     max_identities = int(state.get("bac_max_identities") or 8)
     probe_profiles = probe_profiles[: max(2, max_identities)]
+    try:
+        from webpent.config.settings import get_settings
+
+        bac_settings = get_settings()
+        enumeration_enabled = (
+            bool(state.get("enable_idor_enumeration"))
+            if "enable_idor_enumeration" in state
+            else bool(bac_settings.enable_idor_enumeration)
+        )
+        enumeration_neighbors = int(
+            state.get("idor_enumeration_neighbors")
+            or bac_settings.idor_enumeration_neighbors
+        )
+    except Exception as exc:
+        logger.debug("BAC enumeration settings unavailable: %s", exc)
+        enumeration_enabled = False
+        enumeration_neighbors = 0
+    records = records[:max_candidates]
+    if enumeration_enabled and enumeration_neighbors > 0:
+        enumerated_records: list[dict[str, Any]] = []
+        for record in records:
+            for neighbor in _enumerate_adjacent_ids(
+                record,
+                {"max_neighbors": enumeration_neighbors},
+            ):
+                clone = dict(record)
+                source_url = str(record.get("url") or "")
+                old_id = str(record.get("object_id") or extract_object_id(source_url) or "")
+                clone["url"] = _replace_candidate_id(source_url, old_id, neighbor)
+                clone["object_id"] = neighbor
+                clone["candidate_sources"] = list(
+                    dict.fromkeys(
+                        list(record.get("candidate_sources") or [])
+                        + ["bounded_adjacent_id"]
+                    )
+                )
+                clone["enumerated_from"] = old_id
+                enumerated_records.append(clone)
+        remaining_capacity = max(0, max_candidates - len(records))
+        records.extend(enumerated_records[:remaining_capacity])
 
     new_findings: list[Finding] = []
     observations_out: list[dict[str, Any]] = []
@@ -241,7 +483,7 @@ def access_control_node(state: PentestState) -> dict:
     matrix_inputs: list[dict[str, Any]] = []
     confirmed_count = 0
 
-    for record in records[:max_candidates]:
+    for record in records:
         url = str(record["url"])
         object_id = str(record.get("object_id") or extract_object_id(url) or "") or None
         owner_identity = str(record.get("owner_identity") or "").strip() or None
@@ -293,6 +535,7 @@ def access_control_node(state: PentestState) -> dict:
                     **row,
                     "owner_identity": owner_identity,
                     "object_id": object_id,
+                    "candidate_sources": list(record.get("candidate_sources") or []),
                     "endpoint": url,
                     "method": requested_method,
                     "evidence_refs": [
@@ -309,14 +552,17 @@ def access_control_node(state: PentestState) -> dict:
             edge["target_url"] = getattr(target, "url", None)
         relational_out.extend(edges)
         observations_out.append(
-            {
-                "resource_url": url,
-                "object_id": object_id,
-                "owner_identity": owner_identity,
-                "identities_tested": [row["identity"] for row in rows],
-                "observations": rows,
-                "assessment": assessment,
-            }
+                            {
+                    "resource_url": url,
+                    "object_id": object_id,
+                    "owner_identity": owner_identity,
+                    "candidate_sources": list(record.get("candidate_sources") or []),
+                    "enumerated_from": record.get("enumerated_from"),
+                    "identities_tested": [row["identity"] for row in rows],
+                    "observations": rows,
+                    "assessment": assessment,
+                }
+
         )
 
         if assessment["status"] == "confirmed":

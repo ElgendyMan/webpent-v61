@@ -239,6 +239,14 @@ class Settings(BaseSettings):
     )
     max_authorization_matrix_rows: int = Field(default=500, gt=0, le=10000)
     max_authorization_matrix_comparisons: int = Field(default=1000, gt=0, le=20000)
+    enable_idor_enumeration: bool = Field(
+        default=False,
+        description=(
+            "Enable bounded numeric adjacent-ID enumeration for BAC candidates. "
+            "Disabled by default; enumeration remains read-only and never confirms a finding."
+        ),
+    )
+    idor_enumeration_neighbors: int = Field(default=2, ge=1, le=10)
     enable_js_intelligence: bool = Field(
         default=False,
         description=(
