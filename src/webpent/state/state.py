@@ -163,6 +163,9 @@ class PentestState(TypedDict, total=False):
     enable_autonomous_controller: bool
     capability_manifest: Annotated[dict[str, Any], merge_dicts]
     action_budget: Annotated[dict[str, Any], merge_dicts]
+    # Optional LLM advisory validation trace. It is report-safe and never
+    # grants execution authority; absent in legacy checkpoints.
+    llm_reliability_trace: Annotated[list[dict[str, Any]], merge_lists]
 
     # V7 Cognitive Upgrade — Phase 2: Mental Model / Knowledge Graph.
     #
