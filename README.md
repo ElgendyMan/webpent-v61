@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة v60 Smart Hunter مع remediation v61 وSmart Research Upgrade additive. آخر بوابة تحقق موثقة: **789 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff = 0 على `src`, `tests`, `benchmarks`, و`scripts`. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل qualification حية أو ضمانًا لاكتشاف كل الثغرات على كل هدف.
+> **الحالة الحالية:** نسخة v60 Smart Hunter مع remediation v61 وSmart Research Upgrade وOperations UX Upgrade additive. آخر بوابة تحقق موثقة: **796 اختبارًا ناجحًا**، و`compileall` ناجح، وRuff = 0 على `src`, `tests`, `benchmarks`, و`scripts`. هذه النتيجة تثبت العقود والـregressions المعروفة، ولا تمثل qualification حية أو ضمانًا لاكتشاف كل الثغرات على كل هدف.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -57,7 +57,7 @@ flowchart LR
 | RAG | Knowledge Pack محلي للـmethodologies والـrepositories والـreports والـwrite-ups والـauthorized scenarios. |
 | LLM safety | محتوى RAG والبيانات الخارجية داخل trust boundary ولا يُعامل كتعليمات تنفيذ. |
 | Memory isolation | عزل lessons حسب `client_id` مع تضييق اختياري حسب `engagement_id`. |
-| Reporting | JSON وHTML وتقرير قابل للتوسعة مع authorization matrix appendix وredaction. |
+| Reporting | JSON وHTML وPDF وMarkdown مع اختيار الصيغ، وauthorization matrix appendix وredaction. |
 | Resumability | Checkpoints وthread state لاستكمال الحملات المنظمة بدل عرض آخر thread فقط. |
 | Smart research contracts | `ResearchContext` و`CandidateAction` و`InformationObservation` typed وcheckpoint-safe، مع utility decision trace. |
 | Active research | Loop اختياري يمر عبر policy/scope/capability/budget gates، ويحدث coverage وfailed-path memory دون promotion. |
@@ -180,6 +180,52 @@ python main.py preflight
 ```
 
 `--auto-approve` يزيل نقطة التوقف قبل `execution_sandbox`. استخدمه فقط على lab مصرح به أو pipeline تمت مراجعتها. الوضع الافتراضي يبقي Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
+
+### خيارات التشغيل العملية
+
+يدعم أمر `scan` مدخلات تشغيلية additive ومحدودة، وكلها تصل إلى `initial_state` الفعلي بدل أن تكون خيارات شكلية:
+
+| الخيار | الاستخدام |
+|---|---|
+| `--report-format json,html,pdf,md` | اختيار صيغ التقرير. استخدم `all` لإصدار كل الصيغ، وبدون الخيار يبقى السلوك القديم. |
+| `--no-llm` | تعطيل LLM لهذا التشغيل فقط مع إبقاء fallback الحتمي. لا يغيّر `.env` ولا يحفظ override دائمًا. |
+| `--creds-file PATH` | تحميل credential mapping أو عدة identity profiles من JSON محدود الحجم. القيم غير الصالحة تُرفض fail-closed. |
+| `--cookie-file PATH` | تحميل cookies من JSON أو Netscape cookie file. لا تُطبع القيم في logs أو reports. |
+| `--payload-file PATH` | تحميل payloads نصية محدودة الحجم، مع إزالة الأسطر الفارغة والتكرارات قبل تمريرها إلى `payloads_to_test`. |
+| `--stealth` | تفعيل jitter وminimum request interval الموجودين، مع عرض telemetry مختصر بعد انتهاء الحملة. |
+| `--engagement-id ID` | ربط تشغيلات متعاقبة بحملة واحدة لتجميع النتائج المختلفة مع الحفاظ على deduplication والعزل. |
+
+أمثلة مصرح بها على مختبر محلي:
+
+```bash
+python main.py scan --url http://127.0.0.1:4280 \\
+  --report-format all \\
+  --payload-file ./payloads.txt \\
+  --creds-file ./authorized-profiles.json \\
+  --cookie-file ./cookies.txt \\
+  --stealth \\
+  --engagement-id local-lab-main
+
+python main.py scan --url http://127.0.0.1:4280 --no-llm --report-format md
+```
+
+> لا تضع credentials أو cookies أو payloads الحساسة داخل Git. ملفات الإدخال تُقرأ محليًا، وتُرفض إذا كانت malformed أو أكبر من الحدود المحددة في `src/webpent/cli/loaders.py`.
+
+### LLM provider وfallback
+
+انسخ [`.env.example`](.env.example) إلى `.env` وضع مفاتيح المزودين الذين تملك حق استخدامهم. الملف يشرح provider keys وmodel slugs وbase URLs والـquotas المعروفة، لكن أسماء النماذج والـfree tiers قابلة للتغيير ويجب مراجعتها من لوحات المزودين.
+
+```bash
+cp .env.example .env
+# عدّل LLM_ENABLED والمفاتيح المطلوبة فقط
+python main.py preflight
+```
+
+يعرض `preflight` حالة `LLM_ENABLED`، والمزودين المهيئين بدون كشف المفاتيح، والـcircuit-breaker providers، وسلاسل fallback لكل نوع مهمة. عدم وجود provider مهيأ يظهر كـ`deterministic fallbacks only`، ولا يُدّعى نجاح اتصال خارجي. يظل `--no-llm` override مؤقتًا لكل تشغيل، وتظل نتيجة LLM advisory ولا تمنح صلاحية تنفيذ أو ترقية Finding.
+
+### Stealth telemetry
+
+وضع stealth يطبّق pacing حقيقيًا عبر jitter وminimum interval، ولا يعني anonymity أو تجاوز أنظمة الحماية أو التفويض. بعد الحملة يعرض WebPent عدد استدعاءات jitter/rate-limit وإجمالي وقت النوم الفعلي بدون أسرار. العدادات thread-local وتُصفّر لكل scan، ولا تغيّر قيم التأخير أو قواعد scope.
 
 لـAPI، صادق أولًا باستخدام مستخدم مضبوط صراحةً في `WEBPENT_USERS`:
 
@@ -310,7 +356,7 @@ PYTHONPATH=src python scripts/verify_rag_knowledge_pack.py
 
 يجب أن يحتوي التقرير المهني، بحسب نوع finding، على الهدف والنطاق، baseline، probe، behavior المرصود، causal signal، negative control، الأثر، confidence، replay steps المصرح بها، remediation، والقيود.
 
-تقارير JSON وHTML تُصدر عبر مسار reporter الموجود في المشروع. قبل استخدام أي أمر تصدير، راجع الخيارات الفعلية:
+تقارير JSON وHTML وPDF وMarkdown تُصدر عبر مسار reporter الموجود في المشروع، ويمكن ترشيح الصيغ من CLI عبر `--report-format`. قبل استخدام أي أمر تصدير، راجع الخيارات الفعلية:
 
 ```bash
 python main.py --help
@@ -363,7 +409,7 @@ PYTHONPATH=src .venv/bin/pytest -q tests/test_rag_knowledge_pack.py
 PYTHONPATH=src .venv/bin/python scripts/verify_rag_knowledge_pack.py
 ```
 
-الاختبارات يجب أن تثبت behavior وليس مجرد imports. من العقود المهمة: fallback الحتمي للـLLM، redaction، lazy discovery، عدم ترقية surface observation، عزل lessons، حدود PoC، state-changing gating، candidate expansion، confidence الديناميكي، وbounded graph loops.
+الاختبارات يجب أن تثبت behavior وليس مجرد imports. من العقود المهمة: fallback الحتمي للـLLM، redaction، lazy discovery، عدم ترقية surface observation، عزل lessons، حدود PoC، state-changing gating، candidate expansion، confidence الديناميكي، bounded graph loops، loaders الخاصة بالـcredentials/cookies/payloads، report-format selection، stealth telemetry، وLLM diagnostics.
 
 ## الوضع الحالي والحدود المعروفة
 
