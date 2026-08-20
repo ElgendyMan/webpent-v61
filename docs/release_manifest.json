@@ -197,7 +197,7 @@
     "scripts/start_tunnel.sh": "619272c17a6eba3d8e4cb533cee3b6b692526b4ee407552edef144f796e52ac0",
     "scripts/summarize_pip_audit.py": "df7cbbceb1490c026e0d0f77f886f17744333a27c7eea3cf970fc631e53b2aa7",
     "scripts/verify_rag_knowledge_pack.py": "f2dc2f29c5ba24f3bd4701d45f5302f32ff727ad2cee86e1fd72d5504ee28146",
-    "scripts/verify_release_artifacts.py": "71aaa7415c625eda00c465c7567ecb560d9d2a7eef165a5d08d2525939e4459d",
+    "scripts/verify_release_artifacts.py": "6e7949e7194196d9921953226ddd609e883cd946780311e1d2fa2b2348170d71",
     "scripts/verify_test_count.py": "ba6f9bd44b406116a0e4e430edf65a3fcc2b2ded72784ccd24392e7cc0bdd22a",
     "scripts/waptlab_mock.py": "2b855551dee8a58de73fc241d5c0b71b106072527758178908c218672216fb91",
     "server.py": "6f64f3913cc046bda65acab7541a0cba031f3db80aea16b0e7c4d3e43bf8d587",
@@ -612,8 +612,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-20T21:21:59.073161+00:00",
-  "git_commit": "e8b198917e182a88c36036a48d352ed5622fc594",
+  "generated_at": "2026-08-20T21:24:07.279285+00:00",
+  "git_commit": "9527d2a5d08e89fcc05a4c83569d58085ba27c56",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,

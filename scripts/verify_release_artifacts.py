@@ -32,7 +32,7 @@ SECRET_PATTERNS = (
     re.compile(r"BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY"),
     re.compile(r"(?:sk|rk)-[A-Za-z0-9]{20,}"),
     re.compile(
-        r"password\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.IGNORECASE
+        r"\bpassword\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.IGNORECASE
     ),
 )
 
