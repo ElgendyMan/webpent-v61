@@ -123,7 +123,12 @@ check(
 )
 check(
     "F3d. rate_limit_enabled defaults to False in settings.py",
-    bool(re.search(r'rate_limit_enabled\s*:\s*bool\s*=\s*Field\(\s*default\s*=\s*False', settings_src)),
+    bool(
+        re.search(
+            r'rate_limit_enabled\s*:\s*bool\s*=\s*Field\(\s*default\s*=\s*False',
+            settings_src,
+        )
+    ),
 )
 check(
     "F3e. app.py checks rate_limit_enabled (bypass when False)",
@@ -235,7 +240,11 @@ check(
 check(
     "F6c. evaluate_ground_truth.py does NOT hardcode 'localhost:8080' as default",
     'DEFAULT_TARGET_URL_HOST' not in eval_src
-    and 'http://localhost:8080' not in eval_src.split("DEFAULT_")[0] if "DEFAULT_" in eval_src else True,
+    and (
+        'http://localhost:8080' not in eval_src.split("DEFAULT_")[0]
+        if "DEFAULT_" in eval_src
+        else True
+    ),
 )
 check(
     "F6d. evaluate_ground_truth.py has get_auth_token function for JWT",
@@ -522,13 +531,19 @@ check(
 )
 check(
     "DX3b. docker-compose.dev.yml uses plain --reload (V7 fix)",
-    "--reload" in dev_compose_src and "--reload-dir" not in dev_compose_src and "--reload-include" not in dev_compose_src,
+    "--reload" in dev_compose_src
+    and "--reload-dir" not in dev_compose_src
+    and "--reload-include" not in dev_compose_src,
 )
 check(
     "DX3c. docker-compose.dev.yml celery has no --reload (V7 fix)",
-    "celery" in dev_compose_src and "worker" in dev_compose_src
-    and "--reload" not in (dev_compose_src.split("worker:")[1] if "worker:" in dev_compose_src else "")
-    if "worker:" in dev_compose_src else False,
+    (
+        "celery" in dev_compose_src
+        and "worker" in dev_compose_src
+        and "--reload" not in dev_compose_src.split("worker:")[1]
+    )
+    if "worker:" in dev_compose_src
+    else False,
 )
 
 # DX-4: LLM circuit breaker TTL.
