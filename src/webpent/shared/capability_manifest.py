@@ -91,6 +91,7 @@ class CapabilityRegistry:
         "ffuf": "native_parameter_probe",
         "oob": "inconclusive_without_controlled_callback",
         "autopentestx_observation": "native_recon_or_human_review",
+        "nettacker_observation": "native_recon_or_human_review",
     }
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -154,6 +155,25 @@ def _build_capability_manifest(settings: Settings | None = None) -> dict[str, An
             "subprocess_io": False,
             "authority": "webpent_validator",
             "source_commit": "c324bc5b8aa68b549652c403fd674b142617f211",
+            "timeout_seconds": 0,
+            "retry_budget": 0,
+            "concurrency_limit": 1,
+            "max_input_bytes": 512 * 1024,
+            "max_records": 256,
+            "partial_output_supported": True,
+            "cleanup": "not_applicable_import_only",
+            "fail_closed": True,
+        },
+        "nettacker_observation": {
+            "available": True,
+            "status": "adapter_only",
+            "execution_available": False,
+            "network_io": False,
+            "subprocess_io": False,
+            "authority": "webpent_validator",
+            "source_project": "Nettacker",
+            "source_version": "0.4.1",
+            "source_commit": "d274c40a276076c7d40260489d06943b756bd9d1",
             "timeout_seconds": 0,
             "retry_budget": 0,
             "concurrency_limit": 1,

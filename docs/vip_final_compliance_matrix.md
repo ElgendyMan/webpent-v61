@@ -2,7 +2,7 @@
 
 ## Scope of this review
 
-This review compares the supplied VIP plan with the current WebPent source tree at revision `73f952c0e29322c6da83f9cc3fea5b16957afc69`. The review and all verification commands are local only. No WAPTLab or other target was started, contacted, or modified during this review.
+This review compares the supplied VIP plan with the current WebPent working tree based on commit `4b3e069c8d3c4e1bdbce92184e2bf53c74208c90` plus the uncommitted Nettacker adapter and integration-matrix changes being verified in this loop. The review and all verification commands are local only. No WAPTLab or other target was started, contacted, or modified during this review.
 
 A capability is marked **implemented and locally evidenced** only when the source contains the contract and the local test/audit suite exercises the relevant behavior. A source module, feature flag, or README statement is not treated as runtime proof by itself. Live qualification, precision, reproducibility, and benchmark claims remain blocked when they require target execution.
 
@@ -16,7 +16,7 @@ A capability is marked **implemented and locally evidenced** only when the sourc
 | Gate 2: one WebPent execution plane | Implemented and locally evidenced for the existing contracts | `ActionRequest`, `ActionAuthority`, `ActionExecutor`, capability manifests, ledger reservation, idempotency, ProofBundle custody, redaction, and fail-closed states are present and covered by local tests. `verify_all.py` and AST guards pass. | A full source scan of every agent/tool wrapper must remain part of release CI; live process-group and browser qualification are not asserted here. |
 | Gate 3: smart reasoning/autonomy | Partially implemented and locally evidenced | GoalTree, KnowledgeGapEngine, NextBestActionEngine, SelfCritique, structured LLM contracts/cache, hypothesis analysis, and autonomous controller exist. LLM authority remains bounded by deterministic policy. | A measurable live reduction in redundant actions or increase in useful confirmed coverage cannot be established without benchmark runs. |
 | Gate 4: lifecycle/recovery | Partially implemented and locally evidenced | Capability registry, lazy discovery, task states, action ledger, Celery/resume/idempotency tests, recovery-oriented campaign executor, and failure semantics exist. Stale audit checks were corrected to test lazy discovery and fail-closed migration behavior. | Broker redelivery, worker restart, and rollback qualification need dedicated local fault-injection runs if not already covered by the existing tests. |
-| Gate 5: Nettacker adapter | Not implemented in this phase | No new Nettacker executor was added; this avoids adding an unbenchmarked duplicate or direct network authority. | Requires separate source/license audit, manifest, parser, fallback, and local contract tests before acceptance. |
+| Gate 5: Nettacker adapter | Implemented and locally evidenced as import-only | `src/webpent/shared/nettacker_adapter.py` accepts bounded captured JSON-compatible output, performs redaction and malformed/partial handling, binds provenance/action-ledger context, and projects same-origin surfaces as `needs_validator`; `tests/test_nettacker_adapter.py` covers normalization, limits, authority, graph, manifest, and AST no-I/O behavior. | It is intentionally not a Nettacker executor and has no live benchmark value until an approved ActionExecutor path and target-backed ablation are completed. |
 | Gate 5: AutoPentestX adapter | Implemented and locally evidenced as import-only | The adapter normalizes bounded pre-existing records into WebPent observations, applies redaction and same-origin checks, carries provenance/action-ledger context, and never executes subprocess/HTTP/DNS/exploit code. | It is intentionally not a live scanner and has no benchmark value until an approved adapter execution path is built and tested through ActionExecutor. |
 | Gate 6: browser/authenticated workflow | Partially implemented | Browser and workflow models, authentication, CSRF/session handling, workflow replay, and browser wrappers exist in the source and local tests. | Browser/Chromium, OTP, stored-XSS retrieval, OOB, and authenticated multi-identity qualification require local target execution and are not claimed here. |
 | Gate 6: crawling and surface discovery | Partially implemented and locally evidenced | Native crawler, HTTP discovery, Katana integration/fallback, route seeds, supplement logic, SurfaceEvidenceGraph, and coverage ledger exist. | End-to-end bounded crawling and coverage improvement require a target benchmark; WAPTLab is intentionally skipped. |
@@ -34,15 +34,15 @@ A capability is marked **implemented and locally evidenced** only when the sourc
 |---|---|
 | PentestGPT | Use only bounded reasoning patterns; no unrestricted LLM authority. |
 | Rekono | Do not copy GPLv3 code; retain only independently implemented lifecycle ideas. |
-| Nettacker | Deferred; no unbenchmarked executor added. |
+| Nettacker | Import-only observation adapter accepted; no executor or direct network authority. |
 | AutoPentestX | Import-only observation adapter accepted; orchestrator and exploit engine rejected. |
 | ZAP, Katana, Playwright/Crawlee, Schemathesis, REST-Attacker, Wapiti, Dalfox, mitmproxy, Nuclei, HTTPx, Subfinder, GraphQL utilities | Deferred or retained only where native WebPent contracts already exist; no new unbenchmarked authority was introduced. |
 
 ## Local verification snapshot
 
-The current local verification is deterministic and target-free:
+The current local verification is deterministic and target-free. The Nettacker adapter and matrix changes were included in the final local run:
 
-- Full pytest: **981 passed, 0 failures**.
+- Full pytest: **991 passed, 0 failures**.
 - Ruff: **0 errors**.
 - `compileall`: **pass**.
 - Unified `verify_all.py`: **145 pass, 0 fail** after replacing stale checks with semantic checks for the current lazy tool registry, Docker base-image usage, multiline decorators, and fail-closed Alembic behavior.

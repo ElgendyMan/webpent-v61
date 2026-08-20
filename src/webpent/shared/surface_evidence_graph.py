@@ -157,6 +157,7 @@ def build_surface_evidence_graph(
     raw_endpoints = list(data.get("endpoints") or [])
     raw_endpoints.extend(item for item in _records(data, "surface_records"))
     raw_endpoints.extend(item for item in _records(data, "autopentestx_surface_records"))
+    raw_endpoints.extend(item for item in _records(data, "nettacker_surface_records"))
     family_counts: dict[str, int] = {}
     for item in _family_diverse(raw_endpoints, 250):
         label, method = _endpoint(item)
@@ -188,6 +189,7 @@ def build_surface_evidence_graph(
         ("multipart_fields", "multipart_field", "multipart-validator"),
         ("service_fingerprints", "service_fingerprint", "service-validator"),
         ("autopentestx_service_fingerprints", "service_fingerprint", "autopentestx_observation"),
+        ("nettacker_service_fingerprints", "service_fingerprint", "nettacker_observation"),
         ("workflow_observations", "workflow_ref", "workflow-validator"),
     ):
         for item in _records(data, key)[:60]:

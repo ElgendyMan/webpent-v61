@@ -16,21 +16,22 @@ The VIP label is intentionally withheld because the attached plan defines target
 | Identity and workflow | Implemented in models and local contracts | Identity handling, primary/foreign identity logic, workflow replay structures, object/tenant differential evidence models |
 | Surface and coverage intelligence | Implemented and locally verified | SurfaceEvidenceGraph, CoverageLedger, route discovery, bounded crawler/supplement logic, imported-observation projection |
 | AutoPentestX integration | Implemented as import-only adapter | Redaction, same-origin checks, provenance, action-ledger context, budget metadata, malformed-input fail-closed behavior, AST no-direct-I/O guard |
-| External-tool benchmark value | Not established | Requires controlled ablation runs; no live target was contacted |
+| Nettacker integration | Implemented as import-only adapter | Bounded captured-output normalization, redaction, malformed/partial semantics, ActionAuthority/ledger context, same-origin surface projection, capability manifest, and AST no-I/O tests; no Nettacker executor is imported |
+| External-tool benchmark value | Not established | Nettacker and AutoPentestX import contracts are locally verified, but useful coverage and precision require controlled ablation runs; no live target was contacted |
 | WAPTLab/Juice Shop qualification | Not executed in this loop | Explicitly skipped by user request |
-| Release signing | Not configured | SHA-256 manifest is integrity evidence, not a cryptographic signature; operator signing remains required |
 
 ## Verification results
 
 | Gate | Result |
 |---|---:|
-| Full pytest | **981 passed, 0 failures** |
+| Full pytest | **991 passed, 0 failures** |
 | Ruff | **0 errors** |
 | Compileall | **Pass** |
 | Unified `verify_all.py` audit | **145 pass, 0 fail** |
 | Git diff check | **Pass** |
 | pip-audit | **No known vulnerabilities found** |
 | Bandit | **0 High, 4 Medium, 63 Low**; Medium findings are documented in `docs/bandit_triage_vip.md` |
+| Release signing | Not configured | SHA-256 manifest is integrity evidence, not a cryptographic signature; operator signing remains required |
 | WAPTLab contact in this loop | **None** |
 | WAPTLab modification in this loop | **None** |
 
@@ -43,7 +44,7 @@ The following items remain open because they require target-backed or environmen
 1. Three independent clean benchmark runs proving at least 15 of 20 confirmed WAPTLab vulnerabilities.
 2. Precision, recall, reproducibility, and false-positive measurements against a known-positive/known-negative registry.
 3. Browser/Chromium, OOB, body-bearing HTTP, authenticated workflow, second-identity, API/GraphQL, parser, and multipart qualification.
-4. ZAP/Katana/Crawlee, Schemathesis/REST-Attacker/Wapiti, Dalfox, mitmproxy, Nuclei, HTTPx, Subfinder, and GraphQL adapter ablation evidence.
+4. Nettacker and AutoPentestX import-value ablation, plus ZAP/Katana/Crawlee, Schemathesis/REST-Attacker/Wapiti, Dalfox, mitmproxy, Nuclei, HTTPx, Subfinder, and GraphQL adapter ablation evidence.
 5. Broker redelivery, multi-worker, worker restart, rollback, and production Docker qualification.
 6. Cryptographic release signing by an operator-controlled private key.
 7. Final Bandit Medium/Low triage and any required hardening changes.
@@ -61,6 +62,7 @@ No WAPTLab or other target was started, contacted, modified, or used to produce 
 - `docs/vip_final_compliance_matrix.md`
 - `docs/bandit_triage_vip.md`
 - `docs/autopentestx_selective_integration.md`
+- `docs/integration_decision_matrix.md`
 - `docs/autopentestx_selective_integration_audit.md`
 - `docs/autopentestx_plan_compliance.md`
 - `docs/release_manifest.json`
