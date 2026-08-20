@@ -169,6 +169,18 @@ def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
     for entry in entries:
         status = str(entry["status"])
         summary[status] = summary.get(status, 0) + 1
+    imported_observations = [
+        item
+        for item in state.get("autopentestx_observations") or []
+        if isinstance(item, Mapping)
+    ]
+    imported_sources = sorted(
+        {
+            _text(item.get("tool_name"))
+            for item in imported_observations
+            if _text(item.get("tool_name"))
+        }
+    )
     research_gaps = [
         item for item in state.get("knowledge_gaps") or [] if isinstance(item, Mapping)
     ]
@@ -235,6 +247,12 @@ def _project_coverage_ledger(state: Mapping[str, Any]) -> dict[str, Any]:
             "client_id": _text(research_session.get("client_id")),
             "engagement_id": _text(research_session.get("engagement_id")),
             "source": "research_intelligence_projection",
+        },
+        "imported_observations": {
+            "count": len(imported_observations),
+            "sources": imported_sources,
+            "confirmation_authority": "webpent_validator",
+            "counts_as_attempt": False,
         },
     }
 

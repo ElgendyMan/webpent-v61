@@ -90,6 +90,7 @@ class CapabilityRegistry:
         "nuclei": "native_validator",
         "ffuf": "native_parameter_probe",
         "oob": "inconclusive_without_controlled_callback",
+        "autopentestx_observation": "native_recon_or_human_review",
     }
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -145,6 +146,16 @@ def _build_capability_manifest(settings: Settings | None = None) -> dict[str, An
     )
     capabilities: dict[str, dict[str, Any]] = {
         "http_read": {"available": True, "status": "available"},
+        "autopentestx_observation": {
+            "available": True,
+            "status": "adapter_only",
+            "execution_available": False,
+            "network_io": False,
+            "subprocess_io": False,
+            "authority": "webpent_validator",
+            "source_commit": "c324bc5b8aa68b549652c403fd674b142617f211",
+            "fail_closed": True,
+        },
         "browser": _playwright_status(),
         "oob": {
             "available": bool(settings.oob_callback_base_url and settings.oob_callback_secret),
