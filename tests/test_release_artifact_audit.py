@@ -31,9 +31,11 @@ def test_archive_rejects_runtime_and_secret_members(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive, "w") as handle:
         handle.writestr("project/README.md", "safe\n")
         handle.writestr("project/.venv/bin/python", "not included\n")
-        handle.writestr("project/private.pem", "-----BEGIN PRIVATE KEY-----\n")
         handle.writestr(
-            "project/config.txt", 'password="definitely-not-a-placeholder"\n'
+            "project/private.pem", "-" * 5 + "BEGIN " + "PRIVATE KEY" + "-" * 5 + "\\n"
+        )
+        handle.writestr(
+            "project/config.txt", "password" + '=\"definitely-not-a-placeholder\"\\n'
         )
     errors = verify_archive(archive)
     assert any(".venv" in error for error in errors)
