@@ -102,6 +102,8 @@ def test_access_control_node_emits_confirmed_finding_only_with_owner_metadata(mo
     finding = result["findings"][0]
     assert finding.confidence_level == "Tool-Confirmed"
     assert finding.vuln_class == "idor"
+    assert finding.evidence_bundle is not None
+    assert finding.evidence_bundle["bundle_id"]
     assert finding.evidence["owner_identity"] == "alice"
     assert "alice-secret" not in str(finding.evidence)
     assert "bob-secret" not in str(finding.evidence)

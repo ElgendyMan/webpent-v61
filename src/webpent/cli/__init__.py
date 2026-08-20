@@ -41,6 +41,7 @@ from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.coverage_ledger import CoverageIntelligence
+from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
 from webpent.shared.persistent_finding_ledger import (
     PersistentFindingLedger,
@@ -233,6 +234,15 @@ def scan(
             "from other clients. Required for lesson persistence and retrieval."
         ),
     ),
+    additional_target_origin: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--additional-target-origin",
+        help=(
+            "Explicit companion HTTP(S) origin used by the target flow, such as "
+            "a separate frontend. Repeat at most 8 times; values are never "
+            "discovered automatically."
+        ),
+    ),
     stealth: bool = typer.Option(
         False,
         "--stealth",
@@ -343,6 +353,12 @@ def scan(
         )
         raise typer.Exit(1) from exc
 
+    try:
+        declared_additional_origins = normalize_declared_origins(additional_target_origin)
+    except ValueError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(1) from exc
+
     # --- Parse credentials / session cookies / bounded identities ---
     credentials = _parse_credentials(creds)
     operator_cookies = _parse_cookies(cookies)
@@ -419,6 +435,10 @@ def scan(
     header.add_row("Target", url)
     header.add_row("Thread ID", resolved_thread_id)
     header.add_row("Engagement ID", resolved_engagement_id)
+    header.add_row(
+        "Additional Target Origins",
+        ", ".join(declared_additional_origins) if declared_additional_origins else "(none)",
+    )
     header.add_row("Auto-Approve", "Yes" if auto_approve else "No")
     header.add_row("Mode", resolved_mode.value)
     header.add_row("Profile", resolved_profile.value)
@@ -437,9 +457,16 @@ def scan(
     header.add_row("Stealth Mode", "ON (jitter + rate-limit)" if stealth else "Off")
     header.add_row("LLM", "Disabled for this run" if no_llm else "Configured setting")
     header.add_row("Custom Payloads", str(len(custom_payloads)) if custom_payloads else "None")
-    header.add_row(
-        "Credential Profiles", str(len(identity_profiles)) if identity_profiles else "None"
+    primary_profile_count = 1 if (credentials or operator_cookies) else 0
+    secondary_profile_count = len(identity_profiles)
+    total_profile_count = primary_profile_count + secondary_profile_count
+    profile_summary = (
+        f"{total_profile_count} (primary={primary_profile_count}, "
+        f"secondary={secondary_profile_count})"
+        if total_profile_count
+        else "None"
     )
+    header.add_row("Credential Profiles", profile_summary)
     header.add_row("Report Format", report_format or "all (default)")
     header.add_row("Skip Recon", "Yes (bypass recon/crawler/scope/waf)" if skip_recon else "No")
     header.add_row(
@@ -492,7 +519,7 @@ def scan(
     # the same call in workers/pentest_worker.py::run_pentest_task —
     # the CLI is a separate entry point that also invokes the graph
     # directly and needs the allowlist set independently.
-    token = set_engagement_target_hosts(target.url)
+    token = set_engagement_target_hosts(target.url, *declared_additional_origins)
     try:
         from webpent.auth.reauth_vault import (
             seal_identity_profiles,
@@ -521,6 +548,7 @@ def scan(
                 thread_id=resolved_thread_id,
                 client_id=client_id or "",
                 engagement_id=resolved_engagement_id,
+                additional_target_origins=declared_additional_origins,
                 credentials=safe_credentials,
                 session_cookies={},
                 identity_profiles={},

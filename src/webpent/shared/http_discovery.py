@@ -18,6 +18,15 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from webpent.config.settings import get_settings
 
+_PRIORITY_ROUTE_SEEDS = (
+    "/export-erp",
+    "/crm/export",
+    "/training/send-results-email",
+    "/user_profile/1",
+    "/download/1",
+    "/crm/download/1",
+)
+
 _DEFAULT_ROUTE_SEEDS = (
     "/swagger_ui",
     "/swagger",
@@ -302,6 +311,8 @@ def discover_http_surface(
         "openapi_urls": [],
         "graphql_urls": [],
         "js_route_candidates": [],
+        "route_seed_candidates": [],
+        "route_seed_queued": 0,
     }
 
     with client_context as client:
@@ -377,28 +388,55 @@ def discover_http_surface(
         # Bounded route seeds improve coverage when an application hides routes
         # behind JavaScript or authentication. They are GET-only observations;
         # validators still need independent evidence before promoting findings.
-        # Keep them as a fallback so normal links retain priority at small budgets.
-        route_seeds = list(_DEFAULT_ROUTE_SEEDS)
-        for raw_seed in str(getattr(settings, "discovery_route_seeds", "") or "").split(","):
-            seed = raw_seed.strip()
-            if seed and seed not in route_seeds:
-                route_seeds.append(seed[:300])
+        # Queue them before crawling can exhaust the page budget. Otherwise a
+        # noisy start page can fill ``max_pages`` and silently prevent known
+        # application surfaces (for example /export-erp) from being observed.
+        configured_route_seeds = [
+            seed.strip()[:300]
+            for seed in str(getattr(settings, "discovery_route_seeds", "") or "").split(",")
+            if seed.strip()
+        ]
+        priority_seeds = list(dict.fromkeys(configured_route_seeds + list(_PRIORITY_ROUTE_SEEDS)))
+        route_seeds = list(dict.fromkeys(priority_seeds + list(_DEFAULT_ROUTE_SEEDS)))
+        discovery_metadata["route_seed_candidates"] = list(route_seeds[:40])
+        priority_seed_queue: deque[tuple[str, int]] = deque()
+        fallback_seed_queue: deque[tuple[str, int]] = deque()
+        route_seed_queued = 0
+        for seed in route_seeds[:40]:
+            candidate = _normalise_url(seed, start)
+            if not candidate or candidate in queued or len(queued) >= max_pages * 3:
+                continue
+            target_queue = priority_seed_queue if seed in priority_seeds else fallback_seed_queue
+            target_queue.append((candidate, max_depth))
+            route_seed_queued += 1
+        discovery_metadata["route_seed_queued"] = route_seed_queued
+        # Reserve a bounded number of slots for known critical surfaces, but
+        # let the first natural pages run so ordinary links/forms/scripts are
+        # not starved. Remaining queue entries continue after the reserve.
+        priority_reserve = min(len(priority_seed_queue), 6, max(0, max_pages - 1))
+        # GraphQL is queued by the legacy discovery bootstrap before this
+        # route-seed planner, so reserve one additional natural slot for it.
+        # The outer ``len(seen) < max_pages`` guard still enforces the hard cap.
+        natural_page_budget = max(1, max_pages - priority_reserve + 1)
+        priority_processed = 0
 
-        while True:
-            if not queue:
-                if len(seen) >= max_pages or not route_seeds:
-                    break
-                for seed in route_seeds[:40]:
-                    candidate = _normalise_url(seed, start)
-                    if candidate and candidate not in queued and len(queued) < max_pages * 3:
-                        queue.append((candidate, max_depth))
-                        queued.add(candidate)
-                route_seeds = []
-                if not queue:
-                    break
-            current, depth = queue.popleft()
+        while len(seen) < max_pages:
+            if queue and len(seen) < natural_page_budget:
+                current, depth = queue.popleft()
+            elif priority_seed_queue and priority_processed < priority_reserve:
+                current, depth = priority_seed_queue.popleft()
+                priority_processed += 1
+            elif queue:
+                current, depth = queue.popleft()
+            elif priority_seed_queue:
+                current, depth = priority_seed_queue.popleft()
+            elif fallback_seed_queue:
+                current, depth = fallback_seed_queue.popleft()
+            else:
+                break
             if current in seen:
                 continue
+            queued.add(current)
             if not _is_safe_discovery_get(current, start_url=start):
                 skipped_state_changing += 1
                 continue

@@ -85,6 +85,7 @@ _EXECUTABLE_MANIFEST = frozenset(
         "echo",
         "ffuf",
         "httpx",
+        "httpx-pd",
         "java",
         "katana",
         "nuclei",

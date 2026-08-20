@@ -211,6 +211,45 @@ def _extract_host(value: str) -> str | None:
     return _normalize_hostname(host)
 
 
+def normalize_declared_origins(
+    values: list[str] | tuple[str, ...] | None,
+    *,
+    max_items: int = 8,
+) -> list[str]:
+    """Validate and normalize operator-declared companion HTTP origins.
+
+    Origins are explicit scope input, never discovered data.  Credentials,
+    query strings, fragments, non-HTTP schemes, malformed ports, and more
+    than ``max_items`` values are rejected fail-closed.
+    """
+    raw_values = list(values or [])
+    if len(raw_values) > max_items:
+        raise ValueError(f"at most {max_items} additional target origins are allowed")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_value in raw_values:
+        value = str(raw_value).strip()
+        if not value:
+            raise ValueError("additional target origins must not be blank")
+        parsed = urlsplit(value)
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("additional target origins must be absolute HTTP(S) URLs")
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError("additional target origins cannot contain credentials")
+        if parsed.query or parsed.fragment:
+            raise ValueError("additional target origins cannot contain query or fragment")
+        try:
+            _ = parsed.port
+            canonical = value.rstrip("/") or value
+            OriginPolicy.from_url(canonical)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid additional target origin: {value!r}") from exc
+        if canonical not in seen:
+            seen.add(canonical)
+            normalized.append(canonical)
+    return normalized
+
+
 def set_engagement_target_hosts(*urls_or_hosts: str | None) -> contextvars.Token:
     """Declare the host(s) that belong to the CURRENT engagement's own target.
 

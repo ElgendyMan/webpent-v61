@@ -30,7 +30,7 @@ import json
 import logging
 import re
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -442,6 +442,81 @@ def crawler_node(state: PentestState) -> dict:
         except Exception as exc:  # noqa: BLE001 — fallback must never abort a scan
             logger.warning("HTTP discovery fallback failed safely for %s: %s", url, exc)
             http_fallback_surface = {"endpoints": [], "coverage_gaps": ["fallback_error"]}
+
+    # Optional crawlers such as katana can return successfully while missing
+    # authenticated or JavaScript-hidden surfaces.  In the qualification
+    # profile, run one bounded GET-only supplement as well; this is discovery
+    # evidence only and never promotes a finding by itself.  The explicit
+    # setting makes the behavior available to other authorized operators while
+    # keeping ordinary scans unchanged.
+    if raw_endpoints and not http_fallback_surface:
+        try:
+            from webpent.config.settings import get_settings
+
+            _settings = get_settings()
+            profile_value = str(state.get("profile") or "").strip().lower()
+            configured_supplement = bool(
+                getattr(_settings, "enable_http_discovery_supplement", False)
+            )
+            supplement_enabled = configured_supplement or profile_value == "vip-qualification"
+            logger.info(
+                "HTTP supplement check: raw_endpoints=%d http_fallback_surface=%s "
+                "profile=%r configured=%s enabled=%s",
+                len(raw_endpoints),
+                bool(http_fallback_surface),
+                profile_value,
+                configured_supplement,
+                supplement_enabled,
+            )
+            if supplement_enabled:
+                supplement_pages = int(
+                    getattr(_settings, "http_discovery_supplement_pages", 20)
+                )
+                supplement_surface = discover_http_surface(
+                    url,
+                    session_cookies=_session_cookies,
+                    max_pages=max(1, min(supplement_pages, 50)),
+                )
+                supplement_endpoints = list(supplement_surface.get("endpoints") or [])
+                if supplement_endpoints:
+                    # Route-seed URLs are placed first so the bounded LLM/
+                    # deterministic queue cannot hide known critical surfaces
+                    # behind a noisy katana result set.  All URLs remain
+                    # observations; validators still establish confirmation.
+                    seed_paths = {
+                        str(item).strip()
+                        for item in list(
+                            (supplement_surface.get("discovery_metadata") or {}).get(
+                                "route_seed_candidates", []
+                            )
+                        )
+                        if str(item).strip().startswith("/")
+                    }
+                    parsed_seed_endpoints = [
+                        endpoint
+                        for endpoint in supplement_endpoints
+                        if urlsplit(endpoint).path in seed_paths
+                    ]
+                    supplement_order = list(
+                        dict.fromkeys(parsed_seed_endpoints + supplement_endpoints)
+                    )
+                    raw_endpoints = list(dict.fromkeys(supplement_order + raw_endpoints))
+                    http_fallback_surface = dict(supplement_surface)
+                    http_fallback_surface["discovery_mode"] = "katana_plus_http_supplement"
+                    logger.info(
+                        "HTTP supplement added %d endpoint(s) after katana; fetched=%d, "
+                        "route_seeds=%d, gaps=%s",
+                        len(supplement_endpoints),
+                        int(supplement_surface.get("pages_fetched") or 0),
+                        int(
+                            (supplement_surface.get("discovery_metadata") or {}).get(
+                                "route_seed_queued", 0
+                            )
+                        ),
+                        supplement_surface.get("coverage_gaps") or [],
+                    )
+        except Exception as exc:  # noqa: BLE001 — supplement must never abort a scan
+            logger.warning("HTTP discovery supplement failed safely for %s: %s", url, exc)
 
     if not raw_endpoints:
         logger.info("Crawler found 0 endpoints for %s — skipping LLM supervision", url)

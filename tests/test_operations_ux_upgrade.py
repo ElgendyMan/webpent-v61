@@ -68,6 +68,7 @@ def test_initial_state_carries_per_run_ux_contract() -> None:
     assert state["custom_payloads"] == ["one", "two"]
     assert state["payloads_to_test"] == {"custom": ["one", "two"]}
     assert state["report_formats"] == ["md", "json"]
+    assert state["profile"] == "legacy"
 
 
 def test_report_selection_exports_only_requested_format(tmp_path: Path) -> None:

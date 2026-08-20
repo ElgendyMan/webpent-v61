@@ -304,7 +304,13 @@ def assess_access_control(
     negative_control_complete = any(
         row.get("identity") not in {None, owner_identity}
         and not row.get("accessible")
-        and int(row.get("status_code") or 0) in {401, 403}
+        and (
+            int(row.get("status_code") or 0) in {401, 403}
+            or (
+                row.get("identity") == "anonymous"
+                and 300 <= int(row.get("status_code") or 0) < 400
+            )
+        )
         for row in observations
     )
     if owner_access and foreign_access and negative_control_complete:

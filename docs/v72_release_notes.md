@@ -12,20 +12,28 @@ Confirmation paths now require behavior-based evidence. The relevant validators 
 
 The dependency set was upgraded to the resolved LangGraph/LangChain 1.x generation. The legacy `langchain` text-splitter fallback was removed in favor of `langchain_text_splitters`, and the unused internal `search_disclosed_reports` helper was removed while the runtime disclosed-report ingestion and advisory path remains intact.
 
+The quality gate now resolves `ruff`, `bandit`, and `pip-audit` from the executable directory beside the active Python interpreter before falling back to `PATH`. Nuclei now distinguishes a successful empty result (`no_match`) from a panic, fatal error, or non-zero exit (`TOOL_INFRA_FAILURE`). BAC also supports a bounded optional initial cooldown and preserves the existing fail-closed confirmation guards; a `429` is never treated as a negative control.
+
+The quality gate writes a provisional report before building the release manifest, writes the final report with the manifest check, and refreshes the manifest afterward so release hashes do not intentionally describe a stale gate report.
+
 ## Verification
 
 | Gate | Result |
 |---|---|
 | Compileall | Passed |
 | Ruff, project source/tests/scripts | Passed with 0 errors |
-| Pytest | 934 passed, 0 failed |
+| Pytest | 953 passed, 0 failed in the latest documented baseline |
 | Bandit high severity | Passed |
 | pip-audit strict | Passed; no known vulnerabilities in the lock-derived requirements |
 | CycloneDX SBOM generation | Passed |
-| Release manifest | Passed |
-| WAPTLab safety artifact | Passed as non-contacting local contract artifact |
+| Release manifest | Generated with SHA-256 file hashes; signature remains operator-controlled |
+| WAPTLab safety artifact | Passed as a non-contacting/local safety contract artifact |
 
-The quality artifact records `hard_checks_passed: true` and `passed: false`. The overall release flag is intentionally false because two unresolved qualification blockers remain: the WAPTLab regression is local contract-only with no live campaign confirmation, and live worker/Docker qualification is environment-blocked. This is deliberate and preserves the project’s honest classification as an **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**, not VIP-qualified.
+The quality artifact records `hard_checks_passed: true` and `passed: false`. The overall release flag is intentionally false because unresolved live qualification and worker/Docker blockers remain. This is deliberate and preserves the project's honest classification as an **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**, not VIP-qualified.
+
+## Live qualification boundary
+
+The latest documented WAPTLab qualification produced 13 findings and 0 Tool-Confirmed findings. BAC recorded owner `429`, foreign `200`, and anonymous `302`, but no sealed `evidence_bundle` was produced. The result is therefore inconclusive for IDOR and is not promoted. SSTI paths also remained non-confirmed because the replay encountered the lab's defensive filters or incomplete OTP/2FA state. No bypass was added and no WAPTLab source or deployment was modified.
 
 ## Reproducibility
 
@@ -33,21 +41,17 @@ Run the final gate from the project root with the project virtual environment ac
 
 ```bash
 export PYTHONPATH="$PWD/src"
-python scripts/run_vip_quality_gate.py
+PATH="$PWD/.venv/bin:$PATH" .venv/bin/python scripts/run_vip_quality_gate.py
 ```
 
-The machine-readable result is written to `docs/vip_quality_gate.json`. The gate may return exit code `1` while the two known qualification blockers remain, even when every hard check passes.
+The machine-readable result is written to `docs/vip_quality_gate.json`. The gate may return exit code `1` while known qualification blockers remain, even when every hard check passes.
 
 ## Safety boundary
 
 No WAPTLab or Juice Shop source, deployment, database, or live target was modified by this release. No unverified finding is promoted to confirmed status, and no live count of WAPTLab vulnerabilities is asserted by the release artifacts.
 
-## Cleanup audit
+## Release posture
 
-The cleanup removed only code proven to be outside runtime wiring: the unused internal disclosed-report search helper and the obsolete import fallback to the vulnerable legacy `langchain` package. FastAPI route handlers, graph nodes, request-smuggling outcome probes, GoalTree methods, and console helpers were retained because they are route-registered, graph-wired, contract-facing, or intentionally preserved for backward compatibility.
-
----
-
-**Release posture:** hard checks green; live qualification blockers explicit; VIP status not claimed.
+**Hard checks green; live qualification blockers explicit; VIP status not claimed.** See [`docs/v72_release_handoff.md`](v72_release_handoff.md) and [`docs/v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) for the current handoff and residual register.
 
 **Author:** Manus AI

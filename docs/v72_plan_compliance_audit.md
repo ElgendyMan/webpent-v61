@@ -1,72 +1,69 @@
 # WebPent v72 Plan Compliance Audit
 
-**Status:** Updated after the master-branch review on 2026-08-20.
+**Updated:** 2026-08-20
 
-This document is the current compliance record for `/home/ubuntu/upload/pasted_content_3.txt` and the v72 Sprint 0–5 implementation plan. It supersedes stale v60/v70 delivery summaries for the purpose of release status. It does not claim live WAPTLab qualification or a 15–18 confirmed-finding campaign.
+هذا السجل يقارن خطة `WebPent_v72_—_Complete_Residual_Work_and_VIP_Execu.md` بالمستودع الحالي والأدلة المنتجة فعليًا. لا يُعتبر وجود module أو flag أو unit test وحده دليل اكتمال؛ البند يُغلق فقط عندما يتوافر wiring إنتاجي، policy enforcement، اختبار مركز، runtime trace، failure/fallback evidence، وأثر قابل لإعادة الإنتاج.
 
-## Executive result
+## النتيجة التنفيذية الحالية
 
-The security-hardening and dependency-upgrade work described by the v72 plan is present on `master`. The post-upgrade verification remains green for the hard checks: **934 pytest tests passed**, Ruff reported zero findings, compileall passed, Bandit high-severity checks passed, and strict pip-audit reported no known vulnerabilities from the lock-derived requirements.
-
-The project is not VIP-qualified. The overall quality gate intentionally remains `passed: false` because live WAPTLab qualification and worker/Docker qualification are not established. The honest classification remains **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**.
-
-| Area | Current status | Evidence | Remaining work |
-|---|---|---|---|
-| Sprint 0 security hardening | Implemented | PBKDF2 v2 envelopes, key rotation, canonical scope, fail-closed promotion guards, regression tests | None identified in this review |
-| Sprint 1 smart profile and convergence | Implemented | Smart profiles, public profile state, GoalTree helpers, autonomous stop rules, contract tests | End-to-end live campaign measurement remains external |
-| Sprint 2 proof and promotion guards | Implemented | ProofBundle, causal signal, negative-control, sealed-bundle gates across validator paths | Broader validator reachability remains partial |
-| Sprint 3 lab safety/fallback preservation | Implemented as non-contacting contracts | WAPTLab safety artifact and local fixtures | Live authorized qualification is still absent |
-| Sprint 4 dependency upgrade | Implemented and verified | LangGraph/LangChain 1.x lock, 934 tests, pip-audit clean | Monitor future provider deprecations |
-| Sprint 4 dead-code cleanup | Implemented conservatively | Removed only unreferenced disclosed-report helper and legacy vulnerable import fallback; retained wired wrappers and public/contract-facing methods | None identified in this review |
-| Release manifest hygiene | Fixed in this review | Redacted manifest excludes runtime databases, outputs, caches, raw logs, and historical live-output folders; regression contract added | Operator signature remains optional and external |
-| Live WAPTLab 15–18 confirmed findings | Not demonstrated | Gate records `live_qualification: false`; no target contacted by the release gate | Requires an authorized live environment and reproducible campaign evidence |
-| Worker/Docker qualification | Blocked by environment | Docker client and Compose exist, but Docker daemon access returns permission denied on `/var/run/docker.sock` | Run the qualification from an environment with permitted Docker daemon access |
-
-## Checklist against the v72 plan
-
-| Planned item | Result | Notes |
+| Gate | النتيجة الحالية | الدليل |
 |---|---|---|
-| Versioned PBKDF2-HMAC-SHA256 envelopes with legacy read-back and rotation | Complete | Implemented in task crypto and re-auth vault paths |
-| Canonical engagement scope and reference lookup boundaries | Complete | IDNA, IPv6, scheme, port, path, and userinfo cases are covered by contract tests |
-| Smart profiles and effective-policy CLI status | Complete | Smart, smart-observe, and vip-qualification profiles are wired into graph construction |
-| Cached LLM caller wiring | Complete with contract coverage | The planned LLM callers route through `try_get_llm`/`get_cached_llm`; TaskType cache separation and fallback/circuit-breaker behavior are covered by v90 and v72 contracts |
-| Convergence stop rules | Complete | Repeated action, no-new-evidence, information-gain threshold, negative-control contradiction, and budget rules are enforced |
-| GoalTree unification | Complete | Shared root/branch/budget helpers are used by rabbit-hole planning |
-| ProofBundle promotion gates | Complete | Causal evidence, negative control, and sealed bundle are required before Tool-Confirmed promotion |
-| Swagger SSRF, OOB, JWT, BAC/IDOR, XSS, cloud, subdomain, structural, and generic guards | Complete with conservative dispositions | Heuristic-only cases remain Needs Human Review; they are not promoted as confirmed |
-| LangGraph/LangChain dependency generation upgrade | Complete | Lock and runtime environment use the resolved 1.x generation |
-| Vulnerability audit closure | Complete for the lock-derived release requirements | `pip-audit --strict` reports no known vulnerabilities |
-| Dead-code removal | Complete conservatively | Only code proven outside runtime wiring was removed |
-| Full quality gate | Hard checks complete; overall qualification blocked | `hard_checks_passed: true`, `passed: false` by design because known blockers remain |
-| Commit and push to `master` | Pending for this review | The current review adds manifest hygiene, LLM caller contracts, documentation consistency, and full-tree Ruff gate coverage before the follow-up commit |
-| Redacted ZIP delivery | Complete previously; rebuild required after this review | The updated archive must include the manifest hygiene fix and current documentation |
+| `pytest` | **953 passed**, 140 warnings | `/tmp/webpent_runs/phase_v72_audit/pytest_current.log` |
+| Ruff | **0 errors** | `/tmp/webpent_runs/phase_v72_audit/baseline_checks.txt` |
+| compileall | **passed** | `/tmp/webpent_runs/phase_v72_audit/baseline_checks.txt` |
+| Bandit high severity | **passed** بعد إصلاح اختيار executable من `.venv/bin` | `docs/bandit_release.json` و`docs/vip_quality_gate.json` |
+| pip-audit strict/SBOM | **passed؛ لا توجد ثغرات معروفة** في lock-derived requirements | `docs/pip_audit_release.json` و`docs/sbom.cdx.json` |
+| quality hard checks | **passed** | `docs/vip_quality_gate.json` (`hard_checks_passed: true`) |
+| overall VIP quality gate | **false** | live WAPTLab وworker/Docker ما زالا غير مؤهلين |
+| WAPTLab run 1 | 13 findings، 0 Tool-Confirmed، 8 Needs Human Review، 3 Not Scanned، 2 Clean | `/tmp/webpent_runs/waptlab_qualification_20260820_152954_run1` |
+| BAC | observation واحدة؛ owner=429، foreign=200، anonymous=302 | تقرير الجولة وtrace السابق |
+| sealed evidence | **0 evidence bundles** في الجولة | `output/report.json` |
+| Docker daemon | غير متاح؛ permission denied على `/var/run/docker.sock` | `/tmp/webpent_runs/phase_v72_audit/docker_info.log` |
 
-## Evidence boundaries
+التصنيف الصادق هو **Smart Autonomous Bug Hunter Beta / Evidence-Aware Bounded Autonomous Bug Hunter**، وليس VIP. لم يتم تسجيل أي finding مؤكدة دون causal signal وnegative control وProofBundle مكتمل، ولم يتم تعديل WAPTLab.
 
-The local WAPTLab artifacts are contract or mock artifacts. They are useful for checking safety, determinism, and disposition handling, but they are not evidence that the real WAPTLab application was contacted or that 15–18 vulnerabilities were confirmed in one run. No source, deployment, database, or live target belonging to WAPTLab or Juice Shop was modified.
+## ما تم تنفيذه في هذه المراجعة
 
-The release manifest reports integrity hashes, not a cryptographic signature. Because no operator signing key is configured in this sandbox, its signature status must remain `not_configured` or `operator_required`; generating a fake signature would violate the release contract.
+أُصلح `scripts/run_vip_quality_gate.py` ليختار `ruff` و`bandit` و`pip-audit` من مجلد interpreter المحلي قبل الرجوع إلى `PATH`. كان فشل البوابة السابق ناتجًا عن `FileNotFoundError` رغم وجود الأدوات داخل `.venv/bin`. أُضيف اختبار regression في `tests/test_v72_quality_gate_tool_resolution.py`، ونجحت compileall وRuff والاختبار المستهدف.
 
-## Review additions in this pass
+أُعيد تشغيل suite كاملة بعد الإصلاح ونجحت بـ953 اختبارًا. أُعيد تشغيل بوابة الجودة الرسمية مع البيئة الصحيحة؛ أصبحت جميع hard checks خضراء، بينما ظل overall gate false عمدًا بسبب blockers الحية، لا بسبب إخفاء فشل أمني.
 
-This review added a manifest-redaction contract, a repository-level LLM-caller contract, corrected the manifest builder so that mutable runtime state and stale target-specific outputs are excluded from release inventory, and changed the quality gate Ruff check from a curated file list to the full `src`, `tests`, and `scripts` tree. The LLM contract verifies that the planned callers reach the shared cached router and preserve TaskType isolation. The review also marks old audit summaries as superseded by v72 and updates the current traceability and README status to avoid stale metrics being mistaken for current verification.
+أُجريت qualification run حقيقية واحدة على WAPTLab باستخدام حسابي owner وforeign، وبدون LLM. الجولة لم تحقق VIP: Nuclei فشل بلا output وتم عزله fail-closed، BAC لم يبنِ إثباتًا صالحًا، وSSTI/SSRF/RCE بقيت Human Review أو Inconclusive. هذه النتيجة محفوظة ولا تُعتبر clean ولا confirmed.
 
-## Reproduction commands
+## مصفوفة البنود المتبقية
 
-```bash
-project=/tmp/webpent_v60_smart_implementation
-venv=/tmp/webpent_v60_review_stage/webpent_v60_smart_stage/.venv
-cd "$project"
-export PYTHONPATH="$project/src"
-export PATH="$venv/bin:$PATH"
-"$venv/bin/python" scripts/build_release_manifest.py
-"$venv/bin/pytest" -q
-"$venv/bin/ruff" check src tests scripts --line-length 100
-"$venv/bin/python" scripts/run_vip_quality_gate.py
-```
+| البنود | الحالة الحالية | الإجراء أو سبب عدم الإغلاق |
+|---|---|---|
+| R-01 | **مغلق محليًا** | baseline حديث موثق: 953 passed، Ruff، compileall، Bandit، pip-audit، مع raw artifacts. |
+| R-02–R-03 | **مغلقان محليًا، غير كافيين للـVIP الكامل** | SBOM وpip-audit lock-derived نظيفان؛ container scan لا يمكن تنفيذه دون Docker daemon. |
+| R-04 | **مفتوح** | لا توجد operator signing key؛ لا يجوز توليد توقيع وهمي. manifest hashes موجودة فقط. |
+| R-05 | **قابل للإغلاق بعد إعادة بناء release** | يلزم فحص ZIP النهائي ضد pyc/cache/cookies/OTP/credentials/raw logs، وسيتم حفظ manifest وSHA-256. |
+| R-06 | **مفتوح** | rollback/restore rehearsal الكامل لم يُثبت بعد على worker/PostgreSQL. |
+| R-07–R-11 | **جزئي/مغطى بعقود واختبارات، غير مؤهل runtime بالكامل** | scope وauth وresume guards موجودة، لكن qualification الإنتاجي الكامل ما زال يحتاج worker/runtime trace. |
+| R-12–R-14 | **محجوبة بيئيًا** | Celery duplicate-delivery وPostgreSQL وDocker critical path تحتاج daemon/خدمات تشغيلية غير متاحة في هذه البيئة. |
+| R-15–R-18 | **جزئي** | pacing/budget/surface/hypothesis paths موجودة، لكن live decision-driving evidence ليست مكتملة. |
+| R-19–R-22 | **جزئي؛ R-22 فشل في آخر live run** | secondary identity وBAC hooks موجودة، لكن owner-vs-foreign proof لم ينتج bundle بسبب 429/sequence. |
+| R-23–R-28 | **جزئي** | gap/planning/negative evidence/memory isolation لها وحدات وعقود، لكن continuous runtime qualification وcross-engagement poisoning evidence غير مكتملين. |
+| R-29–R-33 | **جزئي** | cached LLM wiring وبعض recovery/critique/closure موجود، لكن كل caller والمسار الحي وفشل prerequisites لم تُثبت كمنظومة كاملة. |
+| R-34–R-38 | **جزئي** | capability registry وscope/body/OOB primitives موجودة؛ Nuclei live خرج بلا output، وbrowser/OOB/body matrix لم تكمل qualification. |
+| R-39–R-43 | **جزئي** | registry/catalog وvalidators موجودة، لكن live reachability وstored-XSS/SSRF/JWT proof غير مكتملة. |
+| R-44–R-50 | **مفتوح أو جزئي حسب المجال** | API/schema وWebSocket/desync/race/novel behavior/chaining لا تملك VIP runtime evidence كاملة. |
+| R-51–R-62 | **جزئي** | GoalTree/coverage/observability/proof/oracle/report taxonomy موجودة، لكن replay custody والـ100% proof coverage والتقارب الكامل غير مثبتة. |
+| R-63 | **جزئي** | catalog يحتوي 20 سجلًا، لكنه registry توقعات ground-truth versioned مع reset/proof الكامل لم يُؤهل حيًا. |
+| R-64 | **مفتوح** | run 1 فقط: 13 findings و0 confirmed؛ لا توجد 3 runs مستقلة بنتيجة 15+/20. |
+| R-65 | **مفتوح** | Juice Shop regression لا يقدم VIP substitute أو confirmed benchmark حاليًا. |
+| R-66–R-70 | **مفتوح** | precision/recall/reproducibility/proof coverage/ablation/tool-unavailable qualification لم تُقَس كـbenchmark مستقل. |
+| R-71–R-74 | **جزئي/محجوب** | preflight موجود وfail-closed، لكن worker/browser/service health وPostgreSQL/Redis/TLS production posture تحتاج بيئة تشغيلية. |
+| R-75 | **مغلق جزئيًا في هذه المراجعة** | هذا السجل حدّث الأرقام والمسارات؛ ما زالت README والrelease handoff تحتاج مزامنة نهائية بعد commit. |
+| R-76–R-79 | **جزئي** | dead-code/callers وdeterministic match وexception transparency تحسنت، لكن static full-I/O enforcement وzero-call-site audit الكامل يحتاجان gate مستقلًا. |
+| R-80 | **مغلق من ناحية truthfulness** | hard checks منفصلة عن live/release gates، وoverall gate يبقى false عند وجود blockers. |
 
-The quality gate may return exit code `1` while the documented qualification blockers remain. That exit code is intentional and must not be changed into a false VIP pass.
+## قاعدة عدم الادعاء
 
-**Release posture:** hard checks green; live qualification and worker/Docker qualification still blocked; VIP status not claimed.
+لا يجوز تحويل `Needs Human Review` أو `Not Scanned` أو `Clean` الناتج من غياب أداة إلى `Tool-Confirmed`. الجولة الأخيرة لم تُنتج `evidence_bundle`، ولذلك لا يوجد IDOR أو SSTI أو SSRF مؤكد في WAPTLab بناءً على هذه الجولة.
+
+## الأدلة والحدود
+
+ملفات `docs/vip_quality_gate.json` و`docs/release_manifest.json` و`docs/bandit_release.json` و`docs/pip_audit_release.json` و`docs/sbom.cdx.json` هي أدلة محلية للمستودع. سجل الجولة الحية موجود تحت `/tmp/webpent_runs/waptlab_qualification_20260820_152954_run1`. Docker client وCompose متاحان، لكن daemon يرفض الاتصال، لذلك لا يصح اعتبار worker/Docker qualification منفذة.
 
 **Author:** Manus AI

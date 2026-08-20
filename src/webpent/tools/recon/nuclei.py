@@ -169,47 +169,39 @@ def run_nuclei(
         if isinstance(record, dict):
             results.append(record)
 
-    # V7 Phase 6: Classify tool failure mode.
-    # V10 P0-3 (RCA follow-up): when nuclei produces no output OR
-    # crashes (panic/fatal), we MUST NOT return the (possibly partial)
-    # parsed records to the caller — those records are infra-failure
-    # noise, not vulnerability evidence. Previously they flowed through
-    # to _convert_nuclei_records → Finding(confidence=FIRM), producing
-    # High executive posture from unconfirmed recon rows. Now: return
-    # [] so zero Findings are constructed from a crashed/empty run.
-    # The engagement continues with other nodes; the operator sees the
-    # ERROR log and knows nuclei contributed nothing.
+    # V7 Phase 6 / V10 P0-3: quarantine actual tool failures. A successful
+    # Nuclei process with zero JSONL records is a valid no-match result; it
+    # must not be mislabeled as infrastructure failure. Non-zero exits are
+    # raised by run_command above, while panic/fatal markers are quarantined
+    # here so malformed tool output can never become vulnerability evidence.
     raw_output_lower = (raw_output or "").lower()
-    infra_failure = False
     if not raw_output.strip():
-        logger.error(
-            "TOOL_INFRA_FAILURE: nuclei produced no output for %s. "
-            "Returning 0 records (no Findings will be constructed from "
-            "this invocation).", target_url,
+        logger.info(
+            "nuclei completed successfully with no JSONL matches for %s; "
+            "returning an explicit empty result",
+            target_url,
         )
-        infra_failure = True
-    elif "panic:" in raw_output_lower or "fatal" in raw_output_lower:
-        logger.error(
-            "TOOL_INFRA_FAILURE: nuclei crashed for %s (panic/fatal in "
-            "output). Returning 0 records (no Findings will be "
-            "constructed from this invocation).", target_url,
-        )
-        infra_failure = True
-
-    if infra_failure:
-        # V10 P0-3: quarantine — do NOT return parsed records from a
-        # crashed/empty run. They are not vulnerability evidence.
         return []
 
-    # V10 P1-4: observability — log raw_count, parsed_count, promoted_count
-    # so the operator can see the funnel from raw JSONL lines to valid
-    # records. infra_failure=False here (we returned early above).
+    if "panic:" in raw_output_lower or "fatal" in raw_output_lower:
+        logger.error(
+            "TOOL_INFRA_FAILURE: nuclei crashed for %s (panic/fatal in "
+            "output). Returning 0 records; no Findings will be "
+            "constructed from this invocation.",
+            target_url,
+        )
+        return []
+
+    # V10 P1-4: observability — log raw_count, parsed_count, promoted_to_findings
+    # so the operator can see the funnel from raw JSONL lines to valid records.
+    # Actual process failures are raised by run_command above.
     raw_line_count = len([line for line in raw_output.splitlines() if line.strip()])
     logger.info(
         "nuclei observability: raw_lines=%d, parsed_records=%d, "
         "promoted_to_findings=pending (recon_node converts), "
         "infra_failure=False",
-        raw_line_count, len(results),
+        raw_line_count,
+        len(results),
     )
 
     return results

@@ -74,6 +74,10 @@ class PentestState(TypedDict, total=False):
     """
 
     target: Target
+    # Explicit operator-declared companion origins (for example a separate
+    # frontend origin used by the target login flow). Legacy checkpoints omit
+    # this optional field and remain valid.
+    additional_target_origins: list[str]
     messages: Annotated[list[BaseMessage], add_messages]
     findings: Annotated[list[Finding], merge_findings]
     current_phase: str
@@ -166,6 +170,11 @@ class PentestState(TypedDict, total=False):
     # Smart Hunter governance is additive and persisted so conditional graph
     # routes remain stable across node transitions and checkpoint resume.
     scan_mode: str
+    # Public per-run profile selected by the CLI. Optional for legacy
+    # checkpoints, but explicitly declared so LangGraph preserves it between
+    # nodes (crawler and hypothesis analysis use it for bounded qualification
+    # behavior).
+    profile: str
     smart_governance: Annotated[dict[str, Any], merge_dicts]
     # Explicit opt-in for the bounded controller-owned Smart Hunter loop.
     # Legacy and ordinary safe-smart scans remain on the existing adapter path.

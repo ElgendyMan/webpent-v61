@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import random
 import re
+import time
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -36,8 +39,9 @@ audit_logger = logging.getLogger("webpent.audit.access_control")
 
 _ID_PATTERN = re.compile(
     r"/(?:"
-    r"(?:users?|accounts?|orders?|documents?|files?|messages?|posts?|"
-    r"items?|products?|invoices?|payments?|transactions?|profiles?|"
+            r"(?:users?|accounts?|orders?|documents?|files?|downloads?|messages?|posts?|"
+        r"items?|products?|invoices?|payments?|transactions?|user_profiles?|profiles?|"
+
     r"settings?|configs?|projects?|tasks?|tickets?|reports?)"
     r"/(\d+|[a-f0-9-]{8,}|[a-zA-Z0-9_-]{10,})"
     r")",
@@ -326,7 +330,20 @@ def _probe_url(
         from webpent.config.settings import get_settings
         from webpent.shared.http import build_cookie_header, make_safe_httpx_client
 
-        request_headers: dict[str, str] = dict(headers or {})
+        parsed_url = urlparse(url)
+        request_headers: dict[str, str] = {
+            "User-Agent": os.getenv(
+                "HTTP_USER_AGENT",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "Chrome/131.0.0.0 Safari/537.36",
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate",
+        }
+        if parsed_url.scheme and parsed_url.netloc:
+            request_headers["Referer"] = f"{parsed_url.scheme}://{parsed_url.netloc}/"
+        request_headers.update(headers or {})
         if cookies:
             request_headers["Cookie"] = build_cookie_header(cookies)
         allow_insecure_tls = bool(get_settings().allow_insecure_tls)
@@ -335,6 +352,21 @@ def _probe_url(
                 "Access-control probe is using disabled TLS verification "
                 "for an authorized lab target"
             )
+        pacing_value = os.getenv("WEBPENT_HTTP_PACING_INTERVAL", "").strip()
+        if pacing_value:
+            try:
+                pacing_interval = max(0.0, float(pacing_value))
+            except ValueError:
+                pacing_interval = 0.0
+            if pacing_interval > 0.0:
+                from webpent.shared.stealth import enforce_min_interval, extract_host
+
+                enforce_min_interval(
+                    True,
+                    extract_host(url),
+                    min_interval_override=pacing_interval,
+                    jitter_max_override=max(2.0, pacing_interval * 2.5),
+                )
         with make_safe_httpx_client(
             timeout=timeout,
             follow_redirects=False,
@@ -410,6 +442,150 @@ def _identity_profiles_from_state(state: PentestState) -> list[IdentityProfile]:
     return normalise_identity_profiles(raw, fallback_cookies=fallback)
 
 
+def _wait_before_bac(url: str) -> float:
+    """Optionally idle before BAC when a crawler just completed authentication.
+
+    Some targets count authenticated requests made during discovery/login in the
+    same rolling window as the ownership probe.  The default remains zero so
+    existing engagements are unchanged; authorized lab runs can opt into a
+    bounded idle window. Both the documented ``..._SECS`` spelling and the
+    older ``..._SECONDS`` spelling are accepted for backward compatibility.
+    """
+    raw_cooldown = os.getenv("WEBPENT_BAC_INITIAL_COOLDOWN_SECS")
+    if raw_cooldown is None:
+        raw_cooldown = os.getenv("WEBPENT_BAC_INITIAL_COOLDOWN_SECONDS", "0")
+    try:
+        cooldown = min(90.0, max(0.0, float(raw_cooldown)))
+    except ValueError:
+        cooldown = 0.0
+    if cooldown <= 0.0:
+        return 0.0
+    raw_jitter = os.getenv("WEBPENT_BAC_INITIAL_JITTER_MAX_SECONDS", "1.5")
+    try:
+        jitter_max = min(3.0, max(0.0, float(raw_jitter)))
+    except ValueError:
+        jitter_max = 1.5
+    delay = cooldown + (random.uniform(0.0, jitter_max) if jitter_max else 0.0)
+    logger.info("BAC initial cooldown: waiting %.2fs before probing %s", delay, url)
+    time.sleep(delay)
+    return delay
+
+
+def _wait_after_throttle(url: str) -> float:
+    """Wait through a bounded server throttle window before retrying.
+
+    WAPTLab's periodic detector keeps a 429 block for ten seconds.  A
+    refresh/login performed immediately after the response cannot clear that
+    server-side block, so the old retry path simply reproduced the 429.  The
+    delay is bounded and configurable for other authorized lab targets; a
+    small random component avoids creating a new fixed request cadence.
+    """
+    raw_cooldown = os.getenv("WEBPENT_BAC_THROTTLE_COOLDOWN_SECONDS", "10")
+    try:
+        cooldown = min(30.0, max(0.0, float(raw_cooldown)))
+    except ValueError:
+        cooldown = 10.0
+    raw_jitter = os.getenv("WEBPENT_BAC_THROTTLE_JITTER_MAX_SECONDS", "2.5")
+    try:
+        jitter_max = min(3.0, max(0.0, float(raw_jitter)))
+    except ValueError:
+        jitter_max = 2.5
+    delay = cooldown + (random.uniform(0.0, jitter_max) if jitter_max else 0.0)
+    if delay > 0.0:
+        logger.info(
+            "BAC throttle cooldown: waiting %.2fs before retrying %s",
+            delay,
+            url,
+        )
+        time.sleep(delay)
+    return delay
+
+
+def _refresh_profile_after_throttle(
+    state: PentestState,
+    target: Any,
+    profile: IdentityProfile,
+) -> IdentityProfile | None:
+    """Refresh one authenticated profile after a bounded throttle response.
+
+    This is deliberately narrow: it runs only after a 429/503 response, uses
+    credentials from the worker-only vault, performs one normal login through
+    the authentication agent, and returns ``None`` when re-authentication is
+    unavailable or unsuccessful. It never promotes a finding by itself.
+    """
+    if profile.name == "anonymous" or not profile.cookies:
+        return None
+    thread_id = str(state.get("thread_id") or "")
+    if not thread_id:
+        return None
+    try:
+        from webpent.agents.authentication.agent import _perform_login
+        from webpent.auth.reauth_vault import (
+            unseal_identity_profiles,
+            unseal_reauth_secret,
+        )
+    except Exception as exc:
+        logger.debug("BAC profile refresh unavailable: %s", exc)
+        return None
+
+    raw_profiles = unseal_identity_profiles(thread_id)
+    raw_profile: dict[str, Any] = {}
+    if isinstance(raw_profiles, dict):
+        for key, value in raw_profiles.items():
+            if not isinstance(value, dict):
+                continue
+            candidate_name = str(value.get("name") or key)
+            if candidate_name == profile.name or str(key) == profile.name:
+                raw_profile = value
+                break
+    raw_credentials = raw_profile.get("credentials") if raw_profile else None
+    username = ""
+    password = ""
+    if isinstance(raw_credentials, dict):
+        username = str(raw_credentials.get("username") or "")
+        password = str(raw_credentials.get("password") or "")
+    if not password and profile.metadata.get("authenticated_primary") is True:
+        state_credentials = state.get("credentials") or {}
+        username = username or str(state_credentials.get("username") or profile.name)
+        password = unseal_reauth_secret(thread_id)
+    if not username or not password:
+        return None
+
+    target_url = str(getattr(target, "url", "") or "")
+    if isinstance(target, dict):
+        target_url = str(target.get("url") or target_url)
+    if not target_url:
+        return None
+    additional_origins = [
+        str(value).strip()
+        for value in list(state.get("additional_target_origins") or [])
+        if str(value).strip()
+    ]
+    try:
+        cookies = _perform_login(
+            target_url,
+            username,
+            password,
+            additional_target_origins=additional_origins,
+        )
+    except Exception as exc:
+        logger.debug("BAC profile refresh failed for %s: %s", profile.name, exc)
+        return None
+    if not cookies:
+        return None
+    refreshed_metadata = dict(profile.metadata)
+    refreshed_metadata["session_refreshed_after_throttle"] = True
+    return IdentityProfile(
+        name=profile.name,
+        role=profile.role,
+        cookies=cookies,
+        headers=dict(profile.headers),
+        owned_object_ids=profile.owned_object_ids,
+        owned_urls=profile.owned_urls,
+        metadata=refreshed_metadata,
+    )
+
+
 def access_control_node(state: PentestState) -> dict:
     """Compare resource access across anonymous and available identities."""
     target = state.get("target")
@@ -483,9 +659,16 @@ def access_control_node(state: PentestState) -> dict:
     relational_out: list[dict[str, Any]] = []
     matrix_inputs: list[dict[str, Any]] = []
     confirmed_count = 0
-
+    # Give an authorized lab target an optional bounded idle window after
+    # discovery/authentication traffic and before the first ownership probe.
+    # The helper is always called once for observability, but its default is
+    # zero seconds, preserving existing engagements and test speed.
+    if records:
+        _wait_before_bac(str(records[0].get("url") or target.url))
     for record in records:
+
         url = str(record["url"])
+        effective_profiles = list(probe_profiles)
         object_id = str(record.get("object_id") or extract_object_id(url) or "") or None
         owner_identity = str(record.get("owner_identity") or "").strip() or None
         if not owner_identity:
@@ -497,8 +680,25 @@ def access_control_node(state: PentestState) -> dict:
             if len(owners) == 1:
                 owner_identity = owners[0]
 
+        # Authenticated primary sessions are the provenance of resources
+        # discovered during the owner crawl. This fallback is deliberately
+        # narrow: it only applies when the crawler supplied no explicit owner,
+        # exactly one validated primary profile exists, and the profile carries
+        # the auth marker emitted by auth_node. Confirmation still requires a
+        # successful foreign replay plus a denied foreign negative control.
+        if not owner_identity:
+            primary_owners = [
+                profile.name
+                for profile in profiles
+                if profile.metadata.get("authenticated_primary") is True
+                and profile.role.lower() == "owner"
+                and bool(profile.cookies)
+            ]
+            if len(primary_owners) == 1:
+                owner_identity = primary_owners[0]
+
         rows: list[dict[str, Any]] = []
-        for profile in probe_profiles:
+        for profile_index, profile in enumerate(effective_profiles):
             requested_method = str(
                 record.get("method") or record.get("http_method") or "GET"
             ).upper()
@@ -524,6 +724,25 @@ def access_control_node(state: PentestState) -> dict:
                     cookies=profile.cookies or None,
                     headers=profile.headers or None,
                 )
+            if status in {429, 503}:
+                # First retry with the already validated session after the
+                # server-side cooldown.  Re-authentication is intentionally
+                # deferred: a browser login may itself visit periodic-detect
+                # routes as the same user and recreate the throttle window.
+                _wait_after_throttle(url)
+                status, content_length = _probe_url(url, **probe_kwargs)
+                if status in {429, 503} and state.get("thread_id"):
+                    # Only use the worker-only vault as a second-line recovery
+                    # path.  It never promotes a finding and is followed by a
+                    # fresh bounded cooldown before the final retry.
+                    refreshed = _refresh_profile_after_throttle(state, target, profile)
+                    if refreshed is not None:
+                        effective_profiles[profile_index] = refreshed
+                        profile = refreshed
+                        probe_kwargs["cookies"] = profile.cookies or None
+                        probe_kwargs["headers"] = profile.headers or None
+                    _wait_after_throttle(url)
+                    status, content_length = _probe_url(url, **probe_kwargs)
             row = sanitise_probe_result(
                 profile=profile,
                 url=url,
@@ -651,17 +870,19 @@ def access_control_node(state: PentestState) -> dict:
                     }
                 )
             else:
+                proof_bundle_data = bundle.model_dump(mode="json")
                 finding = finding.model_copy(
                     update={
+                        "evidence_bundle": proof_bundle_data,
                         "evidence": {
                             **(finding.evidence or {}),
                             "proof_bundle_sealed": True,
-                            "proof_bundle": bundle.model_dump(mode="json"),
+                            "proof_bundle": proof_bundle_data,
                             "promotion_guard": {
                                 "status": "passed",
                                 "proof_bundle_sealed": True,
                             },
-                        }
+                        },
                     }
                 )
             new_findings.append(finding)

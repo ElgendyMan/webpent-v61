@@ -162,7 +162,7 @@
       "target_contacted": false
     }
   ],
-  "generated_at": "2026-08-19T17:28:59.594283+00:00",
+  "generated_at": "2026-08-20T12:28:46.184568+00:00",
   "mode": "local-contract-only",
   "project": "WebPent v60",
   "safety_statement": "This artifact validates local campaign accounting and evidence-gap planning only. Inconclusive and missing-validator are not negative findings.",

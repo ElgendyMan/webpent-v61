@@ -125,6 +125,7 @@ EXPLOITABLE_CLASSES: frozenset[str] = frozenset(
         VulnClass.NOSQL_INJECTION.value,
         VulnClass.CSRF.value,
         VulnClass.DESERIALIZATION.value,
+        VulnClass.XXE.value,
         VulnClass.PATH_TRAVERSAL.value,
     }
 )
@@ -193,9 +194,12 @@ class Finding(BaseModel):
         max_length=10,
         description="HTTP method used by the validator request.",
     )
-    request_data: dict[str, str] = Field(
+    request_data: dict[str, Any] = Field(
         default_factory=dict,
-        description="Redacted form fields used to build a validator request.",
+        description=(
+            "Redacted form or JSON fields used to build a validator request; "
+            "nested JSON values are allowed for transport-compatible replays."
+        ),
     )
     target_param: str | None = Field(
         default=None,

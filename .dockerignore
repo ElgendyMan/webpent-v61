@@ -1,0 +1,60 @@
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# VCS and editor state
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Runtime state, local databases, and generated outputs
+output/
+memory/
+chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+/tmp/
+artifacts/
+audit/
+
+# Local reports and large audit exports are not needed in the app image
+docs/
+benchmarks/
+knowledge_pack/
+*.pdf
+
+# Secrets and local configuration
+.env
+.env.*
+*.pem
+*.key
+*.crt
+credentials*
+secrets*
+
+# Archives and build artifacts
+*.zip
+*.tar
+*.gz
+build/
+dist/
+*.egg-info/
+node_modules/
+
+# Tool caches
+.nuclei/
+.go/
+.gocache/
+.CACHE/
+.DS_Store

@@ -80,6 +80,13 @@ def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
         "description": model_get(finding, "description", "") or "",
         "tool_name": model_get(finding, "tool_name", "") or "",
         "payload": model_get(finding, "payload"),
+        # V72 qualification: preserve the normalized request context that
+        # validators use to build a replay.  This is evidence metadata, not
+        # an assertion of exploitability; confirmation remains gated by the
+        # causal-signal and negative-control validators.
+        "request_method": model_get(finding, "request_method", "GET") or "GET",
+        "request_data": model_get(finding, "request_data", {}) or {},
+        "target_param": model_get(finding, "target_param"),
         "url": model_get(finding, "url", "") or "",
         "confidence": str(model_get(finding, "confidence", "") or ""),
         "confidence_level": model_get(finding, "confidence_level", "") or "",

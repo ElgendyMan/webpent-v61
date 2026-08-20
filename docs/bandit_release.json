@@ -1,17 +1,17 @@
 {
   "errors": [],
-  "generated_at": "2026-08-19T22:18:56Z",
+  "generated_at": "2026-08-20T16:27:41Z",
   "metrics": {
     "_totals": {
-      "CONFIDENCE.HIGH": 46,
+      "CONFIDENCE.HIGH": 49,
       "CONFIDENCE.LOW": 2,
-      "CONFIDENCE.MEDIUM": 15,
+      "CONFIDENCE.MEDIUM": 16,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 59,
+      "SEVERITY.LOW": 63,
       "SEVERITY.MEDIUM": 4,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 53945,
+      "loc": 54528,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -55,15 +55,15 @@
       "skipped_tests": 0
     },
     "src/webpent/agents/access_control/agent.py": {
-      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.HIGH": 2,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.MEDIUM": 1,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
+      "SEVERITY.LOW": 3,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 806,
+      "loc": 991,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -141,7 +141,7 @@
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 413,
+      "loc": 561,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -440,7 +440,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 944,
+      "loc": 1020,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -869,7 +869,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 439,
+      "loc": 466,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -960,7 +960,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 1156,
+      "loc": 1172,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1129,7 +1129,7 @@
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 1236,
+      "loc": 1263,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1532,7 +1532,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 890,
+      "loc": 917,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1948,7 +1948,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 619,
+      "loc": 622,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2130,7 +2130,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 312,
+      "loc": 318,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2286,7 +2286,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 281,
+      "loc": 317,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2707,15 +2707,15 @@
       "skipped_tests": 0
     },
     "src/webpent/shared/stealth.py": {
-      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.HIGH": 2,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 1,
+      "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 220,
+      "loc": 233,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2832,7 +2832,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 218,
+      "loc": 225,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2858,7 +2858,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 168,
+      "loc": 169,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3001,7 +3001,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 149,
+      "loc": 148,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3053,7 +3053,7 @@
       "SEVERITY.LOW": 3,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 259,
+      "loc": 260,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3196,7 +3196,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 867,
+      "loc": 878,
       "nosec": 0,
       "skipped_tests": 0
     }

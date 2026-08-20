@@ -166,7 +166,13 @@ async def async_apply_jitter(stealth_mode: bool, *, label: str = "") -> float:
     return delay
 
 
-def enforce_min_interval(stealth_mode: bool, host: str) -> float:
+def enforce_min_interval(
+    stealth_mode: bool,
+    host: str,
+    *,
+    min_interval_override: float | None = None,
+    jitter_max_override: float | None = None,
+) -> float:
     """Ensure successive requests to ``host`` are spaced by the min interval.
 
     Synchronous variant. Records the current monotonic time for
@@ -177,7 +183,7 @@ def enforce_min_interval(stealth_mode: bool, host: str) -> float:
     Args:
         stealth_mode: Whether stealth mode is enabled.
         host: Target hostname. Pass an empty string to skip (the
-            caller could not parse a hostname).
+            caller could not parse the hostname).
 
     Returns:
         Seconds slept to satisfy the minimum interval (``0.0`` if none).
@@ -186,12 +192,17 @@ def enforce_min_interval(stealth_mode: bool, host: str) -> float:
         return 0.0
     _telemetry()["rate_limit_calls"] += 1.0
     settings = get_settings()
-    min_interval = float(settings.stealth_min_request_interval)
+    min_interval = (
+        float(min_interval_override)
+        if min_interval_override is not None
+        else float(settings.stealth_min_request_interval)
+    )
     if min_interval <= 0.0:
         with _rate_lock:
             _last_request_at[host] = time.monotonic()
         return 0.0
 
+    jitter_max = max(0.0, float(jitter_max_override or 0.0))
     with _rate_lock:
         last = _last_request_at.get(host)
         now = time.monotonic()
@@ -200,15 +211,17 @@ def enforce_min_interval(stealth_mode: bool, host: str) -> float:
             elapsed = now - last
             if elapsed < min_interval:
                 wait = min_interval - elapsed
-        _last_request_at[host] = now + wait
+        jitter = random.uniform(0.0, jitter_max) if jitter_max > 0.0 else 0.0
+        total_wait = wait + jitter
+        _last_request_at[host] = now + total_wait
 
-    if wait > 0.0:
+    if total_wait > 0.0:
         logger.debug(
-            "stealth rate-limit: sleeping %.2fs for host %s", wait, host
+            "stealth rate-limit: sleeping %.2fs for host %s", total_wait, host
         )
-        time.sleep(wait)
-    _telemetry()["rate_limit_sleep_seconds"] += wait
-    return wait
+        time.sleep(total_wait)
+    _telemetry()["rate_limit_sleep_seconds"] += total_wait
+    return total_wait
 
 
 async def async_enforce_min_interval(stealth_mode: bool, host: str) -> float:

@@ -358,6 +358,29 @@ class Settings(BaseSettings):
             "WEBPENT_MAX_STRUCTURE_AWARE_TRIAGE_ENDPOINTS",
         ),
     )
+    enable_http_discovery_supplement: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "enable_http_discovery_supplement",
+            "ENABLE_HTTP_DISCOVERY_SUPPLEMENT",
+            "WEBPENT_HTTP_DISCOVERY_SUPPLEMENT",
+        ),
+        description=(
+            "Run a bounded authenticated GET-only HTTP discovery supplement even "
+            "when an optional crawler binary returns endpoints. Disabled by "
+            "default; vip-qualification enables it explicitly in the crawler."
+        ),
+    )
+    http_discovery_supplement_pages: int = Field(
+        default=20,
+        gt=0,
+        le=50,
+        validation_alias=AliasChoices(
+            "http_discovery_supplement_pages",
+            "HTTP_DISCOVERY_SUPPLEMENT_PAGES",
+            "WEBPENT_HTTP_DISCOVERY_SUPPLEMENT_PAGES",
+        ),
+    )
     enable_surface_security_analysis: bool = Field(
         default=False,
         description=(

@@ -65,8 +65,8 @@
   "checks": {
     "alembic": {
       "available": true,
-      "ini_present": false,
-      "status": "degraded (alembic.ini missing)",
+      "ini_present": true,
+      "status": "ok",
       "version": "1.19.1"
     },
     "celery_payload_key": {

@@ -16,10 +16,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
 from webpent.models.findings import Confidence, Finding
 from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
@@ -106,9 +107,23 @@ def _build_request(
         return method, urlunparse(parsed._replace(query=urlencode(new_params))), headers, None
 
     form = dict(finding.request_data or {})
+    content_type = str(form.pop("__webpent_content_type", "")).lower().strip()
     form[parameter] = value
+    if content_type == "application/json":
+        headers["Content-Type"] = "application/json"
+        return method, finding.url, headers, json.dumps(form, separators=(",", ":"))
     headers["Content-Type"] = "application/x-www-form-urlencoded"
-    return method, finding.url, headers, urlencode(form)
+    return method, finding.url, headers, urlencode(form, doseq=True)
+
+
+def _csrf_header_from_cookies(cookies: dict[str, str] | None) -> str | None:
+    """Return a decoded Laravel XSRF header value when the session provides it."""
+    if not cookies:
+        return None
+    for name, value in cookies.items():
+        if name.lower() == "xsrf-token" and value:
+            return unquote(str(value))
+    return None
 
 
 def _replay(
@@ -121,8 +136,29 @@ def _replay(
     try:
         from webpent.shared.http import build_cookie_header, make_safe_httpx_client
 
+        parsed = urlparse(url)
+        headers.update(
+            {
+                "User-Agent": os.getenv(
+                    "HTTP_USER_AGENT",
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "Chrome/131.0.0.0 Safari/537.36",
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": os.getenv("HTTP_ACCEPT_LANGUAGE", "en-US,en;q=0.9"),
+                "Accept-Encoding": "gzip, deflate",
+                "Connection": "keep-alive",
+                "Referer": f"{parsed.scheme}://{parsed.netloc}/",
+            }
+        )
         if cookies:
             headers["Cookie"] = build_cookie_header(cookies)
+            csrf_token = _csrf_header_from_cookies(cookies)
+            if csrf_token and method in {"POST", "PUT", "PATCH"}:
+                # Laravel validates the token from the session cookie against
+                # this header.  Never log or persist the token; it stays only
+                # in the outbound request header.
+                headers["X-XSRF-TOKEN"] = csrf_token
         started = time.monotonic()
         with make_safe_httpx_client(timeout=10.0, follow_redirects=False, verify=True) as client:
             if method == "GET":

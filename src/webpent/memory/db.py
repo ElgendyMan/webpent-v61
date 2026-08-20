@@ -79,6 +79,9 @@ CREATE TABLE IF NOT EXISTS findings (
     description TEXT NOT NULL,
     tool_name   TEXT NOT NULL,
     payload     TEXT,
+    request_method TEXT NOT NULL DEFAULT 'GET',
+    request_data TEXT,
+    target_param TEXT,
     url         TEXT NOT NULL,
     confidence  TEXT NOT NULL,
     created_at  TEXT NOT NULL,
@@ -134,18 +137,20 @@ ON reauth_vault_records(expires_at);
 _FINDINGS_INSERT = """
 INSERT OR REPLACE INTO findings (
     id, title, severity, description, tool_name,
-    payload, url, confidence, created_at, evidence, "references",
+    payload, request_method, request_data, target_param, url,
+    confidence, created_at, evidence, "references",
     cvss_score, business_impact, confidence_level, reasoning, oob_token,
     canary_token, evidence_bundle, compliance_tags, evidence_hash,
     post_exploitation_data, vuln_class,
     strategic_confidence_score, hypothesis_id, thread_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _FINDINGS_SELECT = """
 SELECT
     id, title, severity, description, tool_name,
-    payload, url, confidence, created_at, evidence, "references",
+    payload, request_method, request_data, target_param, url,
+    confidence, created_at, evidence, "references",
     cvss_score, business_impact, confidence_level, reasoning, oob_token,
     canary_token, evidence_bundle, compliance_tags, evidence_hash,
     post_exploitation_data, vuln_class,
@@ -158,7 +163,8 @@ ORDER BY created_at ASC;
 _FINDINGS_SELECT_BY_THREAD = """
 SELECT
     id, title, severity, description, tool_name,
-    payload, url, confidence, created_at, evidence, "references",
+    payload, request_method, request_data, target_param, url,
+    confidence, created_at, evidence, "references",
     cvss_score, business_impact, confidence_level, reasoning, oob_token,
     canary_token, evidence_bundle, compliance_tags, evidence_hash,
     post_exploitation_data, vuln_class,
@@ -173,7 +179,8 @@ ORDER BY created_at ASC;
 _FINDINGS_SELECT_BY_ID = """
 SELECT
     id, title, severity, description, tool_name,
-    payload, url, confidence, created_at, evidence, "references",
+    payload, request_method, request_data, target_param, url,
+    confidence, created_at, evidence, "references",
     cvss_score, business_impact, confidence_level, reasoning, oob_token,
     canary_token, evidence_bundle, compliance_tags, evidence_hash,
     post_exploitation_data, vuln_class,
@@ -663,6 +670,17 @@ class DatabaseManager:
             if "thread_id" not in existing_columns:
                 conn.execute("ALTER TABLE findings ADD COLUMN thread_id TEXT")
                 logger.info("Migration: added thread_id column (V9 P0 Fix 3)")
+            if "request_method" not in existing_columns:
+                conn.execute(
+                    "ALTER TABLE findings ADD COLUMN request_method TEXT NOT NULL DEFAULT 'GET'"
+                )
+                logger.info("Migration: added request_method column (V72)")
+            if "request_data" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN request_data TEXT")
+                logger.info("Migration: added request_data column (V72)")
+            if "target_param" not in existing_columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN target_param TEXT")
+                logger.info("Migration: added target_param column (V72)")
 
             # V10 P0-C: index on thread_id so get_findings_by_thread
             # doesn't full-scan on every status poll. CREATE INDEX IF
@@ -790,6 +808,9 @@ class DatabaseManager:
                     finding.description,
                     finding.tool_name,
                     save_payload,
+                    finding.request_method,
+                    json.dumps(finding.request_data) if finding.request_data else "{}",
+                    finding.target_param,
                     finding.url,
                     save_confidence,
                     finding.created_at.isoformat(),
@@ -881,7 +902,8 @@ class DatabaseManager:
         query = f"""
         SELECT
             id, title, severity, description, tool_name,
-            payload, url, confidence, created_at, evidence, "references",
+            payload, request_method, request_data, target_param, url,
+    confidence, created_at, evidence, "references",
             cvss_score, business_impact, confidence_level, reasoning, oob_token,
             canary_token, evidence_bundle, compliance_tags, evidence_hash,
             post_exploitation_data, vuln_class,
@@ -928,6 +950,11 @@ class DatabaseManager:
             description=row["description"],
             tool_name=row["tool_name"],
             payload=row["payload"],
+            request_method=_get_col("request_method", "GET") or "GET",
+            request_data=(
+                json.loads(_get_col("request_data")) if _get_col("request_data") else {}
+            ),
+            target_param=_get_col("target_param"),
             url=row["url"],
             confidence=Confidence(row["confidence"]),
             created_at=datetime.fromisoformat(row["created_at"]),

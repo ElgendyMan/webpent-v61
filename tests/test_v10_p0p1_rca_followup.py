@@ -95,7 +95,8 @@ class TestNucleiInfraFailureQuarantine:
         result = nuclei_mod.run_nuclei("http://192.168.40.128/dvwa/")
         assert result == [], f"nuclei crash should return [], got {result}"
 
-    def test_nuclei_empty_output_returns_empty(self, monkeypatch):
+    def test_nuclei_empty_output_is_successful_no_match(self, monkeypatch, caplog):
+        """Exit-zero empty JSONL is no-match, not a tool infrastructure failure."""
         from webpent.tools.recon import nuclei as nuclei_mod
 
         monkeypatch.setattr(nuclei_mod, "run_command", lambda cmd, timeout=600: "")
@@ -104,8 +105,12 @@ class TestNucleiInfraFailureQuarantine:
             lambda host: True,
         )
 
-        result = nuclei_mod.run_nuclei("http://192.168.40.128/dvwa/")
+        with caplog.at_level("INFO"):
+            result = nuclei_mod.run_nuclei("http://192.168.40.128/dvwa/")
+
         assert result == []
+        assert "completed successfully with no JSONL matches" in caplog.text
+        assert "TOOL_INFRA_FAILURE" not in caplog.text
 
     def test_nuclei_valid_output_returns_records(self, monkeypatch):
         """Control: valid JSONL output still produces records."""

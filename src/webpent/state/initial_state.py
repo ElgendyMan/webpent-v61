@@ -42,6 +42,7 @@ def build_initial_state(
     target: Target,
     *,
     thread_id: str | None = None,
+    additional_target_origins: list[str] | None = None,
     client_id: str | None = None,
     engagement_id: str | None = None,
     credentials: dict[str, str] | None = None,
@@ -101,9 +102,15 @@ def build_initial_state(
         for item in list(report_formats or [])
         if str(item).strip()
     ]
+    normalized_origins = [
+        str(item).strip()
+        for item in list(additional_target_origins or [])
+        if str(item).strip()
+    ]
 
     return {
         "target": target,
+        "additional_target_origins": normalized_origins,
         "messages": [],
         "findings": [],
         "current_phase": "init",

@@ -37,11 +37,13 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 from typing import Any
 
 from langchain_core.messages import AIMessage
 
 from webpent.auth.reauth_vault import (
+    seal_identity_profiles,
     unseal_identity_profiles,
     unseal_reauth_secret,
     unseal_session_cookies,
@@ -76,7 +78,12 @@ _LOGIN_PAGE_INDICATORS = (
 )
 
 
-def _perform_login(url: str, username: str, password: str) -> dict[str, str]:
+def _perform_login(
+    url: str,
+    username: str,
+    password: str,
+    additional_target_origins: list[str] | None = None,
+) -> dict[str, str]:
     """Launch Playwright, perform login, and return session cookies.
 
     Args:
@@ -122,7 +129,11 @@ def _perform_login(url: str, username: str, password: str) -> dict[str, str]:
                     target_host, exc,
                 )
         browser = pw.chromium.launch(headless=True, args=launch_args)
-        context = browser.new_context()
+        context_kwargs: dict[str, str] = {}
+        configured_user_agent = os.getenv("HTTP_USER_AGENT", "").strip()
+        if configured_user_agent:
+            context_kwargs["user_agent"] = configured_user_agent
+        context = browser.new_context(**context_kwargs)
         # V6 Zero-Day Patched P0-1: Install SSRF route guard BEFORE
         # new_page() / goto(). The auth agent navigates to the target
         # login page; without the guard, a malicious target could
@@ -130,8 +141,23 @@ def _perform_login(url: str, username: str, password: str) -> dict[str, str]:
         # metadata, redis:6379, 127.0.0.1) via JS redirects or
         # meta-refresh, turning the browser into an SSRF proxy. The
         # guard aborts blocked-host requests with accessdenied.
+        from webpent.shared.engagement_scope import normalize_scope_host
         from webpent.shared.http import install_playwright_ssrf_guard
-        install_playwright_ssrf_guard(context)
+
+        # Playwright may execute route callbacks outside the caller's
+        # contextvars context (notably when auth runs inside a graph/worker
+        # boundary). Pass the operator-declared login target explicitly so
+        # an authorized private lab target remains reachable. The guard
+        # still blocks every other private/reserved host exactly as before.
+        declared_hosts = [
+            normalized
+            for normalized in (
+                normalize_scope_host(value)
+                for value in [url, *(additional_target_origins or [])]
+            )
+            if normalized
+        ]
+        install_playwright_ssrf_guard(context, target_hosts=declared_hosts)
         page = context.new_page()
         page.set_default_navigation_timeout(_NAV_TIMEOUT_MS)
 
@@ -141,38 +167,61 @@ def _perform_login(url: str, username: str, password: str) -> dict[str, str]:
             logger.warning("Navigation to %s failed: %s", url, exc)
             return {}
 
-        # Locate the password field — the most reliable login indicator.
+        # Most login forms expose password immediately. Some targets (such
+        # as WAPTLab) deliberately use a two-step email -> password flow,
+        # where the password input exists in the DOM but is hidden until the
+        # email is checked by the application. Support both forms without
+        # weakening the target-agnostic selectors below.
+        password_input = page.locator("input[type='password']").first
+        two_step_email = False
         try:
-            password_input = page.locator("input[type='password']").first
             password_input.wait_for(state="visible", timeout=5000)
         except Exception:
-            logger.info("No password field found at %s — cannot login", url)
-            return {}
-
-        # Try to find a username/email field near the password field.
-        username_input = None
-        for selector in [
-            "input[type='text']",
-            "input[type='email']",
-            "input[name='username']",
-            "input[name='user']",
-            "input[name='email']",
-            "input:not([type])",
-        ]:
+            email_input = page.locator(
+                "input[type='email']:not([name='email']), "
+                "input[type='email'][id='email']"
+            ).first
             try:
-                username_input = page.locator(selector).first
-                username_input.wait_for(state="visible", timeout=2000)
-                break
+                email_input.wait_for(state="visible", timeout=3000)
+                email_input.fill(username)
+                continue_button = page.locator(
+                    "#nextBtn, button:has-text('Continue'), button:has-text('Next')"
+                ).first
+                continue_button.click(timeout=5000)
+                password_input.wait_for(state="visible", timeout=5000)
+                two_step_email = True
             except Exception:
-                continue
+                logger.info("No usable password or two-step email field at %s", url)
+                return {}
 
-        if username_input is None:
-            logger.info("No username field found — cannot login")
-            return {}
+        # A two-step flow already submitted the username through its email
+        # check. Immediate-login forms still need a visible username field.
+        username_input = None
+        if not two_step_email:
+            for selector in [
+                "input[type='text']",
+                "input[type='email']",
+                "input[name='username']",
+                "input[name='user']",
+                "input[name='email']",
+                "input:not([type])",
+            ]:
+                try:
+                    username_input = page.locator(selector).first
+                    username_input.wait_for(state="visible", timeout=2000)
+                    break
+                except Exception:
+                    continue
 
-        # Fill credentials.
+            if username_input is None:
+                logger.info("No username field found — cannot login")
+                return {}
+
+        # Fill credentials. The two-step flow has already filled the email
+        # and only requires the newly-visible password field.
         try:
-            username_input.fill(username)
+            if username_input is not None:
+                username_input.fill(username)
             password_input.fill(password)
         except Exception as exc:
             logger.warning("Failed to fill login fields: %s", exc)
@@ -215,7 +264,17 @@ def _perform_login(url: str, username: str, password: str) -> dict[str, str]:
             logger.info("Login submitted but no session cookies found")
             return {}
 
-        is_valid, reason = _validate_session_cookies(url, cookies)
+        from webpent.shared.engagement_scope import (
+            clear_engagement_target_hosts,
+            set_engagement_target_hosts,
+        )
+        validation_scope_token = set_engagement_target_hosts(
+            url, *(additional_target_origins or [])
+        )
+        try:
+            is_valid, reason = _validate_session_cookies(url, cookies)
+        finally:
+            clear_engagement_target_hosts(validation_scope_token)
         if not is_valid:
             logger.error(
                 "Login FAILED — session validation rejected the cookies: "
@@ -355,6 +414,7 @@ def _validate_session_cookies(
 def _bootstrap_secondary_profiles(
     target_url: str,
     raw_profiles: dict[str, Any] | None,
+    additional_target_origins: list[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Create bounded runtime-only identity profiles for BAC/IDOR probes.
 
@@ -385,7 +445,15 @@ def _bootstrap_secondary_profiles(
                 username = str(raw_credentials.get("username") or "")
                 password = str(raw_credentials.get("password") or "")
                 if username and password:
-                    cookies = _perform_login(target_url, username, password)
+                    if additional_target_origins:
+                        cookies = _perform_login(
+                            target_url,
+                            username,
+                            password,
+                            additional_target_origins=additional_target_origins,
+                        )
+                    else:
+                        cookies = _perform_login(target_url, username, password)
                     validated = bool(cookies)
         result[name] = {
             "name": name,
@@ -436,7 +504,41 @@ def auth_node(state: PentestState) -> dict:
     raw_identity_profiles: dict[str, Any] = dict(state.get("identity_profiles") or {})
     if not raw_identity_profiles and thread_id:
         raw_identity_profiles = unseal_identity_profiles(thread_id)
-    secondary_profiles = _bootstrap_secondary_profiles(target.url, raw_identity_profiles)
+    additional_target_origins = [
+        str(value).strip()
+        for value in list(state.get("additional_target_origins") or [])
+        if str(value).strip()
+    ]
+    secondary_profiles = _bootstrap_secondary_profiles(
+        target.url,
+        raw_identity_profiles,
+        additional_target_origins=additional_target_origins,
+    )
+
+    def _primary_identity_profile(
+        cookies: dict[str, str],
+        *,
+        validated: bool,
+        label: str,
+        source: str,
+    ) -> dict[str, Any]:
+        """Return report-safe runtime metadata for the authenticated operator.
+
+        The marker is intentionally explicit and is consumed only by the
+        access-control owner-selection gate. It never grants confirmation;
+        owner/foreign differential probing plus a denied negative control are
+        still required downstream.
+        """
+        return {
+            "name": label[:80] or "primary-owner",
+            "role": "owner",
+            "cookies": dict(cookies) if validated else {},
+            "validated": bool(validated),
+            "metadata": {
+                "authenticated_primary": bool(validated),
+                "auth_source": source[:40],
+            },
+        }
 
     # V9 P0 Fix 1-B: fail-closed cookie clearing.
     #
@@ -484,10 +586,21 @@ def auth_node(state: PentestState) -> dict:
                 "source": "operator_supplied",
                 "validated": True,
             }
+            runtime_profiles = {
+                "primary-owner": _primary_identity_profile(
+                    operator_cookies,
+                    validated=True,
+                    label="primary-owner",
+                    source="operator_supplied",
+                ),
+                **secondary_profiles,
+            }
+            if thread_id:
+                seal_identity_profiles(thread_id, runtime_profiles)
             return {
                 "session_cookies": operator_cookies,
                 "auth_state": auth_state,
-                "identity_profiles": secondary_profiles,
+                "identity_profiles": runtime_profiles,
                 "messages": [AIMessage(
                     content=f"Authentication: operator-supplied session "
                     f"cookies validated ({len(operator_cookies)} cookie(s)). "
@@ -521,7 +634,15 @@ def auth_node(state: PentestState) -> dict:
     password = credentials.get("password", "")
     logger.info("Credentials found (user=%s) — attempting active login", username)
 
-    cookies = _perform_login(target.url, username, password)
+    if additional_target_origins:
+        cookies = _perform_login(
+            target.url,
+            username,
+            password,
+            additional_target_origins=additional_target_origins,
+        )
+    else:
+        cookies = _perform_login(target.url, username, password)
 
     if cookies:
         auth_state = {
@@ -572,6 +693,51 @@ def auth_node(state: PentestState) -> dict:
     else:
         scrubbed_credentials = credentials  # keep original if login failed
 
+    runtime_profiles = (
+        {
+            username or "primary-owner": _primary_identity_profile(
+                cookies,
+                validated=True,
+                label=username or "primary-owner",
+                source="playwright_login",
+            ),
+            **secondary_profiles,
+        }
+        if cookies
+        else secondary_profiles
+    )
+    if thread_id and runtime_profiles:
+        # Keep secondary credentials only in the encrypted worker vault so a
+        # later bounded BAC refresh can re-authenticate after a throttle. The
+        # LangGraph state remains report-safe and never receives credentials.
+        vault_profiles = {
+            name: dict(profile) for name, profile in runtime_profiles.items()
+        }
+        for profile_key, raw_profile in raw_identity_profiles.items():
+            if not isinstance(raw_profile, dict):
+                continue
+            profile_name = str(raw_profile.get("name") or profile_key)
+            runtime_name = next(
+                (
+                    name
+                    for name, profile in runtime_profiles.items()
+                    if name == profile_name or name == str(profile_key)
+                ),
+                None,
+            )
+            raw_credentials = raw_profile.get("credentials")
+            if (
+                runtime_name is not None
+                and isinstance(raw_credentials, dict)
+                and raw_credentials.get("username")
+                and raw_credentials.get("password")
+            ):
+                vault_profiles[runtime_name]["credentials"] = {
+                    "username": str(raw_credentials["username"]),
+                    "password": str(raw_credentials["password"]),
+                }
+        seal_identity_profiles(thread_id, vault_profiles)
+
     return {
         # V9 P0 Fix 1-B: neutralised operator cookies as the base,
         # with any freshly-extracted Playwright cookies layered on
@@ -580,7 +746,7 @@ def auth_node(state: PentestState) -> dict:
         # and behaviour is unchanged from before.
         "session_cookies": {**_invalidated_operator_cookies, **cookies},
         "auth_state": auth_state,
-        "identity_profiles": secondary_profiles,
+        "identity_profiles": runtime_profiles,
         "credentials": scrubbed_credentials,
         "messages": [AIMessage(content=message)],
         "current_phase": "authentication",

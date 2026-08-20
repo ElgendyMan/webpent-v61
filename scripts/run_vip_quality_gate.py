@@ -15,10 +15,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DOCS = PROJECT_ROOT / "docs"
 OUTPUT_PATH = DOCS / "vip_quality_gate.json"
 PYTHON = sys.executable
-_LOCAL_RUFF = Path(PYTHON).with_name("ruff")
-RUFF = str(_LOCAL_RUFF) if _LOCAL_RUFF.is_file() else (shutil.which("ruff") or "ruff")
-BANDIT = shutil.which("bandit") or "bandit"
-PIP_AUDIT = shutil.which("pip-audit") or "pip-audit"
+
+def _local_or_path(tool: str) -> str:
+    """Prefer the executable installed beside the interpreter running the gate."""
+    local = Path(PYTHON).with_name(tool)
+    return str(local) if local.is_file() else (shutil.which(tool) or tool)
+
+
+RUFF = _local_or_path("ruff")
+BANDIT = _local_or_path("bandit")
+PIP_AUDIT = _local_or_path("pip-audit")
 UV = shutil.which("uv")
 PYTEST = [PYTHON, "-m", "pytest", "-q"]
 
@@ -269,27 +275,8 @@ def _security_checks() -> list[dict[str, Any]]:
     return [bandit_check, sbom_check, audit_check]
 
 
-def main() -> int:
-    checks = [
-        _run("compileall", [PYTHON, "-m", "compileall", "-q", "src", "scripts"]),
-        _run("ruff", [RUFF, "check", *RUFF_PATHS]),
-        _run("pytest", [*PYTEST], timeout=420),
-        _run(
-            "test-function-count",
-            # This is a static function-preservation guard; pytest's passed count is checked above.
-            [PYTHON, "scripts/verify_test_count.py", "--minimum", "818"],
-            timeout=60,
-        ),
-    ]
-    checks.extend(_qualification_checks())
-    checks.extend(_security_checks())
-    manifest_check = _run(
-        "release-manifest",
-        [PYTHON, "scripts/build_release_manifest.py"],
-        timeout=60,
-    )
-    checks.append(manifest_check)
-    safety = _artifact_safety()
+def _build_gate_report(checks: list[dict[str, Any]], safety: dict[str, Any]) -> dict[str, Any]:
+    """Build a report from checks without mutating release artifacts."""
     hard_checks_passed = all(check["passed"] for check in checks) and safety["passed"]
     blockers = [
         "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
@@ -307,13 +294,12 @@ def main() -> int:
         )
     if not check_by_name.get("release-manifest", {}).get("passed", False):
         blockers.append("release manifest could not be generated")
-    passed = hard_checks_passed and not blockers
-    report = {
+    return {
         "schema_version": "vip-quality-gate-v2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "project": "WebPent v72",
         "hard_checks_passed": hard_checks_passed,
-        "passed": passed,
+        "passed": hard_checks_passed and not blockers,
         "checks": checks,
         "waptlab_artifact_safety": safety,
         "security_artifacts": {
@@ -323,12 +309,65 @@ def main() -> int:
         },
         "known_blockers": blockers,
     }
+
+
+def _write_gate_report(report: dict[str, Any]) -> None:
     OUTPUT_PATH.write_text(
         json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps({"passed": passed, "output": str(OUTPUT_PATH)}, sort_keys=True))
-    return 0 if passed else 1
+
+
+def main() -> int:
+    checks = [
+        _run("compileall", [PYTHON, "-m", "compileall", "-q", "src", "scripts"]),
+        _run("ruff", [RUFF, "check", *RUFF_PATHS]),
+        _run("pytest", [*PYTEST], timeout=420),
+        _run(
+            "test-function-count",
+            # This is a static function-preservation guard; pytest's passed count is checked above.
+            [PYTHON, "scripts/verify_test_count.py", "--minimum", "818"],
+            timeout=60,
+        ),
+    ]
+    checks.extend(_qualification_checks())
+    checks.extend(_security_checks())
+    safety = _artifact_safety()
+
+    # The manifest reads vip_quality_gate.json. Write a provisional report before
+    # building it, then write the final report with the successful manifest check,
+    # and refresh the manifest once more so its hashes describe the final report.
+    provisional_checks = [
+        *checks,
+        {
+            "name": "release-manifest",
+            "passed": False,
+            "returncode": None,
+            "stdout_tail": "bootstrap: manifest generation pending",
+            "stderr_tail": "",
+        },
+    ]
+    _write_gate_report(_build_gate_report(provisional_checks, safety))
+    manifest_check = _run(
+        "release-manifest",
+        [PYTHON, "scripts/build_release_manifest.py"],
+        timeout=60,
+    )
+    checks.append(manifest_check)
+    report = _build_gate_report(checks, safety)
+    _write_gate_report(report)
+    refresh_check = _run(
+        "release-manifest-refresh",
+        [PYTHON, "scripts/build_release_manifest.py"],
+        timeout=60,
+    )
+    if not refresh_check["passed"]:
+        report["known_blockers"].append("release manifest refresh could not be generated")
+        report["passed"] = False
+        report["hard_checks_passed"] = False
+        _write_gate_report(report)
+    print(json.dumps({"passed": report["passed"], "output": str(OUTPUT_PATH)}, sort_keys=True))
+    return 0 if report["passed"] else 1
 
 
 if __name__ == "__main__":

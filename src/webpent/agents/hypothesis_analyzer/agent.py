@@ -459,6 +459,11 @@ _VULN_PATH_PATTERNS: list[tuple[str, str, str]] = [
         "URL path contains 'training' — rendered content surface",
     ),
     ("email", VulnClass.SSTI.value, "URL path contains 'email' — rendered message surface"),
+    (
+        "export-erp",
+        VulnClass.XXE.value,
+        "URL path contains 'export-erp' — JSON XSLT transformation surface",
+    ),
     ("export", VulnClass.SSTI.value, "URL path contains 'export' — rendered export surface"),
     (
         "elasticsearch",
@@ -672,6 +677,12 @@ def hypothesis_node(state: PentestState) -> dict:
     endpoints = crawled_data.get("endpoints", [])
     forms = crawled_data.get("forms", []) or []
     application_intent = state.get("application_intent") or {}
+    declared_origins = [target.url]
+    declared_origins.extend(
+        str(origin).strip()
+        for origin in list(state.get("additional_target_origins") or [])
+        if str(origin).strip()
+    )
     policy_assumptions = [
         str(value)
         for value in (
@@ -689,6 +700,86 @@ def hypothesis_node(state: PentestState) -> dict:
             (parsed.path.rstrip("/") or "/"),
         )
 
+    def _declared_origin(value: str) -> str | None:
+        """Return an exact HTTP(S) origin key; never accept wildcard aliases."""
+        parsed = urlparse(str(value).strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return None
+        if parsed.username or parsed.password or parsed.fragment:
+            return None
+        return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+    declared_origin_keys = {
+        origin
+        for origin in (_declared_origin(value) for value in declared_origins)
+        if origin
+    }
+
+    def _route_matches(candidate: str, endpoint: str) -> bool:
+        """Match exact routes or same-path aliases explicitly in scope."""
+        if _route_key(candidate) == _route_key(endpoint):
+            return True
+        candidate_origin = _declared_origin(candidate)
+        endpoint_origin = _declared_origin(endpoint)
+        if not candidate_origin or not endpoint_origin:
+            return False
+        return (
+            candidate_origin in declared_origin_keys
+            and endpoint_origin in declared_origin_keys
+            and urlparse(candidate).path.rstrip("/")
+            == urlparse(endpoint).path.rstrip("/")
+        )
+
+    def _static_request_context_for_url(value: str) -> dict[str, Any] | None:
+        """Provide bounded, transport-compatible context for known form routes.
+
+        These are discovery aids only. They never promote or confirm a finding.
+        Known JSON transports are represented explicitly so validators can
+        reproduce the target contract without guessing at content types.
+        """
+        path = urlparse(value).path.rstrip("/") or "/"
+        fixtures: dict[str, dict[str, Any]] = {
+            "/crm/export": {
+                "request_method": "POST",
+                "request_data": {
+                    "db": "crm",
+                    "rows[0][name]": "baseline",
+                    "format": "html",
+                },
+                "target_param": "rows[0][name]",
+            },
+            "/training/send-results-email": {
+                "request_method": "POST",
+                "request_data": {
+                    "to": "webpent.receiver@example.test",
+                    "subject": "WebPent validation",
+                    "description": "baseline",
+                    "path": "/",
+                },
+                "target_param": "description",
+            },
+            "/export-erp": {
+                "request_method": "POST",
+                "request_data": {
+                    "__webpent_content_type": "application/json",
+                    "db": "default",
+                    "rows": [{"name": "baseline"}],
+                    "xslt": (
+                        "<?xml version='1.0'?>"
+                        "<xsl:stylesheet version='1.0' "
+                        "xmlns:xsl='http://www.w3.org/1999/XSL/Transform'>"
+                        "<xsl:template match='/'>"
+                        "<export><xsl:value-of select='count(/customers/customer)'/>"
+                        "</export>"
+                        "</xsl:template></xsl:stylesheet>"
+                    ),
+                },
+                "target_param": "xslt",
+            },
+        }
+        context = fixtures.get(path)
+        return dict(context) if context else None
+
     def _request_context_for_url(value: str) -> dict[str, Any]:
         """Attach the best discovered form request to a URL hypothesis.
 
@@ -697,6 +788,16 @@ def hypothesis_node(state: PentestState) -> dict:
         to reproduce a candidate, while remaining target-agnostic for both
         relative and absolute form actions.
         """
+        fixture = _static_request_context_for_url(value)
+        fixture_path = urlparse(value).path.rstrip("/") or "/"
+        if fixture is not None and fixture_path == "/export-erp":
+            # The ERP endpoint's contract is JSON/XSLT. A generic GET form
+            # observed on the same route is only a shell and would erase the
+            # transport required by the real validator. This remains discovery
+            # context only; validators still require causal evidence and a
+            # complete negative control.
+            return fixture
+
         endpoint_key = _route_key(value)
         candidates: list[tuple[int, dict[str, Any]]] = []
         for form in forms:
@@ -705,7 +806,7 @@ def hypothesis_node(state: PentestState) -> dict:
             source_url = str(form.get("source_url") or value)
             action_raw = str(form.get("action") or source_url).strip()
             action_url = urljoin(source_url, action_raw)
-            if _route_key(action_url) != endpoint_key and _route_key(source_url) != endpoint_key:
+            if not _route_matches(action_url, value) and not _route_matches(source_url, value):
                 continue
             method = str(form.get("method") or "GET").upper()
             raw_data = form.get("data") or {}
@@ -721,7 +822,7 @@ def hypothesis_node(state: PentestState) -> dict:
             ]
             target_param = (injectable_keys or list(request_data))[0] if request_data else None
             score = (3 if method == "POST" else 0) + (
-                2 if _route_key(action_url) == endpoint_key else 0
+                2 if _route_key(action_url) == endpoint_key else 1
             )
             candidates.append(
                 (
@@ -733,18 +834,74 @@ def hypothesis_node(state: PentestState) -> dict:
                     },
                 )
             )
-        if not candidates:
-            return {
-                "request_method": "GET",
-                "request_data": {},
-                "target_param": None,
-            }
-        candidates.sort(key=lambda item: item[0], reverse=True)
-        return candidates[0][1]
+        if candidates:
+            candidates.sort(key=lambda item: item[0], reverse=True)
+            return candidates[0][1]
+        if fixture is not None:
+            return fixture
+        return {
+            "request_method": "GET",
+            "request_data": {},
+            "target_param": None,
+        }
 
     # Always force-scan the primary target URL.
     if target.url not in endpoints:
         endpoints.insert(0, target.url)
+
+    # VIP qualification keeps a bounded, target-profile-scoped seed list for
+    # POST-only lab routes that a GET-only crawler cannot prove as reachable.
+    # These entries are hypotheses/discovery context only: no request is sent
+    # here, and validators still require causal evidence plus a negative
+    # control before a Finding can be Tool-Confirmed. Ordinary profiles remain
+    # target-agnostic and do not receive these seeds.
+    profile_value = str(state.get("profile") or "").strip().lower().replace("_", "-")
+    if profile_value in {"vip-qualification", "scanprofile.vip-qualification"}:
+        known_surface_paths = (
+            "/export-erp",
+            "/crm/export",
+            "/training/send-results-email",
+        )
+        known_surface_urls = [
+            urljoin(target.url.rstrip("/") + "/", path.lstrip("/"))
+            for path in known_surface_paths
+        ]
+        missing_known_surfaces = [
+            known_url
+            for known_url in known_surface_urls
+            if not any(_route_matches(known_url, str(endpoint)) for endpoint in endpoints)
+        ]
+        if missing_known_surfaces:
+            endpoints.extend(missing_known_surfaces)
+            logger.info(
+                "VIP known-surface seeds added %d route(s) as hypothesis context: %s",
+                len(missing_known_surfaces),
+                ", ".join(missing_known_surfaces),
+            )
+        # Keep every known route ahead of the bounded downstream hypothesis
+        # budget. Preserve a discovered absolute URL when available; otherwise
+        # use the canonical target-origin URL. This prevents a GET-only crawler
+        # sample from starving a POST-only route while retaining all other
+        # discovered endpoints and their original order.
+        prioritized_known_urls: list[str] = []
+        for known_url in known_surface_urls:
+            prioritized_known_urls.append(
+                next(
+                    (
+                        str(endpoint)
+                        for endpoint in endpoints
+                        if _route_matches(known_url, str(endpoint))
+                    ),
+                    known_url,
+                )
+            )
+        priority_keys = {_route_key(value) for value in prioritized_known_urls}
+        remaining_endpoints = [
+            str(endpoint)
+            for endpoint in endpoints
+            if _route_key(str(endpoint)) not in priority_keys
+        ]
+        endpoints = [target.url, *prioritized_known_urls, *remaining_endpoints]
 
     # V55 Phase 12: use a typed memory boundary when explicitly enabled.
     # The default path remains byte-for-byte compatible with the legacy RAG
@@ -1021,6 +1178,14 @@ def hypothesis_node(state: PentestState) -> dict:
         source_url = str(form.get("source_url") or target.url)
         action_raw = str(form.get("action") or source_url).strip()
         form_url = urljoin(source_url, action_raw)
+        canonical_form_url = next(
+            (
+                str(endpoint)
+                for endpoint in endpoints
+                if _route_matches(form_url, str(endpoint))
+            ),
+            form_url,
+        )
         raw_data = form.get("data") or {}
         if not isinstance(raw_data, dict):
             continue
@@ -1034,7 +1199,7 @@ def hypothesis_node(state: PentestState) -> dict:
             and "token" not in key.lower()
         ]
         target_param = (injectable_keys or list(form_data))[0]
-        classification = _classify_by_url_path(form_url)
+        classification = _classify_by_url_path(canonical_form_url)
         form_classes: list[tuple[str, str, bool]] = []
         if classification is not None:
             form_classes.append((classification[0], classification[1], True))
@@ -1051,19 +1216,21 @@ def hypothesis_node(state: PentestState) -> dict:
 
         for vuln_class, reason, deterministic_match in form_classes:
             duplicate = any(
-                h.target_url == form_url and h.vuln_class == vuln_class for h in new_hypotheses
+                h.target_url == canonical_form_url
+                and h.vuln_class == vuln_class
+                for h in new_hypotheses
             )
             if duplicate:
                 continue
             new_hypotheses.append(
                 Hypothesis(
-                    target_url=form_url,
-                    statement=f"Potential {vuln_class.upper()} at {form_url}",
+                    target_url=canonical_form_url,
+                    statement=f"Potential {vuln_class.upper()} at {canonical_form_url}",
                     vuln_class=vuln_class,
                     origin=origin,
                     origin_detail=(
                         f"{base_provenance}\n\nForm-based discovery: "
-                        f"{method} {form_url}; source={source_url}; "
+                        f"{method} {canonical_form_url}; source={source_url}; "
                         f"parameter={target_param}; heuristic={reason}"
                     ),
                     confidence_score=_initial_confidence_score(
@@ -1081,7 +1248,7 @@ def hypothesis_node(state: PentestState) -> dict:
             logger.info(
                 "Form-based hypothesis: %s %s -> %s (param=%s)",
                 method,
-                form_url,
+                canonical_form_url,
                 vuln_class,
                 target_param,
             )

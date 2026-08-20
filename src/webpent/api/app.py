@@ -45,6 +45,7 @@ from webpent.graph.builder import NODE_EXECUTION_SANDBOX, build_graph
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Finding
+from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
 from webpent.shared.persistent_finding_ledger import PersistentFindingLedger
 from webpent.shared.resume_capability import issue_resume_capability
@@ -458,6 +459,21 @@ class ScanRequest(BaseModel):
         max_length=128,
         description=("Optional logical engagement scope. Defaults to the generated thread_id."),
     )
+    additional_target_origins: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Explicit companion HTTP(S) origins used by the target flow. "
+            "They are allowlisted only when supplied by the operator."
+        ),
+    )
+
+    @field_validator("additional_target_origins")
+    @classmethod
+    def _validate_additional_target_origins(cls, v: list[str]) -> list[str]:
+        try:
+            return normalize_declared_origins(v)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("client_id", "engagement_id")
     @classmethod
@@ -822,6 +838,7 @@ def start_scan(
             jwt_weak_secret_candidates=request.jwt_weak_secret_candidates or [],
             jwt_public_key_available=request.jwt_public_key_available,
             disclosed_report_corpus=request.disclosed_report_corpus or [],
+            additional_target_origins=request.additional_target_origins,
             client_id=effective_client_id,
             engagement_id=resolved_engagement_id,
         )

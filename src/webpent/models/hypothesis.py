@@ -271,11 +271,11 @@ class Hypothesis(BaseModel):
         max_length=10,
         description="HTTP method associated with the hypothesis target.",
     )
-    request_data: dict[str, str] = Field(
+    request_data: dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "Bounded, redacted form/query fields for a later gated validator; "
-            "never cookies or secrets."
+            "Bounded, redacted form/query/JSON fields for a later gated validator; "
+            "nested JSON values are allowed, and cookies or secrets are never stored."
         ),
     )
     target_param: str | None = Field(

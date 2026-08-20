@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 
 def test_http_surface_discovers_authenticated_links_get_forms_and_js(monkeypatch) -> None:
     from webpent.shared import http as http_module
@@ -427,3 +429,242 @@ def test_http_surface_enriches_from_sitemap_openapi_and_graphql(monkeypatch) -> 
     assert result["discovery_metadata"]["graphql_urls"] == ["http://lab.test/graphql"]
     assert all(not url.startswith("http://outside") for url in requested)
 
+
+
+
+def test_http_surface_prioritizes_configured_route_seeds_within_budget(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from webpent.shared import http as http_module
+    from webpent.shared import http_discovery as discovery_module
+
+    requested: list[str] = []
+    pages = {
+        "http://lab.test/": (200, "text/html", "<h1>home</h1>"),
+        "http://lab.test/graphql": (404, "text/plain", ""),
+        "http://lab.test/critical-surface": (200, "application/json", "{}"),
+    }
+
+    class FakeResponse:
+        def __init__(self, status_code: int, content_type: str, text: str) -> None:
+            self.status_code = status_code
+            self.headers = {"content-type": content_type}
+            self.text = text
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            requested.append(url)
+            status, content_type, text = pages.get(url, (404, "text/plain", ""))
+            return FakeResponse(status, content_type, text)
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+    monkeypatch.setattr(
+        discovery_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            discovery_route_seeds="/critical-surface",
+            http_user_agent="WebPent/test",
+        ),
+    )
+
+    result = discovery_module.discover_http_surface("http://lab.test/", max_pages=3)
+
+    assert "http://lab.test/critical-surface" in result["endpoints"]
+    assert result["discovery_metadata"]["route_seed_queued"] >= 1
+    assert "/critical-surface" in result["discovery_metadata"]["route_seed_candidates"]
+    assert len(result["endpoints"]) <= 3
+    assert any(
+        record["url"] == "http://lab.test/critical-surface"
+        for record in result["surface_records"]
+    )
+
+
+
+def test_http_surface_default_route_seed_is_observed_without_links(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    pages = {
+        "http://lab.test/": (200, "text/html", "<h1>home</h1>"),
+        "http://lab.test/graphql": (404, "text/plain", ""),
+        "http://lab.test/swagger_ui": (404, "text/plain", ""),
+        "http://lab.test/swagger": (404, "text/plain", ""),
+        "http://lab.test/openapi.json": (404, "text/plain", ""),
+        "http://lab.test/api/docs": (404, "text/plain", ""),
+        "http://lab.test/docs": (404, "text/plain", ""),
+        "http://lab.test/export-erp": (200, "application/json", "{}"),
+    }
+
+    class FakeResponse:
+        def __init__(self, status_code: int, content_type: str, text: str) -> None:
+            self.status_code = status_code
+            self.headers = {"content-type": content_type}
+            self.text = text
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            status, content_type, text = pages.get(url, (404, "text/plain", ""))
+            return FakeResponse(status, content_type, text)
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    result = discover_http_surface("http://lab.test/", max_pages=20)
+
+    assert "http://lab.test/export-erp" in result["endpoints"]
+    assert any(
+        record["url"] == "http://lab.test/export-erp"
+        for record in result["surface_records"]
+    )
+    assert "/export-erp" in result["discovery_metadata"]["route_seed_candidates"]
+
+
+
+
+def test_http_surface_route_seed_metadata_is_bounded(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    class FakeResponse:
+        status_code = 404
+        headers = {"content-type": "text/plain"}
+        text = ""
+
+    class FakeClient:
+        def get(self, _url: str) -> FakeResponse:
+            return FakeResponse()
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    result = discover_http_surface("http://lab.test/", max_pages=2)
+
+    assert len(result["discovery_metadata"]["route_seed_candidates"]) <= 40
+    assert result["discovery_metadata"]["route_seed_queued"] <= 40
+    assert len(result["endpoints"]) <= 2
+
+
+
+def test_crawler_adds_bounded_http_supplement_after_katana_success(monkeypatch) -> None:
+    from webpent.agents.crawler import agent as crawler_agent
+    from webpent.models.targets import Target
+
+    supplement = {
+        "endpoints": [
+            "http://lab.test/",
+            "http://lab.test/export-erp",
+        ],
+        "forms": [],
+        "pages_fetched": 2,
+        "coverage_gaps": [],
+        "surface_records": [
+            {
+                "record_id": "http:1",
+                "url": "http://lab.test/export-erp",
+                "method": "GET",
+                "source": "http_get",
+            }
+        ],
+        "discovery_metadata": {
+            "route_seed_candidates": ["/export-erp"],
+            "route_seed_queued": 1,
+        },
+    }
+
+    monkeypatch.setattr(
+        crawler_agent,
+        "run_katana",
+        lambda *_args, **_kwargs: ["http://lab.test/home"],
+    )
+    monkeypatch.setattr(
+        crawler_agent,
+        "discover_http_surface",
+        lambda *_args, **_kwargs: supplement,
+    )
+    monkeypatch.setattr(crawler_agent, "get_llm", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(crawler_agent, "_fetch_and_analyze_js", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(crawler_agent, "_discover_html_forms", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        "webpent.config.settings.get_settings",
+        lambda: SimpleNamespace(
+            enable_http_discovery_supplement=False,
+            http_discovery_supplement_pages=20,
+            enable_structure_aware_triage=False,
+            max_structure_aware_triage_endpoints=25,
+        ),
+    )
+
+    result = crawler_agent.crawler_node(
+        {
+            "target": Target(url="http://lab.test/"),
+            "session_cookies": {},
+            "auth_state": {},
+            "profile": "vip-qualification",
+        }
+    )
+
+    crawled = result["crawled_data"]
+    assert crawled["endpoints"][:2] == [
+        "http://lab.test/export-erp",
+        "http://lab.test/",
+    ]
+    assert "http://lab.test/home" in crawled["endpoints"]
+    assert crawled["http_discovery"]["discovery_mode"] == "katana_plus_http_supplement"
+    assert crawled["surface_records"][0]["url"] == "http://lab.test/export-erp"
+
+
+
+def test_http_supplement_remains_opt_in_outside_qualification(monkeypatch) -> None:
+    from webpent.agents.crawler import agent as crawler_agent
+    from webpent.models.targets import Target
+
+    called = False
+
+    def _unexpected_supplement(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("supplement must remain opt-in outside vip-qualification")
+
+    monkeypatch.setattr(crawler_agent, "run_katana", lambda *_args, **_kwargs: ["http://lab.test/"])
+    monkeypatch.setattr(crawler_agent, "discover_http_surface", _unexpected_supplement)
+    monkeypatch.setattr(crawler_agent, "get_llm", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(crawler_agent, "_fetch_and_analyze_js", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(crawler_agent, "_discover_html_forms", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        "webpent.config.settings.get_settings",
+        lambda: SimpleNamespace(
+            enable_http_discovery_supplement=False,
+            http_discovery_supplement_pages=20,
+            enable_structure_aware_triage=False,
+            max_structure_aware_triage_endpoints=25,
+        ),
+    )
+
+    result = crawler_agent.crawler_node(
+        {
+            "target": Target(url="http://lab.test/"),
+            "session_cookies": {},
+            "auth_state": {},
+            "profile": "authorized-active",
+        }
+    )
+
+    assert result["crawled_data"]["endpoints"] == ["http://lab.test/"]
+    assert called is False
+    assert "http_discovery" not in result["crawled_data"]
