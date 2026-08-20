@@ -92,7 +92,7 @@
     "docs/bandit_release.json": "f62bafc4cbefedff2431bf199fa37599b9f3a00056779bbf4632df490b29d195",
     "docs/bandit_triage_vip.md": "79bd2d532a324e1a12f41705dde0c26ea5bad4aadc647783016f58e306959f98",
     "docs/capability_report.json": "d1dab4a5d5349d46e8437551b0374fb0f9084b52ca40cb9a680dd79a311f18aa",
-    "docs/integration_decision_matrix.md": "b9bb3d3fae0c0eda643bd156b0393a5f707a4612d7aee7d1e6aa6fc021ad828d",
+    "docs/integration_decision_matrix.md": "53286abc9676678126eca7ba60916bf695384e8d78846337c6efd2d0869a3eba",
     "docs/phase6_smart_hunter_release_report.md": "3cb3710b19eaeedfca9d32c2d7a651f207a882218849eb5302b1db5b3d10762f",
     "docs/phase6_waptlab_runtime_notes.md": "8bd199dac41d76405f9680e21442ce5a07d7b17a4a94b02d8da0e1c08b23c361",
     "docs/pip_audit_release.json": "2157e15ea70f79b0f8cb32ea96fdd4773b6d250f34c2cc1b42f2166b2b3c18ee",
@@ -127,7 +127,7 @@
     "docs/vip_autonomous_bug_hunter_traceability.md": "f98968caca674fb5f1769bce20f1f61538d02667e341d3dc72bfda4e2f136067",
     "docs/vip_baseline.json": "27c18adb3854117f475fbe71fefb39604366ba30aadc2ee40625fda764a3a6ca",
     "docs/vip_baseline_inventory.txt": "f71fe462fc13a6df9b6ff70a75f83ea723134f2c36a6a060ae586cad848d9fbe",
-    "docs/vip_final_compliance_matrix.md": "96971184f9faa79de9dea8c56e18b0a18b7774762b3f83d1d81d2dc3759435d5",
+    "docs/vip_final_compliance_matrix.md": "4de7e0571ad80c2eac0849b15dc74e2b91030e0ef9c7ef492c47e00543b795ec",
     "docs/vip_final_release_report.md": "a1458d67394ebfcec8e0454c2cd499f37fc49e850cab1206bee60825ca4e2621",
     "docs/vip_plan_gap_audit.md": "6801e76e927bdef72736491b54e61dce6d45d0e5aaa4decd3df89f7af8824bc4",
     "docs/vip_quality_gate.json": "ef4ce96d083077e3c2eff8c90e4cb944f3159f867c4f87522649c89400aa0b2d",
@@ -590,8 +590,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-20T19:58:36.744008+00:00",
-  "git_commit": "4b3e069c8d3c4e1bdbce92184e2bf53c74208c90",
+  "generated_at": "2026-08-20T20:00:21.617169+00:00",
+  "git_commit": "cc012dd09741885ddf1c6e49e3b9cd82617a8afa",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,

@@ -2,7 +2,7 @@
 
 ## Scope of this review
 
-This review compares the supplied VIP plan with the current WebPent working tree based on commit `4b3e069c8d3c4e1bdbce92184e2bf53c74208c90` plus the uncommitted Nettacker adapter and integration-matrix changes being verified in this loop. The review and all verification commands are local only. No WAPTLab or other target was started, contacted, or modified during this review.
+This review compares the supplied VIP plan with the committed WebPent working tree at commit `cc012dd09741885ddf1c6e49e3b9cd82617a8afa`. The review and all verification commands are local only. No WAPTLab or other target was started, contacted, or modified during this review.
 
 A capability is marked **implemented and locally evidenced** only when the source contains the contract and the local test/audit suite exercises the relevant behavior. A source module, feature flag, or README statement is not treated as runtime proof by itself. Live qualification, precision, reproducibility, and benchmark claims remain blocked when they require target execution.
 
