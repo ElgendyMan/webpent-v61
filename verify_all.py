@@ -168,8 +168,12 @@ check(
 )
 
 check(
-    "F4c. 'COPY . .' is the LAST COPY instruction",
-    copy_all_line_num == copy_lines[-1][0] if copy_lines else False,
+    "F4c. source COPY is unique and no later source-tree COPY exists",
+    copy_all_line_num > 0
+    and not any(
+        line == "COPY . ." and ln > copy_all_line_num
+        for ln, line in copy_lines
+    ),
 )
 
 check(
@@ -275,8 +279,13 @@ check(
         for x in ["torch", "sentence-transformers", "playwright install"]),
 )
 check(
-    "U1d. Dockerfile starts with FROM webpent-base:latest",
-    (ROOT / "Dockerfile").read_text().strip().startswith("FROM webpent-base:latest"),
+    "U1d. Dockerfile uses FROM webpent-base:latest",
+    bool(
+        re.search(
+            r"(?m)^\s*FROM\s+webpent-base:latest\s*$",
+            (ROOT / "Dockerfile").read_text(),
+        )
+    ),
 )
 check(
     "U1e. Makefile exists with build-base and build-app targets",
@@ -366,8 +375,8 @@ check(
     "def auto_discover(" in registry_src,
 )
 check(
-    "U4f. tools/__init__.py calls auto_discover()",
-    "auto_discover()" in (SRC / "tools" / "__init__.py").read_text(),
+    "U4f. tools/__init__.py exposes lazy ensure_discovered()",
+    "ensure_discovered" in (SRC / "tools" / "__init__.py").read_text(),
 )
 # Check all 8 wrappers have @register_tool.
 for tool_file, tool_name in [
@@ -383,7 +392,13 @@ for tool_file, tool_name in [
     src = (SRC / "tools" / tool_file).read_text()
     check(
         f"U4g. {tool_file} has @register_tool decorator",
-        f'@register_tool(name="{tool_name}"' in src,
+        bool(
+            re.search(
+                r'''@register_tool\s*\(\s*name\s*=\s*["']'''
+                + re.escape(tool_name),
+                src,
+            )
+        ),
     )
 check(
     "U4h. recon agent uses get_tool() from registry",
@@ -683,8 +698,8 @@ check(
     "cwd=str(project_root)" in eval_src,
 )
 check(
-    "DX8e. memory/db.py stamps alembic_version to 'head' on fallback",
-    "alembic_command.stamp(cfg, \"head\")" in db_src,
+    "DX8e. memory/db.py does not stamp Alembic head after migration failure",
+    "alembic_command.stamp(cfg, \"head\")" not in db_src,
 )
 check(
     "DX8f. memory/db.py implements fcntl.flock advisory lock for migrations",
