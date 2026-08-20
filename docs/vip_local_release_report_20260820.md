@@ -24,6 +24,8 @@ The source-to-runtime inventory and plan checklist were refreshed. The local exe
 
 The benchmark and failure artifacts are explicitly non-live. They are suitable for local contract verification and later comparison against authorized artifacts, but they do not establish target ground truth, precision, recall, reproducibility, or confirmed vulnerabilities.
 
+The release-artifact audit is now covered by `scripts/verify_release_artifacts.py` and `tests/test_release_artifact_audit.py`. It verifies manifest hashes, rejects forbidden runtime/database/secret-like archive members, and fails closed when an operator-required detached signature is absent. Signature presence is reported as supplied for external verification; the project does not pretend to implement cryptographic verification itself.
+
 ## Residual items that cannot be honestly marked complete without a target run
 
 The following remain unqualified because the requested no-WAPTLab constraint prevents collecting the required evidence: WAPTLab/Juice Shop ground truth, live baseline and ablation runs, live proof slices, browser/OOB/API/parser qualification, 15–20 Tool-Confirmed findings, live precision/recall/reproducibility, and Docker/Redis/PostgreSQL/Celery/Chromium production qualification.

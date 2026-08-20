@@ -152,31 +152,31 @@
 | Authentication/fail-closed production defaults | already implemented and reused | settings/preflight/auth tests | Deployment qualification deferred. |
 | SSRF/DNS/redirect/scope controls | already implemented and reused | HTTP/auth/scope tests | No live hostile redirect matrix. |
 | Resume consume-once and durable idempotency | already implemented and reused | resume/action ledger tests | Broker/container qualification deferred. |
-| SBOM/license inventory/signed manifest | implemented but needs hardening | manifest and source audit docs | Regenerate signed release artifacts after final commit. |
+| SBOM/license inventory/signed manifest | implemented but needs hardening | `docs/release_manifest.json`, `docs/sbom.cdx.json`, `scripts/build_release_manifest.py`, `scripts/verify_release_artifacts.py` | Hash/ZIP audit is local; cryptographic signing still requires an operator-supplied key and external signature step. |
 | Redacted logs/reports | already implemented and reused | redaction/checkpoint/reporter tests | Final archive scan required. |
 | Docker/Redis/PostgreSQL/Celery/Chromium qualification | blocked by legal/tooling constraints | No infrastructure/lab execution in this pass | Requires controlled qualification environment. |
-| Operator runbook and rollback | implemented but needs hardening | existing docs and release reports | Refresh with final hashes and residual gates. |
+| Operator runbook and rollback | new implementation | `docs/vip_operator_runbook.md`, `docs/vip_rollback_plan.md` | No deployment or rollback was executed in this no-target pass. |
 
 ## Deliverables status
 
 | Deliverable | Status | Evidence |
 |---|---|---|
 | Existing-capability/de-dup inventory | new implementation | `docs/vip_source_runtime_inventory_20260820.md`, this checklist |
-| Source/security/privacy/dependency/license reports | implemented but needs hardening | AutoPentestX audit plus existing project audit; external priority-project reports are incomplete |
-| Integration decision matrix | implemented but needs hardening | `docs/autopentestx_selective_integration_audit.md` and this checklist |
+| Source/security/privacy/dependency/license reports | implemented but needs hardening | `docs/vip_source_reports.md`, AutoPentestX audit, existing project audit | Exact pinned source/license review for every optional priority project remains incomplete where the plan did not provide a source checkout. |
+| Integration decision matrix | implemented and locally verified | `docs/integration_decision_matrix.md`, `docs/vip_source_reports.md`, and this checklist | Live useful-coverage comparison remains unmeasured. |
 | Native adapter contracts/manifests | already implemented and reused | Nettacker/AutoPentestX adapters and capability manifest |
-| Direct-I/O execution-plane proof | implemented and locally verified | AST tests, source inventory, `verify_all.py` 145/145 | Runtime qualification remains local-only. |
+| Direct-I/O execution-plane proof | implemented and locally verified | AST tests, source inventory, `verify_all.py`, `scripts/verify_release_artifacts.py` | Runtime qualification remains local-only. |
 | WAPTLab/Juice Shop benchmark report | blocked by legal/tooling constraints | No targets run by instruction |
 | Failure-injection/recovery report | implemented but needs hardening | `benchmarks/failure_matrix.py`, `scripts/evaluate_failure_matrix.py`, `docs/vip_failure_injection_report.md`, `docs/vip_failure_matrix_20260820.json`, dedicated tests | Full worker/tool/broker matrix remains deferred. |
 | ProofBundle/replay audit | implemented but needs hardening | proof/replay tests and models; no live bundles |
-| VIP qualification or residual report | already implemented and reused | `docs/autopentestx_plan_compliance.md` is the current honest residual report |
+| VIP qualification or residual report | implemented but needs hardening | `docs/vip_local_release_report_20260820.md`, `docs/vip_source_reports.md`, and this checklist | Live VIP qualification remains blocked by the explicit no-WAPTLab constraint. |
 | Updated English documentation | new implementation | this checklist plus existing execution/compliance reports |
 
 ## Pass 2 local additions
 
 This pass added and tested the bounded offline failure-injection matrix. It covers validator dispositions (`reviewable`, `inconclusive`, and `blocked`) and active-research boundaries (`blocked`, `infrastructure_failure`, and safe negative observation). The generated JSON artifact is explicitly marked as non-live and cannot create or promote a Finding.
 
-The authority and ProofBundle regression suites were also added to the local tree; they exercise scope, approval, destructive denial, idempotency, sealing, replay, redaction, and negative-control contracts without network access.
+The authority and ProofBundle regression suites were also added to the local tree; they exercise scope, approval, destructive denial, idempotency, sealing, replay, redaction, and negative-control contracts without network access. This pass additionally added `scripts/verify_release_artifacts.py`, `docs/vip_operator_runbook.md`, `docs/vip_rollback_plan.md`, and `docs/vip_source_reports.md`; the audit tool verifies release hashes and archive redaction offline and fails closed when an operator requires a detached signature.
 
 ## Honest conclusion
 
