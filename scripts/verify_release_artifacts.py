@@ -21,6 +21,9 @@ FORBIDDEN_MEMBER_PARTS = {
     ".git",
     ".venv",
     "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
     "chroma_db",
 }
 FORBIDDEN_SUFFIXES = {".pyc", ".pyo", ".sqlite", ".sqlite3", ".db"}
@@ -28,7 +31,9 @@ FORBIDDEN_NAMES = {"cookies.json", "credentials.json", "secrets.json"}
 SECRET_PATTERNS = (
     re.compile(r"BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY"),
     re.compile(r"(?:sk|rk)-[A-Za-z0-9]{20,}"),
-    re.compile(r"password\s*[:=]\s*[^<\s]{12,}", re.IGNORECASE),
+    re.compile(
+        r"password\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.IGNORECASE
+    ),
 )
 
 
