@@ -8,6 +8,7 @@ from webpent.config.settings import Settings
 from webpent.graph.checkpoints import _redact_channel
 from webpent.models.targets import Target
 from webpent.shared.autonomous_controller import autonomous_controller_node
+from webpent.shared.control_plane import EngagementScope
 from webpent.shared.runtime import (
     AdapterRegistry,
     RegisteredAdapter,
@@ -55,6 +56,27 @@ def test_runtime_factory_injects_one_central_spine(tmp_path: Path) -> None:
     assert diagnostics["valid"] is True
     assert diagnostics["event_count"] == 1
     assert diagnostics["adapters"] == []
+
+
+def test_runtime_factory_injects_optional_identity_agent_without_checkpoint_leak(
+    tmp_path: Path,
+) -> None:
+    agent = object()
+    context = RuntimeFactory.create(
+        engagement_id="engagement:identity-runtime",
+        campaign_id="campaign:identity-runtime",
+        target_origin="https://example.test",
+        settings=_settings(tmp_path),
+        manifest=_manifest(),
+        identity_provisioning_agent=agent,
+        enable_control_plane=True,
+    )
+
+    assert context.identity_provisioning_agent is agent
+    assert isinstance(context.engagement_scope, EngagementScope)
+    descriptor = RuntimeFactory.descriptor(context)
+    assert "identity_provisioning_agent" not in descriptor
+    assert "engagement_scope" not in descriptor
 
 
 def test_runtime_factory_returns_structured_blocker_for_invalid_context(

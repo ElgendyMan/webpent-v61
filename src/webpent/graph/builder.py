@@ -98,6 +98,7 @@ from webpent.shared.g02_contract import (
     G02_HTTP_SCOPE_POLICY,
     g02_http_metadata,
 )
+from webpent.shared.identity_provisioning import identity_provisioning_node
 from webpent.shared.research_contracts import active_research_node
 from webpent.shared.research_nodes import (
     knowledge_gap_node,
@@ -105,6 +106,10 @@ from webpent.shared.research_nodes import (
     research_session_node,
 )
 from webpent.shared.runtime import RegisteredAdapter, RuntimeContext
+from webpent.shared.wildcard_scope import (
+    route_after_wildcard_scope,
+    wildcard_scope_node,
+)
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -166,6 +171,8 @@ NODE_KNOWLEDGE_GAP = "knowledge_gap"
 NODE_NEXT_BEST_ACTION = "next_best_action"
 NODE_RESEARCH_SESSION = "research_session"
 NODE_RECOVERY = "recovery"
+NODE_WILDCARD_SCOPE = "wildcard_scope"
+NODE_IDENTITY_PROVISIONING = "identity_provisioning"
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
 _EXPLOITABLE_CLASSES = EXPLOITABLE_CLASSES
@@ -591,10 +598,25 @@ def _js_intelligence_enabled() -> bool:
         return False
 
 
+def _identity_provisioning_enabled() -> bool:
+    """Return the opt-in identity flag; configuration errors fail closed."""
+    try:
+        return bool(get_settings().identity_provisioning_enabled)
+    except Exception:
+        return False
+
+
 def route_after_crawler(state: PentestState) -> str:
     """Run static JavaScript review only when explicitly enabled."""
     del state
     return NODE_JAVASCRIPT_INTELLIGENCE if _js_intelligence_enabled() else NODE_SUBDOMAIN_TAKEOVER
+
+
+def route_after_crawler_with_identity(state: PentestState) -> str:
+    """Insert optional identity provisioning without changing the legacy route."""
+    if _identity_provisioning_enabled():
+        return NODE_IDENTITY_PROVISIONING
+    return route_after_crawler(state)
 
 
 def route_after_infrastructure(state: PentestState) -> str:
@@ -974,6 +996,8 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_SMART_CAMPAIGNS_EXECUTION, smart_campaigns_execution_node)
     graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
     graph.add_node(NODE_RECOVERY, recovery_node)
+    graph.add_node(NODE_WILDCARD_SCOPE, wildcard_scope_node)
+    graph.add_node(NODE_IDENTITY_PROVISIONING, identity_provisioning_node)
     graph.add_node(NODE_KNOWLEDGE_GAP, knowledge_gap_node)
     graph.add_node(NODE_NEXT_BEST_ACTION, next_best_action_node)
     graph.add_node(NODE_RESEARCH_SESSION, research_session_node)
@@ -984,7 +1008,12 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
 
     # V3.5: CRAWLER -> SCOPE_ENFORCER -> WAF_DETECTOR
     # V6.1: Conditional edge from AUTH — if skip_recon, bypass to HYPOTHESIS.
-    graph.add_edge(START, NODE_PLANNER)
+    graph.add_edge(START, NODE_WILDCARD_SCOPE)
+    graph.add_conditional_edges(
+        NODE_WILDCARD_SCOPE,
+        route_after_wildcard_scope,
+        {NODE_PLANNER: NODE_PLANNER, NODE_REPORTER: NODE_REPORTER},
+    )
     graph.add_edge(NODE_PLANNER, NODE_AUTH)
 
     # V6.1: Conditional routing after AUTH — skip recon if requested.
@@ -1000,6 +1029,15 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_edge(NODE_RECON, NODE_CRAWLER)
     graph.add_conditional_edges(
         NODE_CRAWLER,
+        route_after_crawler_with_identity,
+        {
+            NODE_JAVASCRIPT_INTELLIGENCE: NODE_JAVASCRIPT_INTELLIGENCE,
+            NODE_SUBDOMAIN_TAKEOVER: NODE_SUBDOMAIN_TAKEOVER,
+            NODE_IDENTITY_PROVISIONING: NODE_IDENTITY_PROVISIONING,
+        },
+    )
+    graph.add_conditional_edges(
+        NODE_IDENTITY_PROVISIONING,
         route_after_crawler,
         {
             NODE_JAVASCRIPT_INTELLIGENCE: NODE_JAVASCRIPT_INTELLIGENCE,

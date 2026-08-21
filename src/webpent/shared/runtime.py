@@ -22,6 +22,7 @@ from webpent.shared.action_authority import ActionAuthority
 from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.campaign_executor import ActionExecutor, NextBestActionEngine
 from webpent.shared.capability_manifest import CapabilityRegistry
+from webpent.shared.control_plane import EngagementScope
 from webpent.shared.engagement_scope import OriginPolicy
 from webpent.shared.proof_bundle_store import ProofBundleStore
 from webpent.shared.proof_oracles import NegativeControlEngine, OracleEngine
@@ -243,6 +244,11 @@ class RuntimeContext:
     control_plane_runtime: Any | None = None
     campaign_next_best_action_engine: NextBestActionEngine | None = None
     safety_gate: EngagementSafetyGate | None = None
+    # Optional transport-injected identity provisioning. It is deliberately
+    # absent from descriptor/checkpoint payloads and remains default-off.
+    identity_provisioning_agent: Any | None = None
+    # The immutable control-plane scope used by optional identity workflows.
+    engagement_scope: EngagementScope | None = None
 
     @property
     def valid(self) -> bool:
@@ -393,6 +399,7 @@ class RuntimeFactory:
         identity_tenant_object_graph: Any | None = None,
         workflow_state_machine: Any | None = None,
         replay_engine: Any | None = None,
+        identity_provisioning_agent: Any | None = None,
         enable_control_plane: bool = False,
         control_plane_profile_root: str | None = None,
     ) -> RuntimeContext:
@@ -448,6 +455,7 @@ class RuntimeFactory:
         )
         executor = ActionExecutor(authority, proof_bundle_store=bundle_store)
         control_plane_runtime = None
+        engagement_scope = None
         if enable_control_plane and normalized_origin and not errors:
             try:
                 from datetime import timedelta
@@ -471,6 +479,7 @@ class RuntimeFactory:
                     allowed_ports=(origin_port,),
                     path_rules=("/",),
                 )
+                engagement_scope = control_scope
                 control_plane_runtime = build_control_plane_runtime(
                     engagement_id=normalized_engagement,
                     scope=control_scope,
@@ -522,6 +531,8 @@ class RuntimeFactory:
             control_plane_runtime=control_plane_runtime,
             campaign_next_best_action_engine=campaign_action_engine,
             safety_gate=safety_gate,
+            identity_provisioning_agent=identity_provisioning_agent,
+            engagement_scope=engagement_scope,
         )
 
     @staticmethod

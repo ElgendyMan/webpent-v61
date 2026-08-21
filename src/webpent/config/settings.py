@@ -260,6 +260,55 @@ class Settings(BaseSettings):
         ),
         description="Require an idempotency key for every policy-authorized action.",
     )
+    # Addendum: Gmail-backed test identity provisioning is opt-in and bounded.
+    identity_provisioning_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "identity_provisioning_enabled",
+            "IDENTITY_PROVISIONING_ENABLED",
+            "WEBPENT_IDENTITY_PROVISIONING_ENABLED",
+        ),
+        description="Enable dedicated test-mailbox identity provisioning; default OFF.",
+    )
+    identity_mailbox_provider: str = Field(
+        default="gmail_api",
+        validation_alias=AliasChoices(
+            "identity_mailbox_provider",
+            "IDENTITY_MAILBOX_PROVIDER",
+            "WEBPENT_IDENTITY_MAILBOX_PROVIDER",
+        ),
+        description="Mailbox backend: gmail_api or imap; no browser Gmail login.",
+    )
+    identity_mailbox_credentials_ref: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "identity_mailbox_credentials_ref",
+            "IDENTITY_MAILBOX_CREDENTIALS_REF",
+            "WEBPENT_IDENTITY_MAILBOX_CREDENTIALS_REF",
+        ),
+        description="Opaque secret-manager reference; inline mailbox credentials are denied.",
+    )
+    identity_verification_timeout_seconds: int = Field(
+        default=120,
+        ge=1,
+        le=600,
+        validation_alias=AliasChoices(
+            "identity_verification_timeout_seconds",
+            "IDENTITY_VERIFICATION_TIMEOUT_SECONDS",
+            "WEBPENT_IDENTITY_VERIFICATION_TIMEOUT_SECONDS",
+        ),
+    )
+    identity_max_signups_per_engagement: int = Field(
+        default=5,
+        ge=0,
+        le=50,
+        validation_alias=AliasChoices(
+            "identity_max_signups_per_engagement",
+            "IDENTITY_MAX_SIGNUPS_PER_ENGAGEMENT",
+            "WEBPENT_IDENTITY_MAX_SIGNUPS_PER_ENGAGEMENT",
+        ),
+    )
+
     smart_require_proof_bundle: bool = Field(
         default=False,
         validation_alias=AliasChoices(

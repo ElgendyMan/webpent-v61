@@ -111,6 +111,21 @@ class PentestState(TypedDict, total=False):
     # persistence; legacy cookie-only runs remain unchanged.
     session_headers: Annotated[dict[str, str], merge_dicts]
 
+    # Addendum: operator-declared wildcard scope is compiled before graph work.
+    # Raw entries are policy input; compiled_scope is a redaction-safe projection.
+    raw_scope_entries: list[str]
+    compiled_scope: Annotated[dict[str, Any], merge_dicts]
+    scope_compile_status: str
+    scope_compile_error: str
+
+    # Addendum: signup/identity handoff is report-safe and optional. Runtime
+    # secret values remain in the vault and are never represented here.
+    signup_forms_detected: Annotated[list[dict[str, Any]], merge_lists]
+    signup_submissions: Annotated[list[dict[str, Any]], merge_lists]
+    verification_material_events: Annotated[list[dict[str, Any]], merge_lists]
+    identity_records: Annotated[dict[str, Any], merge_dicts]
+    identity_provisioning_status: str
+
     # V11 BAC/IDOR evidence-first multi-identity context.  These fields are
     # additive and optional so old checkpoints remain loadable.  Identity
     # profiles may contain runtime cookies for the active process, but every

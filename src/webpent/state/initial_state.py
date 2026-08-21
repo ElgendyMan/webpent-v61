@@ -81,6 +81,7 @@ def build_initial_state(
     campaign_inventory: str = "waptlab",
     enable_control_plane: bool = True,
     control_plane_profile_root: str | None = None,
+    raw_scope_entries: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -179,6 +180,15 @@ def build_initial_state(
         "credentials": dict(credentials or {}),
         "session_cookies": dict(session_cookies or {}),
         "identity_profiles": dict(identity_profiles or {}),
+        "raw_scope_entries": list(raw_scope_entries or []),
+        "compiled_scope": {},
+        "scope_compile_status": "not_requested",
+        "scope_compile_error": "",
+        "signup_forms_detected": [],
+        "signup_submissions": [],
+        "verification_material_events": [],
+        "identity_records": {},
+        "identity_provisioning_status": "disabled",
         "secret_refs": {
             **(
                 {"credentials": f"vault://{resolved_engagement_id}/credentials"}
