@@ -631,6 +631,52 @@ class TestP0CFindingsPipeline:
         for row in rows:
             assert row.thread_id == tid
 
+    def test_worker_persist_findings_falls_back_to_caller_scope(self, tmp_path):
+        """Checkpoint-null scope must not write to the anonymous ledger partition."""
+        import webpent.workers.pentest_worker as worker_module
+        from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+        from webpent.workers.pentest_worker import _persist_findings
+
+        db = MagicMock()
+        db.save_finding.side_effect = lambda finding: None
+        db.init_db.return_value = None
+        finding = Finding(
+            id=uuid.uuid4(),
+            title="Scoped finding",
+            severity=Severity.HIGH,
+            description="d",
+            tool_name="t",
+            url="http://target.test",
+            confidence=Confidence.TENTATIVE.value,
+            vuln_class=VulnClass.SQLI.value,
+        )
+        ledger = MagicMock()
+        settings = MagicMock(findings_ledger_path=str(tmp_path / "ledger.db"))
+        final_state = {
+            "findings": [finding],
+            "engagement_id": "eng-scope-regression",
+            "owner_username": None,
+            "client_id": None,
+        }
+
+        with (
+            patch.object(worker_module, "get_db_manager", return_value=db),
+            patch.object(worker_module, "get_settings", return_value=settings),
+            patch.object(worker_module, "PersistentFindingLedger", return_value=ledger),
+        ):
+            saved = _persist_findings(
+                final_state,
+                thread_id="thread-scope-regression",
+                owner_username="alice",
+                client_id="client-a",
+            )
+
+        assert saved == 1
+        ledger.merge.assert_called_once()
+        merge_kwargs = ledger.merge.call_args.kwargs
+        assert merge_kwargs["owner_username"] == "alice"
+        assert merge_kwargs["client_id"] == "client-a"
+
     def test_alembic_migration_has_thread_id_column(self):
         """0001_initial.py must include thread_id column + index."""
         migration_path = (
