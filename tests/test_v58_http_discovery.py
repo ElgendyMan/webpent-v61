@@ -71,6 +71,50 @@ def test_http_surface_discovers_authenticated_links_get_forms_and_js(monkeypatch
     assert "secret-do-not-store" not in str(result)
 
 
+def test_http_surface_uses_browser_headers_for_default_user_agent(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared import http_discovery as discovery_module
+
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 404
+        headers = {"content-type": "text/plain"}
+        text = "not found"
+
+    class FakeClient:
+        def get(self, _url: str) -> FakeResponse:
+            return FakeResponse()
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    def fake_client(**kwargs: object) -> FakeClient:
+        captured.update(kwargs)
+        return FakeClient()
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", fake_client)
+    monkeypatch.setattr(
+        discovery_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            discovery_route_seeds="",
+            http_user_agent="WebPent/0.2 (+https://example.test)",
+        ),
+    )
+
+    discovery_module.discover_http_surface("http://lab.test/", max_pages=1)
+
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert str(headers["User-Agent"]).startswith("Mozilla/5.0")
+    assert headers["Accept-Language"] == "en-US,en;q=0.9"
+    assert "gzip" in str(headers["Accept-Encoding"])
+
+
 def test_crawler_uses_http_fallback_when_katana_is_missing(monkeypatch) -> None:
     from webpent.agents.crawler import agent as crawler_agent
     from webpent.models.targets import Target
@@ -488,10 +532,11 @@ def test_http_surface_prioritizes_configured_route_seeds_within_budget(monkeypat
 
 def test_http_surface_default_route_seed_is_observed_without_links(monkeypatch) -> None:
     from webpent.shared import http as http_module
+    from webpent.shared import http_discovery as discovery_module
     from webpent.shared.http_discovery import discover_http_surface
-
     pages = {
         "http://lab.test/": (200, "text/html", "<h1>home</h1>"),
+
         "http://lab.test/graphql": (404, "text/plain", ""),
         "http://lab.test/swagger_ui": (404, "text/plain", ""),
         "http://lab.test/swagger": (404, "text/plain", ""),
@@ -519,6 +564,14 @@ def test_http_surface_default_route_seed_is_observed_without_links(monkeypatch) 
             return None
 
     monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+    monkeypatch.setattr(
+        discovery_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            discovery_route_seeds="/export-erp",
+            http_user_agent="WebPent/test",
+        ),
+    )
 
     result = discover_http_surface("http://lab.test/", max_pages=20)
 
@@ -530,6 +583,33 @@ def test_http_surface_default_route_seed_is_observed_without_links(monkeypatch) 
     assert "/export-erp" in result["discovery_metadata"]["route_seed_candidates"]
 
 
+
+
+def test_http_surface_404_seed_is_not_an_observed_endpoint(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    class FakeResponse:
+        status_code = 404
+        headers = {"content-type": "text/plain"}
+        text = "not found"
+
+    class FakeClient:
+        def get(self, _url: str) -> FakeResponse:
+            return FakeResponse()
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+    result = discover_http_surface("http://juice.test/", max_pages=20)
+
+    assert result["endpoints"] == []
+    assert result["surface_records"] == []
+    assert "/export-erp" not in result["discovery_metadata"]["route_seed_candidates"]
 
 
 def test_http_surface_route_seed_metadata_is_bounded(monkeypatch) -> None:

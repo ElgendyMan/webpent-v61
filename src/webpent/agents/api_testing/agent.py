@@ -107,6 +107,23 @@ _JWT_ALG_NONE_TOKEN = (
 )
 
 
+def _looks_like_spa_shell(response: Any) -> bool:
+    """Return True for an HTML application shell, not an API result.
+
+    Many single-page applications return their index document with HTTP 200
+    for unknown paths. Treating that fallback as JWT acceptance both creates
+    a false candidate and prevents probing later, more specific API paths.
+    This helper is deliberately narrow: JSON, plain text, and HTML responses
+    without the usual shell markers remain eligible for normal validation.
+    """
+    headers = getattr(response, "headers", {}) or {}
+    content_type = str(headers.get("content-type", "")).lower()
+    body = str(getattr(response, "text", "") or "")[:20_000].lower()
+    if "text/html" not in content_type:
+        return False
+    return "<!doctype html" in body or "<app-root" in body or '<base href="/"' in body
+
+
 def _probe_graphql(base_url: str, cookies: dict[str, str] | None = None) -> list[Finding]:
     """Probe for GraphQL endpoints and introspection exposure.
 
@@ -224,7 +241,14 @@ def _probe_jwt_alg_none(base_url: str, cookies: dict[str, str] | None = None) ->
     client_factory = make_safe_httpx_client
 
     # Probe common authenticated endpoints.
-    probe_paths = ["/api/v1/me", "/api/v1/user", "/api/me", "/me", "/api/v1/profile"]
+    probe_paths = [
+        "/api/v1/me",
+        "/api/v1/user",
+        "/api/me",
+        "/me",
+        "/api/v1/profile",
+        "/rest/user/whoami",
+    ]
     for path in probe_paths:
         url = _resolve_url(base_url, path)
         # V9 P0 B4: attach session cookies alongside the JWT probe.
@@ -247,11 +271,18 @@ def _probe_jwt_alg_none(base_url: str, cookies: dict[str, str] | None = None) ->
             headers["Cookie"] = build_cookie_header(cookies)
         try:
             with client_factory(timeout=10.0, follow_redirects=False, verify=True) as client:
+                baseline = client.get(url, headers={})
                 resp = client.get(
                     url,
                     headers=headers,
                 )
             if resp.status_code == 200:
+                if _looks_like_spa_shell(resp):
+                    logger.debug("JWT probe skipped SPA shell at %s", url)
+                    continue
+                if resp.text == baseline.text:
+                    logger.debug("JWT probe skipped unchanged public response at %s", url)
+                    continue
                 # V10 P0-2: wrap Finding construction in try/except.
                 try:
                     findings.append(

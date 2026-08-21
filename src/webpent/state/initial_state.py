@@ -12,10 +12,14 @@ load credentials from disk, or print operator-supplied values.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 from webpent.config.settings import ScanMode, ScanProfile, get_settings, resolve_scan_profile
 from webpent.shared.campaign_planner import build_campaign_plan
-from webpent.shared.campaigns import build_waptlab_campaign_ledger
+from webpent.shared.campaigns import (
+    build_generic_campaign_ledger,
+    build_waptlab_campaign_ledger,
+)
 from webpent.shared.capability_manifest import build_capability_manifest
 
 if TYPE_CHECKING:
@@ -63,6 +67,7 @@ def build_initial_state(
     profile: str | ScanProfile | None = None,
     root_goal_nodes: dict[str, Any] | None = None,
     action_ledger_path: str | None = None,
+    campaign_inventory: str = "waptlab",
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -74,6 +79,19 @@ def build_initial_state(
     resolved_engagement_id = str(engagement_id or thread_id or "").strip() or None
     resolved_client_id = str(client_id or "").strip() or None
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
+    requested_inventory = str(campaign_inventory or "waptlab").strip().lower()
+    if requested_inventory == "auto":
+        parsed_target = urlsplit(target_url)
+        target_host = (parsed_target.hostname or "").lower()
+        resolved_inventory = (
+            "waptlab"
+            if parsed_target.port == 8000 or target_host in {"waptlab", "waptlab.local"}
+            else "generic"
+        )
+    elif requested_inventory in {"waptlab", "generic"}:
+        resolved_inventory = requested_inventory
+    else:
+        raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
     settings = get_settings()
     resolved_scan_mode = settings.scan_mode
     if profile is not None:
@@ -214,8 +232,16 @@ def build_initial_state(
         "lifecycle_events": [],
         "rabbit_hole_ledger": {},
         "coverage_ledger": {},
-        "campaign_ledger": build_waptlab_campaign_ledger(),
-        "campaign_plan": build_campaign_plan(target_url=target_url),
+        "campaign_inventory": resolved_inventory,
+        "campaign_ledger": (
+            build_generic_campaign_ledger()
+            if resolved_inventory == "generic"
+            else build_waptlab_campaign_ledger()
+        ),
+        "campaign_plan": build_campaign_plan(
+            target_url=target_url,
+            campaign_inventory=resolved_inventory,
+        ),
         "evidence_ledger": [],
         "positive_evidence_ledger": [],
         "negative_evidence_ledger": [],

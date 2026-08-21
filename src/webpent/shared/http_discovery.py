@@ -18,43 +18,15 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from webpent.config.settings import get_settings
 
-_PRIORITY_ROUTE_SEEDS = (
-    "/export-erp",
-    "/crm/export",
-    "/training/send-results-email",
-    "/user_profile/1",
-    "/download/1",
-    "/crm/download/1",
-)
+# Route seeds must be target-scoped. The previous global list contained
+# WAPTLab-only paths and caused unrelated targets to inherit synthetic
+# hypotheses. Operators can provide explicit seeds through discovery_route_seeds.
+_PRIORITY_ROUTE_SEEDS: tuple[str, ...] = ()
 
-_DEFAULT_ROUTE_SEEDS = (
-    "/swagger_ui",
-    "/swagger",
-    "/openapi.json",
-    "/api/docs",
-    "/docs",
-    "/graphql",
-    "/elasticsearch",
-    "/es/fetch",
-    "/es/fetch/127.0.0.1:8000/health",
-    "/csv/upload",
-    "/upload",
-    "/download",
-    "/export",
-    "/export-erp",
-    "/crm/export",
-    "/user_profile/1",
-    "/profile",
-    "/training/send-results-email",
-    "/oauth/authorize",
-    "/oauth/callback",
-    "/redirect",
-    "/api",
-    "/api/users",
-    "/storage",
-    "/backup",
-    "/health",
-)
+# No route is assumed to exist on an arbitrary target. Generic API/document
+# probes are handled above through their own response-aware discovery paths;
+# this seed list remains empty unless the operator configures explicit routes.
+_DEFAULT_ROUTE_SEEDS: tuple[str, ...] = ()
 
 
 class _SurfaceParser(HTMLParser):
@@ -282,7 +254,23 @@ def discover_http_surface(
     skipped_off_origin = 0
     skipped_state_changing = 0
     settings = get_settings()
-    headers: dict[str, str] = {"User-Agent": settings.http_user_agent or "WebPent/HTTP-discovery"}
+    configured_user_agent = str(getattr(settings, "http_user_agent", "") or "").strip()
+    # WAPTLab-style middleware rejects the project default UA as an automated
+    # client. Keep explicit operator overrides intact, but use a bounded,
+    # ordinary browser profile for the built-in default so read-only discovery
+    # can observe the same surface as the Playwright authentication path.
+    user_agent = configured_user_agent
+    if not user_agent or user_agent.startswith("WebPent/0.2"):
+        user_agent = (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        )
+    headers: dict[str, str] = {
+        "User-Agent": user_agent[:256],
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+    }
     cookie_header = build_cookie_header(session_cookies)
     if cookie_header:
         headers["Cookie"] = cookie_header
@@ -385,8 +373,8 @@ def discover_http_surface(
             queue.append((graphql_url, 0))
             queued.add(graphql_url)
 
-        # Bounded route seeds improve coverage when an application hides routes
-        # behind JavaScript or authentication. They are GET-only observations;
+        # Bounded route seeds improve coverage only when an operator declares
+        # routes for this specific target. They are GET-only observations;
         # validators still need independent evidence before promoting findings.
         # Queue them before crawling can exhaust the page budget. Otherwise a
         # noisy start page can fill ``max_pages`` and silently prevent known
@@ -441,12 +429,18 @@ def discover_http_surface(
                 skipped_state_changing += 1
                 continue
             seen.add(current)
-            endpoints.append(current)
             try:
                 response = client.get(current)
             except Exception:
                 errors += 1
                 continue
+
+            # A URL-only seed is not an observed application surface. Keep
+            # reachable/error responses that prove a route exists, but discard
+            # ordinary 404/410 misses before they can become hypotheses.
+            if response.status_code in {404, 410}:
+                continue
+            endpoints.append(current)
 
             parsed_current = urlsplit(current)
             content_type = response.headers.get("content-type", "").lower()

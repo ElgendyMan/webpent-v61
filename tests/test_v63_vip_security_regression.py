@@ -597,3 +597,44 @@ def test_llm_cross_reasoning_hypothesis_is_not_deterministic() -> None:
         not bool(getattr(item, "deterministic_match", False))
         for item in result.get("hypotheses", [])
     )
+
+
+def test_authorized_active_promotes_bounded_validator_route_below_score_threshold() -> None:
+    from webpent.agents.strategist.agent import strategist_node
+    from webpent.models.hypothesis import Hypothesis
+
+    def make_hypothesis() -> Hypothesis:
+        return Hypothesis(
+            target_url="https://target.test/search?q=probe",
+            statement="The search parameter may reflect attacker-controlled input.",
+            vuln_class=VulnClass.XSS.value,
+            confidence_score=0.2,
+            estimated_cost=8.0,
+            deterministic_match=False,
+        )
+
+    active_result = strategist_node(
+        {
+            "findings": [],
+            "hypotheses": [make_hypothesis()],
+            "mental_model": {},
+            "scan_mode": "authorized-active",
+        }
+    )
+    assert len(active_result["findings"]) == 1
+    active_entry = next(iter(active_result["coverage_ledger"]["entries"].values()))
+    assert active_entry["status"] == "tested"
+    assert active_entry["validator_route"]
+
+    observe_result = strategist_node(
+        {
+            "findings": [],
+            "hypotheses": [make_hypothesis()],
+            "mental_model": {},
+            "scan_mode": "safe-smart",
+        }
+    )
+    assert observe_result["findings"] == []
+    observe_entry = next(iter(observe_result["coverage_ledger"]["entries"].values()))
+    assert observe_entry["status"] == "blocked"
+    assert observe_entry["reason"] == "prioritization_gate_deferred"

@@ -1,8 +1,9 @@
+import inspect
 from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-from webpent.cli import app
+from webpent.cli import app, scan
 from webpent.models.goal_tree import (
     GoalTree,
     GoalType,
@@ -88,6 +89,12 @@ def test_controller_stops_when_no_new_evidence_or_state_delta() -> None:
     )
     assert result["smart_replanning"]["stop_reason"] == "same_action_repeated"
     assert result["smart_replanning"]["controller_trace"][-1]["result"] == "same_action_repeated"
+
+
+def test_scan_threads_named_identity_profiles_into_initial_state() -> None:
+    source = inspect.getsource(scan)
+    assert "identity_profiles=identity_profiles" in source
+    assert "identity_profiles={}," not in source
 
 
 def test_status_command_exposes_effective_smart_profile() -> None:

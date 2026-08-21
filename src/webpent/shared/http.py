@@ -1275,7 +1275,7 @@ def install_playwright_ssrf_guard(
             # value when this closure was created — see the V7 P0
             # note on install_playwright_ssrf_guard). Any other
             # private/reserved host is still blocked.
-            if _is_blocked_host(host) and host.strip("[]").lower() not in allowed_hosts:
+            if _is_blocked_host(host) and normalize_scope_host(host) not in allowed_hosts:
                 logger.warning(
                     "Playwright SSRF guard: blocked navigation/fetch to "
                     "internal/reserved host %s (url=%s). Aborting with "
@@ -1289,7 +1289,7 @@ def install_playwright_ssrf_guard(
             # is ALLOWED by the engagement scope, mirroring the httpx
             # transport's allow-log. Positive signal that the allowlist
             # wiring fired for Playwright too.
-            if _is_blocked_host(host) and host.strip("[]").lower() in allowed_hosts:
+            if _is_blocked_host(host) and normalize_scope_host(host) in allowed_hosts:
                 logger.debug(
                     "Playwright SSRF guard: ALLOWED private/reserved host "
                     "%s via engagement-scope allowlist (url=%s).",
@@ -1373,7 +1373,7 @@ def install_playwright_ssrf_guard(
                 )
                 ws.close(code=1008, reason="accessdenied")
                 return
-            if _is_blocked_host(host) and host.strip("[]").lower() not in allowed_hosts:
+            if _is_blocked_host(host) and normalize_scope_host(host) not in allowed_hosts:
                 logger.warning(
                     "Playwright SSRF guard: blocked WebSocket to "
                     "internal/reserved host %s (url=%s). Closing "

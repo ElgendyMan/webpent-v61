@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 from typing import Any
+from urllib.parse import urlsplit
 
 from webpent.models.campaigns import (
     CampaignExecutionContract,
@@ -14,7 +15,10 @@ from webpent.models.campaigns import (
     HypothesisDAGNode,
 )
 from webpent.models.evidence import redact_sensitive
-from webpent.shared.campaigns import build_waptlab_campaign_ledger
+from webpent.shared.campaigns import (
+    build_generic_campaign_ledger,
+    build_waptlab_campaign_ledger,
+)
 from webpent.shared.validator_plugins import build_validator_plugin_registry
 
 _CONTRACTS: dict[str, dict[str, Any]] = {
@@ -227,6 +231,31 @@ _CONTRACTS: dict[str, dict[str, Any]] = {
 }
 
 
+_GENERIC_CONTRACT: dict[str, Any] = {
+    "preconditions": ["matching discovered surface is in scope", "baseline response captured"],
+    "identities": ["anonymous", "owner"],
+    "actions": ["replay a bounded non-destructive differential", "compare against baseline"],
+    "payload_strategy": ["validator-specific safe canary only"],
+    "oracle": ["causal response or browser differential", "no heuristic-only claim"],
+    "negative_control": ["equivalent benign input"],
+    "cleanup": ["read-only or restore test state"],
+    "budget": 2,
+}
+for _generic_key in (
+    "xss_reflected",
+    "xss_stored",
+    "sqli_param",
+    "idor_object",
+    "auth_bypass_jwt",
+    "open_redirect",
+    "info_disclosure",
+    "ssrf_url_param",
+    "api_issue",
+    "path_traversal",
+):
+    _CONTRACTS.setdefault(_generic_key, dict(_GENERIC_CONTRACT))
+
+
 def _as_mapping(item: Any) -> Mapping[str, Any]:
     if isinstance(item, Mapping):
         return item
@@ -283,9 +312,23 @@ def _contract(key: str, *, status: str, gaps: list[str]) -> CampaignExecutionCon
     return CampaignExecutionContract(**raw)
 
 
+def _resolve_campaign_inventory(target_url: str, campaign_inventory: str) -> str:
+    inventory = str(campaign_inventory or "waptlab").strip().lower()
+    if inventory in {"waptlab", "generic"}:
+        return inventory
+    if inventory != "auto":
+        raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
+    parsed = urlsplit(str(target_url))
+    hostname = (parsed.hostname or "").lower()
+    if parsed.port == 8000 or hostname in {"waptlab", "waptlab.local"}:
+        return "waptlab"
+    return "generic"
+
+
 def build_campaign_plan(
     *,
     target_url: str,
+    campaign_inventory: str = "waptlab",
     observed_campaigns: set[str] | None = None,
     blocked_by: dict[str, str] | None = None,
     surface_observations: Iterable[Any] = (),
@@ -293,7 +336,13 @@ def build_campaign_plan(
     explicit_gaps: Iterable[str] = (),
 ) -> dict[str, Any]:
     """Create a passive plan and DAG; executor evidence remains authoritative."""
-    ledger = build_waptlab_campaign_ledger(
+    resolved_inventory = _resolve_campaign_inventory(target_url, campaign_inventory)
+    ledger_builder = (
+        build_generic_campaign_ledger
+        if resolved_inventory == "generic"
+        else build_waptlab_campaign_ledger
+    )
+    ledger = ledger_builder(
         observed_campaigns=observed_campaigns,
         blocked_by=blocked_by,
     )

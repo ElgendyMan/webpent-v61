@@ -416,6 +416,24 @@ class Finding(BaseModel):
             return v
         return Confidence(str(v).lower())
 
+    @field_validator("evidence_bundle", mode="before")
+    @classmethod
+    def _normalise_legacy_evidence_bundle(cls, v: Any) -> Any:
+        """Load pre-proof relational evidence without dropping the finding.
+
+        Older releases persisted relational evidence directly as a list,
+        while the current contract is a structured dictionary.  Preserve the
+        old items inside an explicit envelope; newly generated bundles pass
+        through unchanged.
+        """
+        if isinstance(v, list):
+            return {
+                "type": "legacy_evidence_bundle",
+                "legacy_format": True,
+                "items": v,
+            }
+        return v
+
     @field_validator("vuln_class", mode="before")
     @classmethod
     def _normalise_vuln_class(cls, v: str | VulnClass | None) -> VulnClass:

@@ -51,9 +51,17 @@ from __future__ import annotations
 import logging
 import re
 import time
+from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from webpent.models.findings import Confidence, Finding
+from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
+from webpent.shared.bac_identity_tester import (
+    assess_access_control,
+    build_relational_evidence,
+    normalise_identity_profiles,
+    response_fingerprint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +80,23 @@ def _fetch_page(
     Uses the SSRF-hardened httpx client. Returns None on network error.
     """
     try:
+        from webpent.config.settings import get_settings
         from webpent.shared.http import build_cookie_header, make_safe_httpx_client
-        headers: dict[str, str] = {}
+
+        settings = get_settings()
+        configured_user_agent = str(getattr(settings, "http_user_agent", "") or "").strip()
+        user_agent = configured_user_agent
+        if not user_agent or user_agent.startswith("WebPent/0.2"):
+            user_agent = (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            )
+        headers: dict[str, str] = {
+            "User-Agent": user_agent[:256],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+        }
         if cookies:
             headers["Cookie"] = build_cookie_header(cookies)
         with make_safe_httpx_client(timeout=timeout, follow_redirects=False, verify=True) as client:
@@ -109,6 +132,57 @@ def _resolve_url(base_url: str, path: str) -> str:
         return f"{parsed.scheme}://{parsed.netloc}{app_root}{path}"
     # Relative path — use urljoin normally.
     return urljoin(base_url, path)
+
+
+def _fetch_page_scoped(
+    url: str,
+    *,
+    cookies: dict[str, str] | None = None,
+    target_scope: tuple[str, ...] = (),
+) -> tuple[int, str, dict[str, str]] | None:
+    """Fetch within the operator-declared engagement scope only."""
+    if not target_scope:
+        return _fetch_page(url, cookies=cookies)
+    from webpent.shared.engagement_scope import (
+        clear_engagement_target_hosts,
+        set_engagement_target_hosts,
+    )
+
+    token = set_engagement_target_hosts(*target_scope)
+    try:
+        return _fetch_page(url, cookies=cookies)
+    finally:
+        clear_engagement_target_hosts(token)
+
+
+def _fetch_page_scoped_with_rate_limit_retry(
+    url: str,
+    *,
+    cookies: dict[str, str] | None = None,
+    target_scope: tuple[str, ...] = (),
+) -> tuple[int, str, dict[str, str]] | None:
+    """Retry one transient throttle response without weakening scope checks.
+
+    WAPTLab intentionally returns HTTP 429 after detecting a periodic request
+    pattern. A single bounded wait lets a legitimate owner baseline recover,
+    while a persistent throttle still reaches the normal fail-closed assessment
+    as HTTP 429. No retry is performed for other response classes.
+    """
+    result = _fetch_page_scoped(url, cookies=cookies, target_scope=target_scope)
+    if result is None or result[0] not in {429, 502, 503, 504}:
+        return result
+
+    status_code, body, headers = result
+    retry_after = str(headers.get("retry-after", ""))
+    wait_match = re.search(r"(?:wait|retry[- ]after)\D*(\d{1,3})", retry_after or body, re.I)
+    wait_seconds = int(wait_match.group(1)) if wait_match else 1
+    wait_seconds = min(max(wait_seconds, 1), 12)
+    # Add an expiry margin: WAPTLab keeps the periodic-request timestamp
+    # cache slightly longer than the block key, so the advertised wait alone
+    # can still hit the active detector on the retry.
+    time.sleep(wait_seconds + 3.5)
+    retry = _fetch_page_scoped(url, cookies=cookies, target_scope=target_scope)
+    return retry if retry is not None else (status_code, body, headers)
 
 
 # ---------------------------------------------------------------------------
@@ -448,44 +522,156 @@ def validate_auth_bypass(
     finding: Finding,
     cookies: dict[str, str] | None = None,
     target_url: str | None = None,
+    engagement_id: str = "default-engagement",
 ) -> Finding:
-    """Lab-safe auth bypass differential check.
+    """Run a conservative auth-bypass differential check.
 
-    Compares the response when accessing the target URL:
-      1. WITH session cookies (authenticated).
-      2. WITHOUT session cookies (unauthenticated).
-
-    Tool-Confirmed if the unauthenticated request returns 200 with
-    substantial content (indicating the page is accessible without auth).
-
-    Not Scanned if either fetch fails (the detector could NOT run).
-    Clean if the unauthenticated request is redirected to login (302)
-    or returns 401/403 (auth is properly enforced — the detector ran
-    successfully and found no bypass).
+    A generic 200 response is only an observation.  For the active JWT
+    ``alg=none`` probe, confirmation requires three same-origin requests:
+    an unauthenticated baseline, the unsigned token, and an invalid signed
+    token control.  Cookies are deliberately excluded from this branch so a
+    valid session cannot create a false JWT confirmation.
     """
-    # Authenticated fetch.
+    jwt_probe = "alg=none" in (finding.payload or "").lower()
+    if jwt_probe:
+        from webpent.shared.http import make_safe_httpx_client
+
+        unsigned_token = (
+            "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0."
+            "eyJzdWIiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0."
+        )
+        invalid_signed_token = (
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+            "eyJzdWIiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.invalid"
+        )
+        try:
+            with make_safe_httpx_client(
+                timeout=10.0,
+                follow_redirects=False,
+                verify=True,
+            ) as client:
+                baseline = client.get(finding.url)
+                unsigned = client.get(
+                    finding.url,
+                    headers={"Authorization": f"Bearer {unsigned_token}"},
+                )
+                control = client.get(
+                    finding.url,
+                    headers={"Authorization": f"Bearer {invalid_signed_token}"},
+                )
+        except Exception as exc:
+            return finding.model_copy(
+                update={
+                    "confidence_level": "Not Scanned",
+                    "reasoning": f"JWT differential replay could not run: {type(exc).__name__}.",
+                }
+            )
+
+        evidence = (
+            {
+                "case": "unauthenticated_baseline",
+                "status_code": baseline.status_code,
+                "body_length": len(baseline.text),
+                "authorization": "absent",
+            },
+            {
+                "case": "unsigned_jwt",
+                "status_code": unsigned.status_code,
+                "body_length": len(unsigned.text),
+                "authorization": "Bearer <redacted-alg-none-token>",
+            },
+            {
+                "case": "invalid_signed_token_control",
+                "status_code": control.status_code,
+                "body_length": len(control.text),
+                "authorization": "Bearer <redacted-invalid-token>",
+            },
+        )
+        refs = (f"{finding.url}#baseline", f"{finding.url}#alg-none", f"{finding.url}#control")
+        unsigned_body_is_distinct = (
+            bool(unsigned.text)
+            and unsigned.text != baseline.text
+            and unsigned.text != control.text
+        )
+        vulnerable = (
+            baseline.status_code in (401, 403, 404)
+            and unsigned.status_code == 200
+            and len(unsigned.text) > 100
+            and unsigned_body_is_distinct
+            and control.status_code in (401, 403, 404)
+        )
+        if vulnerable:
+            proof = build_proof_bundle(
+                engagement_id=engagement_id,
+                finding_id=str(finding.id),
+                evidence=list(evidence),
+                evidence_refs=list(refs),
+                negative_control=evidence[2],
+            ).seal(actor="validator.auth_bypass")
+            if validate_proof_bundle(proof, require_negative_control=True):
+                return finding.model_copy(
+                    update={
+                        "confidence": Confidence.FIRM.value,
+                        "confidence_level": "Tool-Confirmed",
+                        "evidence": {
+                            "jwt_differential": list(evidence),
+                            "proof_bundle": proof.model_dump(mode="json"),
+                        },
+                        "evidence_bundle": {
+                            "request": {
+                                "method": "GET",
+                                "url": finding.url,
+                                "headers": {"Authorization": "redacted"},
+                            },
+                            "response": {
+                                "status_code": unsigned.status_code,
+                                "body_length": len(unsigned.text),
+                            },
+                            "negative_control": {
+                                "status_code": control.status_code,
+                                "body_length": len(control.text),
+                            },
+                        },
+                        "reasoning": (
+                            "Unsigned JWT returned substantial authenticated content "
+                            "while baseline and invalid-token control were rejected."
+                        ),
+                    }
+                )
+
+        return finding.model_copy(
+            update={
+                "confidence_level": (
+                    "Clean"
+                    if unsigned.status_code != 200 or len(unsigned.text) <= 100
+                    else "Needs Human Review"
+                ),
+                "reasoning": (
+                    "JWT differential ran but the baseline/control conditions did not "
+                    "prove unsigned-token acceptance."
+                ),
+                "evidence": {"jwt_differential": list(evidence)},
+            }
+        )
+
     authed_result = _fetch_page(finding.url, cookies=cookies)
     if authed_result is None:
         return finding.model_copy(
             update={
                 "confidence_level": "Not Scanned",
-                "reasoning": "Auth bypass check: could not fetch the target URL with auth.",
+                "reasoning": "Auth bypass check: authenticated fetch failed.",
             }
         )
     authed_status, authed_body, _ = authed_result
-
-    # Unauthenticated fetch (no cookies).
     unauthed_result = _fetch_page(finding.url, cookies=None)
     if unauthed_result is None:
         return finding.model_copy(
             update={
                 "confidence_level": "Not Scanned",
-                "reasoning": "Auth bypass check: could not fetch the target URL without auth.",
+                "reasoning": "Auth bypass check: unauthenticated fetch failed.",
             }
         )
     unauthed_status, unauthed_body, _ = unauthed_result
-
-    # If unauthenticated returns 200 with substantial content, auth bypass.
     if unauthed_status == 200 and len(unauthed_body) > 100:
         return finding.model_copy(
             update={
@@ -493,35 +679,28 @@ def validate_auth_bypass(
                 "confidence_level": "Needs Human Review",
                 "payload": f"unauth: {unauthed_status} ({len(unauthed_body)} bytes)",
                 "reasoning": (
-                    f"Auth bypass check: target returned HTTP 200 with "
-                    f"{len(unauthed_body)} bytes when accessed WITHOUT "
-                    f"session cookies. The endpoint does not enforce "
-                    f"authentication. Authenticated request returned "
-                    f"{authed_status} ({len(authed_body)} bytes)."
+                    f"Unauthenticated request returned HTTP 200 with {len(unauthed_body)} "
+                    f"bytes; authenticated request returned {authed_status} "
+                    f"({len(authed_body)} bytes)."
                 ),
             }
         )
-
-    # V10 RESIDUAL FIX: auth properly enforced — Clean (not Not Scanned).
     if unauthed_status in (301, 302, 401, 403):
         return finding.model_copy(
             update={
                 "confidence_level": "Clean",
                 "reasoning": (
-                    f"Auth bypass check: unauthenticated request returned "
-                    f"HTTP {unauthed_status} — authentication is properly "
-                    f"enforced (redirect to login or 401/403)."
+                    f"Unauthenticated request returned HTTP {unauthed_status}; "
+                    "authentication is enforced."
                 ),
             }
         )
-
     return finding.model_copy(
         update={
             "confidence_level": "Not Scanned",
             "reasoning": (
-                f"Auth bypass check: unauthenticated request returned "
-                f"HTTP {unauthed_status} ({len(unauthed_body)} bytes). "
-                f"Could not determine auth enforcement from status alone."
+                f"Unauthenticated request returned HTTP {unauthed_status}; "
+                "enforcement was inconclusive."
             ),
         }
     )
@@ -1029,15 +1208,25 @@ def validate_info_disclosure(
 def validate_idor(
     finding: Finding,
     cookies: dict[str, str] | None = None,
+    *,
+    identity_profiles: Any = None,
+    engagement_id: str | None = None,
+    target_scope: tuple[str, ...] = (),
 ) -> Finding:
-    """Perform a conservative unauthenticated object-access differential.
+    """Validate IDOR with a scoped owner/foreign/anonymous differential.
 
-    Returning an object to an unauthenticated request is a strong candidate
-    signal, but it is not owner-vs-foreign proof. The result therefore stays
-    ``Needs Human Review`` until two approved identities and a negative
-    control establish the authorization boundary.
+    The legacy unauthenticated candidate path remains intact when no explicit
+    identity profiles are available. When profiles are present, this function
+    performs bounded GET replays under the declared engagement scope and only
+    emits ``Tool-Confirmed`` after owner access, foreign access, and a denied
+    anonymous control are all observed. Transport failure, missing identities,
+    or missing proof data remain ``Needs Human Review``/``Not Scanned``.
     """
-    result = _fetch_page(finding.url, cookies=cookies)
+    result = _fetch_page_scoped_with_rate_limit_retry(
+        finding.url,
+        cookies=cookies,
+        target_scope=target_scope,
+    )
     if result is None:
         return finding.model_copy(
             update={
@@ -1045,6 +1234,7 @@ def validate_idor(
                 "reasoning": "IDOR check: object endpoint could not be fetched.",
             }
         )
+
     status_code, body, _headers = result
     parsed = urlparse(finding.url)
     path = parsed.path.lower()
@@ -1052,14 +1242,168 @@ def validate_idor(
     path_segments = {segment for segment in path.split("/") if segment}
     dashboard_object_surface = (
         "dashboard" in path_segments
-        and (any(segment.isdigit() for segment in path_segments) or bool(
-            query_keys & {"db", "tenant", "tenant_id", "crm_id"}
-        ))
+        and (
+            any(segment.isdigit() for segment in path_segments)
+            or bool(query_keys & {"db", "tenant", "tenant_id", "crm_id"})
+        )
     )
     object_surface = dashboard_object_surface or any(
         marker in path
         for marker in ("download", "profile", "user", "tenant", "object", "invoice")
     )
+
+    profiles = normalise_identity_profiles(identity_profiles, fallback_cookies=cookies)
+    owner_profiles = [
+        profile
+        for profile in profiles
+        if profile.role.lower() == "owner"
+        or bool(profile.metadata.get("authenticated_primary"))
+    ]
+    foreign_profiles = [
+        profile
+        for profile in profiles
+        if profile not in owner_profiles
+        and profile.role.lower() not in {"anonymous", "anon"}
+    ]
+
+    if owner_profiles and foreign_profiles:
+        observations: list[dict[str, Any]] = []
+        for profile in (*owner_profiles[:1], *foreign_profiles[:1]):
+            probe = _fetch_page_scoped_with_rate_limit_retry(
+                finding.url,
+                cookies=profile.cookies,
+                target_scope=target_scope,
+            )
+            if probe is None:
+                observations.append(
+                    {
+                        "identity": profile.name,
+                        "accessible": False,
+                        "status_code": 0,
+                        "content_length": 0,
+                        "transport_error": True,
+                    }
+                )
+                continue
+            code, response_body, response_headers = probe
+            observations.append(
+                {
+                    "identity": profile.name,
+                    "accessible": 200 <= code < 300 and bool(response_body),
+                    "status_code": code,
+                    "content_length": len(response_body),
+                    "response_fingerprint": response_fingerprint(
+                        code,
+                        response_body,
+                        response_headers,
+                    ),
+                }
+            )
+
+        anonymous_probe = _fetch_page_scoped_with_rate_limit_retry(
+            finding.url,
+            cookies=None,
+            target_scope=target_scope,
+        )
+        if anonymous_probe is None:
+            observations.append(
+                {
+                    "identity": "anonymous",
+                    "accessible": False,
+                    "status_code": 0,
+                    "content_length": 0,
+                    "transport_error": True,
+                }
+            )
+        else:
+            anon_code, anon_body, anon_headers = anonymous_probe
+            observations.append(
+                {
+                    "identity": "anonymous",
+                    "accessible": 200 <= anon_code < 300 and bool(anon_body),
+                    "status_code": anon_code,
+                    "content_length": len(anon_body),
+                    "response_fingerprint": response_fingerprint(
+                        anon_code,
+                        anon_body,
+                        anon_headers,
+                    ),
+                }
+            )
+
+        owner_name = owner_profiles[0].name
+        assessment = assess_access_control(observations, owner_identity=owner_name)
+        relational = build_relational_evidence(
+            observations,
+            owner_identity=owner_name,
+            object_id=next(
+                (
+                    segment
+                    for segment in reversed(path.split("/"))
+                    if segment.isdigit()
+                ),
+                None,
+            ),
+        )
+        evidence = {
+            **(finding.evidence or {}),
+            "validator": "idor_identity_replay",
+            "identity_replay": True,
+            "replay_attempted": True,
+            "owner_identity": owner_name,
+            "observations": observations,
+            "assessment": assessment,
+            "relational_evidence": relational,
+            "negative_control_complete": bool(assessment.get("negative_control_complete")),
+        }
+        if assessment.get("status") == "confirmed" and assessment.get(
+            "negative_control_complete"
+        ):
+            engagement = engagement_id or str(
+                getattr(finding, "engagement_id", None) or "default"
+            )
+            anonymous_row = next(
+                row for row in observations if row.get("identity") == "anonymous"
+            )
+            bundle = build_proof_bundle(
+                engagement_id=engagement,
+                finding_id=str(finding.id),
+                evidence=(relational, observations, assessment),
+                evidence_refs=(
+                    f"idor:{finding.id}:owner",
+                    f"idor:{finding.id}:foreign",
+                ),
+                negative_control=anonymous_row,
+            ).seal()
+            if validate_proof_bundle(bundle, require_negative_control=True):
+                sealed_bundle = bundle.model_dump(mode="json")
+                evidence["relational_edges"] = relational
+                evidence["evidence_bundle"] = sealed_bundle
+                evidence["proof_bundle"] = sealed_bundle
+                return finding.model_copy(
+                    update={
+                        "confidence": Confidence.CONFIRMED.value,
+                        "confidence_level": "Tool-Confirmed",
+                        "evidence": evidence,
+                        "evidence_bundle": sealed_bundle,
+                        "reasoning": (
+                            "IDOR confirmed by scoped owner/foreign differential "
+                            "and denied anonymous control."
+                        ),
+                    }
+                )
+        return finding.model_copy(
+            update={
+                "confidence": "tentative",
+                "confidence_level": "Needs Human Review",
+                "evidence": evidence,
+                "reasoning": (
+                    "IDOR replay ran but did not satisfy the complete "
+                    "owner/foreign/negative-control proof contract."
+                ),
+            }
+        )
+
     if status_code == 200 and body and object_surface and not cookies:
         return finding.model_copy(
             update={
@@ -1088,7 +1432,6 @@ def validate_idor(
             ),
         }
     )
-
 
 __all__ = [
     "validate_auth_bypass",

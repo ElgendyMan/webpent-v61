@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from webpent.cli import _parse_report_formats
+from webpent.cli import _parse_report_formats, _promote_named_owner_profile
 from webpent.cli.loaders import load_cookie_file, load_creds_file, load_payload_file
 from webpent.models.targets import Target
 from webpent.reporter.export import export_all_formats
@@ -40,6 +40,33 @@ def test_loaders_accept_bounded_profiles_cookies_and_deduplicated_payloads(tmp_p
     assert set(load_creds_file(creds_path)) == {"admin", "auditor"}
     assert load_cookie_file(cookie_path) == {"SESSION": "abc"}
     assert load_payload_file(payload_path) == ["<x>", "{{7*7}}"]
+
+
+def test_named_owner_profile_is_promoted_without_implicit_promotion() -> None:
+    credentials, remaining = _promote_named_owner_profile(
+        {},
+        {
+            "owner": {
+                "role": "owner",
+                "username": "owner@example.test",
+                "password": "owner-pass",
+            },
+            "foreign": {
+                "role": "secondary",
+                "username": "foreign@example.test",
+                "password": "foreign-pass",
+            },
+        },
+    )
+    assert credentials == {"username": "owner@example.test", "password": "owner-pass"}
+    assert set(remaining) == {"foreign"}
+
+    untouched_credentials, untouched_profiles = _promote_named_owner_profile(
+        {},
+        {"auditor": {"username": "auditor@example.test", "password": "auditor-pass"}},
+    )
+    assert untouched_credentials == {}
+    assert set(untouched_profiles) == {"auditor"}
 
 
 def test_loaders_fail_closed_on_invalid_shapes(tmp_path: Path) -> None:

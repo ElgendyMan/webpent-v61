@@ -27,6 +27,7 @@ from webpent.shared.bac_identity_tester import (
     IdentityProfile,
     assess_access_control,
     build_relational_evidence,
+    cookies_from_auth_state,
     extract_object_id,
     normalise_identity_profiles,
     profile_owns_resource,
@@ -312,6 +313,7 @@ def _probe_url(
     headers: dict[str, str] | None = None,
     method: str = "GET",
     allow_state_changing: bool = False,
+    target_scope: tuple[str, ...] = (),
 ) -> tuple[int, int]:
     """Probe a URL and return ``(status_code, content_length)``.
 
@@ -328,8 +330,15 @@ def _probe_url(
         return 0, 0
     try:
         from webpent.config.settings import get_settings
+        from webpent.shared.engagement_scope import (
+            clear_engagement_target_hosts,
+            set_engagement_target_hosts,
+        )
         from webpent.shared.http import build_cookie_header, make_safe_httpx_client
 
+        scope_token = None
+        if target_scope:
+            scope_token = set_engagement_target_hosts(*target_scope)
         parsed_url = urlparse(url)
         request_headers: dict[str, str] = {
             "User-Agent": os.getenv(
@@ -367,13 +376,17 @@ def _probe_url(
                     min_interval_override=pacing_interval,
                     jitter_max_override=max(2.0, pacing_interval * 2.5),
                 )
-        with make_safe_httpx_client(
-            timeout=timeout,
-            follow_redirects=False,
-            verify=not allow_insecure_tls,
-        ) as client:
-            response = client.request(method, url, headers=request_headers)
-        return response.status_code, len(response.content)
+        try:
+            with make_safe_httpx_client(
+                timeout=timeout,
+                follow_redirects=False,
+                verify=not allow_insecure_tls,
+            ) as client:
+                response = client.request(method, url, headers=request_headers)
+            return response.status_code, len(response.content)
+        finally:
+            if scope_token is not None:
+                clear_engagement_target_hosts(scope_token)
     except Exception as exc:
         logger.debug("BAC probe failed for %s: %s", url, exc)
         return 0, 0
@@ -439,6 +452,8 @@ def _public_identity_rows(profiles: list[IdentityProfile]) -> dict[str, dict[str
 def _identity_profiles_from_state(state: PentestState) -> list[IdentityProfile]:
     raw = state.get("identity_profiles") or state.get("bac_identities") or state.get("identities")
     fallback = state.get("session_cookies") or None
+    if not fallback:
+        fallback = cookies_from_auth_state(state.get("auth_state")) or None
     return normalise_identity_profiles(raw, fallback_cookies=fallback)
 
 
@@ -474,11 +489,13 @@ def _wait_before_bac(url: str) -> float:
 def _wait_after_throttle(url: str) -> float:
     """Wait through a bounded server throttle window before retrying.
 
-    WAPTLab's periodic detector keeps a 429 block for ten seconds.  A
+    WAPTLab's periodic detector keeps a 429 block for ten seconds. A
     refresh/login performed immediately after the response cannot clear that
-    server-side block, so the old retry path simply reproduced the 429.  The
+    server-side block, so the old retry path simply reproduced the 429. The
     delay is bounded and configurable for other authorized lab targets; a
-    small random component avoids creating a new fixed request cadence.
+    small random component avoids creating a new fixed request cadence, and a
+    fixed expiry margin clears the lab's longer timestamp-cache window.
+
     """
     raw_cooldown = os.getenv("WEBPENT_BAC_THROTTLE_COOLDOWN_SECONDS", "10")
     try:
@@ -490,7 +507,10 @@ def _wait_after_throttle(url: str) -> float:
         jitter_max = min(3.0, max(0.0, float(raw_jitter)))
     except ValueError:
         jitter_max = 2.5
-    delay = cooldown + (random.uniform(0.0, jitter_max) if jitter_max else 0.0)
+    # The lab's detector keeps its timestamp cache for 12 seconds even
+    # after the visible 10-second block expires. Add a bounded margin so the
+    # retry does not immediately recreate or observe the same throttle.
+    delay = cooldown + (random.uniform(0.0, jitter_max) if jitter_max else 0.0) + 3.5
     if delay > 0.0:
         logger.info(
             "BAC throttle cooldown: waiting %.2fs before retrying %s",
@@ -630,6 +650,19 @@ def access_control_node(state: PentestState) -> dict:
         enumeration_enabled = False
         enumeration_neighbors = 0
     records = records[:max_candidates]
+    target_url = str(getattr(target, "url", "") or "")
+    if isinstance(target, dict):
+        target_url = str(target.get("url") or target_url)
+    try:
+        from webpent.shared.engagement_scope import normalize_declared_origins
+
+        scope_origins = (
+            (target_url,) if target_url else ()
+        ) + tuple(
+            normalize_declared_origins(state.get("additional_target_origins") or [])
+        )
+    except Exception:
+        scope_origins = (target_url,) if target_url else ()
     if enumeration_enabled and enumeration_neighbors > 0:
         enumerated_records: list[dict[str, Any]] = []
         for record in records:
@@ -710,6 +743,7 @@ def access_control_node(state: PentestState) -> dict:
                     state.get("auto_approve") is True
                     or state.get("bac_allow_state_changing_probes") is True
                 ),
+                "target_scope": scope_origins,
             }
             try:
                 status, content_length = _probe_url(url, **probe_kwargs)

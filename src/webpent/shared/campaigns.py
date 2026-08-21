@@ -174,6 +174,72 @@ WAPTLAB_CAMPAIGNS: Final[tuple[dict[str, Any], ...]] = (
 )
 
 
+# Target-neutral campaigns are intentionally surface-driven.  They describe
+# only validator-backed classes and never assert that a target exposes them.
+GENERIC_CAMPAIGNS: Final[tuple[dict[str, Any], ...]] = (
+    {
+        "id": 1,
+        "key": "xss_reflected",
+        "surfaces": ("form", "input", "query"),
+        "validator": "xss",
+    },
+    {
+        "id": 2,
+        "key": "xss_stored",
+        "surfaces": ("profile", "stored", "browser"),
+        "validator": "xss",
+    },
+    {
+        "id": 3,
+        "key": "sqli_param",
+        "surfaces": ("query", "form", "search"),
+        "validator": "sqli",
+    },
+    {
+        "id": 4,
+        "key": "idor_object",
+        "surfaces": ("object", "id", "identity"),
+        "validator": "idor",
+    },
+    {
+        "id": 5,
+        "key": "auth_bypass_jwt",
+        "surfaces": ("jwt", "auth", "token"),
+        "validator": "auth_bypass",
+    },
+    {
+        "id": 6,
+        "key": "open_redirect",
+        "surfaces": ("redirect", "url", "callback"),
+        "validator": "open_redirect",
+    },
+    {
+        "id": 7,
+        "key": "info_disclosure",
+        "surfaces": ("error", "debug", "api"),
+        "validator": "info_disclosure",
+    },
+    {
+        "id": 8,
+        "key": "ssrf_url_param",
+        "surfaces": ("url", "fetch", "import"),
+        "validator": "ssrf",
+    },
+    {
+        "id": 9,
+        "key": "api_issue",
+        "surfaces": ("api", "rest", "json"),
+        "validator": "api_issue",
+    },
+    {
+        "id": 10,
+        "key": "path_traversal",
+        "surfaces": ("path", "file", "download"),
+        "validator": "path_traversal",
+    },
+)
+
+
 def _status_for_campaign(campaign: dict[str, Any], observed: set[str]) -> str:
     campaign_key = str(campaign["key"])
     validator = campaign.get("validator")
@@ -186,22 +252,17 @@ def _status_for_campaign(campaign: dict[str, Any], observed: set[str]) -> str:
     return "not_observed"
 
 
-def build_waptlab_campaign_ledger(
+def _build_campaign_ledger(
+    campaigns: tuple[dict[str, Any], ...],
     *,
+    source: str,
     observed_campaigns: set[str] | None = None,
     blocked_by: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Build a deterministic report-safe campaign ledger.
-
-    ``observed_campaigns`` is supplied by an executor after a real workflow
-    attempt.  The default intentionally reports unobserved campaigns rather
-    than silently claiming a negative result.  ``blocked_by`` accepts only
-    explicit state labels and is useful for auth/scope/precondition failures.
-    """
     observed = set(observed_campaigns or ())
     blocked = blocked_by or {}
     entries: list[dict[str, Any]] = []
-    for campaign in WAPTLAB_CAMPAIGNS:
+    for campaign in campaigns:
         key = str(campaign["key"])
         status = _status_for_campaign(campaign, observed)
         if key in blocked:
@@ -219,11 +280,7 @@ def build_waptlab_campaign_ledger(
                 "oracle_family": VERTICAL_PROOF_CONTRACTS.get(key, {}).get("oracle_family"),
                 "negative_control": VERTICAL_PROOF_CONTRACTS.get(key, {}).get("negative_control"),
                 "status": status,
-                "disposition": (
-                    "human_review_only"
-                    if status == "missing-validator"
-                    else status
-                ),
+                "disposition": "human_review_only" if status == "missing-validator" else status,
                 "human_review_only": status == "missing-validator",
                 "evidence_complete": status == "tested",
             }
@@ -233,17 +290,42 @@ def build_waptlab_campaign_ledger(
     for entry in entries:
         status = str(entry["status"])
         summary[status] = summary.get(status, 0) + 1
-    return {
-        "version": 1,
-        "source": "waptlab_audit_campaign_matrix",
-        "entries": entries,
-        "summary": summary,
-    }
+    return {"version": 1, "source": source, "entries": entries, "summary": summary}
+
+
+def build_waptlab_campaign_ledger(
+    *,
+    observed_campaigns: set[str] | None = None,
+    blocked_by: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Build the legacy WAPTLab matrix without changing its public contract."""
+    return _build_campaign_ledger(
+        WAPTLAB_CAMPAIGNS,
+        source="waptlab_audit_campaign_matrix",
+        observed_campaigns=observed_campaigns,
+        blocked_by=blocked_by,
+    )
+
+
+def build_generic_campaign_ledger(
+    *,
+    observed_campaigns: set[str] | None = None,
+    blocked_by: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Build a validator-backed inventory for arbitrary discovered surfaces."""
+    return _build_campaign_ledger(
+        GENERIC_CAMPAIGNS,
+        source="generic_surface_campaign_inventory",
+        observed_campaigns=observed_campaigns,
+        blocked_by=blocked_by,
+    )
 
 
 __all__ = [
     "CAMPAIGN_HUMAN_REVIEW",
     "VERTICAL_PROOF_CONTRACTS",
     "WAPTLAB_CAMPAIGNS",
+    "GENERIC_CAMPAIGNS",
+    "build_generic_campaign_ledger",
     "build_waptlab_campaign_ledger",
 ]

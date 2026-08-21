@@ -45,6 +45,22 @@ class _FailingWebSocketContext:
         self.unrouted = True
 
 
+class _FakeRoute:
+    def __init__(self):
+        self.action = None
+
+    def abort(self, reason):
+        self.action = ("abort", reason)
+
+    def continue_(self):
+        self.action = ("continue",)
+
+
+class _FakeRequest:
+    def __init__(self, url):
+        self.url = url
+
+
 class _FakeWebSocket:
     def __init__(self, url):
         self.url = url
@@ -72,6 +88,28 @@ def test_playwright_ssrf_guard_rolls_back_on_websocket_registration_error():
     with pytest.raises(RuntimeError, match="WebSocket SSRF guard installation failed"):
         http.install_playwright_ssrf_guard(context, target_hosts=[])
     assert context.unrouted is True
+
+
+def test_playwright_http_guard_normalizes_localhost_scope(monkeypatch):
+    import webpent.shared.http as http
+
+    monkeypatch.setattr(
+        http,
+        "_is_blocked_host",
+        lambda host: host in {"localhost", "127.0.0.1"},
+    )
+    context = _FakeContext()
+    http.install_playwright_ssrf_guard(context, target_hosts=["127.0.0.1"])
+
+    allowed = _FakeRoute()
+    context.http_handler(allowed, _FakeRequest("http://localhost:5173/@vite/client"))
+    assert allowed.action == ("continue",)
+
+    context = _FakeContext()
+    http.install_playwright_ssrf_guard(context, target_hosts=[])
+    blocked = _FakeRoute()
+    context.http_handler(blocked, _FakeRequest("http://localhost:5173/@vite/client"))
+    assert blocked.action == ("abort", "accessdenied")
 
 
 def test_playwright_ssrf_guard_registers_websocket_route(monkeypatch):

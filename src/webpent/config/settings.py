@@ -358,6 +358,19 @@ class Settings(BaseSettings):
             "WEBPENT_MAX_STRUCTURE_AWARE_TRIAGE_ENDPOINTS",
         ),
     )
+    discovery_route_seeds: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "discovery_route_seeds",
+            "DISCOVERY_ROUTE_SEEDS",
+            "WEBPENT_DISCOVERY_ROUTE_SEEDS",
+        ),
+        description=(
+            "Comma-separated, operator-declared same-origin route seeds for the "
+            "current target. Empty by default so routes from one lab cannot "
+            "be injected into another target."
+        ),
+    )
     enable_http_discovery_supplement: bool = Field(
         default=False,
         validation_alias=AliasChoices(

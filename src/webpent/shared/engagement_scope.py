@@ -185,6 +185,13 @@ def _normalize_hostname(value: str) -> str | None:
     cleaned = str(value or "").strip().strip("[]").rstrip(".")
     if not cleaned:
         return None
+    # ``localhost`` is the hostname browsers commonly use for a local
+    # frontend while the operator may declare the same companion origin as
+    # ``127.0.0.1``.  Canonicalise this one loopback alias for exact
+    # engagement-scope comparisons only; it does not add any host to the
+    # allowlist and therefore cannot broaden an unscoped request.
+    if cleaned.lower() == "localhost":
+        return "127.0.0.1"
     try:
         return ipaddress.ip_address(cleaned).compressed.lower()
     except ValueError:

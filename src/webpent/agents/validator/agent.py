@@ -32,6 +32,7 @@ from webpent.memory.db import get_db_manager
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
 from webpent.models.findings import Confidence, Finding
 from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
+from webpent.shared.bac_identity_tester import cookies_from_auth_state
 from webpent.shared.deserialization import build_oob_command_templates
 from webpent.shared.evidence_contract import contract_required, evaluate_contract
 from webpent.shared.evidence_ledger import merge_evidence_ledger
@@ -1808,6 +1809,9 @@ def _validate_with_tool(
     credentials: dict[str, str] | None = None,
     target_url: str | None = None,
     thread_id: str | None = None,
+    identity_profiles: dict[str, Any] | None = None,
+    engagement_id: str | None = None,
+    target_scope: tuple[str, ...] = (),
 ) -> Finding:
     """Validate a single finding with the appropriate tool + supervisor.
 
@@ -1942,7 +1946,13 @@ def _validate_with_tool(
     elif vuln_class == "idor":
         from webpent.agents.validator.structural_checks import validate_idor
 
-        return validate_idor(finding, cookies=session_cookies)
+        return validate_idor(
+            finding,
+            cookies=session_cookies,
+            identity_profiles=identity_profiles,
+            engagement_id=engagement_id,
+            target_scope=target_scope,
+        )
     # V10 P1: new structural validators (deterministic, no LLM).
     # Each routes to webpent.agents.validator.structural_checks and
     # returns a finding with a deterministic confidence outcome. thread_id
@@ -1963,7 +1973,12 @@ def _validate_with_tool(
     elif vuln_class == "auth_bypass":
         from webpent.agents.validator.structural_checks import validate_auth_bypass
 
-        return validate_auth_bypass(finding, cookies=session_cookies, target_url=target_url)
+        return validate_auth_bypass(
+            finding,
+            cookies=session_cookies,
+            target_url=target_url,
+            engagement_id=engagement_id,
+        )
     elif vuln_class == "api_issue":
         from webpent.agents.validator.structural_checks import validate_api_issue
 
@@ -2911,6 +2926,8 @@ def validator_node(state: PentestState) -> dict:
     # session-liveness probe sends a Cookie header full of name= empty
     # pairs, which always fails, triggering wasted re-login attempts.
     raw_cookies: dict[str, str] | None = state.get("session_cookies") or None
+    if not raw_cookies:
+        raw_cookies = cookies_from_auth_state(auth_state) or None
     if raw_cookies:
         session_cookies: dict[str, str] | None = {k: v for k, v in raw_cookies.items() if v}
         if not session_cookies:
@@ -2923,6 +2940,18 @@ def validator_node(state: PentestState) -> dict:
     credentials: dict[str, str] | None = state.get("credentials") or None
     _target = state.get("target")
     target_url: str | None = getattr(_target, "url", None) if _target else None
+    identity_profiles: dict[str, Any] | None = state.get("identity_profiles") or None
+    engagement_id: str = str(
+        state.get("engagement_id") or state.get("thread_id") or "default"
+    )
+    declared_origins = tuple(
+        str(origin).strip()
+        for origin in list(state.get("additional_target_origins") or [])
+        if str(origin).strip()
+    )
+    target_scope = tuple(
+        value for value in (target_url, *declared_origins) if value
+    )
     # V10 P0-2 Option A: read thread_id so the dead-session re-auth
     # branch can look up the sealed reauth secret in the worker-only
     # vault (src/webpent/auth/reauth_vault.py) when FIX-10 has
@@ -3107,6 +3136,9 @@ def validator_node(state: PentestState) -> dict:
             credentials=credentials,
             target_url=target_url,
             thread_id=thread_id,
+            identity_profiles=identity_profiles,
+            engagement_id=engagement_id,
+            target_scope=target_scope,
         )
         # Every call, including a clean result, a tool failure, and a human-
         # review downgrade, is now explicitly terminal for this pass. The

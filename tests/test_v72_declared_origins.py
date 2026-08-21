@@ -7,7 +7,13 @@ from pydantic import ValidationError
 
 from webpent.api.app import ScanRequest
 from webpent.models.targets import Target
-from webpent.shared.engagement_scope import normalize_declared_origins
+from webpent.shared.engagement_scope import (
+    OriginPolicy,
+    clear_engagement_target_hosts,
+    is_engagement_target_host,
+    normalize_declared_origins,
+    set_engagement_target_hosts,
+)
 from webpent.state.initial_state import build_initial_state
 from webpent.workers.pentest_worker import run_pentest_task
 
@@ -22,6 +28,25 @@ def test_declared_origins_are_normalized_and_deduplicated() -> None:
     )
 
     assert origins == ["http://localhost:5173", "https://frontend.example.test/path"]
+
+
+def test_localhost_matches_declared_loopback_companion_origin() -> None:
+    policy = OriginPolicy.from_url("http://127.0.0.1:5173")
+
+    assert policy.allows("http://localhost:5173/@vite/client")
+    assert policy.allows("http://127.0.0.1:5173/@vite/client")
+    assert not policy.allows("http://localhost:5174/@vite/client")
+
+
+def test_localhost_requires_declared_loopback_scope() -> None:
+    token = set_engagement_target_hosts("http://127.0.0.1:8000")
+    try:
+        assert is_engagement_target_host("localhost")
+        assert is_engagement_target_host("127.0.0.1")
+    finally:
+        clear_engagement_target_hosts(token)
+
+    assert not is_engagement_target_host("localhost")
 
 
 def test_declared_origins_reject_unsafe_url_forms() -> None:

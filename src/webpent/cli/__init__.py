@@ -69,6 +69,44 @@ def _parse_credentials(creds: str | None) -> dict[str, str]:
     return {"username": parts[0], "password": parts[1]}
 
 
+def _promote_named_owner_profile(
+    credentials: dict[str, str],
+    profiles: dict[str, dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
+    """Promote an explicitly marked named profile to the primary login.
+
+    A named profile is secondary by default. Operators who provide only a
+    profiles file may mark exactly one profile with ``role`` set to ``owner``,
+    ``primary``, or ``operator``; that profile becomes the Playwright login
+    identity while the remaining profiles stay available for differential BAC
+    replay. Implicit promotion is intentionally avoided to preserve the
+    meaning of existing profiles files.
+    """
+    if credentials or not profiles:
+        return credentials, profiles
+    preferred_names = {"owner", "primary", "operator"}
+    owner_name = next(
+        (
+            name
+            for name, profile in profiles.items()
+            if str(name).strip().lower() in preferred_names
+            or str(profile.get("role", "")).strip().lower() in preferred_names
+        ),
+        None,
+    )
+    if owner_name is None:
+        return credentials, profiles
+    owner = profiles[owner_name]
+    primary = {
+        key: str(owner[key])
+        for key in ("username", "password", "email", "token")
+        if key in owner and isinstance(owner[key], str)
+    }
+    if not {"username", "password"}.issubset(primary):
+        return credentials, profiles
+    return primary, {name: profile for name, profile in profiles.items() if name != owner_name}
+
+
 def _parse_cookies(cookies: str | None) -> dict[str, str]:
     """Parse a 'name1=value1; name2=value2' string into a session-cookie dict.
 
@@ -225,6 +263,11 @@ def scan(
             "Logical scope shared by repeated scans. Defaults to a stable target scope; "
             "use a new value to start an isolated campaign."
         ),
+    ),
+    campaign_inventory: str = typer.Option(
+        "auto",
+        "--campaign-inventory",
+        help="Campaign inventory: auto, waptlab, or generic. Auto selects by target profile.",
     ),
     client_id: str | None = typer.Option(
         None,
@@ -387,6 +430,7 @@ def scan(
             credentials = {**loaded_creds, **credentials}
         else:
             file_profiles = loaded_creds
+    credentials, file_profiles = _promote_named_owner_profile(credentials, file_profiles)
     selected_report_formats = _parse_report_formats(report_format)
     if len(second_creds) > 7:
         err_console.print("[red]Error:[/red] at most 7 --second-creds identities are allowed")
@@ -551,7 +595,7 @@ def scan(
                 additional_target_origins=declared_additional_origins,
                 credentials=safe_credentials,
                 session_cookies={},
-                identity_profiles={},
+                identity_profiles=identity_profiles,
                 jwt_weak_secret_candidates=jwt_candidates,
                 jwt_public_key_available=jwt_public_key_available,
                 disclosed_report_corpus=disclosed_report_corpus,
@@ -564,6 +608,7 @@ def scan(
                 scan_mode=resolved_mode,
                 profile=resolved_profile,
                 action_ledger_path=str(settings.action_ledger_path),
+                campaign_inventory=campaign_inventory,
             )
 
             config = {

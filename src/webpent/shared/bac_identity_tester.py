@@ -75,6 +75,33 @@ def _safe_dict(value: Any) -> dict[str, str]:
     return {str(k): str(v) for k, v in value.items() if v not in (None, "")}
 
 
+def cookies_from_auth_state(auth_state: Any) -> dict[str, str]:
+    """Extract validated runtime cookies from the canonical auth-state shape.
+
+    ``auth_node`` exposes cookies in two intentionally different forms:
+    ``session_cookies`` is a request-ready mapping, while ``auth_state`` keeps
+    Playwright-style cookie records for browser consumers.  This helper makes
+    the relationship explicit without treating an unvalidated or malformed
+    auth state as authenticated.
+    """
+    if not isinstance(auth_state, dict) or auth_state.get("validated") is not True:
+        return {}
+    raw = auth_state.get("cookies")
+    if isinstance(raw, dict):
+        return _safe_dict(raw)
+    if not isinstance(raw, list):
+        return {}
+    cookies: dict[str, str] = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        value = item.get("value")
+        if name not in (None, "") and value not in (None, ""):
+            cookies[str(name)] = str(value)
+    return cookies
+
+
 def normalise_identity_profiles(
     raw: Any,
     *,
@@ -356,6 +383,7 @@ __all__ = [
     "ProbeCallable",
     "assess_access_control",
     "build_relational_evidence",
+    "cookies_from_auth_state",
     "extract_object_id",
     "normalise_identity_profiles",
     "profile_owns_resource",

@@ -292,6 +292,7 @@ def _campaign_plan_for_state(state: Mapping[str, Any]) -> dict[str, Any]:
         return current
     return build_campaign_plan(
         target_url=_target_url(state),
+        campaign_inventory=str(state.get("campaign_inventory") or "waptlab"),
         surface_observations=surfaces,
         workflow_observations=workflows,
     )

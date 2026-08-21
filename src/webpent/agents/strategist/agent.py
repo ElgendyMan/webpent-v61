@@ -430,6 +430,32 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
                 self_critique_rule = "self_critique_error"
                 rule = f"{rule}; self_critique=self_critique_error"
 
+        # Authorized-active coverage policy: do not let the weighted
+        # prioritization score silently remove an in-scope validator route
+        # from the current campaign.  This is bounded execution, not
+        # confirmation: the hypothesis must already have a deterministic
+        # validator route, must remain above the abandon floor, and must not
+        # have been explicitly deprioritized by self-critique.  The promoted
+        # Finding still enters the existing payload/validator pipeline, where
+        # causal evidence and negative-control gates remain mandatory.
+        bounded_validator_execution = (
+            validator_route is not None
+            and action in (
+                PrioritizationAction.DEFER,
+                PrioritizationAction.RABBIT_HOLE,
+            )
+            and not self_critique_rule
+            and str(state.get("scan_mode") or "") == "authorized-active"
+            and score > 0.15
+            and bool(model_get(hypothesis, "target_url", ""))
+        )
+        if bounded_validator_execution:
+            action = PrioritizationAction.PROMOTE
+            rule = (
+                f"{rule}; authorized-active bounded validator execution "
+                f"(score={score:.4f} > ABANDON_THRESHOLD=0.15)"
+            )
+
         if validator_route is None:
             record_coverage(
                 hypothesis,

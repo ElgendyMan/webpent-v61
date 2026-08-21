@@ -53,6 +53,10 @@ from webpent.state.state import PentestState
 logger = logging.getLogger(__name__)
 
 _NAV_TIMEOUT_MS = 15_000
+_DEFAULT_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
 
 # Common login-page indicators in response bodies. Used by
 # _validate_session_cookies to detect a bounce to the login page
@@ -131,8 +135,13 @@ def _perform_login(
         browser = pw.chromium.launch(headless=True, args=launch_args)
         context_kwargs: dict[str, str] = {}
         configured_user_agent = os.getenv("HTTP_USER_AGENT", "").strip()
-        if configured_user_agent:
-            context_kwargs["user_agent"] = configured_user_agent
+        context_kwargs["user_agent"] = (
+            configured_user_agent or _DEFAULT_BROWSER_USER_AGENT
+        )
+        context_kwargs["locale"] = "en-US"
+        context_kwargs["extra_http_headers"] = {
+            "Accept-Language": "en-US,en;q=0.9",
+        }
         context = browser.new_context(**context_kwargs)
         # V6 Zero-Day Patched P0-1: Install SSRF route guard BEFORE
         # new_page() / goto(). The auth agent navigates to the target
@@ -166,6 +175,38 @@ def _perform_login(
         except Exception as exc:
             logger.warning("Navigation to %s failed: %s", url, exc)
             return {}
+
+        # Some targets redirect the base URL to a protected dashboard and
+        # expose the login form at a sibling route. Discover only bounded,
+        # same-origin login paths; never follow an arbitrary redirect or
+        # broaden the engagement scope while doing so.
+        def _visible(selector: str, timeout: int = 700) -> bool:
+            try:
+                page.locator(selector).first.wait_for(state="visible", timeout=timeout)
+                return True
+            except Exception:
+                return False
+
+        login_field_selector = (
+            "input[type='email']:not([name='email']), "
+            "input[type='email'][id='email'], input[name='username'], "
+            "input[name='user'], input[name='email']"
+        )
+        if not _visible("input[type='password']") and not _visible(login_field_selector):
+            parsed_target = _urlparse(url)
+            origin = f"{parsed_target.scheme}://{parsed_target.netloc}"
+            current_url = page.url.rstrip("/")
+            for login_path in ("/login", "/signin", "/auth/login"):
+                login_url = origin + login_path
+                if login_url.rstrip("/") == current_url:
+                    continue
+                try:
+                    page.goto(login_url, wait_until="domcontentloaded")
+                except Exception:
+                    continue
+                if _visible("input[type='password']") or _visible(login_field_selector):
+                    logger.info("Discovered login form at same-origin path %s", login_path)
+                    break
 
         # Most login forms expose password immediately. Some targets (such
         # as WAPTLab) deliberately use a two-step email -> password flow,
@@ -364,8 +405,19 @@ def _validate_session_cookies(
     # Cookie names only — NEVER log raw values.
     cookie_names = list(cookies.keys())
     try:
+        configured_user_agent = str(get_settings().http_user_agent or "").strip()
+        validation_user_agent = configured_user_agent
+        if not validation_user_agent or validation_user_agent.startswith("WebPent/0.2"):
+            validation_user_agent = _DEFAULT_BROWSER_USER_AGENT
         headers = {
-            "User-Agent": get_settings().http_user_agent or "WebPent/HTTP-auth-validation",
+            "User-Agent": validation_user_agent[:256],
+            "Accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                "image/avif,image/webp,*/*;q=0.8"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": target_url.rstrip("/") + "/login",
         }
         with client_factory(
             timeout=10.0, follow_redirects=False, verify=True,
