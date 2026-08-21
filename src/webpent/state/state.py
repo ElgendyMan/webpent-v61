@@ -406,8 +406,10 @@ class PentestState(TypedDict, total=False):
     # already in DB rows (findings.thread_id). Persisting it in state
     # does not expand the disclosure surface.
     thread_id: str
-    # Cross-engagement lesson isolation identifiers. Optional for legacy
-    # checkpoints; lesson retrieval fails closed when either value is absent.
+    # Cross-engagement and cross-owner isolation identifiers. Optional for
+    # legacy checkpoints; cumulative history reads fail closed to the
+    # anonymous partition when owner scope is absent.
+    owner_username: str | None
     client_id: str | None
     engagement_id: str | None
     # Runtime spine identity is additive. The live object is checkpoint-redacted

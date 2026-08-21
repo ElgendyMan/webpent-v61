@@ -55,6 +55,7 @@ def build_initial_state(
     *,
     thread_id: str | None = None,
     additional_target_origins: list[str] | None = None,
+    owner_username: str | None = None,
     client_id: str | None = None,
     engagement_id: str | None = None,
     campaign_id: str | None = None,
@@ -86,6 +87,7 @@ def build_initial_state(
     in their dedicated graph nodes.
     """
     resolved_engagement_id = str(engagement_id or thread_id or "").strip() or None
+    resolved_owner_username = str(owner_username or "").strip() or None
     resolved_client_id = str(client_id or "").strip() or None
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
     requested_inventory = str(campaign_inventory or "waptlab").strip().lower()
@@ -292,6 +294,11 @@ def build_initial_state(
         },
         "rabbit_hole_loop_back_count": 0,
         **({"thread_id": thread_id} if thread_id is not None else {}),
+        **(
+            {"owner_username": resolved_owner_username}
+            if resolved_owner_username
+            else {}
+        ),
         **({"client_id": resolved_client_id} if resolved_client_id else {}),
         **({"engagement_id": resolved_engagement_id} if resolved_engagement_id else {}),
     }

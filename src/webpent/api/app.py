@@ -1229,7 +1229,11 @@ def get_findings(
         try:
             ledger_findings = PersistentFindingLedger(
                 get_settings().findings_ledger_path
-            ).get(str(record.get("engagement_id") or ""))
+            ).get(
+                str(record.get("engagement_id") or ""),
+                owner_username=str(record.get("owner_username") or user.username),
+                client_id=str(record.get("client_id") or "") or None,
+            )
             all_findings = aggregate_findings([*ledger_findings, *all_findings])
         except Exception:
             logger.exception("Persistent findings ledger read failed (non-fatal)")
@@ -1274,7 +1278,11 @@ def get_risk_summary(
         try:
             ledger_findings = PersistentFindingLedger(
                 get_settings().findings_ledger_path
-            ).get(str(record.get("engagement_id") or ""))
+            ).get(
+                str(record.get("engagement_id") or ""),
+                owner_username=str(record.get("owner_username") or user.username),
+                client_id=str(record.get("client_id") or "") or None,
+            )
             findings = aggregate_findings([*ledger_findings, *findings])
         except Exception:
             logger.exception("Persistent findings ledger read failed (non-fatal)")

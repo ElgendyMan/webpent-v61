@@ -416,17 +416,23 @@ def reporter_node(state: PentestState) -> dict:
     # for this run. Any registry/DB failure falls back to the current state.
     engagement_id = str(state.get("engagement_id") or "")
     client_id = str(state.get("client_id") or "")
+    owner_username = str(state.get("owner_username") or "")
     if engagement_id:
         try:
             sibling_threads = get_thread_ids_by_engagement_id(
                 engagement_id,
+                owner_username=owner_username,
                 client_id=client_id,
             )
             historical = get_db_manager().get_findings_by_threads(sibling_threads)
             findings = aggregate_findings([*historical, *findings])
             ledger_findings = PersistentFindingLedger(
                 get_settings().findings_ledger_path
-            ).get(engagement_id)
+            ).get(
+                engagement_id,
+                owner_username=owner_username,
+                client_id=client_id,
+            )
             findings = aggregate_findings([*ledger_findings, *findings])
         except Exception as exc:
             logger.warning(

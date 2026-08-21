@@ -687,6 +687,8 @@ def scan(
         findings = PersistentFindingLedger(settings.findings_ledger_path).merge(
             resolved_engagement_id,
             findings,
+            owner_username="",
+            client_id=client_id or "",
             release_id=current_release_id(),
             thread_id=resolved_thread_id,
         )
