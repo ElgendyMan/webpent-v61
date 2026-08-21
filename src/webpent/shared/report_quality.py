@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from webpent.models.proof_bundle import validate_proof_bundle
+from webpent.shared.evidence_quality import assess_finding_evidence
 from webpent.state.reducers import model_get
 
 _ALLOWED_LEVELS = {
@@ -35,6 +36,11 @@ class FindingQualityResult(BaseModel):
     lifecycle_stage: str
     blocking_issues: list[str] = Field(default_factory=list)
     advisory_issues: list[str] = Field(default_factory=list)
+    evidence_classification: str = "unconfirmed"
+    evidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    evidence_present_signals: list[str] = Field(default_factory=list)
+    evidence_missing_signals: list[str] = Field(default_factory=list)
+    evidence_reasons: list[str] = Field(default_factory=list)
 
     @property
     def ready(self) -> bool:
@@ -152,6 +158,7 @@ def validate_finding_quality(
     proof_bundle = model_get(finding, "proof_bundle")
     blocking: list[str] = []
     advisory: list[str] = []
+    assessment = assess_finding_evidence(finding)
 
     if level not in _ALLOWED_LEVELS:
         blocking.append("confidence_level")
@@ -166,6 +173,11 @@ def validate_finding_quality(
             lifecycle_stage=lifecycle_stage(finding),
             blocking_issues=blocking,
             advisory_issues=advisory,
+            evidence_classification=assessment.classification.value,
+            evidence_score=assessment.score,
+            evidence_present_signals=assessment.present_signals,
+            evidence_missing_signals=assessment.missing_signals,
+            evidence_reasons=assessment.reasons,
         )
 
     if not (
@@ -185,6 +197,8 @@ def validate_finding_quality(
         proof_bundle, require_negative_control=True
     ):
         blocking.append("sealed_proof_bundle")
+    if level == "Tool-Confirmed" and assessment.classification != "confirmed":
+        advisory.append(f"evidence_classification:{assessment.classification.value}")
     if not (
         _nested_value(
             evidence,
@@ -207,6 +221,11 @@ def validate_finding_quality(
         lifecycle_stage=lifecycle_stage(finding),
         blocking_issues=sorted(set(blocking)),
         advisory_issues=sorted(set(advisory)),
+        evidence_classification=assessment.classification.value,
+        evidence_score=assessment.score,
+        evidence_present_signals=assessment.present_signals,
+        evidence_missing_signals=assessment.missing_signals,
+        evidence_reasons=assessment.reasons,
     )
 
 

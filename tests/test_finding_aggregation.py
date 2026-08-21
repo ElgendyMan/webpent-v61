@@ -16,6 +16,7 @@ def _finding(
     confidence: Confidence = Confidence.TENTATIVE,
     confidence_level: str = "Pending",
     created_at: datetime,
+    evidence: dict | None = None,
 ) -> Finding:
     return Finding(
         title=title,
@@ -27,6 +28,7 @@ def _finding(
         confidence=confidence,
         confidence_level=confidence_level,
         created_at=created_at,
+        evidence=evidence,
     )
 
 
@@ -71,6 +73,31 @@ def test_aggregate_findings_does_not_replace_confirmed_with_new_candidate() -> N
     assert len(merged) == 1
     assert merged[0].confidence_level == "Tool-Confirmed"
     assert merged[0].id == confirmed.id
+
+
+def test_evidence_quality_outweighs_weak_tool_label_during_merge() -> None:
+    weak_tool = _finding(
+        title="Access control issue",
+        url="https://target.test/object/1",
+        vuln_class=VulnClass.IDOR,
+        confidence=Confidence.CONFIRMED,
+        confidence_level="Tool-Confirmed",
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    supported = _finding(
+        title="Access control issue",
+        url="https://target.test/object/1",
+        vuln_class=VulnClass.IDOR,
+        confidence_level="AI-Assessed",
+        created_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        evidence={"reproduction": {"steps_to_reproduce": ["repeat the request"]}},
+    )
+
+    merged = aggregate_findings([weak_tool, supported])
+
+    assert len(merged) == 1
+    assert merged[0].id == supported.id
+    assert merged[0].confidence_level == "AI-Assessed"
 
 
 def test_fingerprint_and_default_scope_are_deterministic() -> None:

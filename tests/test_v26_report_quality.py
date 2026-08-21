@@ -62,6 +62,12 @@ def test_quality_gate_ready_uses_shared_lifecycle_and_returns_no_values():
     assert result.ready_finding_count == 1
     assert result.findings[0].lifecycle_stage == "Confirmed"
     assert result.findings[0].blocking_issues == []
+    assert result.findings[0].evidence_classification == "needs_human_review"
+    assert result.findings[0].evidence_missing_signals == [
+        "causal_signal",
+        "negative_control_complete",
+        "sealed_proof_bundle",
+    ]
     assert _SECRET not in str(dumped)
     assert "evidence_bundle" not in str(dumped)
 
@@ -107,6 +113,8 @@ def test_strict_report_export_fails_closed_but_legacy_mode_remains_available(tmp
         strict_quality_gate=False,
     )
     assert legacy_data["quality_gate"]["status"] == "blocked"
+    assert legacy_data["evidence_confirmed_count"] == 0
+    assert legacy_data["evidence_review_count"] == 1
     assert _SECRET not in str(legacy_data)
     assert (
         legacy_data["findings"][0]["evidence_bundle"]["request"]["headers"]["Authorization"]

@@ -13,6 +13,7 @@ from hashlib import sha256
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from webpent.models.findings import Confidence, Finding, Severity
+from webpent.shared.evidence_quality import assess_finding_evidence
 
 _SEVERITY_RANK = {
     Severity.INFO.value: 0,
@@ -80,7 +81,19 @@ def finding_fingerprint(finding: Finding) -> str:
     return "|".join((vuln_class, _normalise_url(finding.url), title))
 
 
-def _strength(finding: Finding) -> tuple[int, int, int, float]:
+def _strength(finding: Finding) -> tuple[int, int, int, int, float]:
+    evidence_rank = {
+        "unconfirmed": 0,
+        "needs_human_review": 1,
+        "supported": 2,
+        "confirmed": 3,
+        "clean": -1,
+        "not_scanned": -1,
+    }
+    evidence_quality = evidence_rank.get(
+        assess_finding_evidence(finding).classification.value,
+        0,
+    )
     confidence_level = _CONFIDENCE_LEVEL_RANK.get(_value(finding.confidence_level), 0)
     confidence = _CONFIDENCE_RANK.get(_value(finding.confidence), 0)
     severity = _SEVERITY_RANK.get(_value(finding.severity), 0)
@@ -90,7 +103,7 @@ def _strength(finding: Finding) -> tuple[int, int, int, float]:
             cvss = float(str(finding.cvss_score).split()[0])
         except (TypeError, ValueError):
             cvss = 0.0
-    return confidence_level, confidence, severity, cvss
+    return evidence_quality, confidence_level, confidence, severity, cvss
 
 
 def aggregate_findings(findings: Iterable[Finding]) -> list[Finding]:

@@ -36,6 +36,7 @@ from webpent.shared.bac_identity_tester import cookies_from_auth_state
 from webpent.shared.deserialization import build_oob_command_templates
 from webpent.shared.evidence_contract import contract_required, evaluate_contract
 from webpent.shared.evidence_ledger import merge_evidence_ledger
+from webpent.shared.evidence_quality import annotate_finding_evidence
 from webpent.shared.exceptions import (
     ToolExecutionError,
     ToolNotFoundError,
@@ -3205,7 +3206,9 @@ def validator_node(state: PentestState) -> dict:
                 learning_decision_log_entries.extend(learning_entries)
 
     updated_findings: list[Finding] = [
-        findings_by_id[f.id] for f in findings if f.id in findings_by_id
+        annotate_finding_evidence(findings_by_id[f.id])
+        for f in findings
+        if f.id in findings_by_id
     ]
 
     summary = (

@@ -164,6 +164,12 @@ def build_report_data(
     # Severity counts for the stats grid.
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     confirmed_count = 0
+    evidence_classification_counts: dict[str, int] = {}
+    for quality_finding in quality_result.findings:
+        classification = quality_finding.evidence_classification
+        evidence_classification_counts[classification] = (
+            evidence_classification_counts.get(classification, 0) + 1
+        )
     for fd in findings_dicts:
         sev = str(fd["severity"]).lower()
         if sev in severity_counts:
@@ -205,6 +211,14 @@ def build_report_data(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total_findings": len(findings_dicts),
         "confirmed_count": confirmed_count,
+        "evidence_confirmed_count": evidence_classification_counts.get("confirmed", 0),
+        "evidence_review_count": evidence_classification_counts.get(
+            "needs_human_review", 0
+        ),
+        "evidence_unconfirmed_count": evidence_classification_counts.get(
+            "unconfirmed", 0
+        ),
+        "evidence_classification_counts": evidence_classification_counts,
         "severity_counts": severity_counts,
         "risk_score": risk_score,
         "executive_summary": executive_summary,
