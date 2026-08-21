@@ -8,7 +8,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "8d33a2a7d87be494dc0d1fd55e46003e544fc4cea100ae680b155a189e80c119"
   },
-  "file_count": 694,
+  "file_count": 693,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "501b9059636d8b038be89d1212ef868bab9fcfaa2001e373c76597b2a3083c12",
@@ -183,7 +183,6 @@
     "docs/vip_local_release_report_20260820.md": "e8262bdd7026343bf754e6f91cae93bd20a4fa8ff1a015868436d176a5e6e4ae",
     "docs/vip_operator_runbook.md": "ed000102c6e919e1dae207bc9d782de1b11ca7bc651857576ea168dbee1cded8",
     "docs/vip_pip_audit_20260820.json": "b7252c325b7d02a9e68271ca90eb9928988fa2e813c95a205ecc52d4b7154b74",
-    "docs/vip_plan_audit_raw.txt": "b5ff4c7424a34720e127c6d3f084340aed41ff5a014755670e0845b9a89fddc1",
     "docs/vip_plan_completeness_checklist_20260820.md": "f60b7b5c5849af36c8bd2e955e163d0a2d661f596095e72181e4d8f3043dd51a",
     "docs/vip_plan_gap_audit.md": "6801e76e927bdef72736491b54e61dce6d45d0e5aaa4decd3df89f7af8824bc4",
     "docs/vip_quality_gate.json": "a169752ef7e179de243eb08ff060c3c6d7b1c686996d7fe1399045b2b5e775c5",
@@ -705,8 +704,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-21T17:18:13.507267+00:00",
-  "git_commit": "f5fef55f18aae80243a8f43a340de3baa7ea76c9",
+  "generated_at": "2026-08-21T17:19:12.203144+00:00",
+  "git_commit": "33da443a6230b2f60fc00b165068045180f49c42",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
