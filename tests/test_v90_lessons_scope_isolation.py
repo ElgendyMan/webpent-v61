@@ -69,3 +69,58 @@ def test_legacy_save_remains_compatible_but_is_not_scoped(tmp_path) -> None:
         client_id="client-1",
         engagement_id="eng-1",
     ) == []
+
+
+def test_negative_lessons_are_deduplicated_and_reusable_across_engagements(tmp_path) -> None:
+    manager = LessonsManager(database_url=str(tmp_path / "negative-lessons.db"))
+    first_id = manager.save_negative_lesson(
+        target_url="https://target.test/path",
+        vuln_class="idor",
+        failure_reason="tool_no_marker",
+        hypothesis_id="hyp-1",
+        client_id="client-1",
+        engagement_id="eng-alpha",
+    )
+    duplicate_id = manager.save_negative_lesson(
+        target_url="https://target.test/path",
+        vuln_class="idor",
+        failure_reason="tool_no_marker",
+        hypothesis_id="hyp-1",
+        client_id="client-1",
+        engagement_id="eng-alpha",
+    )
+    other_engagement_id = manager.save_negative_lesson(
+        target_url="https://target.test/path",
+        vuln_class="idor",
+        failure_reason="tool_no_marker",
+        hypothesis_id="hyp-1",
+        client_id="client-1",
+        engagement_id="eng-beta",
+    )
+
+    assert first_id is not None
+    assert duplicate_id == first_id
+    assert other_engagement_id is not None
+    assert other_engagement_id != first_id
+    reusable_lessons = manager.search_lessons(
+        "tool_no_marker",
+        client_id="client-1",
+    )
+    assert len(reusable_lessons) == 2
+    assert all("target_signature" in lesson for lesson in reusable_lessons)
+    assert all("https://target.test/path" not in lesson for lesson in reusable_lessons)
+    assert manager.search_lessons(
+        "tool_no_marker",
+        client_id="client-2",
+    ) == []
+    assert (
+        manager.save_negative_lesson(
+            target_url="https://target.test/path",
+            vuln_class="idor",
+            failure_reason="tool_no_marker",
+            hypothesis_id="hyp-1",
+            client_id=None,
+            engagement_id="eng-alpha",
+        )
+        is None
+    )

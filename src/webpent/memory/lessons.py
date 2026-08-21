@@ -37,6 +37,7 @@ Timestamp handling:
 
 from __future__ import annotations
 
+import hashlib
 import html
 import re
 import sqlite3
@@ -255,6 +256,12 @@ def structural_sanitize(val: str) -> str:
     )
 
     return val
+
+
+def target_signature(target_url: str | None) -> str:
+    """Return a stable, non-sensitive signature for a target URL."""
+    normalized = str(target_url or "").strip().lower()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
 def _sanitize_lesson_content(content: str) -> str:
@@ -670,6 +677,72 @@ class LessonsManager:
                     datetime.now(timezone.utc).isoformat(),
                     str(client_id).strip() if client_id else None,
                     str(engagement_id).strip() if engagement_id else None,
+                ),
+            )
+            conn.commit()
+        return lesson_id
+
+    def save_negative_lesson(
+        self,
+        *,
+        target_url: str,
+        vuln_class: str,
+        failure_reason: str,
+        hypothesis_id: str | None,
+        client_id: str | None,
+        engagement_id: str | None = None,
+    ) -> UUID | None:
+        """Persist a bounded, scoped lesson from a deterministic rejection.
+
+        The caller supplies only a closed-set failure reason. The lesson is
+        deliberately structured as plain text so existing retrieval paths can
+        consume it, while the exact scoped row and content are deduplicated
+        atomically. Missing client scope fails closed.
+        """
+        scoped_client = str(client_id or "").strip()
+        if not scoped_client:
+            return None
+        scoped_engagement = str(engagement_id or "").strip() or None
+        content = (
+            "negative_lesson "
+            f"target_signature {target_signature(target_url)} "
+            f"vulnerability_class {str(vuln_class or 'unknown')[:80]} "
+            f"failure_reason {str(failure_reason or 'unknown')[:80]} "
+            f"hypothesis_id {str(hypothesis_id or 'unknown')[:120]}. "
+            "Constraint avoid repeating this hypothesis until new causal evidence appears."
+        )
+        sanitized = _sanitize_lesson_content(content)
+        if not sanitized:
+            return None
+        self.init_db()
+        with self._write_lock, self._connect() as conn:
+            existing = conn.execute(
+                """
+                SELECT id FROM lessons
+                WHERE target_url = ? AND content = ? AND client_id = ?
+                  AND (? IS NULL OR engagement_id = ?)
+                LIMIT 1
+                """,
+                (
+                    str(target_url or ""),
+                    sanitized,
+                    scoped_client,
+                    scoped_engagement,
+                    scoped_engagement,
+                ),
+            ).fetchone()
+            if existing is not None:
+                return UUID(str(existing[0]))
+            lesson_id = uuid4()
+            conn.execute(
+                _LESSON_INSERT,
+                (
+                    str(lesson_id),
+                    str(target_url or ""),
+                    sanitized,
+                    datetime.now(timezone.utc).isoformat(),
+                    scoped_client,
+                    scoped_engagement,
                 ),
             )
             conn.commit()

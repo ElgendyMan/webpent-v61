@@ -29,6 +29,7 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from webpent.memory.db import get_db_manager
+from webpent.memory.lessons import get_lessons_manager
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
 from webpent.models.findings import Confidence, Finding
 from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
@@ -2722,6 +2723,80 @@ def _validate_with_tool(
     return updated_finding
 
 
+_NEGATIVE_LESSON_FAILURES = frozenset(
+    {"waf_blocked", "auth_required", "llm_rejected", "tool_no_marker"}
+)
+
+
+def _persist_negative_lesson(
+    finding: Finding,
+    *,
+    target_url: str | None,
+    client_id: str | None,
+    engagement_id: str | None,
+) -> bool:
+    """Persist a scoped negative constraint for a deterministic rejection."""
+    failure_reason = str(
+        (finding.evidence or {}).get("validation_failure_reason") or ""
+    )
+    if failure_reason not in _NEGATIVE_LESSON_FAILURES or not target_url or not client_id:
+        return False
+    try:
+        vuln_class = getattr(finding.vuln_class, "value", finding.vuln_class)
+        safe_target = _safe_log_target(target_url)
+        hypothesis_id = str(getattr(finding, "hypothesis_id", "") or "") or None
+        lesson_id = get_lessons_manager().save_negative_lesson(
+            target_url=safe_target,
+            vuln_class=str(vuln_class or "unknown"),
+            failure_reason=failure_reason,
+            hypothesis_id=hypothesis_id,
+            client_id=client_id,
+            engagement_id=engagement_id,
+        )
+        # Keep the optional semantic store aligned with SQLite. SQLite is the
+        # authoritative, deterministic path; Chroma failure must never alter
+        # validation semantics or make a scan fail.
+        try:
+            from webpent.memory.vectorstore import get_vector_store_manager
+
+            lesson_text = (
+                "negative_lesson|"
+                f"target={safe_target[:500]}|"
+                f"vuln_class={str(vuln_class or 'unknown')[:80]}|"
+                f"failure_reason={failure_reason[:80]}|"
+                f"hypothesis_id={str(hypothesis_id or '')[:120]}|"
+                "constraint=avoid repeating this hypothesis until new causal evidence appears"
+            )
+            vector_store = get_vector_store_manager()
+            existing = vector_store.search_lessons(
+                lesson_text,
+                k=3,
+                client_id=client_id,
+                engagement_id=engagement_id,
+            )
+            if lesson_id is not None and lesson_text not in existing:
+                vector_store.add_lesson(
+                    lesson_text,
+                    {
+                        "client_id": str(client_id),
+                        "engagement_id": str(engagement_id or ""),
+                        "target_url": safe_target,
+                        "lesson_type": "negative_feedback",
+                        "hypothesis_id": str(hypothesis_id or ""),
+                    },
+                )
+        except Exception as exc:
+            logger.warning("Validator: negative lesson vector sync failed: %s", exc)
+        return lesson_id is not None
+    except Exception as exc:
+        logger.warning(
+            "Validator: negative lesson persistence failed for %s: %s",
+            getattr(finding, "id", "unknown"),
+            exc,
+        )
+        return False
+
+
 def _apply_validation_failure_learning(
     finding: Finding,
     hypotheses: list[Any],
@@ -2961,8 +3036,9 @@ def validator_node(state: PentestState) -> dict:
     thread_id: str | None = state.get("thread_id") or None
     # V8 P0 D3: read hypotheses for the failure-to-hypothesis learning loop.
     hypotheses: list[Any] = list(state.get("hypotheses") or [])
-
+    client_id: str | None = state.get("client_id") or state.get("owner_username")
     logger.info(
+
         "Validator starting: %d total finding(s) to evaluate (stealth=%s, playwright=%s)",
         len(findings),
         stealth_mode,
@@ -2983,6 +3059,7 @@ def validator_node(state: PentestState) -> dict:
     # V8 P0 D3: accumulate learning-loop outputs.
     learning_updated_hypotheses: list[Any] = []
     learning_decision_log_entries: list[dict[str, Any]] = []
+    negative_lesson_count = 0
     ledger_current = list(state.get("evidence_ledger") or [])
     ledger_entries: list[EvidenceLedgerEntry] = []
 
@@ -3204,6 +3281,13 @@ def validator_node(state: PentestState) -> dict:
                 learning_updated_hypotheses.extend(learning_hyps)
             if learning_entries:
                 learning_decision_log_entries.extend(learning_entries)
+            if _persist_negative_lesson(
+                updated,
+                target_url=target_url,
+                client_id=client_id,
+                engagement_id=engagement_id,
+            ):
+                negative_lesson_count += 1
 
     updated_findings: list[Finding] = [
         annotate_finding_evidence(findings_by_id[f.id])
@@ -3217,6 +3301,11 @@ def validator_node(state: PentestState) -> dict:
         f"and {deser_count} deserialization finding(s); {confirmed_count} "
         f"confirmed. Skipped {skipped_count} other finding(s)."
     )
+    if negative_lesson_count:
+        summary += (
+            f" Persisted {negative_lesson_count} scoped negative lesson(s) "
+            "for future hypothesis constraints."
+        )
     if learning_updated_hypotheses:
         summary += (
             f" D3 learning loop: applied {len(learning_updated_hypotheses)} "

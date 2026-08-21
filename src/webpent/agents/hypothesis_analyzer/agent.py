@@ -193,7 +193,31 @@ def _retrieve_with_memory_boundary(
                 k=limit,
                 client_id=client_id,
             )
-            source = "vectorstore:lessons"
+            # Negative feedback is persisted in the scoped SQLite lesson
+            # store by the validator.  Read it explicitly as a deterministic
+            # supplement: Chroma is optional and may not be available in a
+            # worker, but a rejected hypothesis must still constrain the next
+            # engagement for the same target signature.
+            try:
+                from webpent.memory.lessons import get_lessons_manager, target_signature
+
+                target_prefix = f"target_signature {target_signature(target_url)}"
+                sqlite_lessons = get_lessons_manager().search_lessons(
+                    "negative_lesson",
+                    client_id=client_id,
+                    engagement_id=None,
+                    limit=min(50, max(limit * 4, 10)),
+                )
+                values.extend(
+                    lesson
+                    for lesson in sqlite_lessons
+                    if lesson.startswith("negative_lesson ")
+                    and target_prefix in lesson
+                )
+            except Exception as exc:
+                logger.warning("Scoped negative lesson retrieval failed: %s", exc)
+            values = list(dict.fromkeys(values))
+            source = "vectorstore:lessons+sqlite-negative-feedback"
             prefix = "Experience lesson"
         else:
             return []
@@ -658,6 +682,7 @@ _SEGMENT_SAFE_PATTERNS: frozenset[str] = frozenset(
 )
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def hypothesis_node(state: PentestState) -> dict:
     """LangGraph node that generates vulnerability hypotheses.
 
