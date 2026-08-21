@@ -71,15 +71,57 @@ def test_initial_state_exposes_only_opaque_secret_references_when_scrubbed() -> 
     assert "password" not in state["secret_refs"]["credentials"]
 
 
+def test_request_smuggling_probe_outcome_requires_proof_bundle(monkeypatch) -> None:
+    from webpent.agents.request_smuggling import agent
+    from webpent.models.targets import Target
+    from webpent.shared.engagement_scope import (
+        clear_engagement_target_hosts,
+        set_engagement_target_hosts,
+    )
+
+    token = set_engagement_target_hosts("https://engagement.example.test")
+    monkeypatch.setattr(
+        agent,
+        "_probe_cl_te_outcome",
+        lambda *_args, **_kwargs: "confirmed",
+    )
+    monkeypatch.setattr(
+        agent,
+        "_probe_te_cl_outcome",
+        lambda *_args, **_kwargs: "confirmed",
+    )
+    try:
+        result = agent.request_smuggling_node(
+            {
+                "target": Target(url="https://engagement.example.test"),
+                "findings": [],
+                "session_cookies": {},
+            }
+        )
+        assert len(result["findings"]) == 2
+        assert all(
+            finding.confidence_level == "Needs Human Review"
+            for finding in result["findings"]
+        )
+        assert all(finding.confidence == "tentative" for finding in result["findings"])
+        assert all(
+            finding.evidence["negative_control_complete"] is False
+            and finding.evidence["proof_bundle"] is None
+            for finding in result["findings"]
+        )
+    finally:
+        clear_engagement_target_hosts(token)
+
+
 def test_validator_registry_is_explicit_and_fail_closed() -> None:
     from webpent.agents.validator.registry import capability_for, validator_id_for
 
     assert validator_id_for("sqli") == "sqli"
     assert capability_for("sqli").status == "tested"
-    missing = capability_for("request_smuggling")
-    assert missing.validator_id is None
-    assert missing.status == "missing-validator"
-    assert missing.evidence_mode == "human-review"
+    offline = capability_for("request_smuggling")
+    assert offline.validator_id == "offline-fixture:request_smuggling"
+    assert offline.status == "offline-fixture"
+    assert offline.evidence_mode == "offline-contract"
 
 
 def test_scan_registry_health_is_operator_visible_and_non_secret() -> None:

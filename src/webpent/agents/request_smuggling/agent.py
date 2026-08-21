@@ -41,7 +41,7 @@ from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage
 
-from webpent.models.findings import Finding, Severity, VulnClass
+from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -427,7 +427,8 @@ def request_smuggling_node(state: PentestState) -> dict:
                         f"other users' responses."
                     ),
                     severity=Severity.CRITICAL,
-                    confidence_level="AI-Assessed",
+                    confidence=Confidence.TENTATIVE,
+                    confidence_level="Needs Human Review",
                     # V10 P0-1: VulnClass.REQUEST_SMUGGLING is now a real enum
                     # member; previously this raw string raised pydantic
                     # ValidationError and was swallowed by the surrounding
@@ -436,6 +437,13 @@ def request_smuggling_node(state: PentestState) -> dict:
                     url=base_url,
                     tool_name="request_smuggling_detector",
                     payload="Content-Length: 6 + Transfer-Encoding: chunked",
+                    evidence={
+                        "causal_signal": True,
+                        "negative_control_complete": False,
+                        "proof_bundle": None,
+                        "promotion_guard": "blocked_missing_negative_control_and_proof_bundle",
+                        "probe_vector": "CL.TE",
+                    },
                     reasoning=(
                         "Sent a POST with conflicting Content-Length and "
                         "Transfer-Encoding headers. The subsequent GET request "
@@ -478,13 +486,21 @@ def request_smuggling_node(state: PentestState) -> dict:
                         f"to smuggle requests."
                     ),
                     severity=Severity.CRITICAL,
-                    confidence_level="AI-Assessed",
+                    confidence=Confidence.TENTATIVE,
+                    confidence_level="Needs Human Review",
                     # V10 P0-1: VulnClass.REQUEST_SMUGGLING — see CL.TE block
                     # above for the same fix on this second call site.
                     vuln_class=VulnClass.REQUEST_SMUGGLING.value,
                     url=base_url,
                     tool_name="request_smuggling_detector",
                     payload="Transfer-Encoding: chunked + Content-Length: 4",
+                    evidence={
+                        "causal_signal": True,
+                        "negative_control_complete": False,
+                        "proof_bundle": None,
+                        "promotion_guard": "blocked_missing_negative_control_and_proof_bundle",
+                        "probe_vector": "TE.CL",
+                    },
                     reasoning=(
                         "Sent a POST with Transfer-Encoding: chunked and a "
                         "craft Content-Length that hides a smuggled GET /admin "

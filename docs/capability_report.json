@@ -283,7 +283,7 @@
       "validator_status": "offline-fixture"
     }
   ],
-  "generated_at": "2026-08-21T19:20:54.367998+00:00",
+  "generated_at": "2026-08-21T20:17:10.671939+00:00",
   "ledger": "docs/waptlab_coverage_ledger.json",
   "live_qualification": false,
   "notes": [
@@ -409,15 +409,15 @@
       "vuln_class": "auth_bypass"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "offline-contract",
+      "validator_id": "offline-fixture:mass_assignment",
+      "validator_status": "offline-fixture",
       "vuln_class": "mass_assignment"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "offline-contract",
+      "validator_id": "offline-fixture:request_smuggling",
+      "validator_status": "offline-fixture",
       "vuln_class": "request_smuggling"
     },
     {
@@ -463,15 +463,15 @@
       "vuln_class": "api_issue"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "offline-contract",
+      "validator_id": "offline-fixture:subdomain_takeover",
+      "validator_status": "offline-fixture",
       "vuln_class": "subdomain_takeover"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "offline-contract",
+      "validator_id": "offline-fixture:cloud_storage_exposure",
+      "validator_status": "offline-fixture",
       "vuln_class": "cloud_storage_exposure"
     },
     {
@@ -481,9 +481,9 @@
       "vuln_class": "jwt_weakness"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "offline-contract",
+      "validator_id": "offline-fixture:jwt_key_confusion",
+      "validator_status": "offline-fixture",
       "vuln_class": "jwt_key_confusion"
     },
     {
@@ -507,16 +507,11 @@
   ],
   "vip_scope_missing_validators": [
     "race_condition",
-    "mass_assignment",
-    "request_smuggling",
-    "subdomain_takeover",
-    "cloud_storage_exposure",
-    "jwt_key_confusion",
     "unknown"
   ],
   "vip_scope_validator_status_counts": {
-    "missing-validator": 7,
-    "offline-fixture": 2,
+    "missing-validator": 2,
+    "offline-fixture": 7,
     "tested": 25
   }
 }

@@ -16,6 +16,11 @@ from webpent.shared.proof_oracles import OracleEngine, OracleFamily
 
 _OFFLINE_KEYS: Final[frozenset[str]] = frozenset(
     {
+        "mass_assignment",
+        "request_smuggling",
+        "cloud_storage_exposure",
+        "subdomain_takeover",
+        "jwt_key_confusion",
         "download_idor",
         "tenant_context_switching",
         "elasticsearch_snapshot_traversal",
@@ -61,6 +66,27 @@ def build_offline_validator_fixture_registry() -> tuple[OfflineValidatorFixtureS
                 adapter_id=f"offline-fixture:{key}",
             )
         )
+    # Mass-assignment has a detector but no standalone campaign entry. Keep its
+    # evidence contract explicit and offline-only rather than manufacturing a
+    # live campaign or treating the detector output as a confirmation.
+    existing_keys = {spec.campaign_key for spec in specs}
+    for key in (
+        "mass_assignment",
+        "request_smuggling",
+        "cloud_storage_exposure",
+        "subdomain_takeover",
+        "jwt_key_confusion",
+    ):
+        if key in existing_keys:
+            continue
+        specs.insert(
+            0,
+            OfflineValidatorFixtureSpec(
+                campaign_key=key,
+                vuln_class=key,
+                adapter_id=f"offline-fixture:{key}",
+            ),
+        )
     return tuple(specs)
 
 
@@ -73,6 +99,14 @@ def _oracle_family_for_campaign(campaign_key: str) -> OracleFamily | None:
         return OracleFamily.STORED_XSS
     if campaign_key in {"csv_ingestion_sqli", "csv_upload_sqli"}:
         return OracleFamily.CSV_SQLI
+    if campaign_key == "request_smuggling":
+        return OracleFamily.REQUEST_SMUGGLING
+    if campaign_key == "cloud_storage_exposure":
+        return OracleFamily.CLOUD_STORAGE_EXPOSURE
+    if campaign_key == "subdomain_takeover":
+        return OracleFamily.SUBDOMAIN_TAKEOVER
+    if campaign_key == "jwt_key_confusion":
+        return OracleFamily.JWT_KEY_CONFUSION
     return None
 
 

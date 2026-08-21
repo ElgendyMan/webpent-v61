@@ -21,6 +21,10 @@ class OracleFamily(str, Enum):
     STORED_XSS = "stored_xss"
     SSRF = "ssrf"
     CSV_SQLI = "csv_sqli"
+    REQUEST_SMUGGLING = "request_smuggling"
+    CLOUD_STORAGE_EXPOSURE = "cloud_storage_exposure"
+    SUBDOMAIN_TAKEOVER = "subdomain_takeover"
+    JWT_KEY_CONFUSION = "jwt_key_confusion"
 
 
 class OracleResult(BaseModel):
@@ -67,6 +71,26 @@ class NegativeControlEngine:
             return bool(
                 evidence.get("negative_control_accepted")
                 or evidence.get("negative_control_rejected")
+            )
+        if value == OracleFamily.REQUEST_SMUGGLING.value:
+            return bool(
+                evidence.get("control_request_normalized")
+                or evidence.get("control_request_rejected")
+            )
+        if value == OracleFamily.CLOUD_STORAGE_EXPOSURE.value:
+            return bool(
+                evidence.get("private_object_denied")
+                or evidence.get("control_object_denied")
+            )
+        if value == OracleFamily.SUBDOMAIN_TAKEOVER.value:
+            return bool(
+                evidence.get("owned_alias_not_claimable")
+                or evidence.get("control_alias_not_claimable")
+            )
+        if value == OracleFamily.JWT_KEY_CONFUSION.value:
+            return bool(
+                evidence.get("control_token_rejected")
+                or evidence.get("symmetric_control_rejected")
             )
         return False
 
@@ -128,6 +152,42 @@ class OracleEngine:
                 or evidence.get("data_flow_effect")
             ):
                 missing.append("causal_data_or_sql_signal")
+        elif parsed is OracleFamily.REQUEST_SMUGGLING:
+            causal = bool(
+                evidence.get("parser_desync_observed")
+                and evidence.get("smuggled_request_observed")
+            )
+            if not evidence.get("parser_desync_observed"):
+                missing.append("parser_desync_observation")
+            if not evidence.get("smuggled_request_observed"):
+                missing.append("smuggled_request_observation")
+        elif parsed is OracleFamily.CLOUD_STORAGE_EXPOSURE:
+            causal = bool(
+                evidence.get("unauthenticated_object_read")
+                and evidence.get("sensitive_object_observed")
+            )
+            if not evidence.get("unauthenticated_object_read"):
+                missing.append("unauthenticated_object_read")
+            if not evidence.get("sensitive_object_observed"):
+                missing.append("sensitive_object_observation")
+        elif parsed is OracleFamily.SUBDOMAIN_TAKEOVER:
+            causal = bool(
+                evidence.get("dangling_alias_observed")
+                and evidence.get("service_claimable_observed")
+            )
+            if not evidence.get("dangling_alias_observed"):
+                missing.append("dangling_alias_observation")
+            if not evidence.get("service_claimable_observed"):
+                missing.append("service_claimability_observation")
+        elif parsed is OracleFamily.JWT_KEY_CONFUSION:
+            causal = bool(
+                evidence.get("forged_token_accepted")
+                and evidence.get("algorithm_substitution_observed")
+            )
+            if not evidence.get("forged_token_accepted"):
+                missing.append("forged_token_acceptance")
+            if not evidence.get("algorithm_substitution_observed"):
+                missing.append("algorithm_substitution_observation")
 
         negative = NegativeControlEngine.observed(parsed, evidence)
         if not negative:

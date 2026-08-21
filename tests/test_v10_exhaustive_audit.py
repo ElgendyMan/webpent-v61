@@ -190,6 +190,28 @@ class TestP01DictSafeRouting:
         # real rabbit_hole/unexplored hypothesis was present.
         assert "no new" not in result["messages"][0].content.lower()
 
+    def test_strategist_blocks_missing_validator_promotion(self):
+        """A deterministic hypothesis without a validator stays deferred."""
+        from webpent.agents.strategist.agent import strategist_node
+
+        h = self._dict_hypothesis(
+            vuln_class="subdomain_takeover",
+            deterministic_match=True,
+            confidence_score=1.0,
+        )
+        result = strategist_node(
+            {
+                "findings": [],
+                "hypotheses": [h],
+                "target": {"url": "http://target/"},
+            }
+        )
+
+        assert result["findings"] == []
+        entry = result["coverage_ledger"]["entries"][h["id"]]
+        assert entry["status"] == "missing-validator"
+        assert entry["action"] == "defer"
+
 
 # ===========================================================================
 # P0-2: SSRF transport fail-closed on DNS failure

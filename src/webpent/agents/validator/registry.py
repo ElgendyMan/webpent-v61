@@ -53,6 +53,11 @@ _IMPLEMENTED_VALIDATORS: Final[dict[str, str]] = {
 }
 
 _OFFLINE_FIXTURE_VALIDATORS: Final[dict[str, str]] = {
+    "mass_assignment": "offline-fixture:mass_assignment",
+    "request_smuggling": "offline-fixture:request_smuggling",
+    "cloud_storage_exposure": "offline-fixture:cloud_storage_exposure",
+    "subdomain_takeover": "offline-fixture:subdomain_takeover",
+    "jwt_key_confusion": "offline-fixture:jwt_key_confusion",
     "elasticsearch_snapshot_traversal": "offline-fixture:elasticsearch_snapshot_traversal",
     "xslt_injection": "offline-fixture:xslt_injection",
 }

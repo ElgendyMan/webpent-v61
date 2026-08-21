@@ -458,6 +458,13 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
             )
 
         if validator_route is None:
+            # Fail closed: a prioritization recommendation is not a
+            # validator.  Missing-validator classes must never enter the
+            # Finding/payload pipeline, even when deterministic_match or a
+            # high score would otherwise recommend PROMOTE.
+            if action == PrioritizationAction.PROMOTE:
+                action = PrioritizationAction.DEFER
+                rule = f"{rule}; blocked: missing deterministic validator route"
             record_coverage(
                 hypothesis,
                 status="missing-validator",
