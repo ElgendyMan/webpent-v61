@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 import time
 from pathlib import Path
@@ -77,6 +78,8 @@ log = logging.getLogger("doctor")
 # class of false-negative in the doctor's pre-V7 output.
 _PROBE_MODELS: dict[str, str] = {
     "groq": "llama-3.1-8b-instant",
+    "openai": "gpt-4o-mini",
+    "local": "llama3.1:8b",
     "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
     "github": "gpt-4o-mini",
     "cerebras": "llama3.1-8b",
@@ -97,6 +100,8 @@ def _get_api_key(settings: Any, provider: str) -> str | None:
         if settings.cloudflare_api_key and settings.cloudflare_account_id:
             return settings.cloudflare_api_key
         return None
+    if provider == "local":
+        return "local-runtime" if settings.local_llm_enabled else None
     return getattr(settings, f"{provider}_api_key", None)
 
 
@@ -112,7 +117,9 @@ def _build_probe_model(provider: str, settings: Any):
     if not api_key:
         return None
 
-    model_name = _PROBE_MODELS.get(provider, "gpt-4o-mini")
+    model_name = llm_mod._resolve_model_name(
+        provider, _PROBE_MODELS.get(provider, "gpt-4o-mini"), settings
+    )
 
     # Use the framework's _build_model — it handles every provider
     # branch (OpenAI-compatible, Mistral, Gemini, Cohere, Cloudflare).
@@ -120,8 +127,20 @@ def _build_probe_model(provider: str, settings: Any):
     # provider even if it was previously marked dead) by calling the
     # underlying builders directly.
     if provider in llm_mod._OPENAI_COMPATIBLE_BASE_URLS:
+        base_url = (
+            settings.openai_base_url
+            if provider == "openai"
+            else llm_mod._OPENAI_COMPATIBLE_BASE_URLS[provider]
+        )
         return llm_mod._build_openai_compatible(
-            base_url=llm_mod._OPENAI_COMPATIBLE_BASE_URLS[provider],
+            base_url=base_url,
+            api_key=api_key,
+            model_name=model_name,
+            settings=settings,
+        )
+    if provider == "local":
+        return llm_mod._build_openai_compatible(
+            base_url=settings.local_llm_url,
             api_key=api_key,
             model_name=model_name,
             settings=settings,
@@ -190,19 +209,30 @@ def _probe_provider(provider: str, settings: Any, timeout: float) -> dict[str, A
 
     start = time.monotonic()
     try:
-        # Use a thread to enforce a hard timeout — LangChain clients
-        # honour ``timeout`` only loosely across providers.
+        # Use a thread to enforce a caller-visible timeout. Do not use the
+        # executor as a context manager here: its __exit__ waits for a stuck
+        # provider request and defeats the timeout contract.
         import concurrent.futures
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(
-                model.invoke,
-                [
-                    SystemMessage(content="Reply with exactly: OK"),
-                    HumanMessage(content=_PROBE_PROMPT),
-                ],
-            )
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(
+            model.invoke,
+            [
+                SystemMessage(content="Reply with exactly: OK"),
+                HumanMessage(content=_PROBE_PROMPT),
+            ],
+        )
+        try:
             response = future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
+            raise
+        except Exception:
+            pool.shutdown(wait=True, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown(wait=True, cancel_futures=True)
 
         latency_ms = int((time.monotonic() - start) * 1000)
         result["latency_ms"] = latency_ms
@@ -211,11 +241,12 @@ def _probe_provider(provider: str, settings: Any, timeout: float) -> dict[str, A
         content = getattr(response, "content", "")
         if not isinstance(content, str):
             content = str(content)
-        content_lower = content.strip().lower()
-
-        # Accept any response that contains "ok" — some models prepend
-        # boilerplate ("Sure! OK") or wrap in quotes.
-        if "ok" in content_lower:
+        content_lower = content.strip().casefold()
+        # Accept only a short exact acknowledgement (with harmless wrapping
+        # punctuation). Substring matching would incorrectly mark "not ok"
+        # or arbitrary model prose as a healthy provider.
+        probe_token = re.sub(r"^[`'\"\s]+|[`'\"\s.,!?;:]+$", "", content_lower)
+        if probe_token in {"ok", "okay"}:
             result["status"] = "ACTIVE"
             result["detail"] = f"responded: {content.strip()[:40]!r}"
         else:
@@ -405,8 +436,9 @@ def main() -> int:
     active_count = sum(1 for r in results if r["status"] == "ACTIVE")
     if active_count == 0:
         print(
-            "\nVERDICT: No active LLM providers — scans will fail at the "
-            "first LLM call. Set at least one *_API_KEY env var.",
+            "\nVERDICT: No active LLM providers — LLM-assisted paths are "
+            "unavailable; deterministic fallbacks remain active where supported. "
+            "Set at least one *_API_KEY env var for LLM enrichment.",
             file=sys.stderr,
         )
         return 1

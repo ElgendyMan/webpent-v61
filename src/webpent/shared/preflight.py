@@ -190,9 +190,11 @@ def _check_llm_providers() -> dict[str, object]:
     try:
         from webpent.config.settings import get_settings
         from webpent.shared.llm import (
+            _OPENAI_COMPATIBLE_BASE_URLS,
             _TASK_PREFERENCE_ORDER,
             TaskType,
             _api_key_for_provider,
+            _resolve_model_name,
             get_dead_providers,
             is_llm_enabled,
         )
@@ -204,12 +206,22 @@ def _check_llm_providers() -> dict[str, object]:
                 configured[provider] = bool(_api_key_for_provider(provider, settings))
         available = sorted(name for name, ready in configured.items() if ready)
         chains: dict[str, list[str]] = {}
+        endpoints: dict[str, str] = {}
         for task in TaskType:
             chains[task.value] = [
-                f"{provider}:{model}"
+                f"{provider}:{_resolve_model_name(provider, model, settings)}"
                 for provider, model in _TASK_PREFERENCE_ORDER[task]
                 if configured.get(provider, False)
             ]
+        for provider in available:
+            if provider == "openai":
+                endpoints[provider] = settings.openai_base_url
+            elif provider == "local":
+                endpoints[provider] = settings.local_llm_url
+            else:
+                endpoints[provider] = _OPENAI_COMPATIBLE_BASE_URLS.get(
+                    provider, "provider-sdk-managed"
+                )
         enabled = is_llm_enabled(settings)
         dead = sorted(get_dead_providers())
         return {
@@ -218,6 +230,7 @@ def _check_llm_providers() -> dict[str, object]:
             "configured_count": len(available),
             "dead_providers": dead,
             "fallback_chains": chains,
+            "effective_endpoints": endpoints,
             "status": (
                 "disabled — deterministic fallbacks active"
                 if not enabled
@@ -233,6 +246,7 @@ def _check_llm_providers() -> dict[str, object]:
             "configured_count": 0,
             "dead_providers": [],
             "fallback_chains": {},
+            "effective_endpoints": {},
             "status": f"degraded (LLM diagnostics failed: {type(exc).__name__})",
         }
 

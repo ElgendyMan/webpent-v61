@@ -76,8 +76,13 @@ def test_llm_router_fails_closed_when_disabled(monkeypatch: pytest.MonkeyPatch) 
 def test_anthropic_provider_is_routable_and_enables_prompt_caching(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = Settings(llm_enabled=True, anthropic_api_key="test-anthropic-key")
+    settings = Settings(
+        llm_enabled=True,
+        openai_api_key=None,
+        anthropic_api_key="test-anthropic-key",
+    )
     sentinel = object()
+
     calls: list[dict[str, object]] = []
 
     def fake_builder(**kwargs: object) -> object:
@@ -104,7 +109,7 @@ def test_anthropic_provider_is_routable_and_enables_prompt_caching(
 
 
 def test_llm_diagnostics_are_local_and_redaction_safe() -> None:
-    settings = Settings(llm_enabled=False)
+    settings = Settings(llm_enabled=False, openai_api_key=None)
     diagnostics = llm_router.get_llm_diagnostics(settings)
 
     assert diagnostics["enabled"] is False
@@ -115,7 +120,7 @@ def test_llm_diagnostics_are_local_and_redaction_safe() -> None:
 
 
 def test_llm_router_accepts_explicit_enabled_settings_without_provider_guessing() -> None:
-    settings = Settings(llm_enabled=True)
+    settings = Settings(llm_enabled=True, openai_api_key=None)
     # No credentials are present in this test; the router must report the
     # configuration problem explicitly instead of manufacturing a provider.
     with pytest.raises(ValueError, match="No LLM providers configured"):

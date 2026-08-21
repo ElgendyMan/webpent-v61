@@ -300,7 +300,15 @@ PYTHONPATH=src python scripts/verify_rag_knowledge_pack.py
 - destructive-PoC policy وhuman approval؛
 - أهلية التقرير النهائي.
 
-النص الذي يولده LLM ليس evidence. عند فشل الـprovider يجب استخدام fallback bounded وتسجيل المسار المتدهور بدل اختراع نتيجة.
+النص الذي يولده LLM ليس evidence. عند فشل الـprovider يجب استخدام fallback bounded وتسجيل المسار المتدهور بدل اختراع نتيجة. اختلاف ذكاء النموذج لا يغيّر هذه القاعدة: النموذج يشرح ويرتب ويقترح فقط، بينما promotion يحتاج behavior فعليًا و`causal_signal` و`negative_control`.
+
+### إعداد مزود مختلف أو model مختلف
+
+يستخدم task router قائمة fallback محدودة ومختبرة، ويتخطى أي provider لا يملك مفتاحًا صالحًا. يمكن ضبط OpenAI أو أي endpoint متوافق مع OpenAI عبر `OPENAI_API_KEY` و`OPENAI_BASE_URL`، مع override اختياري في `OPENAI_MODEL`. أما Ollama أو أي خادم محلي متوافق فيحتاج `LOCAL_LLM_ENABLED=true` صراحةً، ثم `LOCAL_LLM_URL` و`LOCAL_LLM_MODEL`؛ ويظل آخر fallback لتجنب latency أو اتصالات محلية غير مقصودة.
+
+قبل qualification شغّل `python scripts/doctor.py --json`. هذا الفحص يبني ويستدعي provider عند توفر المفتاح، ويُظهر `fallback_chains` بالـmodel الفعلي و`effective_endpoints` بدون كشف الأسرار. نجاح بناء client وحده لا يثبت صحة model أو endpoint؛ يجب أن ينجح invoke الحقيقي. استخدم مفاتيح provider محدودة الصلاحية، واضبط `LLM_REQUEST_TIMEOUT` و`LLM_MAX_TOKENS`، ولا تعتمد على اسم model من مزود آخر دون التحقق من catalog الخاص به.
+
+طبقة prompt safety تعزل بيانات الهدف ونتائج الأدوات داخل boundary غير موثوق وتتعامل مع model output كبيانات غير موثوقة. لا توجد آلية آمنة أو مقبولة لتجاوز guardrails الخاصة بالمزوّد؛ إذا رفض النموذج طلبًا، يعود المسار إلى fallback deterministic أو provider آخر، ولا يتم تحويل الرفض إلى finding.
 
 ## ضوابط الأمان
 
@@ -335,7 +343,7 @@ python scripts/doctor.py --json
 python scripts/doctor.py --timeout 10
 ```
 
-عند تعطيل LLM، لا يجب أن ينفذ doctor provider network probes؛ وضع offline deterministic يعد healthy إذا نجحت الفحوص المحلية.
+عند تعطيل LLM، لا يجب أن ينفذ doctor provider network probes؛ وضع offline deterministic يعد healthy إذا نجحت الفحوص المحلية. عند تفعيله، نتيجة `OK` الصريحة فقط تعد نجاحًا؛ أما `not ok` أو timeout أو model/base-url mismatch فتُسجّل كفشل في مسار LLM، مع بقاء scan قادرًا على استخدام deterministic fallbacks حيث يسمح الـnode بذلك.
 
 عند غياب Finding، لا تبدأ بتعديل reporter. افحص بالترتيب:
 

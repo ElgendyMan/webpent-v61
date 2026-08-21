@@ -113,6 +113,15 @@ class Settings(BaseSettings):
 
     # -- LLM API keys (legacy providers) ------------------------------------
     openai_api_key: str | None = Field(default=None, description="OpenAI API key.")
+    openai_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        validation_alias=AliasChoices("OPENAI_BASE_URL", "OPENAI_API_BASE"),
+        description="OpenAI or compatible endpoint base URL.",
+    )
+    openai_model: str | None = Field(
+        default=None,
+        description="Optional model override for the OpenAI-compatible provider.",
+    )
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key.")
     groq_api_key: str | None = Field(default=None, description="Groq API key.")
     local_llm_url: str = Field(
@@ -121,6 +130,14 @@ class Settings(BaseSettings):
     )
     local_llm_api_key: str | None = Field(
         default=None, description="Optional API key for the local LLM endpoint."
+    )
+    local_llm_enabled: bool = Field(
+        default=False,
+        description="Allow the local OpenAI-compatible endpoint into router fallback chains.",
+    )
+    local_llm_model: str = Field(
+        default="llama3.1:8b",
+        description="Model identifier served by the local endpoint.",
     )
 
     # -- LLM API keys (task-based router providers) -------------------------

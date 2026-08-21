@@ -197,6 +197,7 @@ _OPENAI_COMPATIBLE_BASE_URLS: dict[str, str] = {
     # V6.1: Cerebras base URL fixed (was missing /v1 — caused 404).
     "cerebras": "https://api.cerebras.ai/v1",
     "github": "https://models.inference.ai.azure.com",
+    "openai": "https://api.openai.com/v1",
 }
 
 
@@ -234,6 +235,7 @@ class TaskType(str, Enum):
 _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
     TaskType.CODE: [
         ("groq", "llama-3.3-70b-versatile"),
+        ("openai", "gpt-4o"),
         # V7 Phase 6 FIX: qwen/qwen3-coder:free returned 404 from
         # OpenRouter (stale/renamed free-tier slug). Replaced with
         # meta-llama/llama-3.3-70b-instruct:free — the same slug
@@ -252,9 +254,11 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         # successor). Mirrored in scripts/doctor.py _PROBE_MODELS.
         ("gemini", "gemini-2.0-flash"),
         ("mistral", "mistral-large-latest"),
+        ("local", "llama3.1:8b"),
     ],
     TaskType.ANALYSIS: [
         ("groq", "llama-3.3-70b-versatile"),
+        ("openai", "gpt-4o"),
         ("cerebras", "llama3.1-70b"),
         ("anthropic", "claude-3-5-sonnet-20241022"),
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
@@ -263,9 +267,11 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("zai", "glm-5.1"),
         ("gemini", "gemini-2.0-flash"),
         ("mistral", "mistral-large-latest"),
+        ("local", "llama3.1:8b"),
     ],
     TaskType.AUTOMATION: [
         ("groq", "llama-3.3-70b-versatile"),
+        ("openai", "gpt-4o-mini"),
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
         ("github", "gpt-4o-mini"),
         ("cerebras", "llama3.1-70b"),
@@ -273,18 +279,22 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("cloudflare", "@cf/meta/llama-3-8b-instruct"),
         ("zai", "glm-4-plus"),
         ("gemini", "gemini-2.0-flash"),
+        ("local", "llama3.1:8b"),
     ],
     TaskType.FAST: [
         ("groq", "llama-3.1-8b-instant"),
+        ("openai", "gpt-4o-mini"),
         ("cerebras", "llama3.1-8b"),
         ("github", "gpt-4o-mini"),
         ("cloudflare", "@cf/meta/llama-3-8b-instruct"),
         ("cohere", "command-r"),
         ("zai", "glm-4.7-flash"),
         ("gemini", "gemini-2.0-flash"),
+        ("local", "llama3.1:8b"),
     ],
     TaskType.GENERAL: [
         ("groq", "llama-3.3-70b-versatile"),
+        ("openai", "gpt-4o"),
         ("github", "gpt-4o"),
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
         ("cerebras", "llama3.1-70b"),
@@ -293,6 +303,7 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("zai", "glm-5.1"),
         ("gemini", "gemini-2.0-flash"),
         ("mistral", "mistral-large-latest"),
+        ("local", "llama3.1:8b"),
     ],
 }
 
@@ -308,6 +319,7 @@ def _api_key_for_provider(provider: str, settings: Settings) -> str | None:
     provider is treated as unconfigured and ``None`` is returned.
     """
     return {
+        "openai": settings.openai_api_key,
         "zai": settings.zai_api_key,
         "openrouter": settings.openrouter_api_key,
         "groq": settings.groq_api_key,
@@ -320,6 +332,11 @@ def _api_key_for_provider(provider: str, settings: Settings) -> str | None:
         "cloudflare": (
             settings.cloudflare_api_key
             if settings.cloudflare_api_key and settings.cloudflare_account_id
+            else None
+        ),
+        "local": (
+            settings.local_llm_api_key or "local-runtime"
+            if settings.local_llm_enabled
             else None
         ),
     }.get(provider)
@@ -593,7 +610,66 @@ def _build_cloudflare(
         api_token=api_key,
         model=model_name,
         temperature=settings.llm_temperature,
+        max_tokens=settings.llm_max_tokens,
+        request_timeout=settings.llm_request_timeout,
+        # Keep the provider boundary fail-fast; the router owns fallback order.
+        max_retries=0,
     )
+
+
+class _ProviderGuardedRunnable(Runnable):
+    """Record provider-level invoke failures without hiding them from fallback.
+
+    Model construction can succeed while the first real request fails because
+    of an expired key, quota exhaustion, or an endpoint-specific model error.
+    LangChain's ``with_fallbacks`` correctly propagates that exception to the
+    next runnable, but it does not update WebPent's circuit breaker. This
+    wrapper preserves the exception and fallback behavior while marking only
+    structured provider status failures (400/401/429) as dead.
+    """
+
+    def __init__(self, inner: Runnable, provider: str) -> None:
+        self.inner = inner
+        self.provider = provider
+
+    def _record_failure(self, exc: BaseException) -> None:
+        if _should_trip_circuit_breaker(exc):
+            _mark_provider_dead(self.provider, str(exc)[:100])
+
+    def invoke(self, input: object, config: object | None = None, **kwargs: object) -> object:
+        try:
+            return self.inner.invoke(input, config=config, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - preserve fallback exception
+            self._record_failure(exc)
+            raise
+
+    async def ainvoke(
+        self,
+        input: object,
+        config: object | None = None,
+        **kwargs: object,
+    ) -> object:
+        try:
+            return await self.inner.ainvoke(input, config=config, **kwargs)
+        except Exception as exc:  # noqa: BLE001 - preserve fallback exception
+            self._record_failure(exc)
+            raise
+
+
+def _guard_provider_runnable(model: object, provider: str) -> object:
+    """Wrap real LangChain runnables while keeping lightweight test doubles intact."""
+    if isinstance(model, Runnable):
+        return _ProviderGuardedRunnable(model, provider)
+    return model
+
+
+def _resolve_model_name(provider: str, model_name: str, settings: Settings) -> str:
+    """Resolve operator model overrides without changing bounded defaults."""
+    if provider == "openai" and settings.openai_model:
+        return settings.openai_model
+    if provider == "local":
+        return settings.local_llm_model
+    return model_name
 
 
 def _build_model(
@@ -635,8 +711,20 @@ def _build_model(
 
     try:
         if provider in _OPENAI_COMPATIBLE_BASE_URLS:
+            base_url = (
+                settings.openai_base_url
+                if provider == "openai"
+                else _OPENAI_COMPATIBLE_BASE_URLS[provider]
+            )
             return _build_openai_compatible(
-                base_url=_OPENAI_COMPATIBLE_BASE_URLS[provider],
+                base_url=base_url,
+                api_key=api_key,
+                model_name=model_name,
+                settings=settings,
+            )
+        if provider == "local":
+            return _build_openai_compatible(
+                base_url=settings.local_llm_url,
                 api_key=api_key,
                 model_name=model_name,
                 settings=settings,
@@ -787,14 +875,16 @@ def get_llm(
     # one or more providers are skipped due to missing API keys.
     built: list[tuple[BaseChatModel, str, str]] = []
     for provider, model_name in preference_chain:
-        model = _build_model(provider, model_name, settings)
+        resolved_model_name = _resolve_model_name(provider, model_name, settings)
+        model = _build_model(provider, resolved_model_name, settings)
         if model is not None:
-            built.append((model, provider, model_name))
+            model = _guard_provider_runnable(model, provider)
+            built.append((model, provider, resolved_model_name))
             logger.debug(
                 "Task %s: registered provider=%s model=%s",
                 task_type.value,
                 provider,
-                model_name,
+                resolved_model_name,
             )
 
     if not built:

@@ -127,18 +127,33 @@
       "status": "ok — model cached locally, no network needed"
     },
     "llm": {
-      "configured_count": 0,
-      "configured_providers": [],
+      "configured_count": 1,
+      "configured_providers": [
+        "openai"
+      ],
       "dead_providers": [],
+      "effective_endpoints": {
+        "openai": "https://api.manus.im/api/llm-proxy/v1"
+      },
       "enabled": true,
       "fallback_chains": {
-        "analysis": [],
-        "automation": [],
-        "code": [],
-        "fast": [],
-        "general": []
+        "analysis": [
+          "openai:gpt-4o"
+        ],
+        "automation": [
+          "openai:gpt-4o-mini"
+        ],
+        "code": [
+          "openai:gpt-4o"
+        ],
+        "fast": [
+          "openai:gpt-4o-mini"
+        ],
+        "general": [
+          "openai:gpt-4o"
+        ]
       },
-      "status": "degraded — no configured provider; deterministic fallbacks only"
+      "status": "ok — at least one configured provider"
     },
     "playwright_ws_guard": {
       "status": "ok (WebSocket SSRF guard active)",
