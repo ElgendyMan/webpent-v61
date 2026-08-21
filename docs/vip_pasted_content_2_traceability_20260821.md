@@ -2,7 +2,7 @@
 
 **Baseline commit:** `1174294ffe53e4bd611da1ce6892a55f1e4a2642`
 **Baseline tests:** `1167 passed, 207 warnings`
-**Current local gate:** `1200 passed, 223 warnings`; Ruff clean; G-02 inventory regenerated with 63 records after the smart-campaign execution-plane fix.
+**Current local gate:** `1204 passed, 223 warnings`; Ruff clean; G-02 inventory regenerated with 63 records after the smart-campaign execution-plane fix and enforcement additions.
 **Scope restriction:** no WAPTLab, Juice Shop, or external target was contacted or modified during this execution.
 **Rule:** `verified` means supported by local source plus executable tests/artifacts; it does not mean live qualification unless explicitly stated.
 
@@ -42,7 +42,8 @@
 | 8 Validator expansion | Runtime validators for declared classes with oracle/control/replay contracts | validator registry, capability report (20 catalog entries plus explicit 34-class broader VIP-scope matrix) | strong local / partial | Catalog coverage is 18 tested + 2 offline-fixture; broader VIP scope is 25 tested + 2 offline-fixture + 7 missing-validator. JWT weak-secret revalidation is now proof-preserving and offline; request smuggling, subdomain takeover, cloud storage exposure, mass assignment, JWT key confusion, race condition, and unknown remain explicit gaps until their complete causal/negative-control contracts exist. |
 | 9 Tool adapters | Pinned, scoped, bounded, parsed, redacted adapters with fallback and tests | adapter modules, G-02 inventory, adapter tests | partial | Qualify all declared tools in runtime and classify absent tools as capability gaps |
 | 10 Runtime/packaging | Full compose topology, crash/retry/concurrency/migration/redaction/resource tests; slim archive | Docker/Compose files, release ZIP, SBOM/audit artifacts | partial | Docker daemon access and live distributed qualification unavailable |
-| 11 Test strategy | Unit, contract, integration, fixture, browser, multi-identity, API/multipart/GraphQL/WebSocket, distributed, prompt injection, replay/tamper, benchmark | 1200 passing tests, 14/14 VIP hard checks, 175 test files; G-02 targeted execution/inventory suite 22/22 | partial/strong local | Some live/browser/distributed/benchmark dimensions remain unqualified |
+| 10.1 Release enforcement | Pre-commit and CI reject transport drift, unsafe wrapper mutations, unapproved transports, secret patterns, and non-reproducible JSON/Markdown artifacts | `.githooks/pre-commit`, `scripts/check_g02_precommit.py`, `scripts/check_tracked_secrets.py`, CI workflow, `tests/test_g02_precommit_enforcement.py` (4 tests) | verified locally | Hosted CI execution and signed release attestation remain pending |
+| 11 Test strategy | Unit, contract, integration, fixture, browser, multi-identity, API/multipart/GraphQL/WebSocket, distributed, prompt injection, replay/tamper, benchmark | 1204 passing tests, VIP hard checks passed, 176 test files; G-02 targeted execution/inventory suite 22/22 plus 4 enforcement tests | partial/strong local | Some live/browser/distributed/benchmark dimensions remain unqualified |
 | 12 WAPTLab qualification | Three clean live runs, 15+/20 confirmed, precision ≥90%, reproducibility ≥95%, sealed bundles | `docs/waptlab_qualification_report.json` explicitly says `live_qualification=false` and `target_contacted=false` | blocked by explicit user restriction | Must be run later on authorized local instance; not performed here |
 | 13 VIP gates | G0–G10 all pass | `docs/vip_quality_gate.json`, `docs/release_manifest.json` | not passed | G4/G5/G7/G9/G10 require live qualification or additional runtime evidence |
 | 14 Definition of Done | Every workstream runtime-qualified, all numeric gates, signed release, final report | local closure/release artifacts | not complete | Live qualification, distributed runtime qualification, signing, and final gate closure remain |
@@ -53,7 +54,7 @@
 |---|---|---|
 | G0 Baseline | pass locally | hashes, tests, environment and rollback point recorded |
 | G1 Security | strong local / partial | profile taxonomy and strict QUALIFICATION hard-fail are tested; full deployment proof and live transport qualification remain |
-| G2 Runtime | partial | RuntimeFactory and ActionExecutor exist; complete all-entrypoint/runtime qualification remains |
+| G2 Runtime | strong local / partial | RuntimeFactory and ActionExecutor exist; G-02 pre-commit/CI enforcement, AST wrapper invariants, and adapter registration contracts pass locally; complete all-entrypoint/runtime qualification remains |
 | G3 Discovery | partial | graph/intelligence path exists; fixed benchmark not completed |
 | G4 Identity | partial | isolation contracts exist; live multi-identity proof absent |
 | G5 Workflow | partial | replay/session structures exist; browser/live workflow proof absent |

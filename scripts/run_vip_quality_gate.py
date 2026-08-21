@@ -157,6 +157,11 @@ def _g02_checks() -> list[dict[str, Any]]:
             [PYTHON, "scripts/check_g02_runtime.py"],
             timeout=60,
         ),
+        _run(
+            "g02-precommit-contract",
+            [PYTHON, "scripts/check_g02_precommit.py"],
+            timeout=60,
+        ),
     ]
 
 
@@ -286,9 +291,14 @@ def _security_checks() -> list[dict[str, Any]]:
         ],
         timeout=240,
     )
+    secret_check = _run(
+        "tracked-secret-scan",
+        [PYTHON, "scripts/check_tracked_secrets.py"],
+        timeout=60,
+    )
     for check in (bandit_check, sbom_check, audit_check):
         check["requirement_source"] = requirement_source
-    return [bandit_check, sbom_check, audit_check]
+    return [bandit_check, sbom_check, audit_check, secret_check]
 
 
 def _build_gate_report(checks: list[dict[str, Any]], safety: dict[str, Any]) -> dict[str, Any]:

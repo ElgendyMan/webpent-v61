@@ -15,7 +15,7 @@
 #   make clean         # Remove containers + volumes
 # =============================================================================
 
-.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor prod-config prod-up prod-health prod-down test test-count test-unit coverage lint security ci clean
+.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor prod-config prod-up prod-health prod-down test test-count test-unit coverage lint security ci g02-check install-hooks clean
 
 # Docker image names. Override RELEASE_TAG/BASE_IMAGE/APP_IMAGE in CI when
 # publishing to a registry; the default is immutable for the current commit.
@@ -247,6 +247,15 @@ security:
 	@bandit -q -r src/webpent -x tests -lll
 	@echo "Running pip-audit against the lock-derived external requirements..."
 	@pip-audit -r docs/requirements-audit-release.txt --strict
+
+g02-check:
+	@PYTHONPATH=src python3 scripts/scan_direct_io.py
+	@PYTHONPATH=src python3 scripts/check_g02_runtime.py
+	@PYTHONPATH=src python3 scripts/check_g02_precommit.py
+
+install-hooks:
+	@git config core.hooksPath .githooks
+	@echo "Installed WebPent hooks from .githooks"
 
 ci: test-count coverage lint security
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -22,8 +23,29 @@ def runtime_source_invariant_errors(source_root: Path) -> list[str]:
     subprocess_source = (source_root / "webpent/tools/utils/subprocess.py").read_text(
         encoding="utf-8"
     )
-    if subprocess_source.count("shell=False") < 2:
+    try:
+        subprocess_tree = ast.parse(subprocess_source)
+    except SyntaxError:
+        subprocess_tree = None
+    popen_calls = (
+        [
+            node
+            for node in ast.walk(subprocess_tree)
+            if isinstance(node, ast.Call) and ast.unparse(node.func) == "subprocess.Popen"
+        ]
+        if subprocess_tree is not None
+        else []
+    )
+    if len(popen_calls) < 2:
         errors.append("subprocess wrapper must enforce shell=False in both paths")
+    for call in popen_calls:
+        shell_keyword = next((keyword for keyword in call.keywords if keyword.arg == "shell"), None)
+        if (
+            shell_keyword is None
+            or not isinstance(shell_keyword.value, ast.Constant)
+            or shell_keyword.value.value is not False
+        ):
+            errors.append("subprocess wrapper must enforce shell=False in both paths")
     if "start_new_session=True" not in subprocess_source:
         errors.append("subprocess wrapper must isolate the process group")
     if "timeout=effective_timeout" not in subprocess_source:

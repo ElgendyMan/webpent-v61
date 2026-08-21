@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+if [ -n "${WEBPENT_PYTHON:-}" ]; then
+    python_bin=$WEBPENT_PYTHON
+elif [ -x "$repo_root/.venv/bin/python" ]; then
+    python_bin="$repo_root/.venv/bin/python"
+else
+    python_bin=$(command -v python3 || true)
+fi
+
+if [ -z "${python_bin:-}" ] || [ ! -x "$python_bin" ]; then
+    echo "G-02 pre-commit: no usable Python interpreter found" >&2
+    exit 1
+fi
+
+PYTHONPATH=src "$python_bin" scripts/scan_direct_io.py
+PYTHONPATH=src "$python_bin" scripts/check_g02_runtime.py
+PYTHONPATH=src "$python_bin" scripts/check_g02_precommit.py
