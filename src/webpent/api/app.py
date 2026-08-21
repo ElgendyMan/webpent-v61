@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
@@ -116,7 +117,7 @@ _GRAPH_CACHE: dict[str, Any] = {}
 # concurrent get_scan_status requests can race on the check-then-set
 # pattern below — double build_graph, or thread A reading thread B's
 # checkpointer (which B closes on with-exit) before A calls get_state.
-_GRAPH_CACHE_LOCK = __import__("threading").Lock()
+_GRAPH_CACHE_LOCK = threading.Lock()
 
 
 def _get_cached_graph(checkpointer: Any) -> Any:

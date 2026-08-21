@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1167 passed, 207 warnings in 38.75s"
+        "1200 passed, 223 warnings in 45.75s"
       ]
     },
     {
@@ -74,9 +74,33 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1114",
+        "  \"total_test_functions\": 1147",
         "}",
-        "OK: preserved test-function count 1114 >= minimum 818"
+        "OK: preserved test-function count 1147 >= minimum 818"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "scripts/scan_direct_io.py"
+      ],
+      "name": "g02-artifact-regeneration",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "wrote /tmp/webpent_v72_git_recovered/docs/direct_io_inventory.json (63 records)"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "scripts/check_g02_runtime.py"
+      ],
+      "name": "g02-static-runtime-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 63}"
       ]
     },
     {
@@ -219,11 +243,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 694, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
+        "{\"file_count\": 708, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-21T17:18:10.434920+00:00",
+  "generated_at": "2026-08-21T19:05:57.395850+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

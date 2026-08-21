@@ -102,6 +102,8 @@ class ActionAuthority:
         used_actions: int = 0,
         used_budget: float = 0.0,
         ledger: SQLiteActionLedger | None = None,
+        adapter_registry: Any | None = None,
+        require_g02: bool = False,
     ) -> None:
         self.settings = settings or get_settings()
         self.allowed_origin = self._normalize_origin(allowed_origin)
@@ -109,6 +111,8 @@ class ActionAuthority:
         self.used_actions = used_actions
         self.used_budget = used_budget
         self.ledger = ledger
+        self.adapter_registry = adapter_registry
+        self.require_g02 = bool(require_g02)
         self.trace: list[dict[str, Any]] = []
 
     @staticmethod
@@ -163,6 +167,34 @@ class ActionAuthority:
             reasons.append("policy:active_risk_requires_authorized_active_profile")
         if not capability_available(self.manifest, request.capability):
             reasons.append(f"capability:{request.capability}:unavailable")
+        if self.require_g02:
+            adapter_name = str(request.metadata.get("adapter_name") or "").strip()
+            if self.adapter_registry is None:
+                reasons.append("g02:adapter_registry_unavailable")
+            else:
+                valid, adapter_errors = self.adapter_registry.validate_for_execution(
+                    adapter_name
+                )
+                if not adapter_name:
+                    reasons.append("g02:request:adapter_name:required")
+                inventory_ref = str(
+                    request.metadata.get("g02_inventory_ref") or ""
+                ).strip()
+                proof_contract = str(
+                    request.metadata.get("g02_proof_contract") or ""
+                ).strip()
+                if not inventory_ref:
+                    reasons.append("g02:request:g02_inventory_ref:required")
+                if not proof_contract:
+                    reasons.append("g02:request:g02_proof_contract:required")
+                adapter = self.adapter_registry.get(adapter_name)
+                if adapter is not None:
+                    if inventory_ref and inventory_ref != adapter.static_inventory_ref:
+                        reasons.append("g02:request:inventory_ref_mismatch")
+                    if proof_contract and proof_contract != adapter.proof_contract:
+                        reasons.append("g02:request:proof_contract_mismatch")
+                if not valid:
+                    reasons.extend(f"g02:{error}" for error in adapter_errors)
         if (
             request.estimated_cost <= 0
             or request.estimated_cost > self.settings.smart_action_budget

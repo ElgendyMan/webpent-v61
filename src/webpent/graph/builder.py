@@ -90,6 +90,14 @@ from webpent.models.research import CandidateAction
 from webpent.shared.autonomous_controller import autonomous_controller_node
 from webpent.shared.campaign_executor import CampaignTask, resolve_preconditions
 from webpent.shared.causal_research import build_causal_research_projection
+from webpent.shared.g02_contract import (
+    G02_HTTP_APPROVAL_EXPIRY,
+    G02_HTTP_CANONICAL_WRAPPER,
+    G02_HTTP_INVENTORY_REF,
+    G02_HTTP_PROOF_CONTRACT,
+    G02_HTTP_SCOPE_POLICY,
+    g02_http_metadata,
+)
 from webpent.shared.research_contracts import active_research_node
 from webpent.shared.research_nodes import (
     knowledge_gap_node,
@@ -336,7 +344,7 @@ def route_after_autonomous_controller(state: PentestState) -> str:
 
 def _active_research_task(candidate: CandidateAction, state: Mapping[str, Any]) -> CampaignTask:
     """Convert a validated research candidate into the central task contract."""
-    metadata = dict(candidate.metadata)
+    metadata = g02_http_metadata(candidate.metadata)
     metadata.update(
         {
             "probe_kind": "active_research",
@@ -421,6 +429,11 @@ def _active_research_runtime_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 source="active_research",
                 version="1",
                 policy_checked=True,
+                canonical_wrapper=G02_HTTP_CANONICAL_WRAPPER,
+                scope_policy=G02_HTTP_SCOPE_POLICY,
+                static_inventory_ref=G02_HTTP_INVENTORY_REF,
+                proof_contract=G02_HTTP_PROOF_CONTRACT,
+                expires_at=G02_HTTP_APPROVAL_EXPIRY,
             )
         )
     else:

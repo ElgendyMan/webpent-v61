@@ -33,6 +33,14 @@ from webpent.shared.engagement_scope import (
     clear_engagement_target_hosts,
     set_engagement_target_hosts,
 )
+from webpent.shared.g02_contract import (
+    G02_HTTP_APPROVAL_EXPIRY,
+    G02_HTTP_CANONICAL_WRAPPER,
+    G02_HTTP_INVENTORY_REF,
+    G02_HTTP_PROOF_CONTRACT,
+    G02_HTTP_SCOPE_POLICY,
+    g02_http_metadata,
+)
 from webpent.shared.http import make_safe_httpx_client
 from webpent.shared.llm_reliability import LLMReliabilityGate, ReliabilityPolicy
 from webpent.shared.research_contracts import (
@@ -47,7 +55,7 @@ from webpent.shared.research_intelligence import (
     ResearchSession,
     SmartNextBestActionEngine,
 )
-from webpent.shared.runtime import RuntimeContext, RuntimeFactory
+from webpent.shared.runtime import RegisteredAdapter, RuntimeContext, RuntimeFactory
 from webpent.validators.causal_validator import validate_causal_observation
 from webpent.validators.proof_validator import validate_proof_bundle
 
@@ -453,7 +461,7 @@ def _task_from_entry(
             else ActionRisk.READ_ONLY
         ),
         target_url=(target_url or _target_url(state))[:500],
-        metadata={
+        metadata=g02_http_metadata({
             "campaign_status": str(entry.get("status", "unknown"))[:80],
             "source": "campaign_plan",
             "content_type": content_type,
@@ -464,7 +472,7 @@ def _task_from_entry(
             "validator_id": validator_id,
             "observed_preconditions": [str(item)[:200] for item in observed_preconditions],
             "blocked_preconditions": [str(item)[:200] for item in blocked_preconditions],
-        },
+        }),
         body_schema=body_schema,
         content_type=content_type,
         tenant_context=tenant_context,
@@ -635,7 +643,7 @@ def _information_task_from_record(
         action_family="http_read",
         risk_tier=ActionRisk.READ_ONLY,
         target_url=target_url,
-        metadata={
+        metadata=g02_http_metadata({
             "probe_kind": "research_information",
             "research_action_id": action_id,
             "research_action_class": action_class,
@@ -647,7 +655,7 @@ def _information_task_from_record(
             "proof_evidence": proof_evidence,
             "evidence_refs": [str(item)[:200] for item in evidence_refs[:8]],
             "negative_control_payload": negative_control_payload,
-        },
+        }),
         tenant_context=str(record.get("tenant_context") or "unknown")[:120],
         validator_id="research_information_observation",
     )
@@ -1122,11 +1130,11 @@ def _build_swagger_ssrf_task(state: Mapping[str, Any], root: str) -> CampaignTas
         capability="http_read",
         action_family="http_read",
         target_url=request_url,
-        metadata={
+        metadata=g02_http_metadata({
             "probe_kind": "swagger_ssrf",
             "observed_preconditions": ("authorized-active profile",),
             "human_approved": bool(state.get("auto_approve", False)),
-        },
+        }),
         validator_id="swagger_url_ssrf_direct_probe",
     )
 
@@ -1405,6 +1413,26 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         observations=observations,
         direct_findings=direct_findings,
     )
+    adapter = runtime.adapters.get("smart_http")
+    if adapter is None:
+        runtime.adapters.register(
+            RegisteredAdapter(
+                name="smart_http",
+                capability="smart_http_execution",
+                transport="http",
+                handler=handler,
+                source="smart_campaigns",
+                version="1",
+                policy_checked=True,
+                canonical_wrapper=G02_HTTP_CANONICAL_WRAPPER,
+                scope_policy=G02_HTTP_SCOPE_POLICY,
+                static_inventory_ref=G02_HTTP_INVENTORY_REF,
+                proof_contract=G02_HTTP_PROOF_CONTRACT,
+                expires_at=G02_HTTP_APPROVAL_EXPIRY,
+            )
+        )
+    else:
+        handler = adapter.handler
     state_observed_preconditions = state.get("observed_preconditions", ())
     state_blocked_preconditions = state.get("blocked_preconditions", ())
     if isinstance(state_observed_preconditions, str):

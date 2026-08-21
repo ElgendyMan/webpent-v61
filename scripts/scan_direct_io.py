@@ -8,6 +8,8 @@ from pathlib import Path
 
 from webpent.shared.direct_io_inventory import (
     APPROVED_DIRECT_FILES,
+    APPROVED_TRANSPORT_RECORDS,
+    DYNAMIC_IMPORT_ALLOWLIST,
     LOGICAL_TRANSPORTS,
     scan_direct_io,
 )
@@ -22,18 +24,28 @@ def main() -> None:
     payload = {
         "schema": "webpent.direct_io_inventory.v1",
         "generated_from": "src/**/*.py",
-        "transport_families": [
-            "http",
-            "browser",
-            "api",
-            "graphql",
-            "file_upload",
-            "oob",
-            "subprocess",
-            "raw_tcp_dns",
-        ],
+        "transport_families": sorted(LOGICAL_TRANSPORTS),
         "logical_transports": LOGICAL_TRANSPORTS,
         "approved_direct_files": APPROVED_DIRECT_FILES,
+        "approved_transport_records": list(APPROVED_TRANSPORT_RECORDS),
+        "dynamic_import_allowlist": list(DYNAMIC_IMPORT_ALLOWLIST),
+        "coverage": {
+            "record_count": len(records),
+            "raw_or_boundary_records": sum(
+                record["kind"] in {"import", "call", "safe_boundary_call"}
+                for record in records
+            ),
+            "dynamic_records": sum(
+                record["kind"] in {"dynamic_import", "dynamic_resolution"}
+                for record in records
+            ),
+            "unapproved_records": sum(
+                record["approval_status"] == "not_approved" for record in records
+            ),
+            "unknown_family_records": sum(
+                record["transport_family"] == "unknown" for record in records
+            ),
+        },
         "records": records,
     }
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
