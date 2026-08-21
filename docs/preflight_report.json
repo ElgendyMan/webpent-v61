@@ -163,7 +163,7 @@
     "profile_security": {
       "fail_closed": true,
       "profile": "lab",
-      "status": "ok — lab security defaults preserved"
+      "status": "ok — local security defaults preserved"
     },
     "redis_security": {
       "broker": {

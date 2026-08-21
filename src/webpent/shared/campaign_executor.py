@@ -279,6 +279,13 @@ class CampaignExecutor:
                 "content_type": task.content_type,
                 "tenant_context": task.tenant_context,
                 "validator_id": task.validator_id,
+                "adapter_name": str(task.metadata.get("adapter_name") or "")[:160],
+                "g02_inventory_ref": str(
+                    task.metadata.get("g02_inventory_ref") or ""
+                )[:240],
+                "g02_proof_contract": str(
+                    task.metadata.get("g02_proof_contract") or ""
+                )[:240],
             },
         )
 
@@ -361,6 +368,21 @@ class CampaignExecutor:
             "idempotency_key": task.normalized_idempotency_key(),
             "output_available": output is not None,
             "audit_event": dict(audit_event or {}),
+            "g02_execution": {
+                "adapter_name": str(task.metadata.get("adapter_name") or "")[:160],
+                "inventory_ref": str(
+                    task.metadata.get("g02_inventory_ref") or ""
+                )[:240],
+                "proof_contract": str(
+                    task.metadata.get("g02_proof_contract") or ""
+                )[:240],
+                "proof_required": True,
+                "confirmation_requires": [
+                    "causal_signal",
+                    "negative_control",
+                    "sealed_proof_bundle",
+                ],
+            },
             "proof_bundle": None,
             "proof_bundle_sealed": False,
         }

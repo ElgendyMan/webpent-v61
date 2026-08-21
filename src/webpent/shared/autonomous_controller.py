@@ -24,6 +24,13 @@ from webpent.shared.campaign_executor import (
     resolve_preconditions,
 )
 from webpent.shared.capability_manifest import CapabilityRegistry
+from webpent.shared.g02_contract import (
+    G02_HTTP_APPROVAL_EXPIRY,
+    G02_HTTP_CANONICAL_WRAPPER,
+    G02_HTTP_INVENTORY_REF,
+    G02_HTTP_PROOF_CONTRACT,
+    G02_HTTP_SCOPE_POLICY,
+)
 from webpent.shared.runtime import RegisteredAdapter
 
 TaskHandler = Callable[[CampaignTask], Any]
@@ -515,6 +522,11 @@ def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 source="smart_campaigns",
                 version="1",
                 policy_checked=True,
+                canonical_wrapper=G02_HTTP_CANONICAL_WRAPPER,
+                scope_policy=G02_HTTP_SCOPE_POLICY,
+                static_inventory_ref=G02_HTTP_INVENTORY_REF,
+                proof_contract=G02_HTTP_PROOF_CONTRACT,
+                expires_at=G02_HTTP_APPROVAL_EXPIRY,
             )
         )
     else:

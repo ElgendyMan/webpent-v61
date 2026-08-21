@@ -124,6 +124,35 @@ class RegisteredAdapter:
     source: str = "runtime"
     version: str = "unknown"
     policy_checked: bool = False
+    canonical_wrapper: str = ""
+    scope_policy: str = ""
+    static_inventory_ref: str = ""
+    proof_contract: str = ""
+    expires_at: str = ""
+
+    def g02_errors(self) -> tuple[str, ...]:
+        """Return missing or malformed execution-plane metadata.
+
+        Registration remains backward-compatible for legacy callers, while the
+        central execution plane can require this contract before an adapter is
+        actually invoked.
+        """
+        errors: list[str] = []
+        required = {
+            "canonical_wrapper": self.canonical_wrapper,
+            "scope_policy": self.scope_policy,
+            "static_inventory_ref": self.static_inventory_ref,
+            "proof_contract": self.proof_contract,
+            "expires_at": self.expires_at,
+        }
+        errors.extend(
+            f"adapter:{self.name}:{field}:required"
+            for field, value in required.items()
+            if not str(value or "").strip()
+        )
+        if self.expires_at and self.expires_at < "2026-08-21":
+            errors.append(f"adapter:{self.name}:approval_expired")
+        return tuple(errors)
 
 
 class AdapterRegistry:
@@ -154,6 +183,16 @@ class AdapterRegistry:
     def available(self, name: str) -> bool:
         return self.get(name) is not None
 
+    def validate_for_execution(self, name: str) -> tuple[bool, tuple[str, ...]]:
+        """Validate one adapter immediately before central execution."""
+        adapter = self.get(name)
+        if adapter is None:
+            return False, (f"adapter:{str(name or '').strip()}:not_registered",)
+        if not adapter.policy_checked:
+            return False, (f"adapter:{adapter.name}:policy_not_checked",)
+        errors = adapter.g02_errors()
+        return not errors, errors
+
     def manifest(self) -> list[dict[str, Any]]:
         return [
             {
@@ -163,6 +202,11 @@ class AdapterRegistry:
                 "source": adapter.source,
                 "version": adapter.version,
                 "policy_checked": adapter.policy_checked,
+                "canonical_wrapper": adapter.canonical_wrapper,
+                "scope_policy": adapter.scope_policy,
+                "static_inventory_ref": adapter.static_inventory_ref,
+                "proof_contract": adapter.proof_contract,
+                "expires_at": adapter.expires_at,
             }
             for adapter in sorted(self._adapters.values(), key=lambda item: item.name)
         ]
@@ -370,6 +414,8 @@ class RuntimeFactory:
             if use_default_ledger
             else None
         )
+        sink = event_sink or RuntimeEventSink()
+        registry = adapters or AdapterRegistry()
         authority = ActionAuthority(
             settings=settings,
             allowed_origin=normalized_origin,
@@ -377,13 +423,13 @@ class RuntimeFactory:
             used_actions=max(0, int(used_actions)),
             used_budget=max(0.0, float(used_budget)),
             ledger=action_ledger,
+            adapter_registry=registry,
+            require_g02=True,
         )
         bundle_store = (
             proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
         )
         executor = ActionExecutor(authority, proof_bundle_store=bundle_store)
-        sink = event_sink or RuntimeEventSink()
-        registry = adapters or AdapterRegistry()
         capability_gaps = cls._capability_gaps(
             adapters=registry,
             identity_tenant_object_graph=identity_tenant_object_graph,

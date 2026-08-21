@@ -144,6 +144,22 @@ def _preflight_contract() -> dict[str, Any]:
         }
 
 
+def _g02_checks() -> list[dict[str, Any]]:
+    """Run deterministic G-02 regeneration and independent runtime checks."""
+    return [
+        _run(
+            "g02-artifact-regeneration",
+            [PYTHON, "scripts/scan_direct_io.py"],
+            timeout=60,
+        ),
+        _run(
+            "g02-static-runtime-contract",
+            [PYTHON, "scripts/check_g02_runtime.py"],
+            timeout=60,
+        ),
+    ]
+
+
 def _qualification_checks() -> list[dict[str, Any]]:
     """Build and validate local qualification artifacts without live claims."""
     checks = [
@@ -330,6 +346,7 @@ def main() -> int:
             timeout=60,
         ),
     ]
+    checks.extend(_g02_checks())
     checks.extend(_qualification_checks())
     checks.extend(_security_checks())
     safety = _artifact_safety()

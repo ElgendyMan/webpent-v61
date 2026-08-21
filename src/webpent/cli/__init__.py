@@ -14,6 +14,7 @@ Usage:
 
 from __future__ import annotations
 
+import datetime
 import json
 from pathlib import Path
 from typing import Any
@@ -1223,9 +1224,7 @@ def investigate_command(
         "max_steps": 3,
         "destructive_poc": False,
         "approval_required": True,
-        "created_at": __import__("datetime")
-        .datetime.now(__import__("datetime").timezone.utc)
-        .isoformat(),
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     tasks.append(task)
     save_manifest(path, document)
