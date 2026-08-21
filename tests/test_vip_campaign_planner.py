@@ -14,6 +14,7 @@ def test_planner_materializes_all_campaign_contracts_without_claiming_tested() -
     assert all(entry["plugin_id"].startswith("campaign:") for entry in plan["entries"])
     assert all(entry["evidence_schema"] == "EvidenceLedgerEntry:v1" for entry in plan["entries"])
     assert all(entry["contract"]["preconditions"] for entry in plan["entries"])
+    assert all(not entry["contract"]["observed_preconditions"] for entry in plan["entries"])
     assert all(entry["contract"]["actions"] for entry in plan["entries"])
     assert all(entry["contract"]["oracle"] for entry in plan["entries"])
 
@@ -38,6 +39,10 @@ def test_planner_links_surface_workflow_and_explicit_gaps_in_dag() -> None:
     by_key = {entry["key"]: entry for entry in plan["entries"]}
     assert by_key["header_sqli"]["status"] == "tested"
     assert by_key["header_sqli"]["matched_observation_refs"] == ["surface-headers-1"]
+    assert (
+        by_key["header_sqli"]["contract"]["observed_preconditions"]
+        == by_key["header_sqli"]["contract"]["preconditions"]
+    )
     assert by_key["tenant_context_switching"]["status"] == "blocked-by-auth"
     assert "blocked-by-auth:tenant_context_switching" in by_key["tenant_context_switching"]["gaps"]
     assert "missing-negative-control:fixture" in plan["coverage_gaps"]
@@ -88,6 +93,14 @@ def test_planner_supports_generic_surface_inventory_without_waptlab_entries() ->
     by_key = {entry["key"]: entry for entry in plan["entries"]}
     assert by_key["api_issue"]["matched_observation_refs"] == ["api-1"]
     assert by_key["sqli_param"]["matched_observation_refs"] == ["query-1"]
+    assert (
+        by_key["api_issue"]["contract"]["observed_preconditions"]
+        == by_key["api_issue"]["contract"]["preconditions"]
+    )
+    assert (
+        by_key["sqli_param"]["contract"]["observed_preconditions"]
+        == by_key["sqli_param"]["contract"]["preconditions"]
+    )
     assert all(entry["status"] != "tested" for entry in plan["entries"])
 
 

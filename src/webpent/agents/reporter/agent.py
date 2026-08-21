@@ -609,6 +609,11 @@ def reporter_node(state: PentestState) -> dict:
         from webpent.reporter.export import export_all_formats
 
         campaign_ledger = dict(state.get("campaign_ledger") or {})
+        campaign_plan = state.get("campaign_plan")
+        if isinstance(campaign_plan, dict):
+            # Preserve the declarative planner output separately from the
+            # projection-only smart coverage ledger.
+            campaign_ledger["campaign_plan"] = campaign_plan
         campaign_ledger["coverage_projection"] = project_coverage_ledger(state)
         campaign_ledger["task_outcome_count"] = len(state.get("campaign_task_outcomes") or [])
         campaign_ledger["http_observation_count"] = len(state.get("smart_http_observations") or [])

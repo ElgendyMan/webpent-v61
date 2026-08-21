@@ -130,3 +130,25 @@ def test_offline_fixture_capabilities_are_not_live_validators() -> None:
     assert validator_id_for("xslt_injection") is None
     assert unknown.status == "missing-validator"
     assert unknown.validator_id is None
+
+
+
+def test_evidence_ledger_bounds_long_failure_reason() -> None:
+    long_reason = "tool failure: " + ("x" * 700)
+
+    merged = merge_evidence_ledger(
+        [
+            {
+                "entry_id": "entry-long-reason",
+                "campaign_key": "xss_reflection",
+                "vuln_class": "xss",
+                "target": "https://fixture.local/search",
+                "status": "needs_human_review",
+                "reason": long_reason,
+            }
+        ]
+    )
+
+    assert len(merged) == 1
+    assert len(merged[0]["reason"]) == 500
+    assert merged[0]["reason"].startswith("tool failure:")

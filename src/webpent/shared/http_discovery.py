@@ -23,10 +23,77 @@ from webpent.config.settings import get_settings
 # hypotheses. Operators can provide explicit seeds through discovery_route_seeds.
 _PRIORITY_ROUTE_SEEDS: tuple[str, ...] = ()
 
+def _extract_openapi_payload(text: str) -> dict[str, Any] | None:
+    """Parse a JSON OpenAPI document or an embedded Swagger UI JSON object.
+
+    Swagger UI commonly serves ``swagger-ui-init.js`` with a JSON-compatible
+    ``"swaggerDoc": { ... }`` object. We decode only that object; no JavaScript
+    is evaluated and arbitrary script content is never treated as a route list.
+    """
+    bounded = text[:1_000_000]
+    try:
+        payload = json.loads(bounded)
+        return payload if isinstance(payload, dict) else None
+    except (TypeError, ValueError):
+        marker = '"swaggerDoc"'
+        marker_index = bounded.find(marker)
+        if marker_index < 0:
+            return None
+        object_start = bounded.find("{", marker_index + len(marker))
+        if object_start < 0:
+            return None
+        try:
+            payload, _end = json.JSONDecoder().raw_decode(bounded, object_start)
+        except (TypeError, ValueError):
+            return None
+        return payload if isinstance(payload, dict) else None
+
+
+def _openapi_discovered_urls(payload: dict[str, Any], start: str) -> list[str]:
+    """Return bounded same-origin URLs from an OpenAPI ``paths`` object."""
+    paths = payload.get("paths", {})
+    if not isinstance(paths, dict):
+        return []
+    server_bases: list[str] = [start]
+    servers = payload.get("servers", [])
+    if isinstance(servers, list):
+        for server in servers[:5]:
+            if not isinstance(server, dict):
+                continue
+            server_url = str(server.get("url", "")).strip()
+            if server_url:
+                resolved = _normalise_url(server_url, start)
+                if resolved:
+                    server_bases.append(resolved.rstrip("/"))
+    discovered: list[str] = []
+    for raw_path in list(paths)[:100]:
+        path = str(raw_path).strip()
+        if not path or not path.startswith("/"):
+            continue
+        for base in server_bases:
+            candidate = _normalise_url(f"{base.rstrip('/')}{path}", start)
+            if candidate and candidate not in discovered:
+                discovered.append(candidate)
+    return discovered
+
+
 # No route is assumed to exist on an arbitrary target. Generic API/document
 # probes are handled above through their own response-aware discovery paths;
 # this seed list remains empty unless the operator configures explicit routes.
 _DEFAULT_ROUTE_SEEDS: tuple[str, ...] = ()
+
+# Common API-document locations are passive, bounded GET candidates. They are
+# not target-specific attack paths: a route is queued only when the response is
+# a valid document containing a bounded ``paths`` object, and every discovered
+# path still goes through same-origin and safe-GET checks below.
+_OPENAPI_DOCUMENT_PATHS: tuple[str, ...] = (
+    "/openapi.json",
+    "/swagger.json",
+    "/api-docs/swagger.json",
+    "/api-docs/openapi.json",
+    "/api-docs/swagger-ui-init.js",
+    "/swagger/v1/swagger.json",
+)
 
 
 class _SurfaceParser(HTMLParser):
@@ -126,18 +193,18 @@ def _same_origin(url: str, base_url: str) -> bool:
         return False
 
 
-def _normalise_url(candidate: str, base_url: str) -> str | None:
-    if not candidate:
+def _normalise_url(url: str, base: str) -> str | None:
+    if not url:
         return None
-    lowered = candidate.strip().lower()
+    lowered = url.strip().lower()
     if lowered.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
         return None
-    absolute = urljoin(base_url, candidate.strip())
+    absolute = urljoin(base, url.strip())
     try:
         parts = urlsplit(absolute)
         if parts.scheme not in {"http", "https"} or not parts.hostname:
             return None
-        if not _same_origin(absolute, base_url):
+        if not _same_origin(absolute, base):
             return None
         # Fragments are client-side state and do not identify a server route.
         return urlunsplit((parts.scheme, parts.netloc, parts.path or "/", parts.query, ""))
@@ -354,19 +421,21 @@ def discover_http_surface(
             except Exception:
                 errors += 1
 
-        openapi_candidates = [f"{origin}/openapi.json", f"{origin}/swagger.json"]
+        openapi_candidates = [
+            f"{origin}{path}"
+            for path in _OPENAPI_DOCUMENT_PATHS
+        ]
         for openapi_url in openapi_candidates:
             try:
                 api_response = client.get(openapi_url)
                 if api_response.status_code >= 400:
                     continue
-                payload = json.loads(str(getattr(api_response, "text", ""))[:1_000_000])
-                paths = payload.get("paths", {}) if isinstance(payload, dict) else {}
-                if isinstance(paths, dict):
+                payload = _extract_openapi_payload(str(getattr(api_response, "text", "")))
+                discovered_paths = _openapi_discovered_urls(payload, start) if payload else []
+                if discovered_paths:
                     discovery_metadata["openapi_urls"].append(openapi_url)
-                    for path in list(paths)[:100]:
-                        discovered = _normalise_url(str(path), start)
-                        if discovered and discovered not in queued and len(queued) < max_pages * 3:
+                    for discovered in discovered_paths:
+                        if discovered not in queued and len(queued) < max_pages * 3:
                             queue.append((discovered, 0))
                             queued.add(discovered)
             except Exception:

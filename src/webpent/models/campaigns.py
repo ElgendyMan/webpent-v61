@@ -15,6 +15,10 @@ class CampaignExecutionContract(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     preconditions: list[str] = Field(default_factory=list, max_length=12)
+    # Evidence-backed materialization populated only when the planner matched
+    # a concrete surface/workflow observation.  It is intentionally separate
+    # from declared preconditions so the executor can remain fail-closed.
+    observed_preconditions: list[str] = Field(default_factory=list, max_length=12)
     identities: list[str] = Field(default_factory=list, max_length=8)
     actions: list[str] = Field(default_factory=list, max_length=12)
     payload_strategy: list[str] = Field(default_factory=list, max_length=12)
@@ -31,6 +35,7 @@ class CampaignExecutionContract(BaseModel):
 
     @field_validator(
         "preconditions",
+        "observed_preconditions",
         "identities",
         "actions",
         "payload_strategy",

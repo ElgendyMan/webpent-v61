@@ -132,3 +132,23 @@ def test_offline_llm_supervisor_is_fail_closed_without_invoke():
         )
         is False
     )
+
+
+def test_validator_attempts_not_scanned_auth_bypass_before_terminal_marking(monkeypatch):
+    finding = _finding(
+        vuln_class=VulnClass.AUTH_BYPASS,
+        confidence_level="Not Scanned",
+    )
+    calls: list[str] = []
+
+    def mark_validated(*args, **kwargs):
+        calls.append("called")
+        return finding.model_copy(update={"confidence_level": "Needs Human Review"})
+
+    monkeypatch.setattr(validator_module, "_validate_with_tool", mark_validated)
+
+    result = validator_module.validator_node({"findings": [finding]})
+
+    assert calls == ["called"]
+    assert result["findings"][0].confidence_level == "Needs Human Review"
+    assert result["findings"][0].evidence["validation_attempted"] is True

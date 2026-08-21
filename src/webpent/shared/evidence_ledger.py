@@ -11,7 +11,13 @@ from webpent.models.evidence_ledger import EvidenceLedgerEntry
 def _entry_model(value: EvidenceLedgerEntry | Mapping[str, Any]) -> EvidenceLedgerEntry:
     if isinstance(value, EvidenceLedgerEntry):
         return value
-    return EvidenceLedgerEntry.model_validate(dict(value))
+    payload = dict(value)
+    reason = payload.get("reason")
+    if reason is not None:
+        # Tool failures can contain a long command/output excerpt.  Keep the
+        # model's bounded diagnostic field from rejecting the whole ledger.
+        payload["reason"] = str(reason)[:500]
+    return EvidenceLedgerEntry.model_validate(payload)
 
 
 def merge_evidence_ledger(

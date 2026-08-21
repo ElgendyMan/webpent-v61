@@ -264,30 +264,12 @@ def _probe_jwt_alg_none(
     ]
     for path in probe_paths:
         url = _resolve_url(base_url, path)
-        # V9 P0 B4: attach session cookies alongside the JWT probe. Never
-        # merge a real Authorization header: the unsigned token is the test.
-        headers: dict[str, str] = {
-            str(name): str(value)
-            for name, value in (auth_headers or {}).items()
-            if str(name).lower() != "authorization" and str(value).strip()
-        }
-        headers["Authorization"] = f"Bearer {_JWT_ALG_NONE_TOKEN}"
-        if cookies:
-            # V10 HOSTILE-AUDIT FIX: build_cookie_header was never
-            # imported in this function (only _probe_graphql imported
-            # it locally) — this line raised an uncaught NameError on
-            # every call where `cookies` was truthy, i.e. on EVERY
-            # authenticated scan. It sat before this function's own
-            # try/except (which only wraps the httpx call below), and
-            # api_testing_node calls this function with no try/except
-            # of its own, so the NameError propagated all the way out
-            # of api_testing_node and aborted the whole pentest task —
-            # caught only by pentest_worker's top-level handler
-            # (emergency-persists findings gathered so far, marks the
-            # task failed). Reproduced and confirmed before this fix.
-            from webpent.shared.http import build_cookie_header
-
-            headers["Cookie"] = build_cookie_header(cookies)
+        # The JWT differential must be unauthenticated.  Never attach a
+        # validated session cookie: otherwise the server can authenticate the
+        # request because of the cookie and the probe would falsely attribute
+        # the 200 response to alg=none.  Keep the parameter for backward
+        # compatibility, but deliberately do not consume it in this branch.
+        headers = {"Authorization": f"Bearer {_JWT_ALG_NONE_TOKEN}"}
         try:
             with client_factory(timeout=10.0, follow_redirects=False, verify=True) as client:
                 baseline = client.get(url, headers={})
@@ -323,6 +305,11 @@ def _probe_jwt_alg_none(
                             url=url,
                             tool_name="api_testing_agent",
                             payload=f"Authorization: Bearer {_JWT_ALG_NONE_TOKEN[:80]}...",
+                            evidence={
+                                "jwt_probe": "alg=none",
+                                "probe_endpoint": url,
+                                "probe_response_status": resp.status_code,
+                            },
                             reasoning=(
                                 f"Sent alg=none JWT to {url}. Server returned 200 "
                                 f"({len(resp.content)} bytes) instead of 401/403. "

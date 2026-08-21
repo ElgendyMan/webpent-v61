@@ -271,6 +271,14 @@ def build_report_data(
             "advisory_count": len(disclosed_report_advisories or []),
         },
         "smart_coverage": _redact_report_value(coverage_ledger or {}),
+        # Keep the declarative plan visible separately from the projection-only
+        # coverage ledger.  Older callers that do not provide it get an empty
+        # object, preserving backward-compatible report generation.
+        "campaign_plan": _redact_report_value(
+            (campaign_ledger or {}).get("campaign_plan", {})
+            if isinstance(campaign_ledger, dict)
+            else {}
+        ),
         "campaign_ledger": _redact_report_value(campaign_ledger or {}),
         "proof_observability": _redact_report_value(proof_observability or {}),
         "smart_coverage_gate": {

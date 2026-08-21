@@ -1979,6 +1979,7 @@ def _validate_with_tool(
             cookies=session_cookies,
             target_url=target_url,
             engagement_id=engagement_id,
+            target_scope=target_scope,
         )
     elif vuln_class == "api_issue":
         from webpent.agents.validator.structural_checks import validate_api_issue
@@ -2997,7 +2998,6 @@ def validator_node(state: PentestState) -> dict:
             "Tool-Confirmed",
             "Needs Human Review",
             "Clean",
-            "Not Scanned",
         }
         governance = state.get("smart_governance") or {}
         known_swagger_probe = (

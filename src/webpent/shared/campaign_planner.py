@@ -308,8 +308,19 @@ def _observation_tokens(item: Mapping[str, Any]) -> set[str]:
     }
 
 
-def _contract(key: str, *, status: str, gaps: list[str]) -> CampaignExecutionContract:
+def _contract(
+    key: str,
+    *,
+    status: str,
+    gaps: list[str],
+    observed_preconditions: list[str] | None = None,
+) -> CampaignExecutionContract:
     raw = dict(_CONTRACTS.get(key, {}))
+    # A declared precondition becomes observed only when the planner has a
+    # concrete same-target observation supporting this campaign.  This keeps
+    # execution fail-closed for unobserved campaigns while materializing the
+    # evidence channel expected by the central executor.
+    raw["observed_preconditions"] = list(observed_preconditions or [])[:12]
     raw["confidence_state"] = (
         "blocked" if status.startswith("blocked") else "ready" if not gaps else "unplanned"
     )
@@ -401,7 +412,14 @@ def build_campaign_plan(
             status=status,
             matched_observation_refs=refs,
             gaps=list(dict.fromkeys(gaps))[:12],
-            contract=_contract(key, status=status, gaps=gaps),
+            contract=_contract(
+                key,
+                status=status,
+                gaps=gaps,
+                observed_preconditions=(
+                    list(_CONTRACTS.get(key, {}).get("preconditions", [])) if refs else []
+                ),
+            ),
         )
         entries.append(entry)
         nodes.append(

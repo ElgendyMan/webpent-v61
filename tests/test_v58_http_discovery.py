@@ -755,3 +755,93 @@ def test_http_supplement_remains_opt_in_outside_qualification(monkeypatch) -> No
     assert result["crawled_data"]["endpoints"] == ["http://lab.test/"]
     assert called is False
     assert "http_discovery" not in result["crawled_data"]
+
+
+def test_http_surface_discovers_api_docs_swagger_paths(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    pages = {
+        "http://lab.test/": (200, "text/html", "<h1>home</h1>"),
+        "http://lab.test/api-docs/swagger.json": (
+            200,
+            "application/json",
+            '{"openapi":"3.0.0","paths":{"/rest/user/login":{},"/api/Products":{}}}',
+        ),
+        "http://lab.test/rest/user/login": (405, "application/json", "{}"),
+        "http://lab.test/api/Products": (200, "application/json", "[]"),
+    }
+
+    class FakeResponse:
+        def __init__(self, status_code: int, content_type: str, text: str) -> None:
+            self.status_code = status_code
+            self.headers = {"content-type": content_type}
+            self.text = text
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            status, content_type, text = pages.get(url, (404, "text/plain", ""))
+            return FakeResponse(status, content_type, text)
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    result = discover_http_surface("http://lab.test/", max_pages=5)
+
+    metadata = result["discovery_metadata"]
+    assert metadata["openapi_urls"] == ["http://lab.test/api-docs/swagger.json"]
+    assert "http://lab.test/rest/user/login" in result["endpoints"]
+    assert "http://lab.test/api/Products" in result["endpoints"]
+    assert all("outside.test" not in url for url in result["endpoints"])
+
+
+def test_http_surface_discovers_embedded_swagger_ui_document(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    init_js = (
+        'window.onload=function(){var options={"swaggerDoc":'
+        '{"openapi":"3.0.0","servers":[{"url":"/b2b/v2"}],'
+        '"paths":{"/orders":{},"https://outside.test/nope":{}}};}'
+    )
+    pages = {
+        "http://lab.test/": (200, "text/html", "<h1>home</h1>"),
+        "http://lab.test/api-docs/swagger-ui-init.js": (
+            200,
+            "application/javascript",
+            init_js,
+        ),
+        "http://lab.test/b2b/v2/orders": (405, "application/json", "{}"),
+    }
+
+    class FakeResponse:
+        def __init__(self, status_code: int, content_type: str, text: str) -> None:
+            self.status_code = status_code
+            self.headers = {"content-type": content_type}
+            self.text = text
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            status, content_type, text = pages.get(url, (404, "text/plain", ""))
+            return FakeResponse(status, content_type, text)
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    result = discover_http_surface("http://lab.test/", max_pages=5)
+
+    assert "http://lab.test/api-docs/swagger-ui-init.js" in result["discovery_metadata"][
+        "openapi_urls"
+    ]
+    assert "http://lab.test/b2b/v2/orders" in result["endpoints"]
+    assert all("outside.test" not in url for url in result["endpoints"])

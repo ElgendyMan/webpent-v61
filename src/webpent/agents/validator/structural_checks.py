@@ -529,6 +529,7 @@ def validate_auth_bypass(
     cookies: dict[str, str] | None = None,
     target_url: str | None = None,
     engagement_id: str = "default-engagement",
+    target_scope: tuple[str, ...] = (),
 ) -> Finding:
     """Run a conservative auth-bypass differential check.
 
@@ -538,7 +539,16 @@ def validate_auth_bypass(
     token control.  Cookies are deliberately excluded from this branch so a
     valid session cannot create a false JWT confirmation.
     """
-    jwt_probe = "alg=none" in (finding.payload or "").lower()
+    finding_evidence = dict(finding.evidence or {})
+    jwt_probe = bool(finding_evidence.get("jwt_probe")) or any(
+        marker in " ".join(
+            (
+                str(finding.title or ""),
+                str(finding.payload or ""),
+            )
+        ).lower()
+        for marker in ("alg=none", "alg:none")
+    )
     if jwt_probe:
         from webpent.shared.http import make_safe_httpx_client
 
@@ -550,6 +560,14 @@ def validate_auth_bypass(
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
             "eyJzdWIiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.invalid"
         )
+        scope_token = None
+        if target_scope:
+            from webpent.shared.engagement_scope import (
+                clear_engagement_target_hosts,
+                set_engagement_target_hosts,
+            )
+
+            scope_token = set_engagement_target_hosts(*target_scope)
         try:
             with make_safe_httpx_client(
                 timeout=10.0,
@@ -572,6 +590,9 @@ def validate_auth_bypass(
                     "reasoning": f"JWT differential replay could not run: {type(exc).__name__}.",
                 }
             )
+        finally:
+            if scope_token is not None:
+                clear_engagement_target_hosts(scope_token)
 
         evidence = (
             {
