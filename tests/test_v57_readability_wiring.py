@@ -98,7 +98,7 @@ def test_anthropic_provider_is_routable_and_enables_prompt_caching(
     assert calls == [
         {
             "api_key": "test-anthropic-key",
-            "model_name": "claude-3-5-sonnet-20241022",
+            "model_name": "claude-sonnet-5",
             "settings": settings,
         }
     ]

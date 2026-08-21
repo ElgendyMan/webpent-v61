@@ -176,7 +176,7 @@ class Settings(BaseSettings):
         description="Default LLM provider used by legacy code paths.",
     )
     default_llm_model: str = Field(
-        default="claude-3-5-sonnet-20241022",
+        default="claude-sonnet-5",
         description="Default model identifier for the selected provider.",
     )
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)

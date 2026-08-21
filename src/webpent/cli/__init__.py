@@ -631,14 +631,18 @@ def scan(
                 engagement_id=resolved_engagement_id,
             )
             console.print("\n[bold blue][*] Invoking LangGraph orchestrator...[/bold blue]\n")
-            from webpent.shared.llm import llm_enabled_override
+            from webpent.shared.llm import llm_enabled_override, llm_usage_scope
 
             if stealth:
                 from webpent.shared.stealth import reset_stealth_telemetry
 
                 reset_stealth_telemetry()
-            with llm_enabled_override(False if no_llm else None):
+            with llm_enabled_override(False if no_llm else None), llm_usage_scope():
                 final_state = graph.invoke(initial_state, config=config)
+                if isinstance(final_state, dict):
+                    from webpent.shared.llm import get_llm_usage_trace
+
+                    final_state["llm_usage_trace"] = get_llm_usage_trace()
 
     except Exception as exc:
         err_console.print(f"[red]ERROR: Engagement failed — {exc}[/red]")

@@ -77,6 +77,14 @@ def test_causal_projection_links_finding_and_consults_negative_ledger() -> None:
     assert link["negative_evidence_reusable_count"] == 1
     assert result["causal_attack_graph"]["negative_evidence_consulted"] is True
     assert result["research_session"]["causal_attack_graph"]
+    artifact = result["research_round_artifacts"]["0"]
+    assert artifact["artifact_id"].startswith("research-round:")
+    assert artifact["engagement_scope"] == "engagement-1"
+    assert artifact["negative_evidence_consulted"] is True
+    assert artifact["evidence_only"] is True
+    assert "https://target.test/profile" not in str(artifact)
+    repeated = build_causal_research_projection(state)
+    assert repeated["research_round_artifacts"] == result["research_round_artifacts"]
 
 
 def test_negative_ledger_is_fail_closed_across_engagements() -> None:

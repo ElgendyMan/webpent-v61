@@ -143,6 +143,7 @@ def build_report_data(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    llm_usage_trace: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build the canonical report data structure used by all export formats.
 
@@ -289,6 +290,7 @@ def build_report_data(
             if isinstance(campaign_ledger, dict)
             else []
         ),
+        "llm_usage_trace": _redact_report_value(llm_usage_trace or []),
         "proof_observability": _redact_report_value(proof_observability or {}),
         "smart_coverage_gate": {
             "status": "ready" if smart_gate_ledger else "not_available",
@@ -364,6 +366,7 @@ def export_to_json(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    llm_usage_trace: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Export findings to a JSON report with audit trail.
 
@@ -394,6 +397,7 @@ def export_to_json(
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
         authorization_matrix=authorization_matrix,
+        llm_usage_trace=llm_usage_trace,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "report.json"
@@ -701,6 +705,7 @@ def export_all_formats(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    llm_usage_trace: list[dict[str, Any]] | None = None,
     formats: list[str] | None = None,
 ) -> dict[str, Path | None]:
     """Export selected formats; ``None`` preserves historical JSON/HTML/PDF."""
@@ -725,6 +730,7 @@ def export_all_formats(
         "campaign_ledger": campaign_ledger,
         "proof_observability": proof_observability,
         "authorization_matrix": authorization_matrix,
+        "llm_usage_trace": llm_usage_trace,
     }
     paths: dict[str, Path | None] = {}
     if "json" in requested:

@@ -652,6 +652,7 @@ def reporter_node(state: PentestState) -> dict:
             campaign_ledger["campaign_plan"] = campaign_plan
         campaign_ledger["coverage_projection"] = project_coverage_ledger(state)
         campaign_ledger["llm_budget_trace"] = list(state.get("llm_budget_trace") or [])
+        campaign_ledger["llm_usage_trace"] = list(state.get("llm_usage_trace") or [])
         campaign_ledger["task_outcome_count"] = len(state.get("campaign_task_outcomes") or [])
         campaign_ledger["http_observation_count"] = len(state.get("smart_http_observations") or [])
         paths = export_all_formats(
@@ -683,6 +684,7 @@ def reporter_node(state: PentestState) -> dict:
             campaign_ledger=campaign_ledger,
             proof_observability=dict(state.get("proof_observability") or {}),
             authorization_matrix=dict(state.get("authorization_matrix") or {}),
+            llm_usage_trace=list(state.get("llm_usage_trace") or []),
             formats=list(selected_formats) if selected_formats else None,
         )
         export_ok = True

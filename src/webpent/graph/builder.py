@@ -91,6 +91,11 @@ from webpent.shared.autonomous_controller import autonomous_controller_node
 from webpent.shared.campaign_executor import CampaignTask, resolve_preconditions
 from webpent.shared.causal_research import build_causal_research_projection
 from webpent.shared.research_contracts import active_research_node
+from webpent.shared.research_nodes import (
+    knowledge_gap_node,
+    next_best_action_node,
+    research_session_node,
+)
 from webpent.shared.runtime import RegisteredAdapter, RuntimeContext
 from webpent.state.state import PentestState
 
@@ -149,6 +154,9 @@ NODE_SMART_CAMPAIGNS_EXECUTION = "smart_campaigns_execution"
 NODE_AUTONOMOUS_CONTROLLER = "autonomous_controller"
 NODE_ACTIVE_RESEARCH = "active_research"
 NODE_CAUSAL_RESEARCH = "causal_research"
+NODE_KNOWLEDGE_GAP = "knowledge_gap"
+NODE_NEXT_BEST_ACTION = "next_best_action"
+NODE_RESEARCH_SESSION = "research_session"
 NODE_RECOVERY = "recovery"
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
@@ -319,11 +327,11 @@ def route_after_autonomous_controller(state: PentestState) -> str:
         return NODE_STRATEGIST
     if replanning.get("controller_executed") is not True:
         return NODE_STRATEGIST
-    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
-        return NODE_ACTIVE_RESEARCH
-    if not state.get("smart_next_actions"):
+    if runs >= _autonomous_max_runs(state):
         return NODE_STRATEGIST
-    return NODE_SMART_CAMPAIGNS if runs < _autonomous_max_runs(state) else NODE_STRATEGIST
+    if _research_candidates_available(state) or not state.get("smart_next_actions"):
+        return NODE_KNOWLEDGE_GAP
+    return NODE_SMART_CAMPAIGNS
 
 
 def _active_research_task(candidate: CandidateAction, state: Mapping[str, Any]) -> CampaignTask:
@@ -526,6 +534,14 @@ def route_after_recovery(state: PentestState) -> str:
         runs = int(state.get("autonomous_controller_runs", 0) or 0)
         if runs < _autonomous_max_runs(state):
             return NODE_AUTONOMOUS_CONTROLLER
+    return NODE_STRATEGIST
+
+
+def route_after_research_session(state: PentestState) -> str:
+    """Enter active research only with a validated, unattempted candidate."""
+    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
+        return NODE_ACTIVE_RESEARCH
     return NODE_STRATEGIST
 
 
@@ -945,6 +961,9 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_SMART_CAMPAIGNS_EXECUTION, smart_campaigns_execution_node)
     graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
     graph.add_node(NODE_RECOVERY, recovery_node)
+    graph.add_node(NODE_KNOWLEDGE_GAP, knowledge_gap_node)
+    graph.add_node(NODE_NEXT_BEST_ACTION, next_best_action_node)
+    graph.add_node(NODE_RESEARCH_SESSION, research_session_node)
     graph.add_node(NODE_ACTIVE_RESEARCH, _active_research_runtime_node)
     graph.add_node(NODE_CAUSAL_RESEARCH, causal_research_node)
     if _attack_graph_enabled():
@@ -1065,6 +1084,7 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
         {
             NODE_SMART_CAMPAIGNS: NODE_SMART_CAMPAIGNS,
             NODE_RECOVERY: NODE_RECOVERY,
+            NODE_KNOWLEDGE_GAP: NODE_KNOWLEDGE_GAP,
             NODE_ACTIVE_RESEARCH: NODE_ACTIVE_RESEARCH,
             NODE_STRATEGIST: NODE_STRATEGIST,
         },
@@ -1074,6 +1094,16 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
         route_after_recovery,
         {
             NODE_AUTONOMOUS_CONTROLLER: NODE_AUTONOMOUS_CONTROLLER,
+            NODE_STRATEGIST: NODE_STRATEGIST,
+        },
+    )
+    graph.add_edge(NODE_KNOWLEDGE_GAP, NODE_NEXT_BEST_ACTION)
+    graph.add_edge(NODE_NEXT_BEST_ACTION, NODE_RESEARCH_SESSION)
+    graph.add_conditional_edges(
+        NODE_RESEARCH_SESSION,
+        route_after_research_session,
+        {
+            NODE_ACTIVE_RESEARCH: NODE_ACTIVE_RESEARCH,
             NODE_STRATEGIST: NODE_STRATEGIST,
         },
     )

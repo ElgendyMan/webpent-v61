@@ -232,6 +232,7 @@ def build_initial_state(
         "stealth_mode": bool(stealth_mode),
         "stealth_telemetry": {},
         "llm_enabled_override": llm_override,
+        "llm_usage_trace": [],
         "report_formats": normalized_formats,
         "auto_approve": bool(auto_approve),
         "enable_autonomous_controller": bool(enable_autonomous_controller),
@@ -293,6 +294,7 @@ def build_initial_state(
         "campaign_task_outcomes": [],
         "smart_next_actions": [],
         "smart_http_observations": [],
+        "research_round_artifacts": {},
         "recovery_events": [],
         "recovery_state": {
             "status": "not_started",

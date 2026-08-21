@@ -32,12 +32,14 @@ Logging accuracy:
 from __future__ import annotations
 
 import html
+import inspect
 import json
 import logging
 import re
 import threading
 import time
 import unicodedata
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from enum import Enum
@@ -78,6 +80,149 @@ _DEAD_PROVIDERS_LOCK = threading.Lock()
 _LLM_ENABLED_OVERRIDE: ContextVar[bool | None] = ContextVar(
     "webpent_llm_enabled_override", default=None
 )
+
+# Actual provider usage is diagnostic telemetry only. It is intentionally
+# bounded, redaction-safe, and independent from action authorization, findings,
+# and proof promotion. Unknown provider/model prices remain unpriced rather
+# than being guessed.
+_LLM_USAGE_TRACE_MAX = 4096
+_LLM_USAGE_TRACE: list[dict[str, object]] = []
+_LLM_USAGE_LOCK = threading.Lock()
+_LLM_USAGE_CONTEXT: ContextVar[list[dict[str, object]] | None] = ContextVar(
+    "webpent_llm_usage_context", default=None
+)
+
+
+@contextmanager
+def llm_usage_scope() -> Iterator[list[dict[str, object]]]:
+    """Collect actual LLM usage for one graph execution context."""
+    bucket: list[dict[str, object]] = []
+    token = _LLM_USAGE_CONTEXT.set(bucket)
+    try:
+        yield bucket
+    finally:
+        _LLM_USAGE_CONTEXT.reset(token)
+
+
+def clear_llm_usage_trace() -> None:
+    """Clear the active or process-local usage trace."""
+    active = _LLM_USAGE_CONTEXT.get()
+    if active is not None:
+        active.clear()
+        return
+    with _LLM_USAGE_LOCK:
+        _LLM_USAGE_TRACE.clear()
+
+
+def get_llm_usage_trace() -> list[dict[str, object]]:
+    """Return a bounded, redaction-safe snapshot of actual LLM invocations."""
+    active = _LLM_USAGE_CONTEXT.get()
+    if active is not None:
+        return [dict(entry) for entry in active]
+    with _LLM_USAGE_LOCK:
+        return [dict(entry) for entry in _LLM_USAGE_TRACE]
+
+
+def _usage_node_from_config(config: object | None) -> str | None:
+    """Read an explicitly supplied node label without trusting prompt data."""
+    if not isinstance(config, dict):
+        return None
+    metadata = config.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    node = metadata.get("webpent_node") or metadata.get("node")
+    return str(node)[:80] if node else None
+
+
+def _infer_usage_node() -> str:
+    """Infer the owning graph node for legacy invoke calls.
+
+    Existing agents invoke the returned runnable directly and do not all pass
+    LangChain metadata. The stack inspection is only telemetry labeling; it
+    never authorizes a request, changes a prompt, or affects fallback routing.
+    """
+    try:
+        for frame in inspect.stack(context=0)[2:]:
+            name = frame.function
+            if name.endswith("_node"):
+                return name[:80]
+    except Exception:  # pragma: no cover - diagnostics must never break LLM use
+        pass
+    return "unknown"
+
+
+def _usage_int(value: object) -> int | None:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
+
+
+def _extract_usage(response: object) -> tuple[int | None, int | None, int | None]:
+    """Extract common LangChain/provider token fields without provider assumptions."""
+    candidates: list[object] = []
+    for attr in ("usage_metadata", "response_metadata"):
+        value = getattr(response, attr, None)
+        if isinstance(value, dict):
+            candidates.append(value)
+            for nested_key in ("token_usage", "usage"):
+                nested = value.get(nested_key)
+                if isinstance(nested, dict):
+                    candidates.append(nested)
+    input_tokens = output_tokens = total_tokens = None
+    for metadata in candidates:
+        assert isinstance(metadata, dict)
+        input_tokens = input_tokens or _usage_int(
+            metadata.get("input_tokens", metadata.get("prompt_tokens"))
+        )
+        output_tokens = output_tokens or _usage_int(
+            metadata.get("output_tokens", metadata.get("completion_tokens"))
+        )
+        total_tokens = total_tokens or _usage_int(metadata.get("total_tokens"))
+    if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        total_tokens = input_tokens + output_tokens
+    return input_tokens, output_tokens, total_tokens
+
+
+def _record_llm_usage(
+    *,
+    provider: str,
+    model: str,
+    task_type: str,
+    config: object | None,
+    response: object | None = None,
+    error_type: str | None = None,
+) -> None:
+    """Append one redaction-safe usage record; telemetry failures are fail-open."""
+    try:
+        input_tokens, output_tokens, total_tokens = _extract_usage(response)
+        entry: dict[str, object] = {
+            "provider": str(provider)[:80],
+            "model": str(model)[:160],
+            "task_type": str(task_type)[:40],
+            "node": _usage_node_from_config(config) or _infer_usage_node(),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            "pricing_status": "unpriced",
+            "estimated_cost_usd": None,
+            "status": "error" if error_type else (
+                "usage_reported" if total_tokens is not None else "usage_unavailable"
+            ),
+        }
+        if error_type:
+            entry["error_type"] = str(error_type)[:120]
+        active = _LLM_USAGE_CONTEXT.get()
+        if active is not None:
+            active.append(entry)
+            del active[:-_LLM_USAGE_TRACE_MAX]
+            return
+        with _LLM_USAGE_LOCK:
+            _LLM_USAGE_TRACE.append(entry)
+            del _LLM_USAGE_TRACE[:-_LLM_USAGE_TRACE_MAX]
+    except Exception:  # pragma: no cover - observability cannot break execution
+        logger.debug("Could not record LLM usage telemetry", exc_info=True)
 
 
 @contextmanager
@@ -246,7 +391,7 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
         ("github", "gpt-4o"),
         ("cerebras", "llama3.1-70b"),
-        ("anthropic", "claude-3-5-sonnet-20241022"),
+        ("anthropic", "claude-sonnet-5"),
         ("cohere", "command-r-plus"),
         ("zai", "glm-5.2"),
         # V7 Phase 6 FIX: gemini-1.5-flash is on Google's deprecation
@@ -260,7 +405,7 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("groq", "llama-3.3-70b-versatile"),
         ("openai", "gpt-4o"),
         ("cerebras", "llama3.1-70b"),
-        ("anthropic", "claude-3-5-sonnet-20241022"),
+        ("anthropic", "claude-sonnet-5"),
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
         ("github", "gpt-4o"),
         ("cohere", "command-r-plus"),
@@ -298,7 +443,7 @@ _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
         ("github", "gpt-4o"),
         ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
         ("cerebras", "llama3.1-70b"),
-        ("anthropic", "claude-3-5-sonnet-20241022"),
+        ("anthropic", "claude-sonnet-5"),
         ("cohere", "command-r-plus"),
         ("zai", "glm-5.1"),
         ("gemini", "gemini-2.0-flash"),
@@ -628,9 +773,17 @@ class _ProviderGuardedRunnable(Runnable):
     structured provider status failures (400/401/429) as dead.
     """
 
-    def __init__(self, inner: Runnable, provider: str) -> None:
+    def __init__(
+        self,
+        inner: Runnable,
+        provider: str,
+        model_name: str = "unknown",
+        task_type: str = "unknown",
+    ) -> None:
         self.inner = inner
         self.provider = provider
+        self.model_name = model_name
+        self.task_type = task_type
 
     def _record_failure(self, exc: BaseException) -> None:
         if _should_trip_circuit_breaker(exc):
@@ -638,9 +791,24 @@ class _ProviderGuardedRunnable(Runnable):
 
     def invoke(self, input: object, config: object | None = None, **kwargs: object) -> object:
         try:
-            return self.inner.invoke(input, config=config, **kwargs)
+            response = self.inner.invoke(input, config=config, **kwargs)
+            _record_llm_usage(
+                provider=self.provider,
+                model=self.model_name,
+                task_type=self.task_type,
+                config=config,
+                response=response,
+            )
+            return response
         except Exception as exc:  # noqa: BLE001 - preserve fallback exception
             self._record_failure(exc)
+            _record_llm_usage(
+                provider=self.provider,
+                model=self.model_name,
+                task_type=self.task_type,
+                config=config,
+                error_type=type(exc).__name__,
+            )
             raise
 
     async def ainvoke(
@@ -650,16 +818,37 @@ class _ProviderGuardedRunnable(Runnable):
         **kwargs: object,
     ) -> object:
         try:
-            return await self.inner.ainvoke(input, config=config, **kwargs)
+            response = await self.inner.ainvoke(input, config=config, **kwargs)
+            _record_llm_usage(
+                provider=self.provider,
+                model=self.model_name,
+                task_type=self.task_type,
+                config=config,
+                response=response,
+            )
+            return response
         except Exception as exc:  # noqa: BLE001 - preserve fallback exception
             self._record_failure(exc)
+            _record_llm_usage(
+                provider=self.provider,
+                model=self.model_name,
+                task_type=self.task_type,
+                config=config,
+                error_type=type(exc).__name__,
+            )
             raise
 
 
-def _guard_provider_runnable(model: object, provider: str) -> object:
-    """Wrap real LangChain runnables while keeping lightweight test doubles intact."""
+def _guard_provider_runnable(
+    model: object,
+    provider: str,
+    *,
+    model_name: str = "unknown",
+    task_type: str = "unknown",
+) -> object:
+    """Wrap runnables while preserving fallback behavior and recording usage."""
     if isinstance(model, Runnable):
-        return _ProviderGuardedRunnable(model, provider)
+        return _ProviderGuardedRunnable(model, provider, model_name, task_type)
     return model
 
 
@@ -812,7 +1001,12 @@ def get_independent_llm(
         resolved = _resolve_model_name(provider, model_name, settings)
         model = _build_model(provider, resolved, settings)
         if model is not None:
-            return provider, _guard_provider_runnable(model, provider)
+            return provider, _guard_provider_runnable(
+                model,
+                provider,
+                model_name=resolved,
+                task_type=task_type.value,
+            )
     return None
 
 
@@ -903,7 +1097,12 @@ def get_llm(
         resolved_model_name = _resolve_model_name(provider, model_name, settings)
         model = _build_model(provider, resolved_model_name, settings)
         if model is not None:
-            model = _guard_provider_runnable(model, provider)
+            model = _guard_provider_runnable(
+                model,
+                provider,
+                model_name=resolved_model_name,
+                task_type=task_type.value,
+            )
             built.append((model, provider, resolved_model_name))
             logger.debug(
                 "Task %s: registered provider=%s model=%s",

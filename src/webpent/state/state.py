@@ -199,6 +199,9 @@ class PentestState(TypedDict, total=False):
     scope_drift_detected: bool
     scope_drift_events: Annotated[list[dict[str, Any]], merge_lists]
     llm_budget_trace: Annotated[list[dict[str, Any]], merge_lists]
+    # Actual provider token telemetry; redaction-safe and never an authority,
+    # finding, or proof-confirmation channel. Legacy checkpoints may omit it.
+    llm_usage_trace: Annotated[list[dict[str, Any]], merge_lists]
     kev_catalog: list[str]
 
     # V7 Cognitive Upgrade — Phase 2: Mental Model / Knowledge Graph.
@@ -346,6 +349,9 @@ class PentestState(TypedDict, total=False):
     research_active_observations: Annotated[list[dict[str, Any]], merge_lists]
     surface_coverage: Annotated[dict[str, Any], merge_dicts]
     research_failed_paths: Annotated[list[dict[str, Any]], merge_lists]
+    # One deterministic, redaction-safe summary per research round. The map is
+    # keyed by round so repeated projections are idempotent and checkpoint-safe.
+    research_round_artifacts: Annotated[dict[str, Any], merge_dicts]
     # Bounded recovery telemetry. These records are report-safe and advisory;
     # they never bypass policy, scope, idempotency, or proof gates.
     recovery_events: Annotated[list[dict[str, Any]], merge_lists]

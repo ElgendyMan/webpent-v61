@@ -8,6 +8,8 @@ next-best-action reference can be audited and replayed.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -100,6 +102,48 @@ def _load_negative_ledger(state: Mapping[str, Any]) -> NegativeEvidenceLedger:
         )
         ledger.record(evidence)
     return ledger
+
+
+def _round_artifact(
+    *,
+    state: Mapping[str, Any],
+    edges: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    action_context: list[dict[str, Any]],
+) -> tuple[str, dict[str, Any]]:
+    replanning = _mapping(state.get("smart_replanning"))
+    try:
+        round_number = max(0, int(replanning.get("round", 0) or 0))
+    except (TypeError, ValueError):
+        round_number = 0
+    client_id = _text(state.get("client_id") or "client:unknown", 128)
+    engagement_id = _text(state.get("engagement_id") or "engagement:unknown", 128)
+    payload = {
+        "round": round_number,
+        "client_scope": client_id,
+        "engagement_scope": engagement_id,
+        "candidate_action_ids": sorted(
+            _text(item.get("action_id"), 160)
+            for item in candidates
+            if _text(item.get("action_id"), 160)
+        )[:_MAX_ITEMS],
+        "causal_edge_refs": sorted(_edge_key(edge)[:64] for edge in edges)[- _MAX_ITEMS :],
+        "decision_action_ids": sorted(
+            _text(item.get("action_id"), 160)
+            for item in action_context
+            if _text(item.get("action_id"), 160)
+        )[:_MAX_ITEMS],
+        "counts": {
+            "causal_edges": len(edges),
+            "candidate_actions": len(candidates),
+            "decision_links": len(action_context),
+        },
+        "negative_evidence_consulted": True,
+        "evidence_only": True,
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    artifact_id = "research-round:" + hashlib.sha256(canonical.encode()).hexdigest()[:24]
+    return str(round_number), {"artifact_id": artifact_id, **payload}
 
 
 def build_causal_research_projection(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -253,6 +297,12 @@ def build_causal_research_projection(state: Mapping[str, Any]) -> dict[str, Any]
     session.next_best_actions = [
         {**item, "outcome": "causal_context_attached"} for item in action_context[-_MAX_ITEMS:]
     ]
+    round_key, round_artifact = _round_artifact(
+        state=state,
+        edges=edges,
+        candidates=candidates,
+        action_context=action_context,
+    )
     graph = {
         "version": 1,
         "nodes": list(nodes.values())[-_MAX_ITEMS:],
@@ -268,6 +318,7 @@ def build_causal_research_projection(state: Mapping[str, Any]) -> dict[str, Any]
         "research_candidate_actions": candidates,
         "research_session": session.as_dict(),
         "research_unified_decision_trace": action_context[-_MAX_ITEMS:],
+        "research_round_artifacts": {round_key: round_artifact},
     }
 
 
