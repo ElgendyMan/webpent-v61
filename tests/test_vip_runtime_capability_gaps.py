@@ -99,12 +99,52 @@ def test_initial_state_projects_runtime_capability_gaps() -> None:
     gaps = state["runtime_capability_gaps"]
     assert gaps
     assert all(isinstance(item, dict) for item in gaps)
-    assert {item["component"] for item in gaps} >= {
+    assert {item["component"] for item in gaps} == {"adapters"}
+    assert state["control_plane_descriptor"]["engagement_id"] == "engagement-gap"
+    assert state["runtime_context"].diagnostics()["capability_gaps"] == gaps
+
+
+def test_runtime_control_plane_wiring_is_descriptor_safe() -> None:
+    context = RuntimeFactory.create(
+        engagement_id="engagement-control",
+        campaign_id="campaign-control",
+        target_origin="https://example.test",
+        settings=_settings(),
+        use_default_ledger=False,
+        enable_control_plane=True,
+    )
+
+    assert context.control_plane_runtime is not None
+    assert not {
+        "identity_tenant_object_graph",
+        "workflow_state_machine",
+        "replay_engine",
+    } & {gap.component for gap in context.capability_gaps}
+    descriptor = RuntimeFactory.descriptor(context)
+    assert descriptor["control_plane_enabled"] is True
+    assert "handler" not in repr(descriptor)
+    restored = RuntimeFactory.from_descriptor(descriptor)
+    assert restored is not None
+    assert restored.control_plane_runtime is not None
+
+
+def test_initial_state_can_keep_legacy_gap_mode() -> None:
+    state = build_initial_state(
+        Target(url="https://example.test"),
+        engagement_id="engagement-legacy",
+        campaign_id="campaign-legacy",
+        scan_mode=ScanMode.SAFE_SMART,
+        enable_control_plane=False,
+    )
+
+    assert state["control_plane_descriptor"] is None
+    assert {
+        item["component"] for item in state["runtime_capability_gaps"]
+    } >= {
         "identity_tenant_object_graph",
         "workflow_state_machine",
         "replay_engine",
     }
-    assert state["runtime_context"].diagnostics()["capability_gaps"] == gaps
 
 
 def test_report_surfaces_runtime_capability_gaps() -> None:

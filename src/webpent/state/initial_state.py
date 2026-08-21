@@ -79,6 +79,8 @@ def build_initial_state(
     root_goal_nodes: dict[str, Any] | None = None,
     action_ledger_path: str | None = None,
     campaign_inventory: str = "waptlab",
+    enable_control_plane: bool = True,
+    control_plane_profile_root: str | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -138,6 +140,8 @@ def build_initial_state(
         target_origin=target_url,
         settings=settings,
         manifest=capability_manifest,
+        enable_control_plane=bool(enable_control_plane),
+        control_plane_profile_root=control_plane_profile_root,
     )
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)
@@ -277,6 +281,11 @@ def build_initial_state(
         "runtime_capability_gaps": [
             gap.as_dict() for gap in runtime_context.capability_gaps
         ],
+        "control_plane_descriptor": (
+            runtime_context.control_plane_runtime.descriptor()
+            if runtime_context.control_plane_runtime is not None
+            else None
+        ),
         "campaign_ledger": (
             build_generic_campaign_ledger()
             if resolved_inventory == "generic"

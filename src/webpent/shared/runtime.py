@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import Lock
 from typing import Any
 from urllib.parse import urlsplit
@@ -238,6 +239,7 @@ class RuntimeContext:
     next_best_action_engine: SmartNextBestActionEngine
     configuration_errors: tuple[str, ...] = ()
     capability_gaps: tuple[RuntimeCapabilityGap, ...] = ()
+    control_plane_runtime: Any | None = None
 
     @property
     def valid(self) -> bool:
@@ -299,6 +301,11 @@ class RuntimeContext:
             "capability_gaps": [gap.as_dict() for gap in self.capability_gaps],
             "capabilities": self.capabilities.diagnostics(),
             "adapters": self.adapters.manifest(),
+            "control_plane": (
+                self.control_plane_runtime.descriptor()
+                if self.control_plane_runtime is not None
+                else None
+            ),
             "event_count": len(self.event_sink.snapshot()),
         }
 
@@ -383,6 +390,8 @@ class RuntimeFactory:
         identity_tenant_object_graph: Any | None = None,
         workflow_state_machine: Any | None = None,
         replay_engine: Any | None = None,
+        enable_control_plane: bool = False,
+        control_plane_profile_root: str | None = None,
     ) -> RuntimeContext:
         settings = settings or get_settings()
         normalized_engagement = str(engagement_id or "").strip()[:160]
@@ -430,6 +439,42 @@ class RuntimeFactory:
             proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
         )
         executor = ActionExecutor(authority, proof_bundle_store=bundle_store)
+        control_plane_runtime = None
+        if enable_control_plane and normalized_origin and not errors:
+            try:
+                from datetime import timedelta
+
+                from webpent.shared.control_plane import compile_scope
+                from webpent.shared.control_plane_spine import (
+                    build_control_plane_runtime,
+                )
+
+                parsed_origin = urlsplit(normalized_origin)
+                origin_port = parsed_origin.port or (
+                    443 if parsed_origin.scheme.lower() == "https" else 80
+                )
+                control_scope = compile_scope(
+                    engagement_id=normalized_engagement,
+                    root_domains=(normalized_origin,),
+                    created_by="runtime-bootstrap",
+                    approval_source="runtime-bootstrap",
+                    expires_at=datetime.now(UTC) + timedelta(hours=1),
+                    allowed_schemes=(parsed_origin.scheme.lower(),),
+                    allowed_ports=(origin_port,),
+                    path_rules=("/",),
+                )
+                control_plane_runtime = build_control_plane_runtime(
+                    engagement_id=normalized_engagement,
+                    scope=control_scope,
+                    executor=executor,
+                    profile_root=control_plane_profile_root
+                    or str(Path(settings.action_ledger_path).parent / "browser_profiles"),
+                )
+                identity_tenant_object_graph = control_plane_runtime.identity_graph
+                workflow_state_machine = control_plane_runtime.workflow_state_machine
+                replay_engine = control_plane_runtime.replay_engine
+            except (ImportError, OSError, TypeError, ValueError) as exc:
+                errors.append(f"control_plane:bootstrap_failed:{type(exc).__name__}")
         capability_gaps = cls._capability_gaps(
             adapters=registry,
             identity_tenant_object_graph=identity_tenant_object_graph,
@@ -465,6 +510,7 @@ class RuntimeFactory:
             next_best_action_engine=SmartNextBestActionEngine(),
             configuration_errors=tuple(dict.fromkeys(errors)),
             capability_gaps=capability_gaps,
+            control_plane_runtime=control_plane_runtime,
         )
 
     @staticmethod
@@ -484,6 +530,7 @@ class RuntimeFactory:
             "used_budget": float(context.action_authority.used_budget),
             "capability_gaps": [gap.as_dict() for gap in context.capability_gaps],
             "manifest": context.capabilities.ensure_discovered(),
+            "control_plane_enabled": context.control_plane_runtime is not None,
         }
 
     @classmethod
@@ -513,6 +560,7 @@ class RuntimeFactory:
                 manifest=dict(manifest) if isinstance(manifest, Mapping) else None,
                 used_actions=int(descriptor.get("used_actions") or 0),
                 used_budget=float(descriptor.get("used_budget") or 0.0),
+                enable_control_plane=bool(descriptor.get("control_plane_enabled", False)),
             )
         except (TypeError, ValueError, OSError):
             return None
