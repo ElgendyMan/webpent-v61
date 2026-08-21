@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SESSIONS_DB_PATH = "./memory/global/sessions.db"
 _BUSY_TIMEOUT_MS = 30_000
 _STRICT_MSGPACK_ENV = "LANGGRAPH_STRICT_MSGPACK"
-_SECRET_CHANNELS = {"session_cookies", "identity_profiles"}
+_SECRET_CHANNELS = {"session_cookies", "session_headers", "identity_profiles"}
 _SENSITIVE_KEYS = frozenset(
     {
         "access_token",
@@ -34,6 +34,7 @@ _SENSITIVE_KEYS = frozenset(
         "refresh_token",
         "secret",
         "session_cookies",
+        "session_headers",
         "set-cookie",
         "token",
     }
@@ -191,6 +192,19 @@ def _restore_runtime_secrets(checkpoint_tuple: Any) -> Any:
         profiles = unseal_identity_profiles(thread_id)
         if profiles:
             channels["identity_profiles"] = profiles
+            primary_headers = next(
+                (
+                    dict(profile.get("headers") or {})
+                    for profile in profiles.values()
+                    if isinstance(profile, dict)
+                    and profile.get("validated")
+                    and isinstance(profile.get("headers"), dict)
+                    and profile.get("headers")
+                ),
+                {},
+            )
+            if primary_headers:
+                channels["session_headers"] = primary_headers
     except Exception as exc:
         logger.error(
             "Checkpoint runtime secret restoration failed closed for thread_id=%s: %s",

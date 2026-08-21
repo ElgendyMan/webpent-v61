@@ -82,6 +82,79 @@ _LOGIN_PAGE_INDICATORS = (
 )
 
 
+class _LoginMaterial(dict[str, str]):
+    """Cookie-compatible login result with optional validated auth headers.
+
+    The mapping itself remains the target-issued cookie jar, preserving the
+    legacy ``_perform_login`` contract.  Headers are kept as a side channel so
+    bearer-token SPAs can authenticate without pretending a JWT is a cookie.
+    """
+
+    def __init__(
+        self,
+        cookies: dict[str, str] | None = None,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(cookies or {})
+        self.auth_headers = dict(headers or {})
+
+
+_AUTH_STORAGE_KEYS = {
+    "access_token",
+    "accesstoken",
+    "auth_token",
+    "authtoken",
+    "id_token",
+    "idtoken",
+    "jwt",
+    "session_token",
+    "sessiontoken",
+    "token",
+}
+
+
+def _extract_bearer_headers(page: Any) -> dict[str, str]:
+    """Extract a target-issued bearer token from bounded browser storage.
+
+    This is intentionally narrow and report-safe: only known auth-shaped
+    storage keys are inspected, values never enter logs, and the caller must
+    validate the resulting Authorization header before using it.
+    """
+    try:
+        entries = page.evaluate(
+            """() => Object.keys(localStorage).slice(0, 100).map((key) => {
+                let value = localStorage.getItem(key);
+                try {
+                    const parsed = JSON.parse(value);
+                    if (parsed && typeof parsed === 'object') {
+                        value = parsed.access_token || parsed.accessToken ||
+                            parsed.id_token || parsed.token || value;
+                    }
+                } catch (_) {}
+                return {key, value};
+            })"""
+        )
+    except Exception:
+        return {}
+    if not isinstance(entries, list):
+        return {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        key = str(entry.get("key") or "").strip().lower().replace("-", "_")
+        value = entry.get("value")
+        if key not in _AUTH_STORAGE_KEYS or not isinstance(value, str):
+            continue
+        token = value.strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        if not token or len(token) > 16_384 or any(ord(char) < 0x20 for char in token):
+            continue
+        return {"Authorization": f"Bearer {token}"}
+    return {}
+
+
 def _perform_login(
     url: str,
     username: str,
@@ -286,23 +359,20 @@ def _perform_login(
         with contextlib.suppress(Exception):
             page.wait_for_load_state("networkidle", timeout=10_000)
 
-        # Extract cookies from the browser context.
+        # Extract cookies and SPA bearer material from the browser context.
         browser_cookies = context.cookies()
         for cookie in browser_cookies:
             name = cookie.get("name", "")
             value = cookie.get("value", "")
             if name:
                 cookies[name] = value
+        auth_headers = _extract_bearer_headers(page)
 
-        # V10 HOSTILE P1-1 FIX: do NOT treat non-empty cookies as login
-        # success. DVWA (and many apps) set a PHPSESSID on the login page
-        # itself, so cookies exist even when the password is wrong. We
-        # must VALIDATE the session by probing the target URL — the same
-        # _validate_session_cookies helper used for operator-supplied
-        # cookies. If the probe shows a login redirect/indicator, the
-        # login FAILED and we return empty cookies.
-        if not cookies:
-            logger.info("Login submitted but no session cookies found")
+        # V10 HOSTILE P1-1 FIX: do NOT treat non-empty cookies or localStorage
+        # values as login success. Validate the target-issued material through
+        # the same SSRF-safe HTTP path used for operator-supplied sessions.
+        if not cookies and not auth_headers:
+            logger.info("Login submitted but no session cookies or bearer token found")
             return {}
 
         from webpent.shared.engagement_scope import (
@@ -313,7 +383,14 @@ def _perform_login(
             url, *(additional_target_origins or [])
         )
         try:
-            is_valid, reason = _validate_session_cookies(url, cookies)
+            if auth_headers:
+                is_valid, reason = _validate_session_cookies(
+                    url,
+                    cookies,
+                    extra_headers=auth_headers,
+                )
+            else:
+                is_valid, reason = _validate_session_cookies(url, cookies)
         finally:
             clear_engagement_target_hosts(validation_scope_token)
         if not is_valid:
@@ -328,9 +405,9 @@ def _perform_login(
             return {}
 
         logger.info(
-            "Login successful — extracted %d session cookie(s), validated "
-            "against %s (%s)",
-            len(cookies), url, reason,
+            "Login successful — validated %d session cookie(s) and %d "
+            "auth header(s) against %s (%s)",
+            len(cookies), len(auth_headers), url, reason,
         )
 
         # Do not mutate the authenticated session with lab-specific cookies.
@@ -338,7 +415,7 @@ def _perform_login(
         # selector, or no such control at all.  The authenticated values must
         # come from the target response; operator-supplied session cookies are
         # handled separately by the explicit session_cookies input path.
-        return cookies
+        return _LoginMaterial(cookies, headers=auth_headers)
 
     except Exception as exc:
         logger.warning("Playwright authentication failed: %s", exc)
@@ -353,7 +430,10 @@ def _perform_login(
 
 
 def _validate_session_cookies(
-    target_url: str, cookies: dict[str, str],
+    target_url: str,
+    cookies: dict[str, str],
+    *,
+    extra_headers: dict[str, str] | None = None,
 ) -> tuple[bool, str]:
     """Validate operator-supplied session cookies via a lightweight request.
 
@@ -371,8 +451,14 @@ def _validate_session_cookies(
         the session appears active. ``reason`` is a short human-readable
         explanation (never contains raw cookie values).
     """
-    if not cookies:
-        return False, "no cookies provided"
+    safe_extra_headers = {
+        str(name): str(value)
+        for name, value in (extra_headers or {}).items()
+        if str(name).lower() in {"authorization", "x-auth-token", "x-api-key"}
+        and str(value).strip()
+    }
+    if not cookies and not safe_extra_headers:
+        return False, "no session material provided"
 
     try:
         from webpent.config.settings import get_settings
@@ -402,8 +488,9 @@ def _validate_session_cookies(
     else:
         client_factory = make_safe_httpx_client
 
-    # Cookie names only — NEVER log raw values.
+    # Cookie/header names only — NEVER log raw values.
     cookie_names = list(cookies.keys())
+    header_names = list(safe_extra_headers.keys())
     try:
         configured_user_agent = str(get_settings().http_user_agent or "").strip()
         validation_user_agent = configured_user_agent
@@ -418,6 +505,7 @@ def _validate_session_cookies(
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
             "Referer": target_url.rstrip("/") + "/login",
+            **safe_extra_headers,
         }
         with client_factory(
             timeout=10.0, follow_redirects=False, verify=True,
@@ -425,9 +513,9 @@ def _validate_session_cookies(
             response = client.get(target_url, cookies=cookies, headers=headers)
     except Exception as exc:
         logger.warning(
-            "Session validation request failed for %s (cookies=%s): %s — "
+            "Session validation request failed for %s (cookies=%s, headers=%s): %s — "
             "treating session as invalid.",
-            target_url, cookie_names, exc,
+            target_url, cookie_names, header_names, exc,
         )
         return False, f"validation request failed: {exc}"
 
@@ -455,7 +543,10 @@ def _validate_session_cookies(
         for indicator in _LOGIN_PAGE_INDICATORS:
             if indicator in body_lower:
                 return False, f"200 OK but body contains login indicator '{indicator}'"
-        return True, f"200 OK, no login indicators in body (cookies={cookie_names})"
+        return True, (
+            "200 OK, no login indicators in body "
+            f"(cookies={cookie_names}, headers={header_names})"
+        )
 
     # Any other status code — treat as valid (conservative: don't
     # reject a session just because the server returned an unusual
@@ -553,9 +644,24 @@ def auth_node(state: PentestState) -> dict:
     operator_cookies: dict[str, str] = dict(state.get("session_cookies") or {})
     if not operator_cookies and thread_id:
         operator_cookies = unseal_session_cookies(thread_id)
+    operator_headers: dict[str, str] = dict(state.get("session_headers") or {})
     raw_identity_profiles: dict[str, Any] = dict(state.get("identity_profiles") or {})
     if not raw_identity_profiles and thread_id:
         raw_identity_profiles = unseal_identity_profiles(thread_id)
+    if not operator_headers and raw_identity_profiles:
+        for raw_profile in raw_identity_profiles.values():
+            if not isinstance(raw_profile, dict) or not raw_profile.get("validated"):
+                continue
+            candidate_headers = raw_profile.get("headers")
+            if isinstance(candidate_headers, dict):
+                operator_headers = {
+                    str(name): str(value)
+                    for name, value in candidate_headers.items()
+                    if str(name).lower() in {"authorization", "x-auth-token", "x-api-key"}
+                    and str(value).strip()
+                }
+                if operator_headers:
+                    break
     additional_target_origins = [
         str(value).strip()
         for value in list(state.get("additional_target_origins") or [])
@@ -570,6 +676,7 @@ def auth_node(state: PentestState) -> dict:
     def _primary_identity_profile(
         cookies: dict[str, str],
         *,
+        headers: dict[str, str] | None = None,
         validated: bool,
         label: str,
         source: str,
@@ -585,6 +692,7 @@ def auth_node(state: PentestState) -> dict:
             "name": label[:80] or "primary-owner",
             "role": "owner",
             "cookies": dict(cookies) if validated else {},
+            "headers": dict(headers or {}) if validated else {},
             "validated": bool(validated),
             "metadata": {
                 "authenticated_primary": bool(validated),
@@ -613,6 +721,7 @@ def auth_node(state: PentestState) -> dict:
     # merged in afterwards and correctly wins over the neutralised
     # placeholder for the same key.
     _invalidated_operator_cookies: dict[str, str] = dict.fromkeys(operator_cookies, "")
+    _invalidated_operator_headers: dict[str, str] = dict.fromkeys(operator_headers, "")
 
     logger.info("Authentication phase entered for target=%s", target.url)
 
@@ -653,6 +762,7 @@ def auth_node(state: PentestState) -> dict:
                 "session_cookies": operator_cookies,
                 "auth_state": auth_state,
                 "identity_profiles": runtime_profiles,
+                "session_headers": _invalidated_operator_headers,
                 "messages": [AIMessage(
                     content=f"Authentication: operator-supplied session "
                     f"cookies validated ({len(operator_cookies)} cookie(s)). "
@@ -668,6 +778,51 @@ def auth_node(state: PentestState) -> dict:
             )
             # Fall through to credentials or unauthenticated below.
 
+    # --- Runtime/vault-issued auth headers (for SPA bearer sessions) ---
+    if operator_headers and not operator_cookies:
+        is_valid, reason = _validate_session_cookies(
+            target.url,
+            {},
+            extra_headers=operator_headers,
+        )
+        if is_valid:
+            runtime_profiles = {
+                "primary-owner": _primary_identity_profile(
+                    {},
+                    headers=operator_headers,
+                    validated=True,
+                    label="primary-owner",
+                    source="runtime_header_session",
+                ),
+                **secondary_profiles,
+            }
+            if thread_id:
+                seal_identity_profiles(thread_id, runtime_profiles)
+            return {
+                "session_cookies": _invalidated_operator_cookies,
+                "session_headers": operator_headers,
+                "auth_state": {
+                    "cookies": [],
+                    "source": "runtime_header_session",
+                    "validated": True,
+                    "auth_material": "bearer",
+                    "header_names": sorted(operator_headers),
+                },
+                "identity_profiles": runtime_profiles,
+                "messages": [AIMessage(
+                    content=(
+                        "Authentication: runtime auth headers validated "
+                        f"({reason}); Playwright login skipped."
+                    )
+                )],
+                "current_phase": "authentication",
+            }
+        logger.warning(
+            "Runtime auth headers INVALID — %s. Falling back to credentials "
+            "or unauthenticated mode.",
+            reason,
+        )
+
     # --- Credentials (Playwright login) ---
     if not credentials:
         logger.info("No credentials provided — proceeding unauthenticated")
@@ -676,6 +831,7 @@ def auth_node(state: PentestState) -> dict:
             # cookies instead of returning {} (see comment above —
             # {} is a no-op under the merge_dicts reducer).
             "session_cookies": _invalidated_operator_cookies,
+            "session_headers": _invalidated_operator_headers,
             "auth_state": {},
             "identity_profiles": secondary_profiles,
             "messages": [AIMessage(content="Authentication: no credentials found.")],
@@ -687,32 +843,37 @@ def auth_node(state: PentestState) -> dict:
     logger.info("Credentials found (user=%s) — attempting active login", username)
 
     if additional_target_origins:
-        cookies = _perform_login(
+        login_material = _perform_login(
             target.url,
             username,
             password,
             additional_target_origins=additional_target_origins,
         )
     else:
-        cookies = _perform_login(target.url, username, password)
+        login_material = _perform_login(target.url, username, password)
+    cookies = dict(login_material or {})
+    auth_headers = dict(getattr(login_material, "auth_headers", {}) or {})
 
-    if cookies:
+    if cookies or auth_headers:
         auth_state = {
             "cookies": [
                 {"name": k, "value": v, "domain": target.domain or ""}
                 for k, v in cookies.items()
             ],
             "source": "playwright_login",
-            # V9 FIX-8: Add "validated": True to match the operator-
-            # supplied path (line 396). Consumers that check
-            # auth_state.get("validated") for session health can now
-            # rely on it for both paths.
             "validated": True,
+            "auth_material": "cookie_and_header" if cookies and auth_headers else (
+                "bearer" if auth_headers else "cookie"
+            ),
+            "header_names": sorted(auth_headers),
         }
-        message = f"Authentication: login successful, {len(cookies)} cookie(s) extracted."
+        message = (
+            "Authentication: login successful, "
+            f"{len(cookies)} cookie(s) and {len(auth_headers)} auth header(s) validated."
+        )
     else:
         auth_state = {}
-        message = "Authentication: login attempted but no session cookies obtained."
+        message = "Authentication: login attempted but no validated session material obtained."
 
     # V9 FIX-10 + V10 P0-2 Option A: After successful Playwright login,
     # scrub the password from credentials in state so it is NOT
@@ -732,7 +893,7 @@ def auth_node(state: PentestState) -> dict:
     # evidence["reauth_unavailable"]=True + Needs Human Review.
     # The vault is cleared in the worker's ``finally`` block so the
     # plaintext password does not outlive the engagement.
-    if cookies:
+    if cookies or auth_headers:
         scrubbed_credentials = {
             "username": credentials.get("username", ""),
             "password": "",  # scrubbed — V10 P0-2 Option A vault is source of truth
@@ -749,13 +910,14 @@ def auth_node(state: PentestState) -> dict:
         {
             username or "primary-owner": _primary_identity_profile(
                 cookies,
+                headers=auth_headers,
                 validated=True,
                 label=username or "primary-owner",
                 source="playwright_login",
             ),
             **secondary_profiles,
         }
-        if cookies
+        if cookies or auth_headers
         else secondary_profiles
     )
     if thread_id and runtime_profiles:
@@ -797,6 +959,7 @@ def auth_node(state: PentestState) -> dict:
         # operator_cookies was empty to begin with, this base is {}
         # and behaviour is unchanged from before.
         "session_cookies": {**_invalidated_operator_cookies, **cookies},
+        "session_headers": {**_invalidated_operator_headers, **auth_headers},
         "auth_state": auth_state,
         "identity_profiles": runtime_profiles,
         "credentials": scrubbed_credentials,

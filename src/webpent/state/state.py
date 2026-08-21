@@ -106,6 +106,10 @@ class PentestState(TypedDict, total=False):
     # auth agent can append cookies without overwriting cookies set by
     # the crawler, and per-cookie updates survive checkpoint/resume.
     session_cookies: Annotated[dict[str, str], merge_dicts]
+    # Optional target-issued auth headers (for example a bearer token used by
+    # SPA APIs). Values are runtime secrets and are redacted before checkpoint
+    # persistence; legacy cookie-only runs remain unchanged.
+    session_headers: Annotated[dict[str, str], merge_dicts]
 
     # V11 BAC/IDOR evidence-first multi-identity context.  These fields are
     # additive and optional so old checkpoints remain loadable.  Identity

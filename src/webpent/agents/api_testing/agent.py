@@ -124,7 +124,11 @@ def _looks_like_spa_shell(response: Any) -> bool:
     return "<!doctype html" in body or "<app-root" in body or '<base href="/"' in body
 
 
-def _probe_graphql(base_url: str, cookies: dict[str, str] | None = None) -> list[Finding]:
+def _probe_graphql(
+    base_url: str,
+    cookies: dict[str, str] | None = None,
+    auth_headers: dict[str, str] | None = None,
+) -> list[Finding]:
     """Probe for GraphQL endpoints and introspection exposure.
 
     Sends the standard introspection query to common GraphQL paths.
@@ -143,7 +147,12 @@ def _probe_graphql(base_url: str, cookies: dict[str, str] | None = None) -> list
         url = _resolve_url(base_url, path)
         # V9 P0 B4: attach session cookies so authenticated GraphQL
         # endpoints (e.g. DVWA's /vulnerabilities/graphql) are reachable.
-        headers: dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {
+            str(name): str(value)
+            for name, value in (auth_headers or {}).items()
+            if str(value).strip()
+        }
+        headers["Content-Type"] = "application/json"
         if cookies:
             from webpent.shared.http import build_cookie_header
 
@@ -225,7 +234,11 @@ def _probe_graphql(base_url: str, cookies: dict[str, str] | None = None) -> list
     return findings
 
 
-def _probe_jwt_alg_none(base_url: str, cookies: dict[str, str] | None = None) -> list[Finding]:
+def _probe_jwt_alg_none(
+    base_url: str,
+    cookies: dict[str, str] | None = None,
+    auth_headers: dict[str, str] | None = None,
+) -> list[Finding]:
     """Probe whether the target accepts JWT tokens with alg=none.
 
     Sends the well-known alg=none test token in the Authorization
@@ -251,8 +264,14 @@ def _probe_jwt_alg_none(base_url: str, cookies: dict[str, str] | None = None) ->
     ]
     for path in probe_paths:
         url = _resolve_url(base_url, path)
-        # V9 P0 B4: attach session cookies alongside the JWT probe.
-        headers: dict[str, str] = {"Authorization": f"Bearer {_JWT_ALG_NONE_TOKEN}"}
+        # V9 P0 B4: attach session cookies alongside the JWT probe. Never
+        # merge a real Authorization header: the unsigned token is the test.
+        headers: dict[str, str] = {
+            str(name): str(value)
+            for name, value in (auth_headers or {}).items()
+            if str(name).lower() != "authorization" and str(value).strip()
+        }
+        headers["Authorization"] = f"Bearer {_JWT_ALG_NONE_TOKEN}"
         if cookies:
             # V10 HOSTILE-AUDIT FIX: build_cookie_header was never
             # imported in this function (only _probe_graphql imported
@@ -424,7 +443,11 @@ def _analyze_captured_jwts(
     return findings, observations, coverage_gaps
 
 
-def _probe_mass_assignment(base_url: str, cookies: dict[str, str] | None = None) -> list[Finding]:
+def _probe_mass_assignment(
+    base_url: str,
+    cookies: dict[str, str] | None = None,
+    auth_headers: dict[str, str] | None = None,
+) -> list[Finding]:
     """Probe for mass assignment by sending role escalation fields.
 
     Sends extra fields (``role=admin``, ``is_admin=true``) to common
@@ -444,7 +467,12 @@ def _probe_mass_assignment(base_url: str, cookies: dict[str, str] | None = None)
         url = _resolve_url(base_url, path)
         # V9 P0 B4: attach session cookies so authenticated user-update
         # endpoints are reachable (mass assignment requires an authed session).
-        headers: dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {
+            str(name): str(value)
+            for name, value in (auth_headers or {}).items()
+            if str(value).strip()
+        }
+        headers["Content-Type"] = "application/json"
         if cookies:
             # V10 HOSTILE-AUDIT FIX: same missing-import bug as
             # _probe_jwt_alg_none above — build_cookie_header was
@@ -527,6 +555,7 @@ def api_testing_node(state: PentestState) -> dict:
     # V9 P0 B4: read session cookies so authenticated API endpoints
     # (e.g. DVWA's GraphQL/JWT endpoints behind login) are reachable.
     session_cookies: dict[str, str] | None = state.get("session_cookies") or None
+    session_headers: dict[str, str] | None = state.get("session_headers") or None
     crawled_data: Any = state.get("crawled_data") or {}
 
     base_url = getattr(target, "url", "")
@@ -537,19 +566,33 @@ def api_testing_node(state: PentestState) -> dict:
         }
 
     logger.info(
-        "API Testing Agent (V7 Sprint 2.6) entered for target=%s (%d findings, cookies=%s)",
+        "API Testing Agent (V7 Sprint 2.6) entered for target=%s "
+        "(%d findings, cookies=%s, headers=%s)",
         base_url,
         len(findings),
         bool(session_cookies),
+        sorted(session_headers or {}),
     )
 
     new_findings: list[Finding] = []
 
     # 1. GraphQL introspection probe
-    new_findings.extend(_probe_graphql(base_url, cookies=session_cookies))
+    new_findings.extend(
+        _probe_graphql(
+            base_url,
+            cookies=session_cookies,
+            auth_headers=session_headers,
+        )
+    )
 
     # 2. JWT alg=none probe (active acceptance evidence, legacy contract).
-    new_findings.extend(_probe_jwt_alg_none(base_url, cookies=session_cookies))
+    new_findings.extend(
+        _probe_jwt_alg_none(
+            base_url,
+            cookies=session_cookies,
+            auth_headers=session_headers,
+        )
+    )
 
     # 3. JWT deep analysis is offline by default. It never forges a real-user
     # token and never emits raw credentials into state/report output.
@@ -562,7 +605,13 @@ def api_testing_node(state: PentestState) -> dict:
     new_findings.extend(jwt_findings)
 
     # 4. Mass assignment probe
-    new_findings.extend(_probe_mass_assignment(base_url, cookies=session_cookies))
+    new_findings.extend(
+        _probe_mass_assignment(
+            base_url,
+            cookies=session_cookies,
+            auth_headers=session_headers,
+        )
+    )
 
     logger.info("API Testing Agent: %d findings generated", len(new_findings))
 
