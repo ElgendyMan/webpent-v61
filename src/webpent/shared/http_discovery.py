@@ -271,10 +271,19 @@ def _bounded_xml_locations(text: str, base_url: str, *, limit: int = 100) -> lis
 
 
 def _bounded_js_routes(text: str, base_url: str, *, limit: int = 100) -> list[str]:
-    """Extract route-shaped JS string literals as passive discovery hints."""
+    """Extract route-shaped JS literals as passive discovery hints.
+
+    Template literals are common in SPA API clients, for example
+    ``/rest/basket/${basketId}``. A bounded ``1`` materialization turns that
+    observed route shape into one read-only surface candidate; it does not
+    enumerate IDs and remains subject to same-origin/safe-GET guards.
+    """
     routes: list[str] = []
-    for match in re.finditer(r'''["']((?:/|https?://)[^"'<>\s]{1,300})["']''', text[:1_000_000]):
-        candidate = _normalise_url(match.group(1), base_url)
+    literal_pattern = r'''["'`]((?:/|https?://)[^"'`<>\s]{1,300})["'`]'''
+    for match in re.finditer(literal_pattern, text[:1_000_000]):
+        raw_route = match.group(1)
+        materialized = re.sub(r"\$\{[^{}]{1,80}\}", "1", raw_route)
+        candidate = _normalise_url(materialized, base_url)
         if candidate and candidate not in routes:
             routes.append(candidate)
         if len(routes) >= limit:
@@ -562,16 +571,34 @@ def discover_http_surface(
 
             if response.status_code < 200 or response.status_code >= 400:
                 continue
+
+            response_text = str(getattr(response, "text", ""))[:2_000_000]
+            is_javascript = (
+                "javascript" in content_type
+                or (parsed_current.path or "").lower().endswith((".js", ".mjs"))
+            )
+            if is_javascript:
+                js_routes = _bounded_js_routes(response_text, current, limit=100)
+                discovery_metadata["js_route_candidates"].extend(js_routes)
+                discovery_metadata["js_route_candidates"] = list(
+                    dict.fromkeys(discovery_metadata["js_route_candidates"])
+                )[:200]
+                for discovered in js_routes:
+                    if discovered not in queued and len(queued) < max_pages * 3:
+                        queue.append((discovered, depth + 1))
+                        queued.add(discovered)
+                continue
+
             if not (
                 "html" in content_type
                 or "xhtml" in content_type
-                or response.text.lstrip().startswith("<")
+                or response_text.lstrip().startswith("<")
             ):
                 continue
 
             parser = _SurfaceParser()
             try:
-                parser.feed(response.text[:2_000_000])
+                parser.feed(response_text)
             except Exception:
                 errors += 1
                 continue
@@ -604,7 +631,7 @@ def discover_http_surface(
                 dict.fromkeys(discovery_metadata["javascript_urls"])
             )[:200]
             discovery_metadata["js_route_candidates"].extend(
-                _bounded_js_routes(response.text, current, limit=100)
+                _bounded_js_routes(response_text, current, limit=100)
             )
             candidates = parser.links + parser.scripts + discovery_metadata["js_route_candidates"]
             for candidate in candidates[:max_links_per_page]:

@@ -293,3 +293,20 @@ def test_bac_enumeration_default_bound_is_five_and_skips_uuid():
     assert numeric_neighbors == ["1000", "1002", "999", "1003", "998"]
     assert len(numeric_neighbors) == 5
     assert uuid_neighbors == []
+
+
+def test_bac_candidates_recognize_basket_object_routes():
+    records = access_agent._extract_candidate_records(
+        {
+            "endpoints": [
+                {
+                    "url": "http://127.0.0.1:3000/rest/basket/1",
+                    "method": "GET",
+                }
+            ]
+        }
+    )
+
+    assert len(records) == 1
+    assert records[0]["object_id"] == "1"
+    assert records[0]["candidate_sources"] == ["path"]

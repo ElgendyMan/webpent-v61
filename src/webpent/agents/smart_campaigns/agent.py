@@ -9,6 +9,7 @@ an authorized handler to :class:`CampaignExecutor`.
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import Any
@@ -51,6 +52,43 @@ from webpent.validators.causal_validator import validate_causal_observation
 from webpent.validators.proof_validator import validate_proof_bundle
 
 _DEFAULT_TASK_CAP = 3
+_OBJECT_ROUTE_PATTERN = re.compile(
+    r"/(?:users?|accounts?|orders?|baskets?|documents?|files?|downloads?|messages?|posts?|"
+    r"items?|products?|invoices?|payments?|transactions?|user_profiles?|profiles?|"
+    r"settings?|configs?|projects?|tasks?|tickets?|reports?)/"
+    r"(?P<object_id>\d+|[a-f0-9-]{8,}|[a-zA-Z0-9_-]{10,})(?:/|$)",
+    re.IGNORECASE,
+)
+
+
+def _annotate_observed_object_surface(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Add planner-only semantics to an explicitly observed object route.
+
+    This is candidate metadata only.  Validators still require owner provenance,
+    a foreign-identity differential, a negative control, and proof evidence.
+    """
+    record = dict(item)
+    url = str(record.get("url") or record.get("endpoint") or "").strip()
+    match = _OBJECT_ROUTE_PATTERN.search(urlsplit(url).path)
+    if not match:
+        return record
+    object_id = str(record.get("object_id") or match.group("object_id"))[:128]
+    record["object_id"] = object_id
+    sources = record.get("candidate_sources")
+    source_values = list(sources) if isinstance(sources, (list, tuple, set)) else []
+    record["candidate_sources"] = list(dict.fromkeys([*source_values, "observed_object_path"]))[:20]
+    semantic_values = record.get("surfaces")
+    surfaces = list(semantic_values) if isinstance(semantic_values, (list, tuple, set)) else []
+    surfaces.extend(("object", "id", "idor"))
+    identity = str(record.get("identity") or "").strip().lower()
+    if (
+        identity in {"authenticated", "operator", "owner", "foreign"}
+        or record.get("session_present")
+    ):
+        surfaces.append("identity")
+    record["surfaces"] = list(dict.fromkeys(str(value).lower() for value in surfaces if value))[:20]
+    record["category"] = str(record.get("category") or "object")[:80]
+    return record
 
 
 def _smart_task_cap(
@@ -264,10 +302,17 @@ def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     records: list[Mapping[str, Any]] = []
     for item in candidates[:500]:
         if isinstance(item, Mapping):
-            records.append(item)
+            records.append(_annotate_observed_object_surface(item))
         elif isinstance(item, str) and item.strip():
-            records.append({"url": item.strip()[:500], "source": "crawled_data.endpoints"})
-    records.extend(_javascript_surface_records(state))
+            records.append(
+                _annotate_observed_object_surface(
+                    {"url": item.strip()[:500], "source": "crawled_data.endpoints"}
+                )
+            )
+    records.extend(
+        _annotate_observed_object_surface(item)
+        for item in _javascript_surface_records(state)
+    )
     records.extend(_hypothesis_surface_records(state))
     return records[:700]
 
@@ -465,13 +510,18 @@ def build_smart_campaign_tasks(
         key = str(entry.get("key") or "unknown")[:120]
         refs = entry.get("matched_observation_refs") or []
         gaps = [str(item)[:200] for item in entry.get("gaps", [])[:12]]
-        if not refs:
+        identity_gap = any(
+            gap.startswith("missing-identity-context:") for gap in gaps
+        )
+        if not refs or identity_gap:
             outcomes.append(
                 {
                     "task_id": f"smart:{key}:blocked",
                     "vulnerability_class": key,
                     "status": CampaignTaskStatus.BLOCKED_BY_PRECONDITION.value,
-                    "reason": "missing_observed_surface",
+                    "reason": (
+                        "missing_identity_context" if identity_gap else "missing_observed_surface"
+                    ),
                     "source": "smart_campaign_runtime",
                 }
             )

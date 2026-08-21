@@ -845,3 +845,50 @@ def test_http_surface_discovers_embedded_swagger_ui_document(monkeypatch) -> Non
     ]
     assert "http://lab.test/b2b/v2/orders" in result["endpoints"]
     assert all("outside.test" not in url for url in result["endpoints"])
+
+
+def test_http_surface_materializes_bounded_js_template_routes(monkeypatch) -> None:
+    from webpent.shared import http as http_module
+    from webpent.shared.http_discovery import discover_http_surface
+
+    pages = {
+        "http://lab.test/": (
+            200,
+            "text/html",
+            '<script src="/static/main.js"></script>',
+        ),
+        "http://lab.test/static/main.js": (
+            200,
+            "application/javascript",
+            "const basket = `/rest/basket/${basketId}`;",
+        ),
+        "http://lab.test/rest/basket/1": (
+            200,
+            "application/json",
+            '{"id":1,"UserId":1}',
+        ),
+    }
+
+    class FakeResponse:
+        def __init__(self, status_code: int, content_type: str, text: str) -> None:
+            self.status_code = status_code
+            self.headers = {"content-type": content_type}
+            self.text = text
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            status, content_type, text = pages.get(url, (404, "text/plain", ""))
+            return FakeResponse(status, content_type, text)
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    result = discover_http_surface("http://lab.test/", max_pages=10)
+
+    assert "http://lab.test/rest/basket/1" in result["endpoints"]
+    assert "http://lab.test/rest/basket/1" in result["discovery_metadata"]["js_route_candidates"]

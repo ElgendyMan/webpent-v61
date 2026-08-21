@@ -628,3 +628,87 @@ def test_structured_hypothesis_model_is_projected_without_network_execution() ->
     assert len(sqli_tasks) == 1
     assert sqli_tasks[0].metadata["source"] == "campaign_plan"
     assert sqli_tasks[0].target_url == "https://target.test/search?q=demo"
+
+
+def test_observed_basket_route_projects_to_generic_idor_campaign() -> None:
+    state = {
+        "smart_mode": True,
+        "engagement_id": "engagement:juice-basket",
+        "campaign_inventory": "generic",
+        "target": {"url": "http://lab.test"},
+        "crawled_data": {
+            "surface_records": [
+                {
+                    "record_id": "http:rest-basket-1",
+                    "source": "http_get",
+                    "url": "http://lab.test/rest/basket/1",
+                    "endpoint": "http://lab.test/rest/basket/1",
+                    "path": "/rest/basket/1",
+                    "method": "GET",
+                    "status_code": 200,
+                    "identity": "authenticated",
+                    "session_present": True,
+                }
+            ]
+        },
+        "campaign_plan": {
+            "entries": [
+                {
+                    "key": "idor_object",
+                    "status": "not_observed",
+                    "validator_id": "idor_validator",
+                    "matched_observation_refs": [],
+                    "gaps": ["missing-surface:idor_object"],
+                    "contract": {},
+                }
+            ]
+        },
+    }
+
+    tasks, outcomes = build_smart_campaign_tasks(state)
+
+    idor_tasks = [task for task in tasks if task.vulnerability_class == "idor_object"]
+    assert idor_tasks
+    assert idor_tasks[0].target_url == "http://lab.test/rest/basket/1"
+    assert idor_tasks[0].metadata["observed_preconditions"]
+    assert all(outcome.get("reason") != "missing_identity_context" for outcome in outcomes)
+
+
+def test_observed_basket_route_without_identity_does_not_match_idor_campaign() -> None:
+    state = {
+        "campaign_inventory": "generic",
+        "target": {"url": "http://lab.test"},
+        "crawled_data": {
+            "surface_records": [
+                {
+                    "url": "http://lab.test/rest/basket/1",
+                    "source": "http_get",
+                    "method": "GET",
+                    "status_code": 401,
+                    "identity": "anonymous",
+                    "session_present": False,
+                }
+            ]
+        },
+        "campaign_plan": {
+            "entries": [
+                {
+                    "key": "idor_object",
+                    "status": "not_observed",
+                    "validator_id": "idor_validator",
+                    "matched_observation_refs": [],
+                    "gaps": ["missing-surface:idor_object"],
+                    "contract": {},
+                }
+            ]
+        },
+    }
+
+    tasks, outcomes = build_smart_campaign_tasks(state)
+
+    assert all(task.vulnerability_class != "idor_object" for task in tasks)
+    assert any(
+        outcome["reason"] == "missing_identity_context"
+        and outcome["vulnerability_class"] == "idor_object"
+        for outcome in outcomes
+    )

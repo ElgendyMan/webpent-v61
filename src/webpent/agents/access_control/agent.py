@@ -40,7 +40,7 @@ audit_logger = logging.getLogger("webpent.audit.access_control")
 
 _ID_PATTERN = re.compile(
     r"/(?:"
-            r"(?:users?|accounts?|orders?|documents?|files?|downloads?|messages?|posts?|"
+            r"(?:users?|accounts?|orders?|baskets?|documents?|files?|downloads?|messages?|posts?|"
         r"items?|products?|invoices?|payments?|transactions?|user_profiles?|profiles?|"
 
     r"settings?|configs?|projects?|tasks?|tickets?|reports?)"
