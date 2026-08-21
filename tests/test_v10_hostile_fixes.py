@@ -335,6 +335,51 @@ class TestP11PlaywrightLoginVerification:
         assert mock_error.called, "P1-1 REGRESSION: no ERROR log on login failure"
 
 
+    def test_validation_rejects_ambient_preference_cookie_only(self):
+        """A language/consent cookie alone is not authentication material."""
+        from webpent.agents.authentication import agent as auth_agent
+
+        is_valid, reason = auth_agent._validate_session_cookies(
+            "http://target/",
+            {"language": "en-US"},
+        )
+
+        assert is_valid is False
+        assert "authentication material" in reason
+
+    def test_validation_keeps_target_auth_cookie_eligible(self, monkeypatch):
+        """A target-issued auth-shaped cookie is still sent for validation."""
+        from webpent.agents.authentication import agent as auth_agent
+
+        class _Response:
+            status_code = 200
+            headers = {}
+            text = "authenticated dashboard"
+
+        class _Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def get(self, _url, *, cookies, headers):
+                assert cookies == {"token": "signed-session"}
+                assert "User-Agent" in headers
+                return _Response()
+
+        monkeypatch.setattr(
+            "webpent.shared.http.make_safe_httpx_client",
+            lambda **_kwargs: _Client(),
+        )
+        is_valid, _reason = auth_agent._validate_session_cookies(
+            "http://target/",
+            {"language": "en-US", "token": "signed-session"},
+        )
+
+        assert is_valid is True
+
+
 # ===========================================================================
 # P1-2: CLI must not write plaintext password into checkpoint
 # ===========================================================================

@@ -113,6 +113,20 @@ _AUTH_STORAGE_KEYS = {
     "token",
 }
 
+# Browser preferences/consent cookies are not authentication material.  They
+# may be present before login (Juice Shop, for example, always sets
+# ``language``), so accepting them as proof would create an anonymous-session
+# false positive.  Keep this list deliberately narrow; target-issued session
+# cookies with any other name remain eligible for validation.
+_NON_AUTH_COOKIE_NAMES = {
+    "language",
+    "cookieconsent",
+    "cookieconsent_status",
+    "cookie_consent",
+    "cc_cookie",
+    "privacy_consent",
+}
+
 
 def _extract_bearer_headers(page: Any) -> dict[str, str]:
     """Extract a target-issued bearer token from bounded browser storage.
@@ -249,6 +263,28 @@ def _perform_login(
             logger.warning("Navigation to %s failed: %s", url, exc)
             return {}
 
+        # Juice Shop may show a welcome dialog above the cookie banner. Close
+        # only its explicit, target-rendered control before touching consent.
+        try:
+            welcome_close = page.locator(
+                "[role='dialog'] button[aria-label='Close Welcome Banner']"
+            ).first
+            if welcome_close.is_visible(timeout=500):
+                welcome_close.click(timeout=1500)
+                page.wait_for_timeout(100)
+        except Exception:
+            pass
+        # Its same-origin cookie-consent overlay keeps the login submit
+        # control disabled until the operator dismisses it. Use only the
+        # stable consent control; never click a generic overlay.
+        try:
+            consent = page.locator("a.cc-dismiss").filter(has_text="Me want it!").first
+            if consent.is_visible(timeout=500):
+                consent.click(timeout=1500)
+                page.wait_for_timeout(100)
+        except Exception:
+            pass
+
         # Some targets redirect the base URL to a protected dashboard and
         # expose the login form at a sibling route. Discover only bounded,
         # same-origin login paths; never follow an arbitrary redirect or
@@ -269,7 +305,7 @@ def _perform_login(
             parsed_target = _urlparse(url)
             origin = f"{parsed_target.scheme}://{parsed_target.netloc}"
             current_url = page.url.rstrip("/")
-            for login_path in ("/login", "/signin", "/auth/login"):
+            for login_path in ("/#/login", "/login", "/signin", "/auth/login"):
                 login_url = origin + login_path
                 if login_url.rstrip("/") == current_url:
                     continue
@@ -313,12 +349,12 @@ def _perform_login(
         username_input = None
         if not two_step_email:
             for selector in [
-                "input[type='text']",
-                "input[type='email']",
+                "input[name='email']",
                 "input[name='username']",
                 "input[name='user']",
-                "input[name='email']",
+                "input[type='email']",
                 "input:not([type])",
+                "input[type='text']",
             ]:
                 try:
                     username_input = page.locator(selector).first
@@ -355,18 +391,37 @@ def _perform_login(
                 logger.warning("Failed to submit login form: %s", exc)
                 return {}
 
-        # Wait for navigation/post-login state.
+        # Wait for navigation/post-login state.  SPA login handlers may write
+        # the token to localStorage just after the first network-idle point;
+        # give that bounded, same-page state transition a short grace period.
         with contextlib.suppress(Exception):
             page.wait_for_load_state("networkidle", timeout=10_000)
+        with contextlib.suppress(Exception):
+            page.wait_for_function(
+                """() => Object.keys(localStorage).some((key) => {
+                    const normalized = key.toLowerCase().replaceAll('-', '_');
+                    return [
+                        'access_token', 'accesstoken', 'auth_token', 'authtoken',
+                        'id_token', 'idtoken', 'jwt', 'session_token',
+                        'sessiontoken', 'token',
+                    ].includes(normalized);
+                })""",
+                timeout=2_000,
+            )
 
         # Extract cookies and SPA bearer material from the browser context.
         browser_cookies = context.cookies()
         for cookie in browser_cookies:
-            name = cookie.get("name", "")
-            value = cookie.get("value", "")
+            name = str(cookie.get("name", "")).strip()
+            value = str(cookie.get("value", ""))
             if name:
                 cookies[name] = value
         auth_headers = _extract_bearer_headers(page)
+        cookies = {
+            name: value
+            for name, value in cookies.items()
+            if name.lower() not in _NON_AUTH_COOKIE_NAMES
+        }
 
         # V10 HOSTILE P1-1 FIX: do NOT treat non-empty cookies or localStorage
         # values as login success. Validate the target-issued material through
@@ -457,8 +512,14 @@ def _validate_session_cookies(
         if str(name).lower() in {"authorization", "x-auth-token", "x-api-key"}
         and str(value).strip()
     }
-    if not cookies and not safe_extra_headers:
-        return False, "no session material provided"
+    auth_cookies = {
+        name: value
+        for name, value in cookies.items()
+        if str(name).strip().lower() not in _NON_AUTH_COOKIE_NAMES
+        and str(value).strip()
+    }
+    if not auth_cookies and not safe_extra_headers:
+        return False, "no authentication material provided"
 
     try:
         from webpent.config.settings import get_settings
@@ -489,7 +550,7 @@ def _validate_session_cookies(
         client_factory = make_safe_httpx_client
 
     # Cookie/header names only — NEVER log raw values.
-    cookie_names = list(cookies.keys())
+    cookie_names = list(auth_cookies.keys())
     header_names = list(safe_extra_headers.keys())
     try:
         configured_user_agent = str(get_settings().http_user_agent or "").strip()
@@ -510,7 +571,11 @@ def _validate_session_cookies(
         with client_factory(
             timeout=10.0, follow_redirects=False, verify=True,
         ) as client:
-            response = client.get(target_url, cookies=cookies, headers=headers)
+            response = client.get(
+                target_url,
+                cookies=auth_cookies,
+                headers=headers,
+            )
     except Exception as exc:
         logger.warning(
             "Session validation request failed for %s (cookies=%s, headers=%s): %s — "
