@@ -18,10 +18,11 @@
 #   (or: docker build -t webpent-base:latest -f Dockerfile.base .)
 # =============================================================================
 
-FROM webpent-base:latest
+ARG BASE_IMAGE=webpent-base:latest
+FROM ${BASE_IMAGE}
 
 ARG WEBPENT_VERSION=0.3.0
-LABEL org.opencontainers.image.title="WebPent v60" \
+LABEL org.opencontainers.image.title="WebPent Framework" \
       org.opencontainers.image.version="${WEBPENT_VERSION}" \
       org.opencontainers.image.licenses="MIT"
 

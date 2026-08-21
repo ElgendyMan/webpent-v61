@@ -15,13 +15,17 @@
 #   make clean         # Remove containers + volumes
 # =============================================================================
 
-.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor test test-count test-unit coverage lint security ci clean
+.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor prod-config prod-up prod-health prod-down test test-count test-unit coverage lint security ci clean
 
-# Docker image names
-BASE_IMAGE := webpent-base:latest
-APP_IMAGE := webpent-v6:latest
+# Docker image names. Override RELEASE_TAG/BASE_IMAGE/APP_IMAGE in CI when
+# publishing to a registry; the default is immutable for the current commit.
+RELEASE_TAG ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo local)
+BASE_IMAGE ?= webpent-base:$(RELEASE_TAG)
+APP_IMAGE ?= webpent:$(RELEASE_TAG)
 
-# Compose files
+# Compose files and compatible command discovery. Docker Compose v2 ships as
+# `docker compose`; older installations may still expose `docker-compose`.
+COMPOSE ?= $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
 DEV_COMPOSE := docker-compose.dev.yml
 PROD_COMPOSE := docker-compose.yml
 
@@ -35,7 +39,7 @@ build-base:
 
 build-app:
 	@echo "Building app image (fast — base already cached)..."
-	docker build -t $(APP_IMAGE) -f Dockerfile .
+	docker build --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(APP_IMAGE) -f Dockerfile .
 	@echo "App image built: $(APP_IMAGE)"
 
 build: build-base build-app
@@ -89,8 +93,8 @@ dev-up:
 	@# `make doctor` greps `webpent-dev-api`, the worker healthcheck
 	@# comment references it, operators run `docker logs webpent-dev-api`).
 	@# The lifecycle discipline belongs here, not in dropping the names.
-	@docker-compose -f $(DEV_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
-	docker-compose -f $(DEV_COMPOSE) up -d --build
+	@$(COMPOSE) -f $(DEV_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
+	$(COMPOSE) -f $(DEV_COMPOSE) up -d --build
 	@# V7 Phase 3 FIX: poll /health before reporting success. docker-proxy
 	@# accepts and resets connections during the window between "container
 	@# running" and "uvicorn bound to port 8000", which previously surfaced
@@ -120,7 +124,7 @@ dev-up:
 	fi
 
 dev-down:
-	docker-compose -f $(DEV_COMPOSE) down
+	$(COMPOSE) -f $(DEV_COMPOSE) down
 
 # V7 Ready-For-Kali: simple, memorable alias for dev-down.
 close: dev-down
@@ -141,16 +145,16 @@ dev-reset:
 	@echo "Done. Run 'make dev-up' to start fresh."
 
 dev-logs:
-	docker-compose -f $(DEV_COMPOSE) logs -f api worker
+	$(COMPOSE) -f $(DEV_COMPOSE) logs -f api worker
 
 # V6 DX-Final: dev-reinstall — re-run `pip install -e .` inside the
 # running api container. Use this after adding a new dependency to
 # pyproject.toml to pick it up without rebuilding the image.
 dev-reinstall:
 	@echo "Reinstalling framework deps inside api container..."
-	docker-compose -f $(DEV_COMPOSE) exec api pip install -e .
+	$(COMPOSE) -f $(DEV_COMPOSE) exec api pip install -e .
 	@echo "Done. Restart the worker to pick up new deps:"
-	@echo "  docker-compose -f $(DEV_COMPOSE) restart worker"
+	@echo "  $(COMPOSE) -f $(DEV_COMPOSE) restart worker"
 
 # V7 Phase 0/1: Knowledge ingestion
 # V8 P0 B2: Added ingest-knowledge-verify target — pre-flight pin check
@@ -190,17 +194,37 @@ doctor:
 # =============================================================================
 # Production targets
 # =============================================================================
-prod-up:
+prod-config:
+	@$(COMPOSE) -f $(PROD_COMPOSE) config --quiet
+
+prod-up: prod-config
 	@# V7 Phase 2 FIX: same lifecycle discipline as dev-up — bring down
 	@# any existing prod stack (including orphans) before up, so leftover
 	@# containers/networks from a previous run don't cause "name already
 	@# taken" conflicts. container_name is intentionally hardcoded in
 	@# docker-compose.yml for the same reasons as the dev compose file.
-	@docker-compose -f $(PROD_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
-	docker-compose -f $(PROD_COMPOSE) up -d --build
+	@$(COMPOSE) -f $(PROD_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
+	$(COMPOSE) -f $(PROD_COMPOSE) up -d --build
+	@$(MAKE) prod-health
+
+prod-health:
+	@echo "Waiting for production API health (up to 60s)..."
+	@attempts=0; max=60; \
+	while [ $$attempts -lt $$max ]; do \
+		if curl -fsS "$${PROD_API_URL:-http://localhost:8000}/health" >/dev/null 2>&1; then \
+			echo "Production API is healthy after $$attempts s."; \
+			exit 0; \
+		fi; \
+		attempts=$$((attempts + 1)); \
+		sleep 1; \
+	done; \
+	echo "ERROR: production API did not become healthy within $$max seconds." >&2; \
+	$(COMPOSE) -f $(PROD_COMPOSE) ps; \
+	$(COMPOSE) -f $(PROD_COMPOSE) logs --tail=80 api worker >&2 || true; \
+	exit 1
 
 prod-down:
-	docker-compose -f $(PROD_COMPOSE) down
+	$(COMPOSE) -f $(PROD_COMPOSE) down
 
 # =============================================================================
 # Testing and quality gates
@@ -221,6 +245,8 @@ lint:
 security:
 	@echo "Running Bandit high-severity security gate..."
 	@bandit -q -r src/webpent -x tests -lll
+	@echo "Running pip-audit against the lock-derived external requirements..."
+	@pip-audit -r docs/requirements-audit-release.txt --strict
 
 ci: test-count coverage lint security
 
@@ -241,7 +267,7 @@ test:
 # Cleanup
 # =============================================================================
 clean:
-	docker-compose -f $(DEV_COMPOSE) down -v 2>/dev/null || true
-	docker-compose -f $(PROD_COMPOSE) down -v 2>/dev/null || true
+	$(COMPOSE) -f $(DEV_COMPOSE) down -v 2>/dev/null || true
+	$(COMPOSE) -f $(PROD_COMPOSE) down -v 2>/dev/null || true
 	docker rmi $(APP_IMAGE) 2>/dev/null || true
 	@echo "Cleaned up containers, volumes, and images."

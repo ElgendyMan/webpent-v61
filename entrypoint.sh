@@ -42,8 +42,17 @@ set -euo pipefail
 # regardless of any `user:` override in compose, we resolve the target
 # explicitly here instead of relying on that mechanism at all).
 TARGET_USER="${WEBPENT_RUN_AS_USER:-webpent}"
-TARGET_UID="$(id -u "${TARGET_USER}" 2>/dev/null || echo 1000)"
-TARGET_GID="$(id -g "${TARGET_USER}" 2>/dev/null || echo 1000)"
+if ! id -u "${TARGET_USER}" >/dev/null 2>&1 || ! id -g "${TARGET_USER}" >/dev/null 2>&1; then
+    echo "entrypoint.sh: ERROR — runtime user does not exist: ${TARGET_USER}" >&2
+    exit 1
+fi
+TARGET_UID="$(id -u "${TARGET_USER}")"
+TARGET_GID="$(id -g "${TARGET_USER}")"
+if [ "${TARGET_UID}" = "0" ] && [ "${WEBPENT_ALLOW_ROOT:-false}" != "true" ]; then
+    echo "entrypoint.sh: ERROR — refusing to run the application as root" >&2
+    exit 1
+fi
+FAIL_ON_OWNERSHIP_ERROR="${WEBPENT_FAIL_ON_OWNERSHIP_ERROR:-false}"
 
 # Paths that need to be writable by the app process. Only chown paths
 # that actually exist (bind mounts may or may not include all of these
@@ -62,6 +71,10 @@ for p in "${PATHS_TO_FIX[@]}"; do
         # -R for directories is a no-op cost-wise for single files, and
         # correctly recurses into memory/ and output/ subdirectories.
         chown -R "${TARGET_UID}:${TARGET_GID}" "$p" 2>/dev/null || {
+            if [ "${FAIL_ON_OWNERSHIP_ERROR}" = "true" ]; then
+                echo "entrypoint.sh: ERROR — could not chown $p" >&2
+                exit 1
+            fi
             echo "entrypoint.sh: WARNING — could not chown $p (continuing; " \
                  "the app itself will surface a clear error if this " \
                  "actually blocks a write)." >&2

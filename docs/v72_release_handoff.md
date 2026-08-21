@@ -6,7 +6,7 @@
 
 | البند | الحالة | الدليل |
 |---|---|---|
-| Pytest | 953 passed، 0 failures في آخر baseline موثق | `docs/v72_plan_compliance_audit.md` و`/tmp/webpent_runs/phase_v72_audit/pytest_current.log` |
+| Pytest | 1108 passed، 0 failures في آخر baseline موثق | آخر تشغيل محلي في working tree؛ راجع quality gate بعد التحديث |
 | Ruff | 0 errors | `docs/vip_quality_gate.json` |
 | Compileall | Passed | `docs/vip_quality_gate.json` |
 | Bandit high severity | Passed | `docs/bandit_release.json` |
@@ -15,20 +15,24 @@
 | Overall VIP gate | False | `docs/vip_quality_gate.json` |
 | WAPTLab qualification | 13 findings، 0 Tool-Confirmed في آخر run موثق | `docs/waptlab_qualification_report.json` وملفات `/tmp/webpent_runs/` |
 | Evidence bundles | 0 في آخر الجولة الموثقة | `output/report.json` |
-| Docker worker qualification | غير مثبتة | Docker daemon/critical-path blocker موثق في audit |
-| Manifest signature | `not_configured` | `docs/release_manifest.json` |
+| Docker worker qualification | غير مثبتة | تحتاج تشغيل staging فعليًا مع Docker/Redis والـworker |
+| Manifest signature | `not_configured` | لا توجد operator signing key؛ لا يوجد توقيع وهمي |
 
 ## الإصلاحات المنفذة في هذه المراجعة
 
 تم إصلاح اختيار أدوات `ruff` و`bandit` و`pip-audit` ليبدأ من مجلد interpreter المحلي قبل الرجوع إلى `PATH`. كما تم توضيح semantics الخاصة بـNuclei: خروج ناجح مع output فارغ يُسجل كـ`no_match` قابل للملاحظة، بينما panic أو خروج غير صفري يظل `TOOL_INFRA_FAILURE` fail-closed. وأضيفت initial BAC cooldown اختيارية ومحدودة، مع الحفاظ على confirmation guards وعدم اعتبار `429` دليلًا سلبيًا.
 
-تم أيضًا ترتيب بناء quality gate وrelease manifest على مرحلتين مع refresh نهائي، لتجنب بقاء manifest يحمل hash قديمًا لتقرير gate. أُضيفت اختبارات regression للمسارات المذكورة، ونجحت الاختبارات المستهدفة وRuff وcompileall قبل التسليم.
+تم أيضًا ترتيب بناء quality gate وrelease manifest على مرحلتين مع refresh نهائي، لتجنب بقاء manifest يحمل hash قديمًا لتقرير gate. أُضيفت اختبارات regression للمسارات المذكورة، ونجحت الاختبارات المستهدفة وRuff وcompileall قبل التسليم. وفي تنقيح production الحالي تم توحيد startup preflight بين API والworker ليكون fail-closed عند الاستثناء غير المتوقع، وإضافة `prod-config` و`prod-health`، وجعل image build يقبل `BASE_IMAGE` ووسم release قابلًا للتثبيت.
 
 ## البنود التي ما زالت مفتوحة بصدق
 
 لا توجد operator signing key، لذلك لم يتم توليد توقيع وهمي. كما أن qualification الكاملة للـworker وCelery وPostgreSQL وRedis وDocker، وbenchmark المستقل للـprecision/recall/ablation، و15–18 Tool-Confirmed findings على WAPTLab في دورة واحدة، تحتاج أدلة runtime لا يوفرها هذا التسليم. لا تُعتبر `Needs Human Review` أو `Not Scanned` أو `Clean` الناتجة عن غياب أداة confirmations.
 
 آخر نتيجة BAC لم تُنتج `evidence_bundle`: owner واجه `429`، foreign أعاد `200`، وanonymous أعاد `302`. لذلك لا يوجد IDOR مؤكد في التقرير الأخير رغم أن harness منفصلًا أثبت differential في سياق مختلف.
+
+## تصنيف الجاهزية
+
+التصنيف الحالي هو **production-hardened release candidate** وليس production-qualified بدون staging evidence. طبقة persistence الفعلية SQLite، وPostgreSQL ليس backend إنتاجيًا مدعومًا لمجرد وجود profile. Docker Compose config والـsecurity gates المحلية نجحت، لكن Docker daemon غير متاح هنا لتنفيذ image smoke build وworker E2E. تفاصيل القبول التشغيلي موجودة في [`docs/production_readiness_20260821.md`](production_readiness_20260821.md).
 
 ## تعليمات التحقق
 

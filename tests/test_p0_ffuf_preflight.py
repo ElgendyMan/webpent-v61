@@ -81,6 +81,17 @@ def test_ffuf_projects_only_safe_result_metadata(monkeypatch, tmp_path):
     assert "body" not in records[0]
 
 
+def test_startup_preflight_fails_closed_on_unexpected_error(monkeypatch):
+    import webpent.shared.preflight as preflight
+
+    def explode(*, host):
+        raise RuntimeError("preflight probe failed")
+
+    monkeypatch.setattr(preflight, "run_preflight", explode)
+    with pytest.raises(RuntimeError, match="preflight probe failed"):
+        preflight.run_startup_preflight(host="127.0.0.1")
+
+
 def test_preflight_blocks_explicit_public_insecure_posture(monkeypatch):
     import webpent.shared.preflight as preflight
 

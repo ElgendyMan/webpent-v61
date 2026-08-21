@@ -38,18 +38,21 @@ services:
   # the local lab stack and supplies a plaintext Redis service.
   # ---------------------------------------------------------------------------
   # ---------------------------------------------------------------------------
-  # PostgreSQL — optional production database (replaces SQLite)
-  # V10 HOSTILE P0-2: NO ports published to host. POSTGRES_PASSWORD has no
-  # fallback — must be set in .env or the container fails.
+  # PostgreSQL — optional profile only; the current application persistence is
+  # SQLite. Compose interpolation must remain valid when this profile is not
+  # enabled; explicitly starting --profile postgres without a password must
+  # still fail at the official Postgres image initialization boundary.
+  # NO ports are published to the host.
   # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: webpent-postgres
     restart: unless-stopped
     environment:
-      # No fallback password — must be set in .env.
       POSTGRES_USER: webpent
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      # Empty by default only so inactive-profile `compose config` can run.
+      # The official image rejects an empty password when this profile starts.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: webpent
     # NO ports: mapping — Postgres is internal-only.
     volumes:
@@ -78,6 +81,8 @@ services:
       - "${API_PORT:-8000}:8000"
     environment:
       - WEBPENT_API_HOST=0.0.0.0
+      - WEBPENT_ENVIRONMENT_PROFILE=production
+      - WEBPENT_FAIL_ON_OWNERSHIP_ERROR=true
       - WEBPENT_REDIS_URL=${REDIS_URL:?REDIS_URL must be set to a rediss:// URL}
       - PYTHONUNBUFFERED=1
       # V10 HOSTILE P0-2: AUTH_ENABLED=true is explicit. The H9 hard-stops
@@ -93,8 +98,8 @@ services:
       # V10 HOSTILE P0-2: no admin:admin default — WEBPENT_USERS must be
       # set explicitly in .env. Format: "user:pass:role,user2:pass2:role2"
       - 'WEBPENT_USERS=${WEBPENT_USERS:?WEBPENT_USERS must be set in .env (format: user:STRONG_PASS:role)}'
-      # CORS — default to no origins. Set WEBPENT_CORS_ORIGINS in .env.
-      - WEBPENT_CORS_ORIGINS=${WEBPENT_CORS_ORIGINS:-[]}
+      # CORS is mandatory in production; use an explicit JSON list in .env.
+      - WEBPENT_CORS_ORIGINS=${WEBPENT_CORS_ORIGINS:?WEBPENT_CORS_ORIGINS must be set in .env}
       # Rate limiting
       - WEBPENT_RATE_LIMIT_ENABLED=true
       - WEBPENT_RATE_LIMIT_SCAN_PER_MINUTE=5
@@ -137,6 +142,9 @@ services:
     command: celery -A worker.celery_app worker --loglevel=info --concurrency=1
     environment:
       - WEBPENT_REDIS_URL=${REDIS_URL:?REDIS_URL must be set to a rediss:// URL}
+      - WEBPENT_RATE_LIMIT_REDIS_URL=${RATE_LIMIT_REDIS_URL:?RATE_LIMIT_REDIS_URL must be set in .env}
+      - WEBPENT_ENVIRONMENT_PROFILE=production
+      - WEBPENT_FAIL_ON_OWNERSHIP_ERROR=true
       - PYTHONUNBUFFERED=1
       # V10 HOSTILE P0-2: AUTH_ENABLED=true + no weak fallbacks.
       - WEBPENT_AUTH_ENABLED=true

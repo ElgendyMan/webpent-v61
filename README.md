@@ -4,7 +4,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
 
-> **الحالة الحالية:** نسخة **v72 Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**. تشمل إصلاحات Sprint 0–4 الأمنية، Smart profiles، convergence rules، GoalTree، ProofBundle promotion guards، Knowledge Pack/RAG، Target Knowledge Model، Attack Graph، Hypothesis lifecycle، Coverage Intelligence، وحدود LLM Copilot. آخر baseline موثق هو **953 اختبارًا ناجحًا و0 failures**، مع `compileall` وRuff على `src` و`tests` و`scripts` ناجحين، وBandit high-severity ناجح، و`pip-audit --strict` بلا vulnerabilities معروفة في متطلبات الـlock. `hard_checks_passed=true`، لكن بوابة الإصدار العامة تبقى `passed=false` عمدًا لأن live WAPTLab qualification وworker/Docker qualification غير مثبتين. هذه النتائج تثبت العقود والـregressions المعروفة، ولا تضمن اكتشاف كل الثغرات على كل هدف. راجع [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md)، [`docs/v72_release_notes.md`](docs/v72_release_notes.md)، و[`docs/v72_release_handoff.md`](docs/v72_release_handoff.md) للحالة الحالية والـblockers.
+> **الحالة الحالية:** نسخة **v72 Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**. تشمل إصلاحات Sprint 0–4 الأمنية، Smart profiles، convergence rules، GoalTree، ProofBundle promotion guards، Knowledge Pack/RAG، Target Knowledge Model، Attack Graph، Hypothesis lifecycle، Coverage Intelligence، حدود LLM Copilot، وحقن `RuntimeContext` الآمن مع checkpoint rehydration. آخر baseline محلي موثق هو **1108 اختبارًا ناجحًا و0 failures**، مع `compileall` وRuff و`git diff --check` وBandit وpip-audit وshell syntax وCompose config ناجحين. تم تقوية startup preflight ليكون fail-closed عند الخطأ غير المتوقع، وتوحيد production compose وentrypoint وhealth gates. يظل إعلان production qualification الكاملة مشروطًا بإثبات تشغيل Docker/worker وlive qualification على بيئة مصرح بها؛ كما أن PostgreSQL profile غير مدعوم ما دامت طبقة persistence الفعلية SQLite. هذه النتائج تثبت العقود والـregressions المعروفة، ولا تضمن اكتشاف كل الثغرات على كل هدف. راجع [`docs/production_readiness_20260821.md`](docs/production_readiness_20260821.md)، [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md)، [`docs/v72_release_notes.md`](docs/v72_release_notes.md)، و[`docs/v72_release_handoff.md`](docs/v72_release_handoff.md) للحالة والحدود.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -150,11 +150,26 @@ make dev-logs
 make close
 ```
 
-الـdevelopment stack يعرض API عادةً على `http://localhost:8000`. اضبط `ENVIRONMENT_PROFILE=lab` للتشغيل المحلي؛ أما `staging` و`production` فيفرضان `AUTH_ENABLED=true` وsecrets قوية، بالإضافة إلى `LANGGRAPH_STRICT_MSGPACK=true` قبل تشغيل persistence الخاصة بالـcheckpoints. قبل تعريض API خارج localhost، استخدم `CORS_ORIGINS` صريحة و`ALLOW_INSECURE_TLS=false`، واستخدم Redis خارجيًا مع TLS عند الحاجة.
+الـdevelopment stack يعرض API عادةً على `http://localhost:8000`. اضبط `ENVIRONMENT_PROFILE=lab` للتشغيل المحلي؛ أما `staging` و`production` فيفرضان `AUTH_ENABLED=true` وsecrets قوية، بالإضافة إلى `LANGGRAPH_STRICT_MSGPACK=true` قبل تشغيل persistence الخاصة بالـcheckpoints. قبل تعريض API خارج localhost، استخدم `CORS_ORIGINS` صريحة و`ALLOW_INSECURE_TLS=false`، واستخدم Redis خارجيًا مع TLS عند الحاجة. يدعم Makefile تلقائيًا Docker Compose v2 (`docker compose`) أو الإصدار القديم (`docker-compose`).
 
 يشغّل `preflight` posture state صريحًا (`UNKNOWN` أو `BLOCKED` أو `PASS` أو `READY_WITH_WARNING` أو `DEGRADED`). حالة `READY_WITH_WARNING` في lab تعني أن التشغيل مسموح مع تحذيرات معلنة، ولا تعني qualification حيًا أو غياب كل المخاطر التشغيلية.
 
 طبقة persistence الحالية SQLite؛ وجود PostgreSQL profile لا يعني أن PostgreSQL backend مدعوم إنتاجيًا. لا تفترض أن نجاح تشغيل SQLite يثبت سلامة تشغيل PostgreSQL.
+
+### Production deployment gate
+
+لا تبدأ stack الإنتاج قبل استخدام ملف بيئة حقيقي وإزالة كل قيم `CHANGE-ME`. نفّذ الأوامر التالية من جذر المشروع:
+
+```bash
+cp .env.example .env
+# حرّر .env وضع secrets مستقلة وقوية وCORS origins صريحة.
+make prod-config
+make build RELEASE_TAG=$(git rev-parse --short HEAD)
+make prod-up
+make prod-health
+```
+
+`prod-config` يفشل مبكرًا عند نقص متطلبات Compose، و`prod-up` لا يعلن نجاحًا قبل فحص `/health`. استخدم `make prod-down` للإيقاف المنظم. يجب تنفيذ image smoke test وworker/Redis/checkpoint-resume وbackup/restore في staging فعلي قبل اعتبار النشر **production-qualified**؛ نجاح الاختبارات المحلية وحده يثبت release candidate محصّنًا، وليس تشغيلًا إنتاجيًا مكتمل الإثبات.
 
 ```bash
 cp .env.example .env

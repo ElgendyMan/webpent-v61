@@ -2,9 +2,9 @@
 
 هذه المصفوفة هي سجل العمل التنفيذي لخطة `webpent_v3_strict_ai_executable_vip_implementation.md`. لا تُغلق أي فجوة بالوثائق وحدها؛ الإغلاق يحتاج code path فعليًا، اختبار قبول، وartifact runtime قابل للمراجعة.
 
-آخر مراجعة: 2026-08-21، working tree مبني على HEAD `f29284b` قبل commit التغييرات الحالية.
+آخر مراجعة: 2026-08-21، working tree يتضمن تنقيح production الحالي قبل commit الإصدار النهائي.
 
-آخر بوابات محلية مثبتة: **1105 passed، 0 failures، Ruff=0، compileall=pass، diff-check=pass**.
+آخر بوابات محلية مثبتة: **1108 passed، 0 failures، Ruff=0، compileall=pass، diff-check=pass**؛ ونجح `pip-audit` على lock-derived external requirements وCompose config بمتغيرات production مؤقتة.
 
 | ID | الفجوة | الوضع الحالي المثبت | البوابة | الحالة | معيار الإغلاق المتبقي |
 |---|---|---|---|---|---|
@@ -24,7 +24,7 @@
 | G-14 | Celery/Redis/resume/multi-worker/Docker qualification ناقصة | عقود واختبارات جزئية موجودة، لكن critical-path live Docker/worker qualification غير مكتملة | G8 | **PARTIAL** | consume-once، fencing، crash recovery، secure transport، وDocker E2E artifact |
 | G-15 | precision/recall/reproducibility غير مقاسة live | WAPTLab v5: 35 findings و1 Tool-Confirmed IDOR مع evidence bundle؛ Juice Shop v17: 72 findings و0 strict، والجولة ترافقت مع Node heap OOM؛ لا توجد 3 clean runs كاملة مع ground truth | G9/G10 | **OPEN** | ground truth موثق + 3 clean runs + precision/recall/reproducibility hashes |
 | G-16 | prompt-injection/direct transport adversarial tests غير مكتملة | توجد security regressions scope/cookie/marker/infra، لكن تغطية prompt/tool/evidence/secrets/promotion bypass ليست كاملة | G1/G5/G9 | **PARTIAL** | adversarial matrix كاملة مع فشل آمن لكل bypass class |
-| G-17 | release artifacts والقرار النهائي غير مكتملين | manifest/SBOM/Bandit/preflight/capability/qualification/quality-gate artifacts محدثة، والـgate يظل صادقًا `passed=false` بسبب blockers الحية. ZIP/checksum سيُعاد بناؤهما بعد الـcommit النهائي؛ GitHub push ما زال يعتمد على مصادقة صالحة. | G10 | **CLOSED** | artifact contract مغلق؛ live worker/Docker qualification وGitHub authentication blockers خارج artifact generation |
+| G-17 | release artifacts والقرار النهائي غير مكتملين | manifest/SBOM/Bandit/preflight/capability/qualification/quality-gate artifacts محدثة، والـgate يظل صادقًا `passed=false` بسبب blockers الحية. production readiness report وhandoff محدثان، والـZIP النهائي يجب إعادة بنائه بعد commit هذا التنقيح. | G10 | **CLOSED** | artifact contract مغلق؛ live worker/Docker qualification وoperator signing وbackup/restore evidence ما زالت تشغيلية |
 
 ## النتائج الحية المثبتة
 

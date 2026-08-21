@@ -6,11 +6,10 @@ Audits across multiple review rounds flagged that worker boot silently
 normalised "Alembic missing" + "WebSocket SSRF unmitigated" + "embeddings
 network hang" + "insecure CELERY_PAYLOAD_KEY" as quiet success without
 operator-visible capability status. This module provides a single
-:func:`run_preflight` function that the API and worker can call at
-startup to emit an INFO-level capability report. It does NOT block
-startup (the framework degrades gracefully by design) — it makes the
-degradation VISIBLE so the operator knows which capabilities are
-available and which are in degraded mode.
+:func:`run_preflight` function that the API and worker call at startup.
+Capability checks may report an explicit degraded state where the selected
+profile permits it, but unsafe staging/production posture and unexpected
+preflight errors fail closed before the service accepts work.
 
 The report covers:
   1. Alembic — is the migration tooling importable + alembic.ini present?
@@ -516,3 +515,20 @@ def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
         status = info.get("status", "unknown")
         logger.info("[preflight] %s: %s", name, status)
     return report
+
+
+def run_startup_preflight(*, host: str | None = None) -> dict[str, dict[str, object]]:
+    """Run the startup gate and fail closed on unexpected evaluation errors.
+
+    Explicit posture failures already raise ``SystemExit`` from
+    :func:`run_preflight`. This wrapper handles only unexpected exceptions so
+    every production entrypoint applies the same policy and log message.
+    """
+    try:
+        return run_preflight(host=host)
+    except Exception as exc:
+        logger.critical(
+            "preflight failed unexpectedly at startup; refusing to continue: %s",
+            exc,
+        )
+        raise

@@ -118,8 +118,8 @@
       "version": "1.19.1"
     },
     "celery_payload_key": {
-      "posture": "dev default (acceptable for local lab)",
-      "status": "ok for dev — set CELERY_PAYLOAD_KEY for any non-local deployment"
+      "posture": "strong custom key",
+      "status": "ok — broker credentials encrypted with strong key"
     },
     "embeddings": {
       "cache_present": true,

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
@@ -48,6 +49,7 @@ from webpent.models.findings import Finding
 from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
 from webpent.shared.persistent_finding_ledger import PersistentFindingLedger
+from webpent.shared.preflight import run_startup_preflight
 from webpent.shared.resume_capability import issue_resume_capability
 from webpent.workers.pentest_worker import resume_pentest_task, run_pentest_task
 
@@ -243,17 +245,7 @@ except Exception as _registry_init_exc:
 # V10 P0-1/P0-3: startup capability preflight. Emits an INFO-level
 # capability report and fail-closes an explicitly public bind with the
 # insecure API quartet unless the operator acknowledges the lab override.
-try:
-    import os as _os
-
-    from webpent.shared.preflight import run_preflight as _run_preflight
-
-    _run_preflight(host=_os.getenv("WEBPENT_API_HOST"))
-except Exception as _preflight_exc:
-    logger.warning(
-        "preflight report failed at app startup (non-fatal): %s",
-        _preflight_exc,
-    )
+run_startup_preflight(host=os.getenv("WEBPENT_API_HOST"))
 
 
 def _extract_trusted_client_ip(request: Request, trusted_ips: list[str]) -> str:

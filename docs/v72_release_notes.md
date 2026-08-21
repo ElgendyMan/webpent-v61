@@ -14,7 +14,7 @@ The dependency set was upgraded to the resolved LangGraph/LangChain 1.x generati
 
 The quality gate now resolves `ruff`, `bandit`, and `pip-audit` from the executable directory beside the active Python interpreter before falling back to `PATH`. Nuclei now distinguishes a successful empty result (`no_match`) from a panic, fatal error, or non-zero exit (`TOOL_INFRA_FAILURE`). BAC also supports a bounded optional initial cooldown and preserves the existing fail-closed confirmation guards; a `429` is never treated as a negative control.
 
-The quality gate writes a provisional report before building the release manifest, writes the final report with the manifest check, and refreshes the manifest afterward so release hashes do not intentionally describe a stale gate report.
+The quality gate writes a provisional report before building the release manifest, writes the final report with the manifest check, and refreshes the manifest afterward so release hashes do not intentionally describe a stale gate report. Production startup is now fail-closed for unexpected preflight errors through one shared API/worker helper. The production compose validates configuration before startup, waits for `/health`, requires explicit production CORS/rate limiting/Redis TLS settings, and enables bind-mount ownership fail-fast. Docker builds accept an immutable `BASE_IMAGE` and release tag.
 
 ## Verification
 
@@ -22,14 +22,14 @@ The quality gate writes a provisional report before building the release manifes
 |---|---|
 | Compileall | Passed |
 | Ruff, project source/tests/scripts | Passed with 0 errors |
-| Pytest | 953 passed, 0 failed in the latest documented baseline |
+| Pytest | 1108 passed, 0 failed in the latest documented baseline |
 | Bandit high severity | Passed |
 | pip-audit strict | Passed; no known vulnerabilities in the lock-derived requirements |
 | CycloneDX SBOM generation | Passed |
 | Release manifest | Generated with SHA-256 file hashes; signature remains operator-controlled |
 | WAPTLab safety artifact | Passed as a non-contacting/local safety contract artifact |
 
-The quality artifact records `hard_checks_passed: true` and `passed: false`. The overall release flag is intentionally false because unresolved live qualification and worker/Docker blockers remain. This is deliberate and preserves the project's honest classification as an **Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**, not VIP-qualified.
+The quality artifact records `hard_checks_passed: true` and `passed: false`. The overall release flag is intentionally false because staging Docker/worker evidence, live qualification, and operational backup/restore evidence remain unclosed. This is deliberate and preserves the project's honest classification as a **production-hardened release candidate**, not production-qualified or VIP-qualified.
 
 ## Live qualification boundary
 
@@ -52,6 +52,6 @@ No WAPTLab or Juice Shop source, deployment, database, or live target was modifi
 
 ## Release posture
 
-**Hard checks green; live qualification blockers explicit; VIP status not claimed.** See [`docs/v72_release_handoff.md`](v72_release_handoff.md) and [`docs/v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) for the current handoff and residual register.
+**Hard checks green; production hardening implemented; staging qualification blockers explicit; production-qualified/VIP status not claimed.** See [`docs/production_readiness_20260821.md`](production_readiness_20260821.md), [`docs/v72_release_handoff.md`](v72_release_handoff.md), and [`docs/v72_plan_compliance_audit.md`](v72_plan_compliance_audit.md) for the current handoff and residual register.
 
 **Author:** Manus AI
