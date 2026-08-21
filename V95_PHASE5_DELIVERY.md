@@ -16,6 +16,9 @@
 | KEV context | CVE المطابق لـKEV يرفع confidence التصنيفي من tentative إلى firm فقط | advisory-only؛ لا يرفع `confidence_level` إلى Tool-Confirmed ولا ينشئ proof |
 | Scope drift | endpoint خارج origin المعلن يرسل graph إلى `scope_review` مع interrupt HITL، ولا يكمل بدون approval صريح | fail-closed عند غياب الموافقة |
 | LLM budget | planner يمنع الاستدعاء عند نفاد budget ويستخدم deterministic fallback | السبب يمر إلى `llm_budget_trace` ويظهر top-level في canonical report data |
+| Central strict verifier | كل مسار confirmation حساس يمرر baseline وcandidate وnegative control وcausal signal وprovenance حقيقي، ولا يُنتج ProofBundle إلا بعد نجاح replay contract وختمه | غياب `engagement_id` أو scope/identity context أو أي observation أساسي ينتج Needs Human Review/coverage gap؛ لا يوجد fallback إلى `thread_id` ولا confirmation من marker أو LLM وحده |
+| ProofBundle integrity | proof bundle يثبت replay قابلًا لإعادة التشغيل، negative-control digest، causal oracle، وprovenance المرتبط بالـfinding والـengagement | أي tampering أو نقص في seal/negative control يمنع promotion ويُسجل سبب الحجب في `promotion_guard` |
+| Legacy confirmation regressions | تحديث اختبارات JWT وSQLMap وvault-backed re-auth وBAC لتفصل بوضوح بين إصلاح الجلسة وبين إثبات الثغرة | re-auth أو tool marker وحدهما لا يرفعان finding؛ BAC الإيجابي ينجح فقط مع engagement provenance حقيقي |
 
 ## Verification evidence
 
@@ -28,17 +31,17 @@ compileall: passed
 git diff --check: passed
 ```
 
-تم تشغيل suite الكامل النهائي بعد كل إضافات evaluator وreport trace ونتيجته:
+تم تشغيل suite الكامل النهائي بعد إصلاح مسارات validator وBAC وstrict provenance ونتيجته:
 
 ```text
-1139 passed, 207 warnings in 31.48s
+1143 passed, 207 warnings in 31.54s
 Ruff: All checks passed
 compileall: passed
 vulture reference_lookup: no findings
 Coverage from the preceding full run: TOTAL 25221 statements, 7713 missed, 69%
 ```
 
-تم حفظ مخرجات البوابات الخام تحت `artifacts/v95/`، ولم يحدث أي فشل في suite النهائي.
+تم حفظ مخرجات البوابات الخام تحت `artifacts/v95/`، ولم يحدث أي فشل في suite النهائي. شملت آخر دورة أيضًا اختبارًا موجّهًا من 39 اختبارًا لمسارات JWT/verifier/BAC/reauth، ونجحت كلها، ثم نجحت البوابة الكاملة.
 
 ## Static security checks
 
@@ -60,4 +63,4 @@ pip-audit --strict --local: exit 1 because the editable local distribution webpe
 
 ## Release status
 
-النسخة تحقق hardening محليًا وcontract acceptance للـPhases 5.1–5.7. لا يصح وصفها بأنها VIP-qualified قبل نجاح ثلاث تشغيلات WAPTLab مستقلة تحقق عتبات الخطة: 15/20 confirmations، precision لا تقل عن 90%، reproducibility لا تقل عن 95%، ProofBundle coverage بنسبة 100%، وصفر scope violations أو duplicate executions.
+النسخة تحقق hardening محليًا وcontract acceptance للـPhases 5.1–5.7، مع strict verifier يطبق قاعدة عدم ادعاء confirmation بلا causal signal وnegative control وProofBundle مختوم. لا يصح وصفها بأنها VIP-qualified قبل نجاح ثلاث تشغيلات WAPTLab مستقلة تحقق عتبات الخطة: 15/20 confirmations، precision لا تقل عن 90%، reproducibility لا تقل عن 95%، ProofBundle coverage بنسبة 100%، وصفر scope violations أو duplicate executions. لم تُشغّل أي لابات في هذه الدورة احترامًا للحد المطلوب.

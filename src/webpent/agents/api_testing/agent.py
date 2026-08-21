@@ -338,6 +338,7 @@ def _analyze_captured_jwts(
     *,
     weak_secret_candidates: list[str] | None = None,
     public_key_available: bool = False,
+    verification_context: dict[str, Any] | None = None,
 ) -> tuple[list[Finding], list[dict[str, Any]], list[dict[str, Any]]]:
     """Analyze JWTs already captured by recon/crawler without active forging.
 
@@ -351,6 +352,7 @@ def _analyze_captured_jwts(
         extract_candidate_jwts,
         redact_jwt_observation,
     )
+    from webpent.shared.verifier import verify_replay_evidence
 
     findings: list[Finding] = []
     observations: list[dict[str, Any]] = []
@@ -395,6 +397,63 @@ def _analyze_captured_jwts(
                     }
                 )
                 continue
+            context = verification_context or {}
+            algorithm = str(item.get("algorithm") or "unknown")
+            token_fingerprint = str(item.get("token_fingerprint") or "")
+            negative_observation = {
+                "type": "wrong_secret_rejected",
+                "algorithm": algorithm,
+                "token_fingerprint": token_fingerprint,
+                "observed": True,
+            }
+            baseline_observation = {
+                "type": "weak_secret_baseline",
+                "algorithm": algorithm,
+                "token_fingerprint": token_fingerprint,
+                "signature_verified": False,
+            }
+            candidate_observation = {
+                "type": "weak_secret_candidate",
+                "algorithm": algorithm,
+                "token_fingerprint": token_fingerprint,
+                "signature_verified": True,
+            }
+            verification = verify_replay_evidence(
+                Finding(
+                    title="JWT signed with a bounded weak HMAC secret",
+                    description="Offline weak-secret signature observation.",
+                    severity=Severity.HIGH,
+                    vuln_class=VulnClass.JWT_WEAKNESS.value,
+                    url=base_url,
+                    tool_name="api_testing_agent",
+                ),
+                baseline=baseline_observation,
+                candidate=candidate_observation,
+                negative_control=negative_observation,
+                causal_signal=True,
+                negative_control_complete=True,
+                validator_id="api_testing.jwt_weak_secret",
+                validator_version="jwt-offline-replay.v1",
+                causal_basis="captured_signature_matches_bounded_candidate_and_rejects_wrong_secret",
+                engagement_id=str(context.get("engagement_id") or ""),
+                hypothesis_id=context.get("hypothesis_id"),
+                scope_context=context.get("scope_context"),
+                identity_context=context.get("identity_context"),
+                replay_metadata={
+                    "mode": "offline_signature_replay",
+                    "network_io": False,
+                    "negative_control": "wrong_secret_rejected",
+                },
+            )
+            if not verification.passed or verification.proof_bundle is None:
+                coverage_gaps.append(
+                    {
+                        "type": "jwt_confirmation_proof_incomplete",
+                        "reason": verification.reason,
+                        "token_fingerprint": token_fingerprint,
+                    }
+                )
+                continue
             try:
                 findings.append(
                     Finding(
@@ -418,6 +477,13 @@ def _analyze_captured_jwts(
                             "causal_signal": item.get("causal_signal"),
                             "negative_control_complete": item.get("negative_control_complete"),
                             "negative_control": item.get("negative_control"),
+                            "proof_bundle": verification.proof_bundle.model_dump(mode="json"),
+                            "promotion_guard": verification.evidence["promotion_guard"],
+                        },
+                        evidence_bundle={
+                            "proof_bundle": verification.proof_bundle.model_dump(mode="json"),
+                            "causal_signal": True,
+                            "negative_control": negative_observation,
                         },
                         reasoning=(
                             "The captured token signature matched one bounded offline "
@@ -589,6 +655,13 @@ def api_testing_node(state: PentestState) -> dict:
         crawled_data,
         weak_secret_candidates=state.get("jwt_weak_secret_candidates"),
         public_key_available=bool(state.get("jwt_public_key_available", False)),
+        verification_context={
+            "engagement_id": state.get("engagement_id"),
+            "hypothesis_id": state.get("hypothesis_id"),
+            "scope_context": state.get("scope_context") or state.get("target_scope"),
+            "identity_context": state.get("identity_context")
+            or state.get("identity_profiles"),
+        },
     )
     new_findings.extend(jwt_findings)
 

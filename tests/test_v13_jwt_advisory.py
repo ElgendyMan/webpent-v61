@@ -51,17 +51,40 @@ def test_jwt_inventory_is_bounded_and_alg_none_is_only_a_gap_offline():
     )
 
 
-def test_api_testing_promotes_only_offline_verified_weak_secret():
+def test_api_testing_blocks_weak_secret_confirmation_without_verification_context():
     token = _hs256()
     findings, observations, gaps = _analyze_captured_jwts(
         "http://lab.local",
         {"responses": [{"body": token}]},
         weak_secret_candidates=["secret"],
     )
+    assert findings == []
+    assert observations and observations[0]["type"] == "weak_secret_match"
+    assert any(gap["type"] == "jwt_confirmation_proof_incomplete" for gap in gaps)
+    assert token not in str(findings + observations + gaps)
+
+
+def test_api_testing_promotes_only_offline_verified_weak_secret_with_sealed_proof():
+    token = _hs256()
+    findings, observations, gaps = _analyze_captured_jwts(
+        "http://lab.local",
+        {"responses": [{"body": token}]},
+        weak_secret_candidates=["secret"],
+        verification_context={
+            "engagement_id": "jwt-test-engagement",
+            "hypothesis_id": "jwt-weak-secret",
+            "scope_context": {"allowed_origin": "http://lab.local"},
+            "identity_context": {"principal": "authorized-tester", "authenticated": True},
+        },
+    )
     assert len(findings) == 1
     assert findings[0].vuln_class == "jwt_weakness"
     assert findings[0].confidence_level == "Tool-Confirmed"
     assert observations and observations[0]["type"] == "weak_secret_match"
+    assert not gaps
+    assert findings[0].evidence_bundle["proof_bundle"]["sealed"] is True
+    assert findings[0].evidence_bundle["causal_signal"] is True
+    assert findings[0].evidence_bundle["negative_control"]["observed"] is True
     assert token not in str(findings + observations + gaps)
 
 

@@ -81,6 +81,7 @@ def test_access_control_node_emits_confirmed_finding_only_with_owner_metadata(mo
     )
     state = {
         "target": target,
+        "engagement_id": "bac-test-engagement",
         "findings": [],
         "crawled_data": {
             "endpoints": [

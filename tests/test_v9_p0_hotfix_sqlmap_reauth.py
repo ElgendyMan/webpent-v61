@@ -158,9 +158,16 @@ class TestP0BReauthRetry:
             assert tool_entry.func.call_args.kwargs["session_cookies"] == {
                 "PHPSESSID": "freshcookie", "security": "low",
             }
-            assert result.confidence == Confidence.CONFIRMED.value
-            assert result.confidence_level == "Tool-Confirmed"
+            # Re-authentication and a SQLMap marker alone are not a
+            # causal replay.  The strict verifier must block promotion
+            # because this legacy direct call supplies no baseline,
+            # candidate, or negative-control observations.
+            assert result.confidence != Confidence.CONFIRMED.value
+            assert result.confidence_level == "Needs Human Review"
             assert result.evidence.get("session_reauth") is True
+            assert result.evidence["promotion_guard"]["reason"] == (
+                "baseline_and_candidate_required"
+            )
             # The caller's dict object was mutated in place so it
             # propagates to validator_node's state update.
             assert session_cookies == {"PHPSESSID": "freshcookie", "security": "low"}

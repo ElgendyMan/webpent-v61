@@ -29,9 +29,9 @@ from langchain_core.messages import AIMessage
 
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Confidence, Finding, VulnClass
-from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.poc_policy import derive_execution_risk, evaluate_execution_gate
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -365,6 +365,7 @@ def _test_payload_with_browser(
 def _test_finding_payloads(
     browser, finding: Finding, payloads: list[str], auth_state: dict[str, Any],
     stealth_mode: bool = False, thread_id: str | None = None,
+    verification_context: dict[str, Any] | None = None,
 ) -> Finding:
     for payload in payloads:
         confirmed = _test_payload_with_browser(
@@ -407,35 +408,58 @@ def _test_finding_payloads(
                         },
                     }
                 )
-            bundle = build_proof_bundle(
-                engagement_id=str(
-                    (finding.evidence or {}).get("engagement_id") or "runtime-unbound"
-                ),
-                finding_id=str(finding.id),
-                evidence=[
-                    {"payload": payload, "triggered": True},
-                    {"payload": negative_control_payload, "triggered": False},
-                ],
-                evidence_refs=[
-                    f"playwright:{finding.id}:positive",
-                    f"playwright:{finding.id}:negative-control",
-                ],
-                negative_control={"payload": negative_control_payload, "triggered": False},
-            ).seal(actor="playwright_execution_sandbox")
-            if not validate_proof_bundle(bundle, require_negative_control=True):
+            context = verification_context or {}
+            baseline = {
+                "payload": negative_control_payload,
+                "triggered": False,
+                "control": "neutral_baseline",
+            }
+            candidate = {
+                "payload": payload,
+                "triggered": True,
+                "control": "candidate",
+            }
+            negative_control = {
+                "payload": negative_control_payload,
+                "triggered": bool(negative_control_triggered),
+                "control": "neutral_negative_control",
+            }
+            verification = verify_replay_evidence(
+                finding,
+                baseline=baseline,
+                candidate=candidate,
+                negative_control=negative_control,
+                causal_signal=True,
+                negative_control_complete=not negative_control_triggered,
+                validator_id="execution_sandbox.playwright_xss",
+                validator_version="playwright-dialog-replay.v1",
+                causal_basis="candidate_dialog_triggered_while_neutral_control_did_not",
+                engagement_id=str(context.get("engagement_id") or ""),
+                hypothesis_id=finding.hypothesis_id,
+                scope_context=context.get("scope_context"),
+                identity_context=context.get("identity_context"),
+                replay_metadata={
+                    "browser": "playwright",
+                    "dialog_signal": True,
+                    "negative_control_triggered": bool(negative_control_triggered),
+                },
+            )
+            if not verification.passed or verification.proof_bundle is None:
                 return finding.model_copy(
                     update={
                         "confidence_level": "Needs Human Review",
                         "evidence": {
                             **(finding.evidence or {}),
                             **evidence,
+                            **verification.evidence,
                             "promotion_guard": {
                                 "status": "blocked",
-                                "reason": "proof_bundle_validation_failed",
+                                "reason": verification.reason,
                             },
                         },
                     }
                 )
+            bundle = verification.proof_bundle
             logger.info(
                 "Playwright CONFIRMED XSS for finding %s (%s) — upgrading confidence",
                 finding.id, finding.title,
@@ -453,6 +477,7 @@ def _test_finding_payloads(
                         "promotion_guard": {
                             "status": "passed",
                             "proof_bundle_sealed": True,
+                            "replayable": True,
                         },
                     },
                 }
@@ -810,6 +835,20 @@ def execution_sandbox_node(state: PentestState) -> dict:
                 browser, finding, payloads, auth_state,
                 stealth_mode=stealth_mode,
                 thread_id=thread_id,
+                verification_context={
+                    "engagement_id": state.get("engagement_id") or thread_id,
+                    "hypothesis_id": finding.hypothesis_id,
+                    "scope_context": {
+                        "target_origin": f"{urlparse(finding.url).scheme}://{urlparse(finding.url).netloc}",
+                        "declared_scope": list(state.get("target_scope") or ()),
+                        "scope_bound": bool(state.get("target_scope") or target.url),
+                    },
+                    "identity_context": {
+                        "mode": "authenticated" if auth_state.get("cookies") else "anonymous",
+                        "cookie_count": len(auth_state.get("cookies") or []),
+                        "identity_profile_count": len(state.get("identity_profiles") or {}),
+                    },
+                },
             )
             if updated.confidence == Confidence.CONFIRMED.value:
                 confirmed_count += 1

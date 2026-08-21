@@ -21,7 +21,6 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from langchain_core.messages import AIMessage
 
 from webpent.models.findings import Finding, Severity, VulnClass
-from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.authorization_matrix import build_authorization_matrix
 from webpent.shared.bac_identity_tester import (
     IdentityProfile,
@@ -33,6 +32,7 @@ from webpent.shared.bac_identity_tester import (
     profile_owns_resource,
     sanitise_probe_result,
 )
+from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -859,13 +859,16 @@ def access_control_node(state: PentestState) -> dict:
                     }
                 )
                 continue
+            owner_row = next(
+                row for row in rows if row.get("identity") == owner_identity
+            )
             finding = _create_idor_finding(
                 url,
                 int(foreign["status_code"]),
                 int(foreign["content_length"]),
                 f"with non-owner identity {foreign['identity']}",
                 evidence=evidence,
-                confidence_level="Tool-Confirmed",
+                confidence_level="Needs Human Review",
                 description_suffix=(
                     f"Identity {owner_identity} was recorded as the owner, while "
                     f"identity {foreign['identity']} reproduced successful access."
@@ -880,46 +883,65 @@ def access_control_node(state: PentestState) -> dict:
                 ),
                 foreign_role=str(foreign.get("role") or "unknown"),
             )
-            bundle = build_proof_bundle(
-                engagement_id=str(state.get("engagement_id") or "runtime-unbound"),
-                finding_id=str(finding.id),
-                evidence=[row for row in rows if isinstance(row, dict)],
-                evidence_refs=[
-                    f"bac:{object_id or 'unknown'}:owner",
-                    f"bac:{object_id or 'unknown'}:foreign",
-                    f"bac:{object_id or 'unknown'}:negative-control",
-                ],
+            target_url = getattr(target, "url", None)
+            if isinstance(target, dict):
+                target_url = target.get("url") or target_url
+            parsed_target = urlparse(str(target_url or url))
+            verification = verify_replay_evidence(
+                finding,
+                baseline=owner_row,
+                candidate=foreign,
                 negative_control=negative_control,
-            ).seal(actor="access_control_validator")
-            if not validate_proof_bundle(bundle, require_negative_control=True):
-                finding = finding.model_copy(
-                    update={
-                        "confidence_level": "Needs Human Review",
-                        "evidence": {
-                            **(finding.evidence or {}),
-                            "promotion_guard": {
-                                "status": "blocked",
-                                "reason": "proof_bundle_validation_failed",
-                            },
-                        },
-                    }
-                )
-            else:
-                proof_bundle_data = bundle.model_dump(mode="json")
-                finding = finding.model_copy(
-                    update={
-                        "evidence_bundle": proof_bundle_data,
-                        "evidence": {
-                            **(finding.evidence or {}),
-                            "proof_bundle_sealed": True,
-                            "proof_bundle": proof_bundle_data,
-                            "promotion_guard": {
-                                "status": "passed",
-                                "proof_bundle_sealed": True,
-                            },
-                        },
-                    }
-                )
+                causal_signal=True,
+                negative_control_complete=True,
+                validator_id="access_control.idor",
+                validator_version="v96.1",
+                causal_basis=(
+                    "owner access and reproducible foreign access differed while "
+                    "a denied foreign-identity control was observed"
+                ),
+                engagement_id=str(state.get("engagement_id") or ""),
+                hypothesis_id=finding.hypothesis_id,
+                scope_context={
+                    "target_origin": f"{parsed_target.scheme}://{parsed_target.netloc}",
+                    "declared_scope": list(scope_origins),
+                    "scope_bound": bool(scope_origins),
+                },
+                identity_context={
+                    "owner_identity": owner_identity,
+                    "candidate_identity": str(foreign.get("identity") or ""),
+                    "tested_identities": [str(row.get("identity") or "") for row in rows],
+                },
+                replay_metadata={
+                    "method": str(
+                        record.get("method") or record.get("http_method") or "GET"
+                    ).upper(),
+                    "owner_status_code": int(owner_row.get("status_code") or 0),
+                    "candidate_status_code": int(foreign.get("status_code") or 0),
+                    "negative_control_status_code": int(negative_control.get("status_code") or 0),
+                },
+            )
+            finding = finding.model_copy(
+                update={
+                    "confidence_level": (
+                        "Tool-Confirmed" if verification.passed else "Needs Human Review"
+                    ),
+                    "evidence_bundle": (
+                        verification.proof_bundle.model_dump(mode="json")
+                        if verification.proof_bundle is not None
+                        else None
+                    ),
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        **verification.evidence,
+                    },
+                    "reasoning": (
+                        finding.reasoning
+                        if verification.passed
+                        else f"IDOR replay verifier blocked promotion: {verification.reason}"
+                    ),
+                }
+            )
             new_findings.append(finding)
             if finding.confidence_level == "Tool-Confirmed":
                 confirmed_count += 1
@@ -1062,26 +1084,33 @@ def access_control_node(state: PentestState) -> dict:
                 "evidence_refs": list(comparison.get("evidence_refs") or [])[:16],
                 "redaction": "cookies, authorization headers, and raw bodies omitted",
             }
+            matrix_finding = _create_idor_finding(
+                base_key[1],
+                int(left_row.get("status_code") or right_row.get("status_code") or 0),
+                0,
+                f"matrix comparison {kind} between "
+                f"{comparison.get('left_identity_ref')} and "
+                f"{comparison.get('right_identity_ref')}",
+                evidence=evidence,
+                confidence_level="Needs Human Review",
+                description_suffix=(
+                    "Authorization matrix recorded reproducible response fingerprints "
+                    "for a real access differential."
+                ),
+                owner_role=owner_role,
+                foreign_role=foreign_role,
+            )
             matrix_findings.append(
-                _create_idor_finding(
-                    base_key[1],
-                    int(left_row.get("status_code") or right_row.get("status_code") or 0),
-                    0,
-                    f"matrix comparison {kind} between "
-                    f"{comparison.get('left_identity_ref')} and "
-                    f"{comparison.get('right_identity_ref')}",
-                    evidence=evidence,
-                    confidence_level=(
-                        "Tool-Confirmed"
-                        if owner_identity and owner_role.lower() != "unknown"
-                        else "Needs Human Review"
-                    ),
-                    description_suffix=(
-                        "Authorization matrix recorded reproducible response fingerprints "
-                        "for a real access differential."
-                    ),
-                    owner_role=owner_role,
-                    foreign_role=foreign_role,
+                matrix_finding.model_copy(
+                    update={
+                        "evidence": {
+                            **(matrix_finding.evidence or {}),
+                            "promotion_guard": {
+                                "status": "blocked",
+                                "reason": "matrix_requires_strict_replay_verifier",
+                            },
+                        }
+                    }
                 )
             )
             existing_keys.add(base_key)

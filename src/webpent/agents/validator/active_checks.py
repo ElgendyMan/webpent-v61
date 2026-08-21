@@ -23,7 +23,7 @@ from typing import Any
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
 from webpent.models.findings import Confidence, Finding
-from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
+from webpent.shared.verifier import verify_replay_evidence
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +222,12 @@ def _evidence(
 
 
 def _confirmed(
-    finding: Finding, evidence: dict[str, Any], reasoning: str, payload_label: str
+    finding: Finding,
+    evidence: dict[str, Any],
+    reasoning: str,
+    payload_label: str,
+    *,
+    verification_context: dict[str, Any] | None = None,
 ) -> Finding:
     merged_evidence = {**(finding.evidence or {}), **evidence}
     if not (
@@ -246,32 +251,40 @@ def _confirmed(
 
     baseline = merged_evidence.get("baseline")
     candidate = merged_evidence.get("candidate")
-    bundle = build_proof_bundle(
-        engagement_id=str(merged_evidence.get("engagement_id") or "runtime-unbound"),
-        finding_id=str(finding.id),
-        evidence=[item for item in (baseline, candidate) if isinstance(item, dict)],
-        evidence_refs=[
-            f"replay:{merged_evidence.get('validator', 'unknown')}:baseline",
-            f"replay:{merged_evidence.get('validator', 'unknown')}:candidate",
-        ],
-        negative_control=baseline,
-    ).seal(actor="active_validator")
-    if not validate_proof_bundle(bundle, require_negative_control=True):
-        merged_evidence["promotion_guard"] = {
-            "status": "blocked",
-            "reason": "proof_bundle_seal_validation_failed",
-        }
+    context = verification_context or {}
+    verification = verify_replay_evidence(
+        finding,
+        baseline=baseline if isinstance(baseline, dict) else None,
+        candidate=candidate if isinstance(candidate, dict) else None,
+        negative_control=baseline if isinstance(baseline, dict) else None,
+        causal_signal=bool(merged_evidence.get("causal_signal")),
+        negative_control_complete=bool(merged_evidence.get("negative_control_complete")),
+        validator_id=str(merged_evidence.get("validator") or "active_validator"),
+        validator_version="active-replay.v1",
+        causal_basis=str(
+            merged_evidence.get("causal_basis")
+            or merged_evidence.get("matched_marker")
+            or "class_specific_baseline_candidate_differential"
+        ),
+        engagement_id=str(context.get("engagement_id") or ""),
+        hypothesis_id=str(context["hypothesis_id"]) if context.get("hypothesis_id") else None,
+        scope_context=context.get("scope_context"),
+        identity_context=context.get("identity_context"),
+        replay_metadata={"payload_label": payload_label},
+    )
+    merged_evidence.update(verification.evidence)
+    if not verification.passed or verification.proof_bundle is None:
         return finding.model_copy(
             update={
                 "confidence_level": "Needs Human Review",
                 "evidence": merged_evidence,
-                "reasoning": f"{reasoning} Automated promotion was blocked by proof validation.",
+                "reasoning": (
+                    f"{reasoning} Automated promotion was blocked by the strict verifier: "
+                    f"{verification.reason}."
+                ),
             }
         )
 
-    merged_evidence["proof_bundle_sealed"] = True
-    merged_evidence["proof_bundle"] = bundle.model_dump(mode="json")
-    merged_evidence["promotion_guard"] = {"status": "passed", "proof_bundle_sealed": True}
     return finding.model_copy(
         update={
             "confidence": Confidence.CONFIRMED.value,
@@ -333,6 +346,7 @@ def _inband_marker_check(
     payload: str,
     markers: tuple[str, ...],
     cookies: dict[str, str] | None,
+    verification_context: dict[str, Any] | None = None,
 ) -> Finding:
     parameter = _candidate_parameter(finding)
     if not parameter:
@@ -385,6 +399,7 @@ def _inband_marker_check(
             f"{vuln_class.upper()} replay produced marker {marker!r} only after the controlled "
             "payload was injected; the baseline did not contain that marker.",
             payload,
+            verification_context=verification_context,
         )
     return _ambiguous(
         finding,
@@ -394,27 +409,41 @@ def _inband_marker_check(
     )
 
 
-def validate_lfi(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+def validate_lfi(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> Finding:
     return _inband_marker_check(
         finding,
         "lfi",
         "/etc/passwd",
         ("root:x:0:0", "root:x:"),
         cookies,
+        verification_context,
     )
 
 
-def validate_path_traversal(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+def validate_path_traversal(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> Finding:
     return _inband_marker_check(
         finding,
         "path_traversal",
         "../../../../../../etc/passwd",
         ("root:x:0:0", "root:x:"),
         cookies,
+        verification_context,
     )
 
 
-def validate_ssti(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+def validate_ssti(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> Finding:
     """Confirm server-side expression evaluation with a baseline differential."""
     parameter = _candidate_parameter(finding)
     if not parameter:
@@ -451,6 +480,7 @@ def validate_ssti(finding: Finding, cookies: dict[str, str] | None = None) -> Fi
             "SSTI replay evaluated a harmless arithmetic expression to 391; the "
             "baseline did not contain 391.",
             payload,
+            verification_context=verification_context,
         )
     return _ambiguous(
         finding,
@@ -460,7 +490,11 @@ def validate_ssti(finding: Finding, cookies: dict[str, str] | None = None) -> Fi
     )
 
 
-def validate_nosql_injection(finding: Finding, cookies: dict[str, str] | None = None) -> Finding:
+def validate_nosql_injection(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> Finding:
     """Use a bounded type-confusion differential; never dump or enumerate data."""
     parameter = _candidate_parameter(finding)
     if not parameter:
@@ -506,6 +540,7 @@ def validate_nosql_injection(finding: Finding, cookies: dict[str, str] | None = 
             "to a materially different 2xx response. This is a bounded authorization "
             "differential; no data enumeration was performed.",
             candidate,
+            verification_context=verification_context,
         )
     evidence["differential"] = "no_confirming_authorization_boundary"
     return _ambiguous(

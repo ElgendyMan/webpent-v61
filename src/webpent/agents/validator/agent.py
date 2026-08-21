@@ -32,7 +32,10 @@ from webpent.memory.db import get_db_manager
 from webpent.memory.lessons import get_lessons_manager
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
 from webpent.models.findings import Confidence, Finding
-from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
+from webpent.models.proof_bundle import (
+    proof_bundle_promotion_ready,
+    validate_proof_bundle,
+)
 from webpent.shared.bac_identity_tester import cookies_from_auth_state
 from webpent.shared.deserialization import build_oob_command_templates
 from webpent.shared.evidence_contract import contract_required, evaluate_contract
@@ -59,6 +62,7 @@ from webpent.shared.llm import (
     get_llm as _shared_get_llm,
 )
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 from webpent.tools.registry import get_tool
 
@@ -185,11 +189,15 @@ def _validate_generic_evidence_contract(finding: Finding) -> Finding | None:
     proof_bundle_valid = validate_proof_bundle(
         contract_evidence.get("proof_bundle"), require_negative_control=True
     )
+    proof_bundle_promotion_valid = proof_bundle_promotion_ready(
+        contract_evidence.get("proof_bundle")
+    )
     evaluation["proof_bundle_valid"] = proof_bundle_valid
+    evaluation["proof_bundle_promotion_ready"] = proof_bundle_promotion_valid
     evidence["evidence_contract_evaluation"] = evaluation
     evidence["validation_attempted"] = True
     evidence["validation_requeue"] = False
-    if evaluation.get("satisfied") and proof_bundle_valid:
+    if evaluation.get("satisfied") and proof_bundle_promotion_valid:
         return finding.model_copy(
             update={
                 "confidence": Confidence.CONFIRMED.value,
@@ -208,7 +216,8 @@ def _validate_generic_evidence_contract(finding: Finding) -> Finding | None:
             "validation_failure_reason": (
                 "evidence_contract_unsatisfied"
                 if not evaluation.get("satisfied")
-                else "proof_bundle_invalid"
+                else                 "proof_bundle_promotion_contract_failed"
+
             ),
         }
     )
@@ -1858,6 +1867,22 @@ def _validate_with_tool(
 
     On confirmation, the finding is immediately persisted to the database.
     """
+    target_for_context = target_url or finding.url
+    parsed_context_url = urlparse(str(target_for_context))
+    verification_context = {
+        "engagement_id": engagement_id or "",
+        "hypothesis_id": finding.hypothesis_id,
+        "scope_context": {
+            "target_origin": f"{parsed_context_url.scheme}://{parsed_context_url.netloc}",
+            "declared_scope_count": len(target_scope),
+            "scope_bound": bool(target_scope),
+        },
+        "identity_context": {
+            "mode": "authenticated" if session_cookies else "anonymous",
+            "cookie_count": len(session_cookies or {}),
+            "identity_profile_count": len(identity_profiles or {}),
+        },
+    }
     if vuln_class == "xss":
         tool_name = "dalfox"
         _entry = get_tool("dalfox")
@@ -1910,19 +1935,35 @@ def _validate_with_tool(
     elif vuln_class == "lfi":
         from webpent.agents.validator.active_checks import validate_lfi
 
-        return validate_lfi(finding, cookies=session_cookies)
+        return validate_lfi(
+            finding,
+            cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "path_traversal":
         from webpent.agents.validator.active_checks import validate_path_traversal
 
-        return validate_path_traversal(finding, cookies=session_cookies)
+        return validate_path_traversal(
+            finding,
+            cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "ssti":
         from webpent.agents.validator.active_checks import validate_ssti
 
-        return validate_ssti(finding, cookies=session_cookies)
+        return validate_ssti(
+            finding,
+            cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "nosql_injection":
         from webpent.agents.validator.active_checks import validate_nosql_injection
 
-        return validate_nosql_injection(finding, cookies=session_cookies)
+        return validate_nosql_injection(
+            finding,
+            cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "rfi":
         # RFI is confirmed only by an authenticated OOB server-side fetch.
         return _validate_via_oob(
@@ -1940,7 +1981,11 @@ def _validate_with_tool(
             session_cookies=session_cookies,
         )
     elif vuln_class == "open_redirect":
-        return _validate_open_redirect(finding, session_cookies=session_cookies)
+        return _validate_open_redirect(
+            finding,
+            session_cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "info_disclosure":
         from webpent.agents.validator.structural_checks import validate_info_disclosure
 
@@ -2032,6 +2077,10 @@ def _validate_with_tool(
         )
 
     # ---- Stage 0: Differential / Baseline Testing (V5 Sprint 10) ----
+    # Strict replay promotion below may only use observations captured by
+    # this stage.  A tool string by itself is not a baseline/candidate
+    # replay and therefore cannot produce a Tool-Confirmed finding.
+    differential_observation: dict[str, Any] | None = None
     # V5 Sprint 10: For in-band vuln classes (XSS, SQLi), send a clean
     # baseline request (no payload) and compare its response against
     # the payload response. If the responses are identical or the delta
@@ -2093,9 +2142,10 @@ def _validate_with_tool(
     elif vuln_class == "xss" and finding.payload:
         # Construct the payload URL by appending the payload to the
         # finding's URL (if not already present).
-        from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+        from urllib.parse import parse_qsl, urlencode, urlunparse
+        from urllib.parse import urlparse as _urlparse
 
-        parsed = urlparse(finding.url)
+        parsed = _urlparse(finding.url)
         baseline_url = urlunparse(parsed._replace(query=""))
         # Build the payload URL by setting the first param to the payload.
         params = parse_qsl(parsed.query, keep_blank_values=True)
@@ -2131,6 +2181,27 @@ def _validate_with_tool(
                 target_url=baseline_url,
                 payload_url=payload_url,
             )
+            if not diff.is_false_positive:
+                differential_observation = {
+                    "baseline": {
+                        "url_shape": baseline_url,
+                        "status_code": diff.baseline_status,
+                        "body_length": diff.baseline_length,
+                    },
+                    "candidate": {
+                        "url_shape": payload_url,
+                        "status_code": diff.payload_status,
+                        "body_length": diff.payload_length,
+                        "body_delta": diff.body_delta,
+                        "status_delta": diff.status_delta,
+                    },
+                    "negative_control": {
+                        "url_shape": baseline_url,
+                        "status_code": diff.baseline_status,
+                        "body_length": diff.baseline_length,
+                        "control": "clean_baseline_request",
+                    },
+                }
             if diff.is_false_positive:
                 logger.info(
                     "Differential test flagged finding %s (%s) as FALSE POSITIVE — %s",
@@ -2668,21 +2739,82 @@ def _validate_with_tool(
         llm_confirmed,
     )
 
-    # V5 Sprint 10: Capture the evidence bundle for human-audit
-    # reproducibility. Every Tool-Confirmed finding MUST have a full
-    # request/response/tool_output record so an auditor can verify the
-    # exploit without re-running the tool.
-    evidence_bundle = capture_evidence_bundle(
-        request_method="TOOL",
-        request_url=finding.url,
-        request_headers=None,
-        request_body=None,
-        response_status_code=None,
-        response_headers=None,
-        response_body=None,
-        response_elapsed_ms=None,
-        tool_output=tool_output,
+    evidence = {
+        **(finding.evidence or {}),
+        "validator_tool": tool_name,
+        "deterministic_marker": bool(det_confirmed),
+        "supervisor_verdict": bool(llm_confirmed),
+    }
+    # A deterministic tool marker and an LLM verdict are not sufficient
+    # for promotion.  The central verifier must see a real baseline,
+    # candidate, and negative-control observation from the replay stage.
+    replay_baseline = (
+        differential_observation.get("baseline")
+        if differential_observation
+        else None
     )
+    replay_candidate = (
+        differential_observation.get("candidate")
+        if differential_observation
+        else None
+    )
+    replay_negative_control = (
+        differential_observation.get("negative_control")
+        if differential_observation
+        else None
+    )
+    verification = verify_replay_evidence(
+        finding,
+        baseline=replay_baseline,
+        candidate=replay_candidate,
+        negative_control=replay_negative_control,
+        causal_signal=bool(differential_observation and det_confirmed and llm_confirmed),
+        negative_control_complete=bool(differential_observation),
+        validator_id=f"validator.{tool_name}",
+        validator_version="strict-tool-replay.v1",
+        causal_basis=(
+            "deterministic_tool_marker_and_supervisor_verdict_with_differential_replay"
+        ),
+        engagement_id=str(engagement_id or ""),
+        hypothesis_id=finding.hypothesis_id,
+        scope_context={
+            "target_origin": (
+                f"{urlparse(str(target_for_context)).scheme}://"
+                f"{urlparse(str(target_for_context)).netloc}"
+            ),
+            "declared_scope": list(target_scope),
+            "scope_bound": bool(target_scope or target_url),
+        },
+        identity_context={
+            "mode": "authenticated" if session_cookies else "anonymous",
+            "cookie_count": len(session_cookies or {}),
+            "identity_profile_count": len(identity_profiles or {}),
+        },
+        replay_metadata={
+            "tool": tool_name,
+            "tool_marker_detected": bool(det_confirmed),
+            "supervisor_verdict": bool(llm_confirmed),
+        },
+    )
+    evidence.update(verification.evidence)
+    if not verification.passed or verification.proof_bundle is None:
+        logger.warning(
+            "Strict verifier blocked %s promotion for finding %s: %s",
+            tool_name,
+            finding.id,
+            verification.reason,
+        )
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": evidence,
+                "reasoning": (
+                    f"The {tool_name} marker was observed, but strict replay "
+                    f"verification blocked confirmation: {verification.reason}."
+                ),
+            }
+        )
+    evidence_bundle = verification.proof_bundle.model_dump(mode="json")
 
     # V5 Sprint 10: Generate a canary token for this finding. Even
     # though tool-based confirmation doesn't embed a canary in the
@@ -3491,6 +3623,7 @@ def _validate_open_redirect(
     finding: Finding,
     *,
     session_cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
 ) -> Finding:
     """Confirm an open redirect without following the redirect target."""
     from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -3577,17 +3710,29 @@ def _validate_open_redirect(
         "negative_control_complete": bool(baseline_host.lower() != canary_host),
     }
     if confirmed:
-        bundle = build_proof_bundle(
-            engagement_id=str(evidence.get("engagement_id") or "runtime-unbound"),
-            finding_id=str(finding.id),
-            evidence=[evidence["baseline"], evidence["candidate"]],
-            evidence_refs=["open_redirect:baseline", "open_redirect:candidate"],
+        context = verification_context or {}
+        verification = verify_replay_evidence(
+            finding,
+            baseline=evidence["baseline"],
+            candidate=evidence["candidate"],
             negative_control=evidence["baseline"],
-        ).seal(actor="open_redirect_validator")
-        if validate_proof_bundle(bundle, require_negative_control=True):
-            evidence["proof_bundle_sealed"] = True
-            evidence["proof_bundle"] = bundle.model_dump(mode="json")
-            evidence["promotion_guard"] = {"status": "passed", "proof_bundle_sealed": True}
+            causal_signal=True,
+            negative_control_complete=True,
+            validator_id="open_redirect",
+            validator_version="open-redirect-replay.v1",
+            causal_basis="candidate_redirects_to_controlled_canary_while_baseline_does_not",
+            engagement_id=str(context.get("engagement_id") or ""),
+            hypothesis_id=(
+                str(context["hypothesis_id"])
+                if context.get("hypothesis_id")
+                else None
+            ),
+            scope_context=context.get("scope_context"),
+            identity_context=context.get("identity_context"),
+            replay_metadata={"parameter": parameter, "follow_redirects": False},
+        )
+        evidence.update(verification.evidence)
+        if verification.passed and verification.proof_bundle is not None:
             return finding.model_copy(
                 update={
                     "confidence": Confidence.CONFIRMED.value,
@@ -3605,13 +3750,13 @@ def _validate_open_redirect(
                     "reasoning": (
                         "The candidate parameter produced a 3xx redirect to a "
                         "controlled external canary host, while the baseline did not. "
-                        "Redirects were not followed and the sealed replay proof passed."
+                        "Redirects were not followed and the strict replay proof passed."
                     ),
                 }
             )
         evidence["promotion_guard"] = {
             "status": "blocked",
-            "reason": "proof_bundle_validation_failed",
+            "reason": verification.reason,
         }
     return finding.model_copy(
         update={

@@ -91,6 +91,12 @@ class TestC2ExecutionSandboxThreadId:
                 auth_state={},
                 stealth_mode=False,
                 thread_id=tid,
+                verification_context={
+                    "engagement_id": tid,
+                    "hypothesis_id": "xss-dialog-test",
+                    "scope_context": {"target_origin": "http://target"},
+                    "identity_context": {"mode": "anonymous", "cookie_count": 0},
+                },
             )
             # save_finding must have been called.
             assert mock_db.save_finding.called, "save_finding was not called"
@@ -101,6 +107,8 @@ class TestC2ExecutionSandboxThreadId:
                 f"got {saved_finding.thread_id!r}, expected {tid!r}"
             )
             assert result.confidence == Confidence.CONFIRMED.value
+            assert result.evidence["proof_bundle_sealed"] is True
+            assert result.evidence["proof_bundle"]["sealed"] is True
 
 
 # ===========================================================================

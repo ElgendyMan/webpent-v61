@@ -268,11 +268,16 @@ class TestP02ValidatorVaultReauth:
                 assert tool_entry.func.call_args.kwargs["session_cookies"] == {
                     "PHPSESSID": "freshcookie", "security": "low",
                 }
-                # Finding is Tool-Confirmed, with reauth_source=vault.
-                assert result.confidence == Confidence.CONFIRMED.value
-                assert result.confidence_level == "Tool-Confirmed"
+                # The vault repairs authentication, but a SQLMap marker
+                # alone is not a causal replay.  Strict verification must
+                # remain fail-closed without baseline/candidate/control data.
+                assert result.confidence != Confidence.CONFIRMED.value
+                assert result.confidence_level == "Needs Human Review"
                 assert result.evidence.get("session_reauth") is True
                 assert result.evidence.get("reauth_source") == "vault"
+                assert result.evidence["promotion_guard"]["reason"] == (
+                    "baseline_and_candidate_required"
+                )
         finally:
             clear_reauth_secret(tid)
 

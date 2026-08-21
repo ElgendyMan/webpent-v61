@@ -55,13 +55,13 @@ from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from webpent.models.findings import Confidence, Finding
-from webpent.models.proof_bundle import build_proof_bundle, validate_proof_bundle
 from webpent.shared.bac_identity_tester import (
     assess_access_control,
     build_relational_evidence,
     normalise_identity_profiles,
     response_fingerprint,
 )
+from webpent.shared.verifier import verify_replay_evidence
 
 logger = logging.getLogger(__name__)
 
@@ -614,7 +614,6 @@ def validate_auth_bypass(
                 "authorization": "Bearer <redacted-invalid-token>",
             },
         )
-        refs = (f"{finding.url}#baseline", f"{finding.url}#alg-none", f"{finding.url}#control")
         unsigned_body_is_distinct = (
             bool(unsigned.text)
             and unsigned.text != baseline.text
@@ -628,43 +627,77 @@ def validate_auth_bypass(
             and control.status_code in (401, 403, 404)
         )
         if vulnerable:
-            proof = build_proof_bundle(
-                engagement_id=engagement_id,
-                finding_id=str(finding.id),
-                evidence=list(evidence),
-                evidence_refs=list(refs),
+            from webpent.shared.verifier import verify_replay_evidence
+
+            verification = verify_replay_evidence(
+                finding,
+                baseline=evidence[0],
+                candidate=evidence[1],
                 negative_control=evidence[2],
-            ).seal(actor="validator.auth_bypass")
-            if validate_proof_bundle(proof, require_negative_control=True):
+                causal_signal=vulnerable,
+                negative_control_complete=(control.status_code in (401, 403, 404)),
+                validator_id="validator.auth_bypass.jwt_alg_none",
+                validator_version="v96.1",
+                causal_basis=(
+                    "unsigned JWT reached substantial content while unauthenticated "
+                    "baseline and invalid signed-token control were rejected"
+                ),
+                engagement_id=engagement_id,
+                hypothesis_id=finding.hypothesis_id,
+                scope_context={
+                    "target_origin": (
+                        f"{urlparse(finding.url).scheme}://{urlparse(finding.url).netloc}"
+                    ),
+                    "declared_scope": list(target_scope),
+                    "scope_bound": bool(target_scope),
+                },
+                identity_context={
+                    "baseline_identity": "anonymous",
+                    "candidate_identity": "unsigned-jwt-admin",
+                    "negative_control_identity": "invalid-signed-jwt-admin",
+                },
+                replay_metadata={
+                    "method": "GET",
+                    "sequence": [
+                        "unauthenticated_baseline",
+                        "unsigned_jwt",
+                        "invalid_signed_token_control",
+                    ],
+                    "candidate_status_code": unsigned.status_code,
+                    "negative_control_status_code": control.status_code,
+                },
+            )
+            if verification.passed:
+                proof_bundle_data = verification.proof_bundle.model_dump(mode="json")
                 return finding.model_copy(
                     update={
                         "confidence": Confidence.FIRM.value,
                         "confidence_level": "Tool-Confirmed",
                         "evidence": {
                             "jwt_differential": list(evidence),
-                            "proof_bundle": proof.model_dump(mode="json"),
+                            **verification.evidence,
                         },
-                        "evidence_bundle": {
-                            "request": {
-                                "method": "GET",
-                                "url": finding.url,
-                                "headers": {"Authorization": "redacted"},
-                            },
-                            "response": {
-                                "status_code": unsigned.status_code,
-                                "body_length": len(unsigned.text),
-                            },
-                            "negative_control": {
-                                "status_code": control.status_code,
-                                "body_length": len(control.text),
-                            },
-                        },
+                        "evidence_bundle": proof_bundle_data,
                         "reasoning": (
                             "Unsigned JWT returned substantial authenticated content "
-                            "while baseline and invalid-token control were rejected."
+                            "while baseline and invalid-token control were rejected; "
+                            "strict replay verifier passed."
                         ),
                     }
                 )
+            return finding.model_copy(
+                update={
+                    "confidence_level": "Needs Human Review",
+                    "evidence": {
+                        "jwt_differential": list(evidence),
+                        **verification.evidence,
+                    },
+                    "reasoning": (
+                        "JWT differential looked suspicious but strict replay verifier "
+                        f"blocked confirmation: {verification.reason}."
+                    ),
+                }
+            )
 
         return finding.model_copy(
             update={
@@ -1386,27 +1419,66 @@ def validate_idor(
         if assessment.get("status") == "confirmed" and assessment.get(
             "negative_control_complete"
         ):
-            engagement = engagement_id or str(
-                getattr(finding, "engagement_id", None) or "default"
-            )
             anonymous_row = next(
                 row for row in observations if row.get("identity") == "anonymous"
             )
-            bundle = build_proof_bundle(
-                engagement_id=engagement,
-                finding_id=str(finding.id),
-                evidence=(relational, observations, assessment),
-                evidence_refs=(
-                    f"idor:{finding.id}:owner",
-                    f"idor:{finding.id}:foreign",
+            foreign_row = next(
+                row
+                for row in observations
+                if row.get("identity") != owner_name and row.get("accessible")
+            )
+            target_origin = (
+                f"{urlparse(finding.url).scheme}://{urlparse(finding.url).netloc}"
+            )
+            verification = verify_replay_evidence(
+                finding,
+                baseline=next(
+                    row for row in observations if row.get("identity") == owner_name
                 ),
+                candidate=foreign_row,
                 negative_control=anonymous_row,
-            ).seal()
-            if validate_proof_bundle(bundle, require_negative_control=True):
-                sealed_bundle = bundle.model_dump(mode="json")
+                causal_signal=True,
+                negative_control_complete=True,
+                validator_id="validator.idor_identity_replay",
+                validator_version="v96.1",
+                causal_basis=(
+                    "owner and foreign identity both accessed the object while "
+                    "anonymous control was denied"
+                ),
+                engagement_id=engagement_id,
+                hypothesis_id=finding.hypothesis_id,
+                scope_context={
+                    "target_origin": target_origin,
+                    "declared_scope": list(target_scope),
+                    "scope_bound": bool(target_scope),
+                },
+                identity_context={
+                    "owner_identity": owner_name,
+                    "candidate_identity": str(foreign_row.get("identity") or ""),
+                    "negative_control_identity": "anonymous",
+                    "tested_identities": [
+                        str(row.get("identity") or "") for row in observations
+                    ],
+                },
+                replay_metadata={
+                    "method": "GET",
+                    "object_path": path,
+                    "owner_status_code": int(
+                        next(
+                            row for row in observations
+                            if row.get("identity") == owner_name
+                        ).get("status_code") or 0
+                    ),
+                    "candidate_status_code": int(foreign_row.get("status_code") or 0),
+                    "negative_control_status_code": int(
+                        anonymous_row.get("status_code") or 0
+                    ),
+                },
+            )
+            if verification.passed:
+                sealed_bundle = verification.proof_bundle.model_dump(mode="json")
+                evidence.update(verification.evidence)
                 evidence["relational_edges"] = relational
-                evidence["evidence_bundle"] = sealed_bundle
-                evidence["proof_bundle"] = sealed_bundle
                 return finding.model_copy(
                     update={
                         "confidence": Confidence.CONFIRMED.value,
@@ -1414,11 +1486,12 @@ def validate_idor(
                         "evidence": evidence,
                         "evidence_bundle": sealed_bundle,
                         "reasoning": (
-                            "IDOR confirmed by scoped owner/foreign differential "
-                            "and denied anonymous control."
+                            "IDOR confirmed by scoped owner/foreign differential, "
+                            "denied anonymous control, and strict replay verifier."
                         ),
                     }
                 )
+            evidence.update(verification.evidence)
         return finding.model_copy(
             update={
                 "confidence": "tentative",

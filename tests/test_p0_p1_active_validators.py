@@ -30,6 +30,15 @@ def _finding(vuln_class: str, url: str = "https://target.test/view?file=home") -
     )
 
 
+def _verification_context() -> dict[str, object]:
+    return {
+        "engagement_id": "engagement-test",
+        "hypothesis_id": "hypothesis-test",
+        "scope_context": {"target_origin": "https://target.test", "scope_bound": True},
+        "identity_context": {"mode": "anonymous", "cookie_count": 0},
+    }
+
+
 def test_classifier_routes_all_p0_1_classes():
     expected = {
         VulnClass.LFI.value: "lfi",
@@ -100,7 +109,11 @@ def test_lfi_and_path_traversal_require_new_passwd_marker(monkeypatch):
         (validate_lfi, VulnClass.LFI.value),
         (validate_path_traversal, VulnClass.PATH_TRAVERSAL.value),
     ):
-        result = validator(_finding(vuln_class), cookies={"PHPSESSID": "secret-cookie"})
+        result = validator(
+            _finding(vuln_class),
+            cookies={"PHPSESSID": "secret-cookie"},
+            verification_context=_verification_context(),
+        )
         assert result.confidence_level == "Tool-Confirmed"
         assert result.confidence == Confidence.CONFIRMED.value
         assert "Cookie" not in str(result.evidence)
@@ -113,7 +126,10 @@ def test_ssti_requires_arithmetic_evaluation_not_payload_echo(monkeypatch):
         return Replay("GET", "https://target.test/view?file=x", None, 200, body, {}, 5)
 
     monkeypatch.setattr("webpent.agents.validator.active_checks._replay", replay)
-    result = validate_ssti(_finding(VulnClass.SSTI.value))
+    result = validate_ssti(
+        _finding(VulnClass.SSTI.value),
+        verification_context=_verification_context(),
+    )
     assert result.confidence_level == "Tool-Confirmed"
     assert result.evidence["matched_marker"] == "391"
 
@@ -137,7 +153,10 @@ def test_nosql_requires_unauthorized_to_success_differential(monkeypatch):
     finding = finding.model_copy(
         update={"target_param": "user", "request_data": {"user": "invalid"}}
     )
-    result = validate_nosql_injection(finding)
+    result = validate_nosql_injection(
+        finding,
+        verification_context=_verification_context(),
+    )
     assert result.confidence_level == "Tool-Confirmed"
     assert result.evidence["differential"] == "unauthorized_baseline_to_success_candidate"
 
@@ -161,6 +180,39 @@ def test_open_redirect_confirmation_does_not_follow_canary(monkeypatch):
             return Response(200)
 
     monkeypatch.setattr("webpent.shared.http.make_safe_httpx_client", lambda **_: Client())
-    result = validator_agent._validate_open_redirect(_finding(VulnClass.OPEN_REDIRECT.value))
+    result = validator_agent._validate_open_redirect(
+        _finding(VulnClass.OPEN_REDIRECT.value),
+        verification_context=_verification_context(),
+    )
     assert result.confidence_level == "Tool-Confirmed"
     assert result.evidence["follow_redirects"] is False
+    assert result.evidence["proof_bundle"]["causal_oracle"]["causal_signal"] is True
+    assert result.evidence["proof_bundle"]["negative_control_digest"]
+
+
+def test_open_redirect_never_confirms_without_verifier_provenance(monkeypatch):
+    class Response:
+        def __init__(self, status, location=""):
+            self.status_code = status
+            self.headers = {"location": location} if location else {}
+
+    class Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def get(self, url, headers=None):
+            if "webpent-open-redirect.invalid" in url:
+                return Response(302, "https://webpent-open-redirect.invalid/webpent-canary")
+            return Response(200)
+
+    monkeypatch.setattr("webpent.shared.http.make_safe_httpx_client", lambda **_: Client())
+    result = validator_agent._validate_open_redirect(_finding(VulnClass.OPEN_REDIRECT.value))
+    assert result.confidence_level == "Needs Human Review"
+    assert result.evidence["promotion_guard"]["reason"] in {
+        "verifier_provenance_incomplete",
+        "verifier_provenance_incomplete_or_placeholder",
+        "scope_and_identity_context_required",
+    }
