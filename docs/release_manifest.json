@@ -182,7 +182,7 @@
     "docs/vip_local_closure_20260821.md": "d67c3cf1864696d5afae59bafbeb77f71c6d3a5f2d112a001ee1c4477c099265",
     "docs/vip_local_release_report_20260820.md": "e8262bdd7026343bf754e6f91cae93bd20a4fa8ff1a015868436d176a5e6e4ae",
     "docs/vip_operator_runbook.md": "ed000102c6e919e1dae207bc9d782de1b11ca7bc651857576ea168dbee1cded8",
-    "docs/vip_pasted_content_2_traceability_20260821.md": "6170905302f12bbec575d3b505e8d2f3e47f4005535cbbae279ebdc6fea99616",
+    "docs/vip_pasted_content_2_traceability_20260821.md": "218f224cbd57d76b7531ee0428e3aaccef9e19fe9fe3f7f7be6272c540c2a4d2",
     "docs/vip_pip_audit_20260820.json": "b7252c325b7d02a9e68271ca90eb9928988fa2e813c95a205ecc52d4b7154b74",
     "docs/vip_plan_completeness_checklist_20260820.md": "f60b7b5c5849af36c8bd2e955e163d0a2d661f596095e72181e4d8f3043dd51a",
     "docs/vip_plan_gap_audit.md": "6801e76e927bdef72736491b54e61dce6d45d0e5aaa4decd3df89f7af8824bc4",
@@ -708,8 +708,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-21T17:41:11.703881+00:00",
-  "git_commit": "1174294ffe53e4bd611da1ce6892a55f1e4a2642",
+  "generated_at": "2026-08-21T17:42:24.290927+00:00",
+  "git_commit": "b5332073581b1539b647894387fe79b59067bac8",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
