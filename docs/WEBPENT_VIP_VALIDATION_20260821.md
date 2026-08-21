@@ -4,7 +4,7 @@
 
 **المستودع:** [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)
 
-**Commit:** `48da218` — `feat: harden autonomous discovery and validation pipelines`
+**Commits:** `48da218` — `feat: harden autonomous discovery and validation pipelines`، ثم `8570fb2` — `docs: record VIP validation results`
 
 ## النتيجة التنفيذية
 
@@ -84,6 +84,10 @@
 
 بناءً على ذلك، النسخة **أقوى وأكثر استقلالية وأفضل في الاحتفاظ بالأدلة**، لكنها لا تستحق ادعاء “تغطية كاملة” أو “كل findings confirmed”.
 
+## مراجعة الخطط والنسخة المُسلّمة
+
+تمت مراجعة البنود المتراكمة من الخطط السابقة، بما فيها payload ingestion، استيراد Git repositories، عزل `client_id` و`engagement_id` في الذاكرة، stable engagement aggregation، تعدد credentials والكوكيز، صيغ التقارير، اختيار LLM و`--no-llm`، stealth، fallbacks، smart campaigns، JS/HTTP discovery، dalfox، nuclei، IDOR proof، negative controls، ورفض العمليات destructive. التنفيذ موجود في المستودع الحالي ومدعوم باختبارات أو عقود تشغيلية؛ لم يظهر بند source أو test مطلوب غير منفذ في المراجعة الحالية.
+
 ## التسليم
 
-تم دفع التغييرات بنجاح إلى branch `master` في GitHub عبر commit `48da218`. سيتم إرفاق ZIP منقح للمصدر، بالإضافة إلى هذا التقرير وملفات النتائج الرئيسية حيثما كانت متاحة.
+تم دفع التغييرات بنجاح إلى branch `master` في GitHub. آخر commit هو `8570fb2`، والـworking tree نظيف. أُعيدت مقارنة ZIP بالمستودع عبر SHA-256 لكل ملفات source/docs/tests؛ لم يوجد أي ملف من هذه الفئات مفقود أو مختلف المحتوى. الملفات غير الموجودة في ZIP السابق كانت سجلات تشغيل وملف migration lock، وقد استُبعدت عمدًا لأنها runtime artifacts وليست جزءًا من source release. ملفات `output/report.*` الموجودة في ZIP هي artifacts نتائج، وليست بديلًا عن source. تم بناء ZIP نهائي منقح منفصل ومرفق مع SHA-256.
