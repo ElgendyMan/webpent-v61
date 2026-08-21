@@ -8,7 +8,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "8d33a2a7d87be494dc0d1fd55e46003e544fc4cea100ae680b155a189e80c119"
   },
-  "file_count": 712,
+  "file_count": 713,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "501b9059636d8b038be89d1212ef868bab9fcfaa2001e373c76597b2a3083c12",
@@ -181,6 +181,7 @@
     "docs/vip_baseline_inventory.txt": "f71fe462fc13a6df9b6ff70a75f83ea723134f2c36a6a060ae586cad848d9fbe",
     "docs/vip_failure_injection_report.md": "b7770fa73a5b15317654fb59eb979084f69a5e6444a897563ef3de620dab00a6",
     "docs/vip_failure_matrix_20260820.json": "037a94d99015434b97a0247e5c410425853e7f8f003ef5feffbd7f3bb0691215",
+    "docs/vip_final_assessment_20260821.md": "63b9f431b35ba4af7bdb1a81c6078030755999a65b295990b789eb0fd4e3b6e4",
     "docs/vip_final_compliance_matrix.md": "4de7e0571ad80c2eac0849b15dc74e2b91030e0ef9c7ef492c47e00543b795ec",
     "docs/vip_final_release_report.md": "a1458d67394ebfcec8e0454c2cd499f37fc49e850cab1206bee60825ca4e2621",
     "docs/vip_local_baseline_20260820.md": "a50c86f8b5e31dc301436a3e1b9d33d7985d09cd33317735ba9eb3419bda15bb",
@@ -723,8 +724,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-21T20:22:48.354341+00:00",
-  "git_commit": "94474965d8ba2e8b7fe2c212c6ff8dde5806d5ef",
+  "generated_at": "2026-08-21T20:24:48.055959+00:00",
+  "git_commit": "e9938e7fd7bf63a144db0095bea96a9fb793da95",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
