@@ -333,6 +333,8 @@ def devils_advocate_node(state: PentestState) -> dict:
     debunked_count = 0
     challenged_count = 0
     downgrades_this_pass = 0
+    revalidation_count = int(state.get("devils_advocate_revalidation_count") or 0)
+    revalidation_ids: list[str] = []
 
     for finding in findings:
         # V10 P1-2: cap downgrades per pass to bound the blast radius of
@@ -370,7 +372,27 @@ def devils_advocate_node(state: PentestState) -> dict:
                             "graph-state persist will retry).",
                             finding.id, persist_exc,
                         )
-            findings_by_id[finding.id] = updated
+                # Phase 5.2: a fresh high-confidence rejection is a hard
+                # gate, not a terminal advisory downgrade. Re-open the
+                # finding exactly once for deterministic validator review.
+                if revalidation_count == 0:
+                    updated = updated.model_copy(
+                        update={
+                            "confidence_level": "Pending",
+                            "evidence": {
+                                **(updated.evidence or {}),
+                                "devils_advocate_gate": "rejected",
+                                "devils_advocate_revalidation_required": True,
+                                "devils_advocate_revalidation_reason": (
+                                    "High-confidence DEBUNKED verdict; returned "
+                                    "to validator for one bounded revalidation"
+                                ),
+                            },
+                        }
+                    )
+                    revalidation_ids.append(str(finding.id))
+                findings_by_id[finding.id] = updated
+
         except Exception as exc:  # noqa: BLE001 — per-finding resilience
             logger.warning(
                 "Devil's Advocate failed for finding %s: %s",
@@ -402,4 +424,13 @@ def devils_advocate_node(state: PentestState) -> dict:
         "findings": updated_findings,
         "messages": [AIMessage(content=summary)],
         "current_phase": "devils_advocate",
+        "devils_advocate_gate_active": bool(revalidation_ids),
+        **(
+            {
+                "devils_advocate_revalidation_count": revalidation_count + 1,
+                "devils_advocate_revalidation_ids": revalidation_ids,
+            }
+            if revalidation_ids
+            else {}
+        ),
     }

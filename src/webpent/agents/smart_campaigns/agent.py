@@ -739,6 +739,7 @@ def _update_research_action_outcome(
     session.next_best_actions = session.next_best_actions[-100:]
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Produce bounded smart task outcomes without executing network actions."""
     settings = state.get("settings")
@@ -1130,6 +1131,7 @@ def _build_swagger_ssrf_task(state: Mapping[str, Any], root: str) -> CampaignTas
     )
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Execute bounded same-origin tasks and deterministic proofs in active mode."""
     profile = str(

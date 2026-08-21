@@ -791,6 +791,31 @@ def _build_model(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+def get_independent_llm(
+    task_type: TaskType = TaskType.ANALYSIS,
+    *,
+    exclude_provider: str | None = None,
+    settings: Settings | None = None,
+) -> tuple[str, Runnable] | None:
+    """Build one independent provider runnable for bounded ensemble review.
+
+    The helper intentionally returns a single provider without fallbacks so an
+    ensemble signal can be attributed to a distinct provider. It is optional:
+    missing configuration or disabled LLM returns ``None`` fail-closed.
+    """
+    settings = settings or get_settings()
+    if not is_llm_enabled(settings):
+        return None
+    for provider, model_name in _TASK_PREFERENCE_ORDER.get(task_type, []):
+        if exclude_provider and provider == exclude_provider:
+            continue
+        resolved = _resolve_model_name(provider, model_name, settings)
+        model = _build_model(provider, resolved, settings)
+        if model is not None:
+            return provider, _guard_provider_runnable(model, provider)
+    return None
+
+
 def get_llm_diagnostics(
     settings: Settings | None = None,
 ) -> dict[str, object]:

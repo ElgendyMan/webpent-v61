@@ -25,6 +25,7 @@ def _enabled() -> bool:
         return False
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def attack_graph_node(state: dict[str, Any]) -> dict[str, Any]:
     """Project current evidence into a redacted, deterministic Attack Graph."""
     if not _enabled():

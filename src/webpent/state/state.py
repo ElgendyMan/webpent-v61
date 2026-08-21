@@ -188,6 +188,16 @@ class PentestState(TypedDict, total=False):
     # Optional LLM advisory validation trace. It is report-safe and never
     # grants execution authority; absent in legacy checkpoints.
     llm_reliability_trace: Annotated[list[dict[str, Any]], merge_lists]
+    # Phase 5.2: one bounded Devil's Advocate hard-gate revalidation pass.
+    # Optional so legacy checkpoints remain loadable.
+    devils_advocate_revalidation_count: int
+    devils_advocate_revalidation_ids: Annotated[list[str], merge_lists]
+    devils_advocate_gate_active: bool
+    # Phase 5.6: discovered resources outside declared scope require HITL.
+    scope_drift_detected: bool
+    scope_drift_events: Annotated[list[dict[str, Any]], merge_lists]
+    llm_budget_trace: Annotated[list[dict[str, Any]], merge_lists]
+    kev_catalog: list[str]
 
     # V7 Cognitive Upgrade — Phase 2: Mental Model / Knowledge Graph.
     #

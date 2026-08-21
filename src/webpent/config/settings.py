@@ -1196,7 +1196,10 @@ class Settings(BaseSettings):
                 )
 
         # --- JWT secret hard-stop (V6 Zero-Day Patched P0-2) ---
-        if self.auth_enabled is True and self.jwt_secret_key in self._INSECURE_JWT_DEFAULTS:
+        if (
+            (strict_profile or self.auth_enabled is True)
+            and self.jwt_secret_key in self._INSECURE_JWT_DEFAULTS
+        ):
             raise ValueError(
                 "Hard-stop: Insecure default JWT secret used in production with auth_enabled=True"
             )
@@ -1220,7 +1223,10 @@ class Settings(BaseSettings):
         # dev default) PLUS the audit-specific dev default. The
         # union is built lazily here so the check is self-contained.
         _all_insecure_audit = self._INSECURE_JWT_DEFAULTS | self._INSECURE_AUDIT_DEFAULTS
-        if self.auth_enabled is True and self.audit_secret_key in _all_insecure_audit:
+        if (
+            (strict_profile or self.auth_enabled is True)
+            and self.audit_secret_key in _all_insecure_audit
+        ):
             raise ValueError(
                 "Hard-stop: Insecure default audit secret used in production with auth_enabled=True"
             )
@@ -1258,7 +1264,7 @@ class Settings(BaseSettings):
         # Settings() with zero env vars still constructs successfully for
         # local dev / tests, unchanged from before this fix.
         if (
-            self.auth_enabled is True
+            (strict_profile or self.auth_enabled is True)
             and self.celery_payload_key in self._INSECURE_CELERY_PAYLOAD_DEFAULTS
         ):
             raise ValueError(

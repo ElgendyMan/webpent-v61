@@ -631,6 +631,7 @@ def _perform_login(
 _LAST_LOGIN_COOKIES: dict[str, str] = {}
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def execution_sandbox_node(state: PentestState) -> dict:
     """LangGraph node implementing active browser-based XSS exploitation.
 

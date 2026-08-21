@@ -103,6 +103,7 @@ def _is_re_entry_pass(state: PentestState) -> bool:
     return any(getattr(h, "origin", None) == rabbit_hole_origin for h in hypotheses)
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def strategist_node(state: PentestState) -> dict[str, Any]:
     """LangGraph node: the Strategist promotion checkpoint.
 

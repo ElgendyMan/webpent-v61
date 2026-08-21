@@ -248,6 +248,7 @@ def _relations(
     return relations[:_MAX_WORKFLOWS]
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def target_understanding_node(state: PentestState) -> dict[str, Any]:
     """Project existing discovery/auth data into a safe target understanding."""
     target = _target_from_state(state.get("target"))

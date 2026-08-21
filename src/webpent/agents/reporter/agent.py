@@ -23,7 +23,9 @@ from webpent.config.settings import get_settings, profile_requires_proof_bundle
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Finding, Severity
 from webpent.shared.coverage_ledger import project_coverage_ledger
+from webpent.shared.ensemble import apply_ensemble_review
 from webpent.shared.finding_aggregation import aggregate_findings
+from webpent.shared.kev import enrich_finding_with_kev
 from webpent.shared.llm import (
     TaskType,
     get_safety_system_instruction,
@@ -440,6 +442,18 @@ def reporter_node(state: PentestState) -> dict:
                 engagement_id,
                 exc,
             )
+    # Phase 5.3: independently review only High/Critical findings before
+    # report rendering. This adds an evidence signal and never changes
+    # categorical confirmation semantics.
+    primary_provider = state.get("llm_primary_provider")
+    findings = apply_ensemble_review(
+        findings,
+        primary_provider=str(primary_provider) if primary_provider else None,
+    )
+    kev_catalog = state.get("kev_catalog") or []
+    if isinstance(kev_catalog, list) and kev_catalog:
+        findings = [enrich_finding_with_kev(finding, kev_catalog) for finding in findings]
+
     # V7 Cognitive Upgrade — Phase 1: state["hypotheses"] is now
     # list[Hypothesis] (atomic type migration). The reporter / export
     # pipeline / Jinja2 templates all expect list[str], so extract

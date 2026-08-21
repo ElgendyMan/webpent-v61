@@ -23,6 +23,7 @@ from webpent.shared.llm import (
     safe_prompt_format,
     try_get_llm,
 )
+from webpent.shared.llm_reliability import llm_budget_allows
 from webpent.shared.planner_decisions import (
     build_planner_decision,
     redact_prompt_target,
@@ -152,8 +153,9 @@ def planner_node(state: PentestState) -> dict:
     methodologies = _retrieve_methodologies()
     llm: Any = None
     response: Any = None
+    budget_allowed, budget_reason = llm_budget_allows(state.get("action_budget"))
     try:
-        if settings.llm_enabled:
+        if settings.llm_enabled and budget_allowed:
             try:
                 # Preserve the historical module-level patch point for
                 # integrations while retaining the resilient helper fallback.
@@ -190,6 +192,7 @@ def planner_node(state: PentestState) -> dict:
     result: dict[str, Any] = {
         "messages": [AIMessage(content=plan_text)],
         "current_phase": "recon",
+        "llm_budget_trace": [{"allowed": budget_allowed, "reason": budget_reason}],
     }
 
     if settings.enable_planner_decisions:

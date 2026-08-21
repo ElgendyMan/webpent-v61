@@ -243,10 +243,27 @@ class LLMReliabilityGate:
         )
 
 
+def llm_budget_allows(action_budget: Any, *, estimated_cost: float = 1.0) -> tuple[bool, str]:
+    """Fail-closed check for optional LLM work within an engagement budget."""
+    if not isinstance(action_budget, dict):
+        return True, "budget:unbounded_legacy_state"
+    remaining = action_budget.get("remaining_cost")
+    if remaining is None:
+        limit = float(action_budget.get("limit", 0.0) or 0.0)
+        used = float(action_budget.get("used_cost", 0.0) or 0.0)
+        remaining = limit - used
+    try:
+        allowed = float(remaining) >= float(estimated_cost) and float(remaining) > 0
+    except (TypeError, ValueError):
+        return False, "budget:invalid_remaining_cost"
+    return (True, "budget:allowed") if allowed else (False, "budget:llm_exhausted")
+
+
 __all__ = [
     "LLMDecisionEnvelope",
     "LLMReliabilityGate",
     "ReliabilityPolicy",
     "ReliabilityResult",
     "sanitize_untrusted_text",
+    "llm_budget_allows",
 ]

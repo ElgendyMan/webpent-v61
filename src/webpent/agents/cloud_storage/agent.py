@@ -171,6 +171,7 @@ def verify_cloud_storage(
     return findings, observations, gaps
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def cloud_storage_node(state: dict[str, Any]) -> dict[str, Any]:
     target: Target | None = state.get("target")
     if target is None:

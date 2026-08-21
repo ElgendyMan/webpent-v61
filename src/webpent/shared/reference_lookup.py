@@ -68,7 +68,7 @@ def _is_url_allowed(url: str, allowlist: list[dict[str, Any]]) -> bool:
 
 
 def reference_lookup(
-    query: str, finding_id: str, *, source: str = "hacktricks", max_results: int = 3
+    query: str, finding_id: str, *, source: str = "hacktricks"
 ) -> str:
     count = _lookup_count.get(finding_id, 0)
     if count >= MAX_LOOKUPS_PER_FINDING:

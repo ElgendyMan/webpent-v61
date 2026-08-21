@@ -9,6 +9,9 @@ from types import SimpleNamespace
 import webpent.shared.llm as llm_router
 
 PROJECT_ROOT = Path(__file__).parents[1]
+DETERMINISTIC_MARKER = "# NOTE: deterministic agent"
+EXPECTED_AGENT_COUNT = 33
+
 CALLER_MODULES = (
     "src/webpent/agents/validator/agent.py",
     "src/webpent/agents/payload_generator/agent.py",
@@ -47,6 +50,39 @@ def _called_names(tree: ast.AST) -> set[str]:
 
 
 
+def _assert_no_direct_provider_imports(tree: ast.AST, relative_path: str) -> None:
+    provider_imports = {
+        "langchain_anthropic",
+        "langchain_cohere",
+        "langchain_google_genai",
+        "langchain_mistralai",
+        "langchain_openai",
+    }
+    imported_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    }
+    assert not imported_modules.intersection(provider_imports), relative_path
+
+
+def test_all_agents_have_explicit_llm_or_deterministic_contract() -> None:
+    """Every agent must be guarded by the router or explicitly deterministic."""
+    paths = sorted((PROJECT_ROOT / "src/webpent/agents").glob("*/agent.py"))
+    assert len(paths) == EXPECTED_AGENT_COUNT
+    for path in paths:
+        relative_path = str(path.relative_to(PROJECT_ROOT))
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+        _assert_no_direct_provider_imports(tree, relative_path)
+        if DETERMINISTIC_MARKER in source:
+            continue
+        imports = _shared_llm_imports(tree)
+        calls = _called_names(tree)
+        assert "try_get_llm" in imports or "get_cached_llm" in imports, relative_path
+        assert calls.intersection({"try_get_llm", "get_cached_llm"}), relative_path
+
+
 def test_all_plan_llm_callers_use_the_shared_guarded_router() -> None:
     """Every listed caller must route through the shared optional-LLM boundary."""
     for relative_path in CALLER_MODULES:
@@ -58,19 +94,7 @@ def test_all_plan_llm_callers_use_the_shared_guarded_router() -> None:
         assert "try_get_llm" in imports or "get_cached_llm" in imports, relative_path
         assert calls.intersection({"try_get_llm", "get_cached_llm"}), relative_path
 
-        provider_imports = {
-            "langchain_anthropic",
-            "langchain_cohere",
-            "langchain_google_genai",
-            "langchain_mistralai",
-            "langchain_openai",
-        }
-        imported_modules = {
-            node.module
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom) and node.module
-        }
-        assert not imported_modules.intersection(provider_imports), relative_path
+        _assert_no_direct_provider_imports(tree, relative_path)
 
 
 

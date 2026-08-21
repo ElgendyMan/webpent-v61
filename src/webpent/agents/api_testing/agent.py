@@ -530,6 +530,7 @@ def _probe_mass_assignment(
     return findings
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def api_testing_node(state: PentestState) -> dict:
     """LangGraph node: test API-specific vulnerabilities.
 

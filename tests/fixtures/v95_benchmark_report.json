@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "confidence": "confirmed",
+      "evidence": {
+        "evidence_bundle": {
+          "request": "fixture",
+          "response": "fixture"
+        }
+      }
+    }
+  ]
+}

@@ -300,6 +300,7 @@ def _detect_race_condition(status_codes: list[int]) -> bool:
     return success_count > 1
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def business_logic_fuzzer_node(state: PentestState) -> dict:
     """LangGraph node: fuzz business-logic vulnerabilities via concurrent bursts.
 

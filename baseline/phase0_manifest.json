@@ -1,0 +1,32 @@
+{
+  "plan": "WebPent_AI_Execution_Plan_v95",
+  "phase": 0,
+  "captured_at": "2026-08-21",
+  "repository": "/tmp/webpent_v72_git_recovered",
+  "tests_passed": 1120,
+  "tests_failed": 0,
+  "pytest_command": "pytest tests/ -q",
+  "ruff_command": "ruff check src --output-format concise",
+  "ruff_status": "pass",
+  "bandit_command": "bandit -r src/webpent -x tests -lll",
+  "bandit_status": "pass; high=0, medium=5, low=68",
+  "vulture_command": "vulture src/webpent --min-confidence 80",
+  "vulture_status": "findings",
+  "vulture_findings": [
+    "src/webpent/shared/reference_lookup.py:71 unused variable max_results"
+  ],
+  "pip_audit_command": "pip-audit --strict --local --skip-editable",
+  "pip_audit_status": "blocked by editable local distribution webpent; raw output preserved",
+  "raw_outputs": [
+    "phase0_pytest.txt",
+    "phase0_ruff.txt",
+    "phase0_bandit.txt",
+    "phase0_vulture.txt",
+    "phase0_pip_audit.txt"
+  ],
+  "tooling_note": "vulture and pip-audit were installed inside .venv before the final rerun; no project source was changed during Phase 0.",
+  "lab_execution": "none; WAPTLab, Juice Shop, and all other labs were not started or contacted",
+  "historical_plan_baseline": 1035,
+  "actual_baseline_supersedes_historical_value": true
+}
+

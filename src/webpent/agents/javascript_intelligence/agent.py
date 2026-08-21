@@ -61,6 +61,7 @@ def _empty_result(reason: str = "js_intelligence_disabled") -> dict[str, Any]:
     }
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def javascript_intelligence_node(state: PentestState) -> dict[str, Any]:
     """Collect and statically review same-scope JavaScript assets.
 

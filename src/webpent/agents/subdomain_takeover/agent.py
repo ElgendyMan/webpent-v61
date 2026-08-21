@@ -207,6 +207,7 @@ def verify_subdomain_takeover(
     return findings, observations, gaps
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def subdomain_takeover_node(state: dict[str, Any]) -> dict[str, Any]:
     target: Target | None = state.get("target")
     if target is None:

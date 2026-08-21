@@ -58,6 +58,7 @@ jobs:
           tests/test_vip_audit_gap_closure.py
           tests/test_v62_ingest_and_memory_isolation.py
           tests/test_v61_cognitive_upgrade.py
+          tests/test_p0_production_secrets_fail_closed.py
           --strict-markers
           --tb=short
 
@@ -87,6 +88,7 @@ jobs:
           tests/test_v63_vip_security_regression.py
           tests/test_vip_audit_gap_closure.py
           tests/test_production_deployment_contract.py
+          tests/test_p0_production_secrets_fail_closed.py
           --select E,F,I,RUF --ignore BLE001 --output-format concise
 
       # The v60 tree has documented low/medium legacy Bandit findings

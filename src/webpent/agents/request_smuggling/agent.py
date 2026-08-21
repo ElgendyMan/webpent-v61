@@ -311,6 +311,7 @@ def _probe_te_cl(
     return _probe_te_cl_outcome(host, port, use_tls, cookies=cookies) == "confirmed"
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def request_smuggling_node(state: PentestState) -> dict:
     """LangGraph node: detect HTTP request smuggling (CL.TE, TE.CL).
 

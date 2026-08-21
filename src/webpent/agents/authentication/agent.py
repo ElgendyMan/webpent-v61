@@ -676,6 +676,7 @@ def _bootstrap_secondary_profiles(
     return result
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def auth_node(state: PentestState) -> dict:
     """LangGraph node implementing active authentication.
 

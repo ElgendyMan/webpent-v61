@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 from langchain_core.messages import AIMessage
 
 from webpent.models.findings import Finding
+from webpent.shared.scope_drift import detect_scope_drift
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ def _enforce_scope_core(
     return filtered_findings, updated_crawled_data, findings_removed, endpoints_removed
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def scope_enforcer_node(state: PentestState) -> dict:
     """LangGraph node that filters out-of-scope findings and crawled data.
 
@@ -174,6 +176,12 @@ def scope_enforcer_node(state: PentestState) -> dict:
             f"Scope enforcement failed-closed due to unexpected error: {exc}"
         ) from exc
 
+    discovered_urls = [
+        str(endpoint.get("url") or endpoint.get("target_url") or "")
+        for endpoint in (crawled_data.get("endpoints") or [])
+        if isinstance(endpoint, dict)
+    ]
+    scope_drift = detect_scope_drift(discovered_urls, str(target.url))
     summary = (
         f"Scope enforcement completed. "
         f"Removed {findings_removed} out-of-scope finding(s) and "
@@ -243,5 +251,7 @@ def scope_enforcer_node(state: PentestState) -> dict:
         "findings": filtered_findings,
         "crawled_data": updated_crawled_data,
         "mental_model": mental_model_update,
+        "scope_drift_detected": bool(scope_drift["detected"]),
+        "scope_drift_events": [scope_drift] if scope_drift["detected"] else [],
         "messages": [AIMessage(content=summary)],
     }

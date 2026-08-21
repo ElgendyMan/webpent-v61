@@ -747,6 +747,7 @@ def _discover_hidden_parameters(
     return discoveries
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def recon_node(state: PentestState) -> dict:
     """LangGraph node implementing the recon phase.
 

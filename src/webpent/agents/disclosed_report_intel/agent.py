@@ -50,6 +50,7 @@ def _collect_endpoint_context(value: Any, *, limit: int = 200) -> list[str]:
     return found[:limit]
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def disclosed_report_intel_node(state: PentestState) -> dict[str, Any]:
     """Build advisory leads from operator-supplied local report records.
 

@@ -606,6 +606,7 @@ def _refresh_profile_after_throttle(
     )
 
 
+# NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def access_control_node(state: PentestState) -> dict:
     """Compare resource access across anonymous and available identities."""
     target = state.get("target")

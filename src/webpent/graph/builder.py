@@ -535,6 +535,22 @@ def route_after_validator(state: PentestState) -> str:
     return NODE_DEVILS_ADVOCATE
 
 
+def route_after_devils_advocate(state: PentestState) -> str:
+    """Route DA rejections through one bounded validator re-check.
+
+    The Devil's Advocate is a hard gate for a fresh high-confidence
+    rejection. The node marks those findings as Pending and records the
+    revalidation trace; this router sends them back to the deterministic
+    validator exactly once, then falls through to the normal chain.
+    """
+    revalidation_ids = state.get("devils_advocate_revalidation_ids") or []
+    revalidation_count = int(state.get("devils_advocate_revalidation_count") or 0)
+    gate_active = bool(state.get("devils_advocate_gate_active"))
+    if gate_active and revalidation_ids and revalidation_count == 1:
+        return NODE_VALIDATOR
+    return NODE_EXPLOIT_CHAINER
+
+
 def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     """Construct and compile the WebPent engagement graph.
 
@@ -721,10 +737,16 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
 
     graph.add_edge(NODE_PAYLOAD_OPTIMIZER, NODE_EXECUTION_SANDBOX)
 
-    # V5 Sprint 10: Devil's Advocate -> Post-Exploitation -> CVSS Engine.
-    # V5 Sprint 12: Post-exploitation node runs after debunking and
-    # before scoring, so CVSS can factor in the enumeration data.
-    graph.add_edge(NODE_DEVILS_ADVOCATE, NODE_EXPLOIT_CHAINER)
+    # Phase 5.2: a fresh DA rejection is a hard gate and re-enters the
+    # deterministic validator once; accepted/second-pass outcomes continue.
+    graph.add_conditional_edges(
+        NODE_DEVILS_ADVOCATE,
+        route_after_devils_advocate,
+        {
+            NODE_VALIDATOR: NODE_VALIDATOR,
+            NODE_EXPLOIT_CHAINER: NODE_EXPLOIT_CHAINER,
+        },
+    )
     graph.add_conditional_edges(
         NODE_EXPLOIT_CHAINER, route_after_chainer,
         {
