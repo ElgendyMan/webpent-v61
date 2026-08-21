@@ -9,6 +9,7 @@ from typing import Any
 
 from webpent.models.evidence import redact_sensitive, sha256_text
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
+from webpent.models.proof_bundle import proof_bundle_promotion_ready
 from webpent.models.proof_engine import (
     ProofActionProposal,
     ProofActionStatus,
@@ -269,6 +270,17 @@ def plan_next_proof_actions(
     return proposals, dropped
 
 
+def _proof_outcome_promotion_ready(outcome: Mapping[str, Any]) -> bool:
+    """Require all causal flags and a sealed, replayable bundle for promotion."""
+    return bool(
+        _text(outcome.get("status")).lower() == "confirmed"
+        and bool(outcome.get("evidence_complete"))
+        and bool(outcome.get("causal_signal"))
+        and bool(outcome.get("negative_control_observed"))
+        and proof_bundle_promotion_ready(outcome.get("proof_bundle"))
+    )
+
+
 def apply_proof_outcome(
     action: ProofActionProposal,
     outcome: Mapping[str, Any],
@@ -281,7 +293,8 @@ def apply_proof_outcome(
     evidence_complete = bool(outcome.get("evidence_complete"))
     causal_signal = bool(outcome.get("causal_signal"))
     negative_control = bool(outcome.get("negative_control_observed"))
-    ready_for_review = evidence_complete and causal_signal and negative_control
+    promotion_ready = _proof_outcome_promotion_ready(outcome)
+    ready_for_review = evidence_complete and causal_signal and negative_control and promotion_ready
     confidence_after = "evidence_ready_for_review" if ready_for_review else "needs_human_review"
     if status in {"blocked_by_scope", "policy_block"}:
         action_status = ProofActionStatus.TERMINAL
@@ -296,7 +309,16 @@ def apply_proof_outcome(
             "evidence_refs": list(dict.fromkeys([*action.evidence_refs, *clean_refs]))[:20],
             "cleanup_status": _text(outcome.get("cleanup_status")) or "pending",
             "confidence_after": confidence_after,
-            "chain_state": {**action.chain_state, "state": status or "inconclusive"},
+            "chain_state": {
+                **action.chain_state,
+                "state": (
+                    status
+                    if not (status == "confirmed" and not promotion_ready)
+                    else "needs_human_review"
+                )
+                or "inconclusive",
+                "promotion_ready": promotion_ready,
+            },
         }
     )
 
@@ -423,7 +445,7 @@ def _proof_outcome_ledger_entries(state: Mapping[str, Any]) -> list[dict[str, An
         evidence_complete = bool(raw.get("evidence_complete"))
         causal_signal = bool(raw.get("causal_signal"))
         negative_control = bool(raw.get("negative_control_observed"))
-        if status == "confirmed" and evidence_complete and causal_signal and negative_control:
+        if status == "confirmed" and _proof_outcome_promotion_ready(raw):
             ledger_status = "tool_confirmed"
         elif status in {"inconclusive", "budget_exhausted", "blocked_by_scope", "policy_block"}:
             ledger_status = "inconclusive"

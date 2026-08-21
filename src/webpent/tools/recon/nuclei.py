@@ -17,6 +17,9 @@ import json
 import logging
 import os
 import shutil
+import stat
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from webpent.config.settings import get_settings
@@ -27,12 +30,40 @@ from webpent.tools.utils.subprocess import run_command
 logger = logging.getLogger(__name__)
 
 
+def _private_tool_cache_dir() -> Path:
+    """Return a user-private tool cache directory, creating it safely.
+
+    Tool binaries must never be resolved from a predictable shared ``/tmp``
+    directory.  An operator may provide ``WEBPENT_TOOL_CACHE_DIR``; otherwise
+    a per-UID directory below the platform temp directory is used.  The
+    directory is created with mode 0700 and an existing directory must not be
+    group/world writable.
+    """
+    configured = os.environ.get("WEBPENT_TOOL_CACHE_DIR", "").strip()
+    if configured:
+        cache_dir = Path(configured).expanduser()
+    else:
+        cache_dir = Path(tempfile.gettempdir()) / f"webpent-tools-{os.getuid()}"
+    cache_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
+    try:
+        cache_dir.chmod(0o700)
+        mode = cache_dir.stat().st_mode
+    except OSError as exc:
+        raise RuntimeError("nuclei: private tool cache is unavailable") from exc
+    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+        raise RuntimeError("nuclei: private tool cache permissions are unsafe")
+    if hasattr(os, "getuid") and cache_dir.stat().st_uid != os.getuid():
+        raise RuntimeError("nuclei: private tool cache ownership is unsafe")
+    return cache_dir
+
+
 def _resolve_nuclei_binary(configured_path: str) -> str:
     """Resolve the configured nuclei binary without weakening tool safety.
 
     A bare ``nuclei`` name remains the default. If it is absent from PATH,
-    use the known local tool cache when present; custom configured paths are
-    returned unchanged so their existing error behavior is preserved.
+    use only the user-private tool cache or a trusted system path. Custom
+    configured paths are returned unchanged so their existing error behavior
+    is preserved and can be handled by the caller.
     """
     configured = (configured_path or "nuclei").strip() or "nuclei"
     if os.path.isabs(configured) or os.sep in configured:
@@ -40,10 +71,11 @@ def _resolve_nuclei_binary(configured_path: str) -> str:
     if shutil.which(configured):
         return configured
     if configured == "nuclei":
-        for candidate in ("/tmp/pd-bin/nuclei", "/usr/local/bin/nuclei"):
-            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-                logger.info("nuclei: resolved binary from local tool cache: %s", candidate)
-                return candidate
+        private_candidate = _private_tool_cache_dir() / "nuclei"
+        for candidate in (private_candidate, Path("/usr/local/bin/nuclei")):
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                logger.info("nuclei: resolved binary from trusted cache/path: %s", candidate)
+                return str(candidate)
     return configured
 
 

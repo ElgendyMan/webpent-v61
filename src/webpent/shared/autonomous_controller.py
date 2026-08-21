@@ -10,9 +10,11 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from webpent.agents.smart_campaigns.agent import (
+    build_smart_campaign_handler,
     build_smart_campaign_tasks,
     smart_campaigns_node,
 )
@@ -22,6 +24,7 @@ from webpent.shared.campaign_executor import (
     resolve_preconditions,
 )
 from webpent.shared.capability_manifest import CapabilityRegistry
+from webpent.shared.runtime import RegisteredAdapter
 
 TaskHandler = Callable[[CampaignTask], Any]
 
@@ -92,6 +95,96 @@ class AutonomousController:
         )
 
     @staticmethod
+    def _parallel_settings(state: Mapping[str, Any]) -> tuple[bool, int]:
+        """Read an explicit, bounded parallel policy; default remains serial."""
+        raw = state.get("parallel_execution")
+        if not isinstance(raw, Mapping) or raw.get("enabled") is not True:
+            return False, 1
+        try:
+            workers = int(raw.get("max_workers", 2))
+        except (TypeError, ValueError):
+            workers = 2
+        return True, max(1, min(8, workers))
+
+    @staticmethod
+    def _select_independent_tasks(
+        tasks: list[CampaignTask], max_workers: int
+    ) -> list[CampaignTask]:
+        """Select only read-only tasks without explicit dependency conflicts."""
+        selected: list[CampaignTask] = []
+        selected_keys: set[str] = set()
+        selected_preconditions: set[str] = set()
+        for task in tasks:
+            if len(selected) >= max_workers:
+                break
+            if task.risk_tier.value != "read_only" or task.parent_task_id:
+                continue
+            key = task.normalized_idempotency_key()
+            if not key or key in selected_keys:
+                continue
+            preconditions = {
+                str(item).strip().lower()
+                for item in task.preconditions
+                if str(item).strip()
+            }
+            if selected_preconditions.intersection(preconditions):
+                continue
+            selected.append(task)
+            selected_keys.add(key)
+            selected_preconditions.update(preconditions)
+        return selected
+
+    def _execute_batch(
+        self,
+        tasks: list[CampaignTask],
+        state: Mapping[str, Any],
+        handler: TaskHandler,
+    ) -> list[dict[str, Any]]:
+        """Execute a preselected batch and return records in task order."""
+        prepared: list[tuple[CampaignTask, bool]] = []
+        observed_preconditions = state.get("observed_preconditions", ())
+        blocked_preconditions = state.get("blocked_preconditions", ())
+        if isinstance(observed_preconditions, str):
+            observed_preconditions = (observed_preconditions,)
+        if isinstance(blocked_preconditions, str):
+            blocked_preconditions = (blocked_preconditions,)
+        for task in tasks:
+            ready, _ = resolve_preconditions(
+                task,
+                observed_preconditions=observed_preconditions,
+                blocked_preconditions=blocked_preconditions,
+                require_observations=True,
+            )
+            prepared.append((task, ready))
+
+        def execute_one(item: tuple[CampaignTask, bool]) -> dict[str, Any]:
+            task, ready = item
+            try:
+                return self.action_executor.execute(
+                    task, handler, preconditions_met=ready
+                )
+            except Exception as exc:  # noqa: BLE001 - convert transport faults to safe records
+                return {
+                    "task_id": task.task_id,
+                    "engagement_id": task.engagement_id,
+                    "vulnerability_class": task.vulnerability_class,
+                    "hypothesis_id": task.hypothesis_id,
+                    "status": "infrastructure_failure",
+                    "reason": "handler_exception",
+                    "error_type": type(exc).__name__[:80],
+                    "idempotency_key": task.normalized_idempotency_key(),
+                    "output_available": False,
+                    "proof_bundle_sealed": False,
+                }
+
+        enabled, workers = self._parallel_settings(state)
+        if not enabled or len(prepared) <= 1:
+            return [execute_one(item) for item in prepared]
+        with ThreadPoolExecutor(max_workers=min(workers, len(prepared))) as pool:
+            futures = [pool.submit(execute_one, item) for item in prepared]
+            return [future.result() for future in futures]
+
+    @staticmethod
     def _planned_tasks(
         state: Mapping[str, Any], planning: Mapping[str, Any]
     ) -> list[CampaignTask]:
@@ -124,6 +217,14 @@ class AutonomousController:
         seen_actions: set[str] = set()
         stop_reason = "iteration_limit_reached"
         minimum_information_gain = 0.05
+        recovery_events: list[dict[str, Any]] = list(
+            state.get("recovery_events") or []
+        )
+        recovery_state = dict(state.get("recovery_state") or {})
+        recovery_attempts = max(0, int(recovery_state.get("attempts", 0) or 0))
+        max_recovery_attempts = max(
+            0, min(3, int(recovery_state.get("max_attempts", 2) or 0))
+        )
 
         for round_number in range(limit):
             state_before = self._state_fingerprint(working)
@@ -136,7 +237,11 @@ class AutonomousController:
                     "inject both action_executor and handler"
                 )
 
-            selected = tasks[:1]
+            parallel_enabled, parallel_workers = self._parallel_settings(working)
+            selected = self._select_independent_tasks(
+                tasks,
+                parallel_workers if parallel_enabled else 1,
+            )
             if not selected:
                 stop_reason = "no_new_ready_task"
                 trace.append(
@@ -159,9 +264,13 @@ class AutonomousController:
                     }
                 )
                 break
-            task = selected[0]
-            action_signature = self._action_signature(task)
-            if action_signature in seen_actions:
+            unseen = [
+                candidate
+                for candidate in selected
+                if self._action_signature(candidate) not in seen_actions
+            ]
+            if not unseen:
+                task = selected[0]
                 stop_reason = "same_action_repeated"
                 trace.append(
                     {
@@ -173,7 +282,7 @@ class AutonomousController:
                         "controller_round": round_number,
                         "task_id": task.task_id,
                         "hypothesis_id": task.hypothesis_id,
-                        "action_id": action_signature,
+                        "action_id": self._action_signature(task),
                         "precondition_state": "not_evaluated",
                         "capability_state": self._capability_state(
                             planning.get("capability_manifest", {}), task.capability
@@ -185,8 +294,14 @@ class AutonomousController:
                     }
                 )
                 break
-            seen_actions.add(action_signature)
-            if task.expected_information_gain < minimum_information_gain:
+            selected = [
+                candidate
+                for candidate in unseen
+                if candidate.expected_information_gain >= minimum_information_gain
+            ]
+            if not selected:
+                task = unseen[0]
+                action_signature = self._action_signature(task)
                 stop_reason = "expected_information_gain_below_threshold"
                 trace.append(
                     {
@@ -211,48 +326,55 @@ class AutonomousController:
                     }
                 )
                 break
-            observed_preconditions = working.get("observed_preconditions", ())
-            blocked_preconditions = working.get("blocked_preconditions", ())
-            if isinstance(observed_preconditions, str):
-                observed_preconditions = (observed_preconditions,)
-            if isinstance(blocked_preconditions, str):
-                blocked_preconditions = (blocked_preconditions,)
-            ready, _ = resolve_preconditions(
-                selected[0],
-                observed_preconditions=observed_preconditions,
-                blocked_preconditions=blocked_preconditions,
-                require_observations=True,
-            )
-            record = self.action_executor.execute(task, handler, preconditions_met=ready)
-            all_outcomes.append(record)
-            all_lifecycle.extend(self.action_executor.lifecycle_events[-4:])
-            capability_state = self._capability_state(
-                planning.get("capability_manifest", {}), task.capability
-            )
-            status = str(record.get("status", "unknown"))
-            trace_entry = {
-                "correlation_id": str(
-                    working.get("correlation_id")
-                    or working.get("engagement_id")
-                    or "controller"
-                ),
-                "controller_round": round_number,
-                "task_id": task.task_id,
-                "hypothesis_id": task.hypothesis_id,
-                "action_id": action_signature,
-                "precondition_state": "met" if ready else "blocked",
-                "capability_state": capability_state,
-                "status": status,
-                "result": str(record.get("reason") or status),
-                "proof_bundle_sealed": bool(record.get("proof_bundle_sealed")),
-                "redacted_evidence_refs": list(record.get("evidence_refs", ()))[:20]
-                if isinstance(record.get("evidence_refs", ()), (list, tuple))
-                else [],
-            }
-            trace.append(trace_entry)
-            if status == "executed":
-                executed += 1
-            else:
+            for candidate in selected:
+                seen_actions.add(self._action_signature(candidate))
+            task = selected[0]
+            action_signature = self._action_signature(task)
+            lifecycle_start = len(self.action_executor.lifecycle_events)
+            records = self._execute_batch(selected, working, handler)
+            all_outcomes.extend(records)
+            all_lifecycle.extend(self.action_executor.lifecycle_events[lifecycle_start:])
+            batch_failed = False
+            failed_signatures: list[str] = []
+            recoverable_failures: list[tuple[CampaignTask, dict[str, Any]]] = []
+            for batch_task, record in zip(selected, records, strict=True):
+
+                batch_signature = self._action_signature(batch_task)
+                capability_state = self._capability_state(
+                    planning.get("capability_manifest", {}), batch_task.capability
+                )
+                status = str(record.get("status", "unknown"))
+                trace_entry = {
+                    "correlation_id": str(
+                        working.get("correlation_id")
+                        or working.get("engagement_id")
+                        or "controller"
+                    ),
+                    "controller_round": round_number,
+                    "task_id": batch_task.task_id,
+                    "hypothesis_id": batch_task.hypothesis_id,
+                    "action_id": batch_signature,
+                    "precondition_state": (
+                        "met" if status != "blocked_by_precondition" else "blocked"
+                    ),
+                    "capability_state": capability_state,
+                    "status": status,
+                    "result": str(record.get("reason") or status),
+                    "proof_bundle_sealed": bool(record.get("proof_bundle_sealed")),
+                    "parallel_batch": len(selected) > 1,
+                    "parallel_workers": len(selected),
+                    "redacted_evidence_refs": list(record.get("evidence_refs", ()))[:20]
+                    if isinstance(record.get("evidence_refs", ()), (list, tuple))
+                    else [],
+                }
+                trace.append(trace_entry)
+                if status == "executed":
+                    executed += 1
+                    continue
+                batch_failed = True
+                failed_signatures.append(batch_signature)
+                if status == "infrastructure_failure":
+                    recoverable_failures.append((batch_task, record))
                 stop_reason = {
                     "blocked_by_precondition": "blocked_by_precondition",
                     "policy_denied": "capability_or_authority_blocked",
@@ -260,12 +382,54 @@ class AutonomousController:
                     "stopped": "action_stopped",
                 }.get(status, "action_not_executed")
                 trace_entry["result"] = stop_reason
-                working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
-                break
             working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
-            if bool(record.get("negative_control_contradicts")):
+            if batch_failed:
+                if recoverable_failures and recovery_attempts < max_recovery_attempts:
+                    recovery_attempts += 1
+                    seen_actions.difference_update(failed_signatures)
+                    for failed_task, failed_record in recoverable_failures:
+                        recovery_events.append(
+                            {
+                                "event_id": (
+                                    f"{failed_task.task_id}:recovery:{recovery_attempts}"
+                                ),
+                                "engagement_id": failed_task.engagement_id,
+                                "task_id": failed_task.task_id,
+                                "hypothesis_id": failed_task.hypothesis_id,
+                                "failure_class": "infrastructure_failure",
+                                "attempt": recovery_attempts,
+                                "max_attempts": max_recovery_attempts,
+                                "status": "replan_requested",
+                                "reason": str(
+                                    failed_record.get("reason") or "infrastructure_failure"
+                                )[:120],
+                                "error_type": str(failed_record.get("error_type") or "")[:80],
+                                "retry_allowed": True,
+                            }
+                        )
+                    recovery_state = {
+                        **recovery_state,
+                        "status": "replanning",
+                        "attempts": recovery_attempts,
+                        "max_attempts": max_recovery_attempts,
+                        "last_failure_class": "infrastructure_failure",
+                    }
+                    stop_reason = "recovery_replan_requested"
+                    continue
+                if recoverable_failures:
+                    recovery_state = {
+                        **recovery_state,
+                        "status": "exhausted",
+                        "attempts": recovery_attempts,
+                        "max_attempts": max_recovery_attempts,
+                        "last_failure_class": "infrastructure_failure",
+                    }
+                    stop_reason = "recovery_budget_exhausted"
+                break
+            if any(bool(record.get("negative_control_contradicts")) for record in records):
                 stop_reason = "negative_control_contradicts_theory"
-                trace_entry["result"] = stop_reason
+                for entry in trace[-len(records) :]:
+                    entry["result"] = stop_reason
                 break
             action_budget = working.get("action_budget")
             if (
@@ -276,7 +440,9 @@ class AutonomousController:
                 trace_entry["result"] = stop_reason
                 break
             state_after = self._state_fingerprint(working)
-            if state_before == state_after and not self._record_has_new_evidence(record):
+            if state_before == state_after and not any(
+                self._record_has_new_evidence(record) for record in records
+            ):
                 stop_reason = "no_new_evidence_or_state_delta"
                 trace_entry["result"] = stop_reason
                 break
@@ -299,6 +465,20 @@ class AutonomousController:
             update["campaign_task_outcomes"] = all_outcomes
         if all_lifecycle:
             update["lifecycle_events"] = all_lifecycle
+        if recovery_events:
+            update["recovery_events"] = recovery_events
+        recovery_state = {
+            **recovery_state,
+            "status": (
+                "completed"
+                if recovery_state.get("status") == "replanning"
+                and stop_reason != "recovery_budget_exhausted"
+                else recovery_state.get("status", "not_started")
+            ),
+            "attempts": recovery_attempts,
+            "max_attempts": max_recovery_attempts,
+        }
+        update["recovery_state"] = recovery_state
         update["smart_replanning"] = replanning
         update["current_phase"] = "smart_autonomous_controller"
         return update
@@ -316,7 +496,42 @@ def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
         )
     if not runtime.valid:
         return runtime.blocked_result(node="autonomous_controller")
-    result = AutonomousController(action_executor=runtime.action_executor).run(state)
+    observations: list[dict[str, Any]] = []
+    direct_findings: list[Any] = []
+    handler = build_smart_campaign_handler(
+        state,
+        root=runtime.target_origin,
+        observations=observations,
+        direct_findings=direct_findings,
+    )
+    adapter = runtime.adapters.get("smart_http")
+    if adapter is None:
+        runtime.adapters.register(
+            RegisteredAdapter(
+                name="smart_http",
+                capability="smart_http_execution",
+                transport="http",
+                handler=handler,
+                source="smart_campaigns",
+                version="1",
+                policy_checked=True,
+            )
+        )
+    else:
+        handler = adapter.handler
+    result = AutonomousController(action_executor=runtime.action_executor).run(
+        state, handler=handler
+    )
+    result["autonomous_controller_runs"] = int(
+        state.get("autonomous_controller_runs", 0) or 0
+    ) + 1
+    if observations:
+        result["smart_http_observations"] = observations
+    if direct_findings:
+        result["findings"] = [
+            *list(state.get("findings") or []),
+            *[finding.model_dump(mode="json") for finding in direct_findings],
+        ]
     result["runtime_diagnostics"] = runtime.diagnostics()
     return result
 

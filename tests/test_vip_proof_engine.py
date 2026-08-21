@@ -1,3 +1,4 @@
+from webpent.models.proof_bundle import build_proof_bundle
 from webpent.models.proof_engine import ProofActionStatus, ProofGapType
 from webpent.shared.proof_engine import (
     apply_proof_outcome,
@@ -6,6 +7,28 @@ from webpent.shared.proof_engine import (
     classify_probe_gaps,
     plan_next_proof_actions,
 )
+
+
+def _sealed_bundle(action_id: str):
+    return build_proof_bundle(
+        engagement_id="engagement-fixture",
+        finding_id=f"finding:{action_id}",
+        hypothesis_id=f"hypothesis:{action_id}",
+        target_fingerprint="target:fixture",
+        scope_context={"origin": "https://fixture.local"},
+        identity_context={"identity_ref": "user:fixture"},
+        evidence=({"payload": "fixture"},),
+        evidence_refs=["evref:proof-1"],
+        baseline={"status": 200, "body": "baseline"},
+        negative_control={"status": 200, "body": "negative"},
+        request_evidence=({"method": "GET", "path": "/fixture"},),
+        response_evidence=({"status": 200, "body": "candidate"},),
+        causal_oracle={"causal_signal": True, "negative_control_complete": True},
+        validator_id="validator:fixture",
+        validator_version="1.0",
+        replay_metadata={"replayable": True},
+        cleanup_status="complete",
+    ).seal(actor="test")
 
 
 def test_classify_probe_gaps_preserves_explicit_gap_taxonomy() -> None:
@@ -105,6 +128,7 @@ def test_proof_outcome_updates_chain_without_confirming_a_finding() -> None:
             "causal_signal": True,
             "negative_control_observed": True,
             "cleanup_status": "complete",
+            "proof_bundle": _sealed_bundle(action.action_id),
         },
     )
 
@@ -113,6 +137,30 @@ def test_proof_outcome_updates_chain_without_confirming_a_finding() -> None:
     assert updated.cleanup_status == "complete"
     assert updated.chain_state["state"] == "confirmed"
     assert updated.confidence_after != "confirmed"
+
+
+def test_confirmation_flags_without_bundle_are_fail_closed() -> None:
+    action = build_proof_plan(
+        classify_probe_gaps(
+            campaign_key="header_sqli",
+            evidence={},
+            required=["validator_id"],
+        )
+    ).actions[0]
+    updated = apply_proof_outcome(
+        action,
+        {
+            "action_id": action.action_id,
+            "status": "confirmed",
+            "evidence_complete": True,
+            "causal_signal": True,
+            "negative_control_observed": True,
+        },
+    )
+
+    assert updated.confidence_after == "needs_human_review"
+    assert updated.chain_state["promotion_ready"] is False
+    assert updated.chain_state["state"] == "needs_human_review"
 
 
 def test_scope_block_outcome_is_terminal_and_not_confirmed() -> None:
@@ -180,6 +228,7 @@ def test_proof_outcome_projects_to_ledger_without_creating_finding() -> None:
                 "evidence_refs": ["evref:proof-1"],
                 "request_metadata": {"authorization": "Bearer secret-token"},
                 "note": "bounded fixture outcome",
+                "proof_bundle": _sealed_bundle(action.action_id).model_dump(mode="json"),
             }
         ],
         "evidence_ledger": [],

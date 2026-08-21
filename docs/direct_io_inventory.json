@@ -171,7 +171,7 @@
     {
       "file": "src/webpent/agents/smart_campaigns/agent.py",
       "kind": "safe_boundary_call",
-      "line": 1297,
+      "line": 1158,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
@@ -472,7 +472,7 @@
     {
       "file": "src/webpent/tools/recon/nuclei.py",
       "kind": "safe_boundary_call",
-      "line": 162,
+      "line": 194,
       "symbol": "run_command",
       "transport": "subprocess_boundary"
     },

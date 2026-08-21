@@ -9,6 +9,7 @@ they never promote a hypothesis to a finding.
 from __future__ import annotations
 
 import hashlib
+import threading
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
@@ -238,20 +239,22 @@ class CampaignExecutor:
         self.decision_trace: list[dict[str, Any]] = []
         self.lifecycle_events: list[dict[str, Any]] = []
         self._executed_keys: set[str] = set()
+        self._inflight_keys: set[str] = set()
+        self._bookkeeping_lock = threading.Lock()
 
     def _emit_lifecycle(self, task: CampaignTask, stage: str, reason: str = "") -> None:
-        self.lifecycle_events.append(
-            {
-                "task_id": task.task_id,
-                "engagement_id": task.engagement_id,
-                "stage": stage,
-                "status": "recorded",
-                "reason": reason[:240],
-                "action_family": task.action_family,
-                "method": task.method,
-                "vulnerability_class": task.vulnerability_class,
-            }
-        )
+        event = {
+            "task_id": task.task_id,
+            "engagement_id": task.engagement_id,
+            "stage": stage,
+            "status": "recorded",
+            "reason": reason[:240],
+            "action_family": task.action_family,
+            "method": task.method,
+            "vulnerability_class": task.vulnerability_class,
+        }
+        with self._bookkeeping_lock:
+            self.lifecycle_events.append(event)
 
     def _request(self, task: CampaignTask) -> ActionRequest:
         return ActionRequest(
@@ -292,12 +295,22 @@ class CampaignExecutor:
                 CampaignTaskStatus.BLOCKED_BY_PRECONDITION,
                 "precondition_failed",
             )
-        if key in self._executed_keys:
+        with self._bookkeeping_lock:
+            duplicate = key in self._executed_keys or key in self._inflight_keys
+            if not duplicate:
+                self._inflight_keys.add(key)
+        if duplicate:
             self._emit_lifecycle(task, "deduplicated", "duplicate_idempotency_key")
             return self._record(task, CampaignTaskStatus.STOPPED, "duplicate_idempotency_key")
 
         request = self._request(task)
-        result: ActionResult = self.authority.execute(request, lambda _request: handler(task))
+        try:
+            result: ActionResult = self.authority.execute(
+                request, lambda _request: handler(task)
+            )
+        finally:
+            with self._bookkeeping_lock:
+                self._inflight_keys.discard(key)
         if result.status in {ActionStatus.AUTHORIZED, ActionStatus.EXECUTED}:
             self._emit_lifecycle(task, "authorized")
         elif result.status == ActionStatus.POLICY_DENIED:
@@ -306,7 +319,8 @@ class CampaignExecutor:
             self._emit_lifecycle(task, "failed", result.status.value)
         status = self._status_from_action(result.status)
         if result.status == ActionStatus.EXECUTED:
-            self._executed_keys.add(key)
+            with self._bookkeeping_lock:
+                self._executed_keys.add(key)
             self._emit_lifecycle(task, "completed")
         record = self._record(
             task,
@@ -365,8 +379,9 @@ class CampaignExecutor:
                 record["proof_bundle"] = bundle.model_dump(mode="json")
                 record["proof_bundle_sealed"] = bundle.verify_seal()
                 record["negative_control_present"] = output.get("negative_control") is not None
-        self.coverage[task.task_id] = record
-        self.decision_trace.append({"selected_task": task.task_id, "outcome": record})
+        with self._bookkeeping_lock:
+            self.coverage[task.task_id] = record
+            self.decision_trace.append({"selected_task": task.task_id, "outcome": record})
         return record
 
 

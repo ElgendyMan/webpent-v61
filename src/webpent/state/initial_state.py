@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from webpent.config.settings import (
     ScanMode,
     ScanProfile,
+    deployment_requires_proof_bundle,
     get_settings,
     profile_requires_proof_bundle,
     resolve_scan_profile,
@@ -122,6 +123,10 @@ def build_initial_state(
             ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
         }[resolved_scan_mode]
     vip_proof_required = profile_requires_proof_bundle(resolved_profile)
+    deployment_proof_required = deployment_requires_proof_bundle(
+        settings.environment_profile
+    )
+    proof_required = vip_proof_required or deployment_proof_required
     capability_manifest = build_capability_manifest(settings)
     resolved_campaign_id = (
         str(campaign_id or f"{resolved_engagement_id or 'engagement'}:main").strip()
@@ -230,6 +235,7 @@ def build_initial_state(
         "report_formats": normalized_formats,
         "auto_approve": bool(auto_approve),
         "enable_autonomous_controller": bool(enable_autonomous_controller),
+        "autonomous_controller_runs": 0,
         "skip_recon": bool(skip_recon),
         "scan_mode": str(scan_mode_value),
         "profile": str(profile_value),
@@ -242,10 +248,10 @@ def build_initial_state(
             "auto_approve_requested": bool(auto_approve),
             "smart_auto_approve": bool(settings.smart_auto_approve),
             "require_idempotency": bool(
-                settings.smart_require_idempotency or vip_proof_required
+                settings.smart_require_idempotency or proof_required
             ),
             "require_proof_bundle": bool(
-                settings.smart_require_proof_bundle or vip_proof_required
+                settings.smart_require_proof_bundle or proof_required
             ),
         },
         "action_ledger_path": action_ledger_path,
@@ -287,6 +293,13 @@ def build_initial_state(
         "campaign_task_outcomes": [],
         "smart_next_actions": [],
         "smart_http_observations": [],
+        "recovery_events": [],
+        "recovery_state": {
+            "status": "not_started",
+            "attempts": 0,
+            "max_attempts": 2,
+            "last_failure_class": "",
+        },
         "smart_replanning": {
             "round": 0,
             "max_rounds": int(settings.smart_max_replan_rounds),

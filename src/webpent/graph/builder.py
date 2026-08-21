@@ -37,6 +37,7 @@ before ``execution_sandbox`` unless ``auto_approve=True``.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
@@ -69,6 +70,7 @@ from webpent.agents.reporter.agent import reporter_node, reporter_node_bug_bount
 from webpent.agents.request_smuggling.agent import request_smuggling_node
 from webpent.agents.scope_enforcer.agent import scope_enforcer_node
 from webpent.agents.smart_campaigns.agent import (
+    build_smart_campaign_handler,
     smart_campaigns_execution_node,
     smart_campaigns_node,
 )
@@ -84,7 +86,12 @@ from webpent.models.findings import (
     Finding,
     Severity,
 )
+from webpent.models.research import CandidateAction
 from webpent.shared.autonomous_controller import autonomous_controller_node
+from webpent.shared.campaign_executor import CampaignTask, resolve_preconditions
+from webpent.shared.causal_research import build_causal_research_projection
+from webpent.shared.research_contracts import active_research_node
+from webpent.shared.runtime import RegisteredAdapter, RuntimeContext
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -140,6 +147,9 @@ NODE_JAVASCRIPT_INTELLIGENCE = "javascript_intelligence"
 NODE_SMART_CAMPAIGNS = "smart_campaigns"
 NODE_SMART_CAMPAIGNS_EXECUTION = "smart_campaigns_execution"
 NODE_AUTONOMOUS_CONTROLLER = "autonomous_controller"
+NODE_ACTIVE_RESEARCH = "active_research"
+NODE_CAUSAL_RESEARCH = "causal_research"
+NODE_RECOVERY = "recovery"
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
 _EXPLOITABLE_CLASSES = EXPLOITABLE_CLASSES
@@ -217,10 +227,26 @@ def route_after_attack_graph(state: PentestState) -> str:
     return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
 
 
+def _autonomous_max_runs(state: PentestState) -> int:
+    """Return the persisted, bounded controller budget."""
+    replanning = state.get("smart_replanning") or {}
+    if not isinstance(replanning, dict):
+        return 0
+    try:
+        return max(0, int(replanning.get("max_replan_rounds", 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def route_after_smart_campaigns_execution(state: PentestState) -> str:
-    """Bounded observation-driven replan route for the Smart Hunter adapter."""
+    """Enter the controller only while its persisted budget remains."""
     if _autonomous_controller_enabled(state):
-        return NODE_AUTONOMOUS_CONTROLLER
+        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+        return (
+            NODE_AUTONOMOUS_CONTROLLER
+            if runs < _autonomous_max_runs(state)
+            else NODE_STRATEGIST
+        )
     replanning = state.get("smart_replanning") or {}
     if not isinstance(replanning, dict):
         return NODE_STRATEGIST
@@ -232,6 +258,290 @@ def route_after_smart_campaigns_execution(state: PentestState) -> str:
     except (TypeError, ValueError):
         return NODE_STRATEGIST
     return NODE_SMART_CAMPAIGNS if current_round < max_rounds else NODE_STRATEGIST
+
+
+def _research_candidates_available(state: Mapping[str, Any]) -> bool:
+    """Return True only when at least one valid, unattempted candidate exists."""
+    candidates = state.get("research_candidate_actions") or []
+    attempted = {
+        str(item)
+        for item in (state.get("research_context") or {}).get(
+            "attempted_action_fingerprints", []
+        )
+        if str(item)
+    }
+    for raw in candidates[:100]:
+        if not isinstance(raw, Mapping):
+            continue
+        try:
+            payload = dict(raw)
+            payload.pop("fingerprint", None)
+            candidate = CandidateAction.model_validate(payload)
+        except Exception:
+            continue
+        if candidate.fingerprint() not in attempted:
+            return True
+    return False
+
+
+def _recovery_pending(state: Mapping[str, Any]) -> bool:
+    """Return True only for an explicit, retryable infrastructure failure."""
+    recovery_state = state.get("recovery_state") or {}
+    if not isinstance(recovery_state, Mapping):
+        return False
+    try:
+        attempts = int(recovery_state.get("attempts", 0) or 0)
+        maximum = max(0, min(3, int(recovery_state.get("max_attempts", 0) or 0)))
+    except (TypeError, ValueError):
+        return False
+    if attempts >= maximum or recovery_state.get("status") not in {
+        "replanning",
+        "retry_ready",
+    }:
+        return False
+    events = state.get("recovery_events") or []
+    return any(
+        isinstance(event, Mapping)
+        and event.get("failure_class") == "infrastructure_failure"
+        and event.get("retry_allowed") is True
+        and event.get("status") in {"replan_requested", "retry_ready"}
+        for event in events[-20:]
+    )
+
+
+def route_after_autonomous_controller(state: PentestState) -> str:
+    """Return to recovery, smart execution, or bounded research after controller work."""
+    if _recovery_pending(state):
+        return NODE_RECOVERY
+    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+    replanning = state.get("smart_replanning") or {}
+    if not isinstance(replanning, dict):
+        return NODE_STRATEGIST
+    if replanning.get("controller_executed") is not True:
+        return NODE_STRATEGIST
+    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
+        return NODE_ACTIVE_RESEARCH
+    if not state.get("smart_next_actions"):
+        return NODE_STRATEGIST
+    return NODE_SMART_CAMPAIGNS if runs < _autonomous_max_runs(state) else NODE_STRATEGIST
+
+
+def _active_research_task(candidate: CandidateAction, state: Mapping[str, Any]) -> CampaignTask:
+    """Convert a validated research candidate into the central task contract."""
+    metadata = dict(candidate.metadata)
+    metadata.update(
+        {
+            "probe_kind": "active_research",
+            "research_action_id": candidate.action_id,
+            "research_action_fingerprint": candidate.fingerprint(),
+            "objective": candidate.objective[:240],
+            "human_approved": bool(state.get("auto_approve", False)),
+        }
+    )
+    observed = state.get("observed_preconditions", ())
+    if isinstance(observed, str):
+        observed = (observed,)
+    metadata["observed_preconditions"] = tuple(str(item)[:160] for item in observed)[:20]
+    return CampaignTask(
+        task_id=f"active-research:{candidate.action_id}"[:160],
+        engagement_id=str(state.get("engagement_id") or "engagement:unknown")[:160],
+        asset_id=candidate.target_ref[:500],
+        source_evidence_ids=tuple(
+            str(item)[:160]
+            for item in metadata.get("evidence_refs", ())
+            if str(item)
+        )[:20],
+        vulnerability_class="research_information",
+        hypothesis_id=candidate.hypothesis_id[:160] or f"research-gap:{candidate.action_id}"[:160],
+        preconditions=tuple(candidate.prerequisites[:20]),
+        identity_context=candidate.identity_context[:120],
+        workflow_state=candidate.workflow_state[:120],
+        probe_family="bounded_information_action",
+        negative_control=(
+            "required" if candidate.action_class == "negative_control" else "not_applicable"
+        ),
+        oracle="response_metadata_only",
+        budget=max(0.1, min(100000.0, candidate.cost)),
+        expected_information_gain=candidate.expected_information_gain,
+        idempotency_key=candidate.idempotency_key or f"active-research:{candidate.fingerprint()}",
+        method=candidate.method,
+        capability=candidate.capability,
+        action_family="http_read",
+        target_url=candidate.target_ref,
+        metadata=metadata,
+        tenant_context=candidate.tenant_context[:120],
+        validator_id="active_research_observation",
+    )
+
+
+def _active_research_runtime_node(state: Mapping[str, Any]) -> dict[str, Any]:
+    """Run one graph-owned research step through an injected runtime adapter."""
+    runtime = state.get("runtime_context")
+    if not isinstance(runtime, RuntimeContext):
+        return active_research_node(state)
+    if not runtime.valid:
+        return {
+            **runtime.blocked_result(node=NODE_ACTIVE_RESEARCH),
+            "research_active_observations": [
+                {
+                    "observation_id": "observation:runtime:blocked",
+                    "action_id": "action:none",
+                    "action_fingerprint": "0" * 32,
+                    "status": "blocked",
+                    "reason": "runtime_context_invalid",
+                    "revisit_conditions": ["repair runtime context"],
+                }
+            ],
+        }
+
+    observations: list[dict[str, Any]] = []
+    direct_findings: list[Any] = []
+    handler = build_smart_campaign_handler(
+        state,
+        root=runtime.target_origin,
+        observations=observations,
+        direct_findings=direct_findings,
+    )
+    adapter = runtime.adapters.get("smart_http")
+    if adapter is None:
+        runtime.adapters.register(
+            RegisteredAdapter(
+                name="smart_http",
+                capability="smart_http_execution",
+                transport="http",
+                handler=handler,
+                source="active_research",
+                version="1",
+                policy_checked=True,
+            )
+        )
+    else:
+        handler = adapter.handler
+
+    def injected_research_handler(candidate: CandidateAction) -> Mapping[str, Any]:
+        target_allowed = runtime.scope_matcher.allows(candidate.target_ref, method=candidate.method)
+        if not target_allowed:
+            raise PermissionError("target_scope_denied")
+        task = _active_research_task(candidate, state)
+        observed = state.get("observed_preconditions", ())
+        blocked = state.get("blocked_preconditions", ())
+        ready, _ = resolve_preconditions(
+            task,
+            observed_preconditions=(observed if not isinstance(observed, str) else (observed,)),
+            blocked_preconditions=(blocked if not isinstance(blocked, str) else (blocked,)),
+            require_observations=bool(task.preconditions),
+        )
+        record = runtime.action_executor.execute(task, handler, preconditions_met=ready)
+        status = str(record.get("status") or "inconclusive")
+        proof_bundle = record.get("proof_bundle")
+        evidence_refs = (
+            proof_bundle.get("evidence_refs", [])
+            if isinstance(proof_bundle, Mapping)
+            else []
+        )
+        if status == "executed":
+            observation_status = (
+                "positive"
+                if record.get("proof_bundle_sealed") is True
+                else "inconclusive"
+            )
+        elif status == "infrastructure_failure":
+            observation_status = "infrastructure_failure"
+        else:
+            observation_status = "blocked"
+        return {
+            "observation_id": f"observation:executor:{candidate.fingerprint()}",
+            "action_id": candidate.action_id,
+            "action_fingerprint": candidate.fingerprint(),
+            "status": observation_status,
+            "evidence_refs": [str(item)[:200] for item in evidence_refs[:20]],
+            "reason": str(record.get("reason") or status)[:500],
+            "control_complete": bool(record.get("negative_control_present")),
+            "causal_signal": False,
+            "proof_bundle_sealed": bool(record.get("proof_bundle_sealed")),
+            "metadata": {
+                "executor_status": status,
+                "output_available": bool(record.get("output_available")),
+                "runtime_adapter": "smart_http",
+            },
+            "revisit_conditions": ["fresh evidence or explicit policy change"]
+            if observation_status != "positive"
+            else [],
+        }
+
+    target_allowed = any(
+        isinstance(raw, Mapping)
+        and runtime.scope_matcher.allows(
+            str(raw.get("target_ref") or ""),
+            method=str(raw.get("method") or "GET"),
+        )
+        for raw in (state.get("research_candidate_actions") or [])[:100]
+    )
+    result = active_research_node(
+        state,
+        handler=injected_research_handler,
+        target_allowed=target_allowed,
+        approved=bool(state.get("auto_approve", False)),
+    )
+    if observations:
+        result["smart_http_observations"] = observations[:20]
+    if direct_findings:
+        result["findings"] = [*list(state.get("findings") or []), *direct_findings]
+    return result
+
+
+def causal_research_node(state: Mapping[str, Any]) -> dict[str, Any]:
+    """Project causal links and ledger decisions without executing any I/O."""
+    try:
+        return build_causal_research_projection(state)
+    except Exception:
+        logger.exception("Causal research projection failed; preserving state")
+        return {
+            "causal_attack_graph": {
+                "version": 1,
+                "edges": [],
+                "nodes": [],
+                "next_best_action_links": [],
+                "negative_evidence_consulted": False,
+                "projection_status": "failed_closed",
+            }
+        }
+
+
+def recovery_node(state: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate a retry request without executing transport or changing scope."""
+    recovery_state = dict(state.get("recovery_state") or {})
+    pending = _recovery_pending(state)
+    recovery_state["status"] = "retry_ready" if pending else "exhausted"
+    if not pending:
+        recovery_state["last_failure_class"] = str(
+            recovery_state.get("last_failure_class") or ""
+        )[:80]
+    return {"recovery_state": recovery_state}
+
+
+def route_after_recovery(state: PentestState) -> str:
+    """Re-enter only the bounded controller; otherwise fail closed."""
+    if _recovery_pending(state) and _research_candidates_available(state):
+        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+        if runs < _autonomous_max_runs(state):
+            return NODE_AUTONOMOUS_CONTROLLER
+    return NODE_STRATEGIST
+
+
+def route_after_active_research(state: PentestState) -> str:
+    """Send every active result through causal projection before replanning."""
+    if state.get("research_active_observations"):
+        return NODE_CAUSAL_RESEARCH
+    return NODE_STRATEGIST
+
+
+def route_after_causal_research(state: PentestState) -> str:
+    """Re-enter the bounded controller only after causal context is attached."""
+    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
+        return NODE_AUTONOMOUS_CONTROLLER
+    return NODE_STRATEGIST
 
 
 def _target_understanding_enabled() -> bool:
@@ -634,6 +944,9 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_SMART_CAMPAIGNS, smart_campaigns_node)
     graph.add_node(NODE_SMART_CAMPAIGNS_EXECUTION, smart_campaigns_execution_node)
     graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
+    graph.add_node(NODE_RECOVERY, recovery_node)
+    graph.add_node(NODE_ACTIVE_RESEARCH, _active_research_runtime_node)
+    graph.add_node(NODE_CAUSAL_RESEARCH, causal_research_node)
     if _attack_graph_enabled():
         graph.add_node(NODE_ATTACK_GRAPH, attack_graph_node)
 
@@ -746,7 +1059,40 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
             NODE_STRATEGIST: NODE_STRATEGIST,
         },
     )
-    graph.add_edge(NODE_AUTONOMOUS_CONTROLLER, NODE_STRATEGIST)
+    graph.add_conditional_edges(
+        NODE_AUTONOMOUS_CONTROLLER,
+        route_after_autonomous_controller,
+        {
+            NODE_SMART_CAMPAIGNS: NODE_SMART_CAMPAIGNS,
+            NODE_RECOVERY: NODE_RECOVERY,
+            NODE_ACTIVE_RESEARCH: NODE_ACTIVE_RESEARCH,
+            NODE_STRATEGIST: NODE_STRATEGIST,
+        },
+    )
+    graph.add_conditional_edges(
+        NODE_RECOVERY,
+        route_after_recovery,
+        {
+            NODE_AUTONOMOUS_CONTROLLER: NODE_AUTONOMOUS_CONTROLLER,
+            NODE_STRATEGIST: NODE_STRATEGIST,
+        },
+    )
+    graph.add_conditional_edges(
+        NODE_ACTIVE_RESEARCH,
+        route_after_active_research,
+        {
+            NODE_CAUSAL_RESEARCH: NODE_CAUSAL_RESEARCH,
+            NODE_STRATEGIST: NODE_STRATEGIST,
+        },
+    )
+    graph.add_conditional_edges(
+        NODE_CAUSAL_RESEARCH,
+        route_after_causal_research,
+        {
+            NODE_AUTONOMOUS_CONTROLLER: NODE_AUTONOMOUS_CONTROLLER,
+            NODE_STRATEGIST: NODE_STRATEGIST,
+        },
+    )
     graph.add_edge(NODE_STRATEGIST, NODE_PAYLOAD_GENERATOR)
 
     graph.add_edge(NODE_PAYLOAD_GENERATOR, NODE_EXECUTION_SANDBOX)

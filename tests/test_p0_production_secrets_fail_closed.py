@@ -3,7 +3,11 @@
 import pytest
 from pydantic import ValidationError
 
-from webpent.config.settings import Settings
+from webpent.config.settings import (
+    EnvironmentProfile,
+    Settings,
+    deployment_requires_proof_bundle,
+)
 
 _STRONG = "x" * 48
 
@@ -50,6 +54,13 @@ def test_production_rejects_known_default_secret(
 
     with pytest.raises(ValidationError, match=message):
         Settings(**kwargs)
+
+
+def test_non_lab_requires_proof_bundle_even_without_opt_in() -> None:
+    assert deployment_requires_proof_bundle(EnvironmentProfile.LAB) is False
+    assert deployment_requires_proof_bundle(EnvironmentProfile.STAGING) is True
+    assert deployment_requires_proof_bundle(EnvironmentProfile.PRODUCTION) is True
+    assert deployment_requires_proof_bundle("future-profile") is True
 
 
 def test_non_lab_profile_cannot_disable_authentication() -> None:

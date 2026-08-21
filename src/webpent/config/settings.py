@@ -88,6 +88,21 @@ def profile_requires_proof_bundle(value: str | ScanProfile | None) -> bool:
     return profile is ScanProfile.VIP_QUALIFICATION
 
 
+def deployment_requires_proof_bundle(value: str | EnvironmentProfile | None) -> bool:
+    """Require sealed proof in non-lab deployments, regardless of opt-in flags."""
+    if value is None:
+        return False
+    try:
+        profile = (
+            value
+            if isinstance(value, EnvironmentProfile)
+            else EnvironmentProfile(str(value).strip().lower())
+        )
+    except ValueError:
+        return True
+    return profile in {EnvironmentProfile.STAGING, EnvironmentProfile.PRODUCTION}
+
+
 class EnvironmentProfile(str, Enum):
     """Deployment posture used by startup security gates."""
 

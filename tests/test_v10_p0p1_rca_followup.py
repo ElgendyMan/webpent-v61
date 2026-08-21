@@ -375,3 +375,35 @@ class TestBusinessLogicFuzzerErrorLogging:
         assert "logger.error(" in source
         # The string spans two lines in the source — check the key fragment.
         assert "failed to construct race-condition" in source
+
+
+class TestNucleiPrivateBinaryResolution:
+    """G-01/Phase 1.8: nuclei must not resolve shared predictable /tmp paths."""
+
+    def test_private_cache_is_created_with_restricted_permissions(self, monkeypatch, tmp_path):
+        import os
+
+        from webpent.tools.recon import nuclei as nuclei_mod
+
+        cache_dir = tmp_path / "webpent-tools"
+        monkeypatch.setenv("WEBPENT_TOOL_CACHE_DIR", str(cache_dir))
+
+        resolved_dir = nuclei_mod._private_tool_cache_dir()
+
+        assert resolved_dir == cache_dir
+        assert resolved_dir.stat().st_uid == os.getuid()
+        assert resolved_dir.stat().st_mode & 0o077 == 0
+
+    def test_default_resolution_does_not_use_predictable_shared_tmp_cache(
+        self, monkeypatch
+    ):
+        from pathlib import Path
+
+        from webpent.tools.recon import nuclei as nuclei_mod
+
+        monkeypatch.setattr(nuclei_mod.shutil, "which", lambda _name: None)
+        monkeypatch.setattr(nuclei_mod, "_private_tool_cache_dir", lambda: Path("/private"))
+        monkeypatch.setattr(nuclei_mod.Path, "is_file", lambda _path: False)
+
+        assert nuclei_mod._resolve_nuclei_binary("nuclei") == "nuclei"
+        assert "/tmp/pd-bin/nuclei" not in nuclei_mod._resolve_nuclei_binary.__doc__

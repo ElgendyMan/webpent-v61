@@ -183,6 +183,8 @@ class PentestState(TypedDict, total=False):
     # Explicit opt-in for the bounded controller-owned Smart Hunter loop.
     # Legacy and ordinary safe-smart scans remain on the existing adapter path.
     enable_autonomous_controller: bool
+    # Count of graph-level controller entries; bounds re-entry across checkpoints.
+    autonomous_controller_runs: int
     capability_manifest: Annotated[dict[str, Any], merge_dicts]
     action_budget: Annotated[dict[str, Any], merge_dicts]
     # Optional LLM advisory validation trace. It is report-safe and never
@@ -344,6 +346,10 @@ class PentestState(TypedDict, total=False):
     research_active_observations: Annotated[list[dict[str, Any]], merge_lists]
     surface_coverage: Annotated[dict[str, Any], merge_dicts]
     research_failed_paths: Annotated[list[dict[str, Any]], merge_lists]
+    # Bounded recovery telemetry. These records are report-safe and advisory;
+    # they never bypass policy, scope, idempotency, or proof gates.
+    recovery_events: Annotated[list[dict[str, Any]], merge_lists]
+    recovery_state: Annotated[dict[str, Any], merge_dicts]
     # Phase 4 evidence-only behavior and causal projections. They never create
     # findings, authorize transport, or replace proof validation.
     novel_behavior_observations: Annotated[list[dict[str, Any]], merge_lists]

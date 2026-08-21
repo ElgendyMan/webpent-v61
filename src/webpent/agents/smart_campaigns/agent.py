@@ -1132,6 +1132,126 @@ def _build_swagger_ssrf_task(state: Mapping[str, Any], root: str) -> CampaignTas
 
 
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
+
+def build_smart_campaign_handler(
+    state: Mapping[str, Any],
+    *,
+    root: str,
+    observations: list[dict[str, Any]],
+    direct_findings: list[Finding],
+) -> Any:
+    def handler(task: CampaignTask) -> dict[str, Any]:
+        parsed_root = urlsplit(root)
+        parsed_target = urlsplit(task.target_url)
+        if parsed_target.scheme != parsed_root.scheme or parsed_target.netloc != parsed_root.netloc:
+            raise ValueError("same_origin_target_required")
+        headers = {"User-Agent": _user_agent(state)}
+        cookies = state.get("session_cookies") or {}
+        if isinstance(cookies, Mapping) and cookies:
+            headers["Cookie"] = "; ".join(
+                f"{str(key)[:128]}={str(value)[:512]}" for key, value in cookies.items()
+            )
+        method = task.method.upper()
+        content_type = str(task.metadata.get("content_type") or "")[:120]
+        if method == "POST" and content_type:
+            headers["Content-Type"] = content_type
+        with _declared_target_scope(root), make_safe_httpx_client(
+            timeout=10.0,
+            follow_redirects=False,
+            headers=headers,
+        ) as client:
+            if method == "GET":
+                response = client.get(task.target_url)
+            elif method == "HEAD":
+                response = client.head(task.target_url)
+            elif method == "OPTIONS":
+                response = client.options(task.target_url)
+            elif method == "POST":
+                body = task.metadata.get("request_body")
+                if body is None:
+                    raise ValueError("active_body_evidence_required")
+                if task.action_family == "file_upload":
+                    if not isinstance(body, Mapping):
+                        raise ValueError("multipart_body_schema_required")
+                    file_spec = body.get("file") or body.get("upload")
+                    if not isinstance(file_spec, Mapping):
+                        raise ValueError("multipart_file_evidence_required")
+                    field_name = str(
+                        file_spec.get("field") or file_spec.get("name") or "file"
+                    )[:80]
+                    filename = str(file_spec.get("filename") or "fixture.bin")[:160]
+                    content = file_spec.get("content", b"")
+                    if isinstance(content, str):
+                        content = content.encode("utf-8")
+                    if not isinstance(content, bytes) or len(content) > 1_048_576:
+                        raise ValueError("bounded_upload_content_required")
+                    fields = body.get("fields") or {}
+                    if not isinstance(fields, Mapping):
+                        fields = {}
+                    upload_type = str(
+                        file_spec.get("content_type") or "application/octet-stream"
+                    )[:120]
+                    response = client.post(
+                        task.target_url,
+                        data={
+                            str(key)[:80]: str(value)[:1000] for key, value in fields.items()
+                        },
+                        files={field_name: (filename, content, upload_type)},
+                    )
+                elif (
+                    task.body_schema in {"form", "urlencoded"}
+                    or "application/x-www-form-urlencoded" in content_type.lower()
+                ):
+                    if not isinstance(body, Mapping):
+                        raise ValueError("form_body_schema_required")
+                    response = client.post(
+                        task.target_url,
+                        data={
+                            str(key)[:80]: str(value)[:1000] for key, value in body.items()
+                        },
+                    )
+                elif isinstance(body, Mapping):
+                    response = client.post(task.target_url, json=dict(body))
+                else:
+                    response = client.post(task.target_url, content=body)
+            else:
+                raise ValueError("unsupported_smart_http_method")
+        observation = {
+            "task_id": task.task_id,
+            "url": task.target_url,
+            "method": method,
+        }
+        observation.update(_safe_http_observation(response))
+        observations.append(observation)
+        if task.metadata.get("probe_kind") == "swagger_ssrf":
+            direct_finding = _swagger_ssrf_finding(state, response, task.target_url)
+            if direct_finding is not None:
+                direct_findings.append(
+                    direct_finding.model_copy(
+                        update={
+                            "evidence": {
+                                **(direct_finding.evidence or {}),
+                                "action_executor_probe": True,
+                                "validator_path": "action_executor_swagger_ssrf",
+                            }
+                        }
+                    )
+                )
+        proof_evidence = task.metadata.get("proof_evidence")
+        proof_refs = task.metadata.get("evidence_refs")
+        negative_control = task.metadata.get("negative_control_payload")
+        result: dict[str, Any] = {"observation_recorded": True}
+        if isinstance(proof_evidence, (list, tuple)) and proof_evidence:
+            result["proof_evidence"] = [redact_sensitive(item)[0] for item in proof_evidence[:8]]
+            if isinstance(proof_refs, str):
+                proof_refs = [proof_refs]
+            if isinstance(proof_refs, (list, tuple)):
+                result["evidence_refs"] = [str(item)[:200] for item in proof_refs[:8]]
+            if negative_control is not None:
+                result["negative_control"] = redact_sensitive(negative_control)[0]
+        return result
+    return handler
+
 def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Execute bounded same-origin tasks and deterministic proofs in active mode."""
     profile = str(
@@ -1279,117 +1399,12 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         task for task in tasks if task.normalized_idempotency_key() not in attempted
     ][:task_cap]
 
-    def handler(task: CampaignTask) -> dict[str, Any]:
-        parsed_root = urlsplit(root)
-        parsed_target = urlsplit(task.target_url)
-        if parsed_target.scheme != parsed_root.scheme or parsed_target.netloc != parsed_root.netloc:
-            raise ValueError("same_origin_target_required")
-        headers = {"User-Agent": _user_agent(state)}
-        cookies = state.get("session_cookies") or {}
-        if isinstance(cookies, Mapping) and cookies:
-            headers["Cookie"] = "; ".join(
-                f"{str(key)[:128]}={str(value)[:512]}" for key, value in cookies.items()
-            )
-        method = task.method.upper()
-        content_type = str(task.metadata.get("content_type") or "")[:120]
-        if method == "POST" and content_type:
-            headers["Content-Type"] = content_type
-        with _declared_target_scope(root), make_safe_httpx_client(
-            timeout=10.0,
-            follow_redirects=False,
-            headers=headers,
-        ) as client:
-            if method == "GET":
-                response = client.get(task.target_url)
-            elif method == "HEAD":
-                response = client.head(task.target_url)
-            elif method == "OPTIONS":
-                response = client.options(task.target_url)
-            elif method == "POST":
-                body = task.metadata.get("request_body")
-                if body is None:
-                    raise ValueError("active_body_evidence_required")
-                if task.action_family == "file_upload":
-                    if not isinstance(body, Mapping):
-                        raise ValueError("multipart_body_schema_required")
-                    file_spec = body.get("file") or body.get("upload")
-                    if not isinstance(file_spec, Mapping):
-                        raise ValueError("multipart_file_evidence_required")
-                    field_name = str(
-                        file_spec.get("field") or file_spec.get("name") or "file"
-                    )[:80]
-                    filename = str(file_spec.get("filename") or "fixture.bin")[:160]
-                    content = file_spec.get("content", b"")
-                    if isinstance(content, str):
-                        content = content.encode("utf-8")
-                    if not isinstance(content, bytes) or len(content) > 1_048_576:
-                        raise ValueError("bounded_upload_content_required")
-                    fields = body.get("fields") or {}
-                    if not isinstance(fields, Mapping):
-                        fields = {}
-                    upload_type = str(
-                        file_spec.get("content_type") or "application/octet-stream"
-                    )[:120]
-                    response = client.post(
-                        task.target_url,
-                        data={
-                            str(key)[:80]: str(value)[:1000] for key, value in fields.items()
-                        },
-                        files={field_name: (filename, content, upload_type)},
-                    )
-                elif (
-                    task.body_schema in {"form", "urlencoded"}
-                    or "application/x-www-form-urlencoded" in content_type.lower()
-                ):
-                    if not isinstance(body, Mapping):
-                        raise ValueError("form_body_schema_required")
-                    response = client.post(
-                        task.target_url,
-                        data={
-                            str(key)[:80]: str(value)[:1000] for key, value in body.items()
-                        },
-                    )
-                elif isinstance(body, Mapping):
-                    response = client.post(task.target_url, json=dict(body))
-                else:
-                    response = client.post(task.target_url, content=body)
-            else:
-                raise ValueError("unsupported_smart_http_method")
-        observation = {
-            "task_id": task.task_id,
-            "url": task.target_url,
-            "method": method,
-        }
-        observation.update(_safe_http_observation(response))
-        observations.append(observation)
-        if task.metadata.get("probe_kind") == "swagger_ssrf":
-            direct_finding = _swagger_ssrf_finding(state, response, task.target_url)
-            if direct_finding is not None:
-                direct_findings.append(
-                    direct_finding.model_copy(
-                        update={
-                            "evidence": {
-                                **(direct_finding.evidence or {}),
-                                "action_executor_probe": True,
-                                "validator_path": "action_executor_swagger_ssrf",
-                            }
-                        }
-                    )
-                )
-        proof_evidence = task.metadata.get("proof_evidence")
-        proof_refs = task.metadata.get("evidence_refs")
-        negative_control = task.metadata.get("negative_control_payload")
-        result: dict[str, Any] = {"observation_recorded": True}
-        if isinstance(proof_evidence, (list, tuple)) and proof_evidence:
-            result["proof_evidence"] = [redact_sensitive(item)[0] for item in proof_evidence[:8]]
-            if isinstance(proof_refs, str):
-                proof_refs = [proof_refs]
-            if isinstance(proof_refs, (list, tuple)):
-                result["evidence_refs"] = [str(item)[:200] for item in proof_refs[:8]]
-            if negative_control is not None:
-                result["negative_control"] = redact_sensitive(negative_control)[0]
-        return result
-
+    handler = build_smart_campaign_handler(
+        state,
+        root=root,
+        observations=observations,
+        direct_findings=direct_findings,
+    )
     state_observed_preconditions = state.get("observed_preconditions", ())
     state_blocked_preconditions = state.get("blocked_preconditions", ())
     if isinstance(state_observed_preconditions, str):
