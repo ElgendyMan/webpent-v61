@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urljoin
 
 from langchain_core.messages import AIMessage
 
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 def _js_candidate_urls(state: PentestState) -> list[str]:
     crawled = state.get("crawled_data") or {}
+    target = state.get("target")
+    target_url = str(getattr(target, "url", "") or "").strip()
     values: list[Any] = []
     for key in ("javascript_urls", "js_urls", "endpoints", "urls", "links"):
         candidate = crawled.get(key)
@@ -29,14 +32,23 @@ def _js_candidate_urls(state: PentestState) -> list[str]:
     seen: set[str] = set()
     for item in values:
         raw = item.get("url") or item.get("href") if isinstance(item, dict) else item
-        if not isinstance(raw, str) or not raw.startswith(("http://", "https://")):
+        if not isinstance(raw, str):
             continue
-        if not raw.lower().endswith((".js", ".mjs", ".js?")) and not isinstance(item, dict):
+        raw = raw.strip()
+        if not raw:
             continue
-        if raw in seen:
+        absolute = raw if raw.startswith(("http://", "https://")) else urljoin(
+            target_url.rstrip("/") + "/", raw
+        )
+        if not absolute.startswith(("http://", "https://")):
             continue
-        seen.add(raw)
-        urls.append(raw)
+        is_script = absolute.lower().split("?", 1)[0].endswith((".js", ".mjs"))
+        if not is_script and not isinstance(item, dict):
+            continue
+        if absolute in seen:
+            continue
+        seen.add(absolute)
+        urls.append(absolute)
     return urls
 
 

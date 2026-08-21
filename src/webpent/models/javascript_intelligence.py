@@ -28,7 +28,9 @@ class JavaScriptRoute(BaseModel):
     route: str = Field(..., min_length=1, max_length=1200)
     source_asset: str = Field(..., min_length=1, max_length=1200)
     method_hint: str = Field(default="UNKNOWN", min_length=1, max_length=16)
-    discovery_kind: Literal["fetch", "axios", "xhr", "route_literal", "graphql", "source_map"]
+    discovery_kind: Literal[
+        "fetch", "axios", "xhr", "http_client", "route_literal", "graphql", "source_map"
+    ]
     line: int | None = Field(default=None, ge=1, le=1_000_000)
     in_scope: bool = True
     evidence_ref: str = Field(..., min_length=8, max_length=160)

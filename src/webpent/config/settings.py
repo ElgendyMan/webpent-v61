@@ -236,6 +236,20 @@ class Settings(BaseSettings):
         ),
         description="Bounded number of smart campaign replanning rounds per engagement.",
     )
+    smart_campaign_task_cap: int = Field(
+        default=6,
+        gt=0,
+        le=10,
+        validation_alias=AliasChoices(
+            "smart_campaign_task_cap",
+            "SMART_CAMPAIGN_TASK_CAP",
+            "WEBPENT_SMART_CAMPAIGN_TASK_CAP",
+        ),
+        description=(
+            "Bounded active smart-campaign tasks per pass. "
+            "Safe-smart remains capped at three."
+        ),
+    )
     log_level: LogLevel = Field(default=LogLevel.INFO)
     max_graph_steps: int = Field(default=50, gt=0)
 

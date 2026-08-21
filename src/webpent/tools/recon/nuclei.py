@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shutil
 from typing import Any
 
 from webpent.config.settings import get_settings
@@ -23,6 +25,26 @@ from webpent.tools.registry import register_tool
 from webpent.tools.utils.subprocess import run_command
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_nuclei_binary(configured_path: str) -> str:
+    """Resolve the configured nuclei binary without weakening tool safety.
+
+    A bare ``nuclei`` name remains the default. If it is absent from PATH,
+    use the known local tool cache when present; custom configured paths are
+    returned unchanged so their existing error behavior is preserved.
+    """
+    configured = (configured_path or "nuclei").strip() or "nuclei"
+    if os.path.isabs(configured) or os.sep in configured:
+        return configured
+    if shutil.which(configured):
+        return configured
+    if configured == "nuclei":
+        for candidate in ("/tmp/pd-bin/nuclei", "/usr/local/bin/nuclei"):
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                logger.info("nuclei: resolved binary from local tool cache: %s", candidate)
+                return candidate
+    return configured
 
 
 @register_tool(name="nuclei", category="recon", description="Template-based vulnerability scanner")
@@ -91,7 +113,7 @@ def run_nuclei(
     settings = get_settings()
 
     cmd = [
-        settings.nuclei_path,
+        _resolve_nuclei_binary(settings.nuclei_path),
         "-u",
         target_url,
         "-silent",

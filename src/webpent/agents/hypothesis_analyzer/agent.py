@@ -845,6 +845,52 @@ def hypothesis_node(state: PentestState) -> dict:
             "target_param": None,
         }
 
+    def _observed_query_parameter(value: str) -> str | None:
+        """Return one non-sensitive query key observed on a concrete URL."""
+        parsed = urlparse(value)
+        if not parsed.query:
+            return None
+        for key, raw_value in parse_qs(parsed.query, keep_blank_values=True).items():
+            normalized = str(key).strip()
+            if not normalized or any(
+                marker in normalized.lower()
+                for marker in ("token", "secret", "password", "passwd", "cookie", "session", "jwt")
+            ):
+                continue
+            if any("${" in str(item) or "{{" in str(item) for item in raw_value):
+                continue
+            return normalized[:120]
+        return None
+
+    # V10 P0: JS intelligence is passive evidence. Only concrete, same-origin
+    # routes with a query string observed in the asset are projected into the
+    # hypothesis input. Template routes, redacted sensitive values, and
+    # cross-origin routes are ignored. This does not fabricate ``?q=`` on a
+    # path-only URL and therefore preserves the Stage-0 no-query contract.
+    javascript_intelligence = state.get("javascript_intelligence")
+    if isinstance(javascript_intelligence, dict):
+        observed_routes = javascript_intelligence.get("routes") or []
+        existing_endpoints = {str(endpoint) for endpoint in endpoints if str(endpoint).strip()}
+        for route_record in observed_routes[:200]:
+            if not isinstance(route_record, dict):
+                continue
+            raw_route = str(route_record.get("route") or route_record.get("url") or "").strip()
+            if not raw_route or any(marker in raw_route for marker in ("${", "{{", "}}")):
+                continue
+            candidate = urljoin(target.url.rstrip("/") + "/", raw_route)
+            parsed_candidate = urlparse(candidate)
+            if (
+                parsed_candidate.scheme not in {"http", "https"}
+                or _declared_origin(candidate) != _declared_origin(target.url)
+                or not parsed_candidate.query
+                or "[REDACTED]" in candidate
+                or _observed_query_parameter(candidate) is None
+            ):
+                continue
+            if candidate not in existing_endpoints:
+                endpoints.append(candidate)
+                existing_endpoints.add(candidate)
+
     # Always force-scan the primary target URL.
     if target.url not in endpoints:
         endpoints.insert(0, target.url)
@@ -1075,6 +1121,10 @@ def hypothesis_node(state: PentestState) -> dict:
         # generic "every endpoint gets an XSS hypothesis" path, so a
         # sqli URL produces a SQLi hypothesis, not a generic XSS one.
         request_context = _request_context_for_url(url)
+        if request_context.get("target_param") is None:
+            observed_param = _observed_query_parameter(url)
+            if observed_param is not None:
+                request_context["target_param"] = observed_param
         path_classification = _classify_by_url_path(url)
         path_class_vuln: str | None = None
         if path_classification is not None:

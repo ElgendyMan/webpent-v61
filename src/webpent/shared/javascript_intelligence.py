@@ -46,6 +46,11 @@ _XHR_RE = re.compile(
     r"\.open\s*\(\s*[\"'](GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)[\"']\s*,\s*[\"'`]([^\"'`\n]{1,1200})[\"'`]",
     re.IGNORECASE,
 )
+_HTTP_CLIENT_RE = re.compile(
+    r"\b(?:this\.)?http\s*\.\s*(get|post|put|patch|delete|head|options)"
+    r"\s*\(\s*[^\"'`\n]{0,160}[\"'`]([^\"'`\n]{1,1200})[\"'`]",
+    re.IGNORECASE,
+)
 _ROUTE_LITERAL_RE = re.compile(
     r"[\"'`]((?:/)(?:api|graphql|gql|v[0-9]+|auth|admin|internal|private)(?:/[^\"'`\s]{0,300})?)[\"'`]",
     re.IGNORECASE,
@@ -243,6 +248,8 @@ def analyze_javascript_source(
         add_route(match.group(2), match.group(1), "axios", match.start())
     for match in _XHR_RE.finditer(source):
         add_route(match.group(2), match.group(1), "xhr", match.start())
+    for match in _HTTP_CLIENT_RE.finditer(source):
+        add_route(match.group(2), match.group(1), "http_client", match.start())
     for match in _ROUTE_LITERAL_RE.finditer(source):
         kind = (
             "graphql"

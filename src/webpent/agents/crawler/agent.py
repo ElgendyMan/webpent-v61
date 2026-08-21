@@ -644,6 +644,20 @@ def crawler_node(state: PentestState) -> dict:
         crawled_data["http_discovery"] = {
             key: value for key, value in http_fallback_surface.items() if key != "forms"
         }
+        discovery_metadata = http_fallback_surface.get("discovery_metadata") or {}
+        observed_js_urls = [
+            str(item).strip()
+            for item in list(discovery_metadata.get("javascript_urls") or [])
+            if isinstance(item, str) and str(item).strip()
+        ]
+        observed_js_urls.extend(
+            str(item).strip()
+            for item in curated_endpoints
+            if isinstance(item, str)
+            and item.lower().split("?", 1)[0].endswith((".js", ".mjs"))
+        )
+        if observed_js_urls:
+            crawled_data["javascript_urls"] = list(dict.fromkeys(observed_js_urls))[:200]
         discovered_surface_records = [
             item
             for item in list(http_fallback_surface.get("surface_records") or [])

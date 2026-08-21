@@ -180,7 +180,7 @@ GENERIC_CAMPAIGNS: Final[tuple[dict[str, Any], ...]] = (
     {
         "id": 1,
         "key": "xss_reflected",
-        "surfaces": ("form", "input", "query"),
+        "surfaces": ("form", "input", "query", "xss"),
         "validator": "xss",
     },
     {
@@ -192,49 +192,49 @@ GENERIC_CAMPAIGNS: Final[tuple[dict[str, Any], ...]] = (
     {
         "id": 3,
         "key": "sqli_param",
-        "surfaces": ("query", "form", "search"),
+        "surfaces": ("query", "form", "search", "sqli"),
         "validator": "sqli",
     },
     {
         "id": 4,
         "key": "idor_object",
-        "surfaces": ("object", "id", "identity"),
+        "surfaces": ("object", "id", "identity", "idor"),
         "validator": "idor",
     },
     {
         "id": 5,
         "key": "auth_bypass_jwt",
-        "surfaces": ("jwt", "auth", "token"),
+        "surfaces": ("jwt", "auth", "token", "auth_bypass"),
         "validator": "auth_bypass",
     },
     {
         "id": 6,
         "key": "open_redirect",
-        "surfaces": ("redirect", "url", "callback"),
+        "surfaces": ("redirect", "url", "callback", "open_redirect"),
         "validator": "open_redirect",
     },
     {
         "id": 7,
         "key": "info_disclosure",
-        "surfaces": ("error", "debug", "api"),
+        "surfaces": ("error", "debug", "api", "info_disclosure"),
         "validator": "info_disclosure",
     },
     {
         "id": 8,
         "key": "ssrf_url_param",
-        "surfaces": ("url", "fetch", "import"),
+        "surfaces": ("url", "fetch", "import", "ssrf"),
         "validator": "ssrf",
     },
     {
         "id": 9,
         "key": "api_issue",
-        "surfaces": ("api", "rest", "json"),
+        "surfaces": ("api", "rest", "json", "api_issue"),
         "validator": "api_issue",
     },
     {
         "id": 10,
         "key": "path_traversal",
-        "surfaces": ("path", "file", "download"),
+        "surfaces": ("path", "file", "download", "path_traversal"),
         "validator": "path_traversal",
     },
 )

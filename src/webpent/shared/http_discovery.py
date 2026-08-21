@@ -269,7 +269,11 @@ def discover_http_surface(
         "User-Agent": user_agent[:256],
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
+        # The bounded discovery parser needs decoded HTML.  The custom safe
+        # transport may expose a compressed body unchanged when callers
+        # explicitly advertise brotli/gzip, so request an identity response
+        # instead of parsing binary content as HTML.
+        "Accept-Encoding": "identity",
     }
     cookie_header = build_cookie_header(session_cookies)
     if cookie_header:
@@ -298,6 +302,7 @@ def discover_http_surface(
         "sitemap_urls": [],
         "openapi_urls": [],
         "graphql_urls": [],
+        "javascript_urls": [],
         "js_route_candidates": [],
         "route_seed_candidates": [],
         "route_seed_queued": 0,
@@ -520,6 +525,15 @@ def discover_http_surface(
                         queue.append((form_url, depth + 1))
                         queued.add(form_url)
 
+            script_urls: list[str] = []
+            for script in parser.scripts[:100]:
+                script_url = _normalise_url(script, current)
+                if script_url and script_url not in script_urls:
+                    script_urls.append(script_url)
+            discovery_metadata["javascript_urls"].extend(script_urls)
+            discovery_metadata["javascript_urls"] = list(
+                dict.fromkeys(discovery_metadata["javascript_urls"])
+            )[:200]
             discovery_metadata["js_route_candidates"].extend(
                 _bounded_js_routes(response.text, current, limit=100)
             )
@@ -573,6 +587,7 @@ def discover_http_surface(
         "surface_records": surface_records,
         "discovery_metadata": {
             **discovery_metadata,
+            "javascript_urls": sorted(set(discovery_metadata["javascript_urls"]))[:200],
             "js_route_candidates": sorted(set(discovery_metadata["js_route_candidates"]))[:200],
         },
         "workflow_mode": "read_only_discovery",

@@ -63,6 +63,9 @@ def test_http_surface_discovers_authenticated_links_get_forms_and_js(monkeypatch
     assert "http://lab.test/" in result["endpoints"]
     assert "http://lab.test/vulnerabilities/sqli/?id=7" in result["endpoints"]
     assert "http://lab.test/static/app.js" in result["endpoints"]
+    assert result["discovery_metadata"]["javascript_urls"] == [
+        "http://lab.test/static/app.js"
+    ]
     assert all("outside.test" not in endpoint for endpoint in result["endpoints"])
     assert any(form["method"] == "POST" for form in result["forms"])
     assert any(form["method"] == "GET" for form in result["forms"])
@@ -112,7 +115,7 @@ def test_http_surface_uses_browser_headers_for_default_user_agent(monkeypatch) -
     assert isinstance(headers, dict)
     assert str(headers["User-Agent"]).startswith("Mozilla/5.0")
     assert headers["Accept-Language"] == "en-US,en;q=0.9"
-    assert "gzip" in str(headers["Accept-Encoding"])
+    assert headers["Accept-Encoding"] == "identity"
 
 
 def test_crawler_uses_http_fallback_when_katana_is_missing(monkeypatch) -> None:
@@ -143,6 +146,9 @@ def test_crawler_uses_http_fallback_when_katana_is_missing(monkeypatch) -> None:
                 "source": "http_get",
             },
         ],
+        "discovery_metadata": {
+            "javascript_urls": ["http://lab.test/static/app.js"],
+        },
     }
 
     monkeypatch.setattr(
@@ -168,6 +174,7 @@ def test_crawler_uses_http_fallback_when_katana_is_missing(monkeypatch) -> None:
     assert crawled["forms"] == fallback["forms"]
     assert crawled["http_discovery"]["pages_fetched"] == 2
     assert crawled["surface_records"][0]["record_id"] == "http:1"
+    assert crawled["javascript_urls"] == ["http://lab.test/static/app.js"]
     assert "opaque-session" not in str(result)
 
 

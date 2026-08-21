@@ -283,7 +283,9 @@ def _observation_tokens(item: Mapping[str, Any]) -> set[str]:
     values: list[str] = []
     for key in (
         "category",
+        "vuln_class",
         "title",
+        "statement",
         "reason",
         "signal_refs",
         "signals",
@@ -293,6 +295,8 @@ def _observation_tokens(item: Mapping[str, Any]) -> set[str]:
         "endpoint",
         "path",
         "method",
+        "target_param",
+        "hint_provenance",
     ):
         value = item.get(key)
         if isinstance(value, (list, tuple, set)):

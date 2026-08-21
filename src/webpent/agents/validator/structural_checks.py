@@ -175,7 +175,13 @@ def _fetch_page_scoped_with_rate_limit_retry(
     status_code, body, headers = result
     retry_after = str(headers.get("retry-after", ""))
     wait_match = re.search(r"(?:wait|retry[- ]after)\D*(\d{1,3})", retry_after or body, re.I)
-    wait_seconds = int(wait_match.group(1)) if wait_match else 1
+    # WAPTLab's periodic-request detector may omit Retry-After entirely. Its
+    # bounded local TTL is about 12 seconds, so a short default retry would
+    # reproduce the throttle and erase the owner baseline. Keep this longer
+    # fallback limited to HTTP 429; transient 5xx responses retain the short
+    # retry budget.
+    default_wait = 12 if status_code == 429 else 1
+    wait_seconds = int(wait_match.group(1)) if wait_match else default_wait
     wait_seconds = min(max(wait_seconds, 1), 12)
     # Add an expiry margin: WAPTLab keeps the periodic-request timestamp
     # cache slightly longer than the block key, so the advertised wait alone

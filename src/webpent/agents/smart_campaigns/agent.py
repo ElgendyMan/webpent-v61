@@ -12,7 +12,7 @@ import hashlib
 from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import Any
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, urljoin, urlsplit
 
 from webpent.config.settings import ScanMode, get_settings
 from webpent.models.evidence import redact_sensitive
@@ -49,6 +49,32 @@ from webpent.validators.causal_validator import validate_causal_observation
 from webpent.validators.proof_validator import validate_proof_bundle
 
 _DEFAULT_TASK_CAP = 3
+
+
+def _smart_task_cap(
+    state: Mapping[str, Any],
+    settings: Any | None = None,
+) -> int:
+    """Return a bounded per-pass cap without widening safe-smart execution."""
+    profile = str(
+        (state.get("smart_governance") or {}).get("profile")
+        if isinstance(state.get("smart_governance"), Mapping)
+        else state.get("scan_mode", "legacy")
+    )
+    try:
+        configured = int(
+            getattr(
+                settings or get_settings(),
+                "smart_campaign_task_cap",
+                _DEFAULT_TASK_CAP,
+            )
+        )
+    except (TypeError, ValueError):
+        configured = _DEFAULT_TASK_CAP
+    configured = max(_DEFAULT_TASK_CAP, min(10, configured))
+    if profile != "authorized-active":
+        return _DEFAULT_TASK_CAP
+    return configured
 
 
 def _target_url(state: Mapping[str, Any]) -> str:
@@ -100,6 +126,126 @@ def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]
     }]
 
 
+def _same_origin(candidate: str, root: str) -> bool:
+    """Return True only for an explicitly observed URL on the target origin."""
+    candidate_parts = urlsplit(candidate)
+    root_parts = urlsplit(root)
+    if not candidate_parts.scheme or not candidate_parts.hostname:
+        return False
+    if not root_parts.scheme or not root_parts.hostname:
+        return False
+    candidate_port = candidate_parts.port or (443 if candidate_parts.scheme == "https" else 80)
+    root_port = root_parts.port or (443 if root_parts.scheme == "https" else 80)
+    return (
+        candidate_parts.scheme.lower() == root_parts.scheme.lower()
+        and candidate_parts.hostname.lower() == root_parts.hostname.lower()
+        and candidate_port == root_port
+    )
+
+
+def _hypothesis_surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Project structured hypotheses into bounded, same-origin planner records."""
+    root = _target_url(state)
+    if not root:
+        return []
+    records: list[Mapping[str, Any]] = []
+    hypotheses = state.get("hypotheses") or []
+    if not isinstance(hypotheses, list):
+        return records
+    for index, item in enumerate(hypotheses[:200]):
+        if isinstance(item, Mapping):
+            hypothesis = dict(item)
+        else:
+            model_dump = getattr(item, "model_dump", None)
+            if not callable(model_dump):
+                continue
+            try:
+                hypothesis = model_dump(mode="json")
+            except TypeError:
+                hypothesis = model_dump()
+        if not isinstance(hypothesis, Mapping):
+            continue
+        url = str(hypothesis.get("target_url") or "").strip()
+        if not _same_origin(url, root):
+            continue
+        vuln_class = str(hypothesis.get("vuln_class") or "").strip().lower()
+        record_id = str(hypothesis.get("id") or f"{index}").strip()[:160]
+        record: dict[str, Any] = {
+            "record_id": f"hypothesis:{record_id}",
+            "evidence_ref": f"hypothesis:{record_id}",
+            "source": "structured_hypothesis",
+            "url": url[:500],
+            "endpoint": url[:500],
+            "category": vuln_class,
+            "vuln_class": vuln_class,
+            "statement": str(hypothesis.get("statement") or "")[:500],
+            "method": str(hypothesis.get("request_method") or "GET").upper()[:12],
+            "target_param": str(hypothesis.get("target_param") or "")[:120],
+            "hint_provenance": str(hypothesis.get("hint_provenance") or "")[:200],
+        }
+        request_data = hypothesis.get("request_data")
+        if isinstance(request_data, (Mapping, list, tuple, str, bytes)):
+            record["request_body"] = request_data
+        records.append(record)
+    return records
+
+
+def _javascript_surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Project observed JavaScript routes into bounded planner records.
+
+    JavaScript intelligence is passive, structured discovery.  These records
+    only make routes available to campaign planning; validators still perform
+    their own causal, negative-control, and proof gates before any finding is
+    promoted.
+    """
+    root = _target_url(state)
+    intelligence = state.get("javascript_intelligence")
+    if not root or not isinstance(intelligence, Mapping):
+        return []
+    routes = intelligence.get("routes")
+    if not isinstance(routes, list):
+        return []
+    records: list[Mapping[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for index, item in enumerate(routes[:200]):
+        if not isinstance(item, Mapping):
+            continue
+        raw_route = str(item.get("route") or item.get("url") or "").strip()
+        if not raw_route or any(marker in raw_route for marker in ("${", "{{", "}}")):
+            continue
+        candidate = urljoin(root.rstrip("/") + "/", raw_route)
+        if not _same_origin(candidate, root):
+            continue
+        method = str(item.get("method_hint") or "GET").upper()[:12]
+        key = (candidate, method)
+        if key in seen:
+            continue
+        seen.add(key)
+        parsed = urlsplit(candidate)
+        query_names = sorted(parse_qs(parsed.query, keep_blank_values=True))
+        route_ref = str(item.get("evidence_ref") or f"route:{index}").strip()[:160]
+        route_path = parsed.path.lower()
+        category = (
+            "api"
+            if any(token in route_path for token in ("/api", "/rest", "/graphql", "/json"))
+            else "javascript"
+        )
+        records.append(
+            {
+                "record_id": f"javascript:{route_ref}",
+                "evidence_ref": route_ref,
+                "source": "javascript_intelligence",
+                "discovery_kind": str(item.get("discovery_kind") or "route")[:120],
+                "url": candidate[:500],
+                "endpoint": candidate[:500],
+                "category": category,
+                "method": method,
+                "target_params": query_names[:20],
+            }
+        )
+    return records
+
+
 def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """Return bounded passive surface records from the current graph state."""
     crawled = state.get("crawled_data") or {}
@@ -119,7 +265,9 @@ def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
             records.append(item)
         elif isinstance(item, str) and item.strip():
             records.append({"url": item.strip()[:500], "source": "crawled_data.endpoints"})
-    return records
+    records.extend(_javascript_surface_records(state))
+    records.extend(_hypothesis_surface_records(state))
+    return records[:700]
 
 
 def _surface_url_map(state: Mapping[str, Any]) -> dict[str, str]:
@@ -870,7 +1018,9 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
 
     campaign_plan = _campaign_plan_for_state(state)
     task_state = {**state, "campaign_plan": campaign_plan}
-    tasks, blocked = build_smart_campaign_tasks(task_state, max_tasks=3)
+    base_settings = get_settings()
+    task_cap = _smart_task_cap(state, base_settings)
+    tasks, blocked = build_smart_campaign_tasks(task_state, max_tasks=task_cap)
     attempted = {
         str(item.get("idempotency_key"))
         for item in state.get("campaign_task_outcomes", [])
@@ -883,7 +1033,6 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         }
     }
     root = _target_url(state)
-    base_settings = get_settings()
     try:
         runtime_settings = base_settings.model_copy(
             update={
@@ -943,7 +1092,9 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         if information_task is not None:
             information_tasks.append((information_task, record))
             break
-    selected = [task for task in tasks if task.normalized_idempotency_key() not in attempted][:3]
+    selected = [
+        task for task in tasks if task.normalized_idempotency_key() not in attempted
+    ][:task_cap]
 
     def handler(task: CampaignTask) -> dict[str, Any]:
         parsed_root = urlsplit(root)
@@ -1148,7 +1299,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "max_replan_rounds": max_replan_rounds,
             "replan_requested": replan_requested,
             "executed_count": len(observations),
-            "max_tasks": 3,
+            "max_tasks": task_cap,
             "get_only": all(task.method.upper() in {"GET", "HEAD", "OPTIONS"} for task in selected),
             "active_methods_enabled": profile == "authorized-active",
             "same_origin_only": True,

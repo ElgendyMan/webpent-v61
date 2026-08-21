@@ -166,3 +166,26 @@ def test_graph_routes_to_js_node_only_when_enabled(monkeypatch):
     )
 
     assert route_after_crawler({}) == NODE_JAVASCRIPT_INTELLIGENCE
+
+
+def test_static_review_extracts_angular_http_client_routes_with_query() -> None:
+    result = analyze_javascript_source(
+        asset_url="https://example.test/main.js",
+        source=(
+            'this.http.get(this.hostServer+`/rest/user/security-question?email=`+email); '
+            'this.http.post(this.hostServer+`/rest/user/login`, body);'
+        ),
+        target_url="https://example.test/",
+        content_type="application/javascript",
+        status_code=200,
+    )
+
+    query_routes = [
+        route
+        for route in result.routes
+        if "/rest/user/security-question?email=" in route.route
+    ]
+    assert len(query_routes) == 1
+    assert query_routes[0].method_hint == "GET"
+    assert query_routes[0].discovery_kind == "http_client"
+    assert query_routes[0].in_scope is True

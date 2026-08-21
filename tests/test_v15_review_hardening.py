@@ -122,7 +122,8 @@ def test_dalfox_wrapper_uses_timeout_from_settings_without_local_import_bug(monk
     assert calls["timeout"] == 7
     # Dalfox 2.13 removed --skip-boring; emitting it would abort scanning.
     assert "--skip-boring" not in calls["command"]
-    assert "--silence" in calls["command"]
+    assert "--silence" not in calls["command"]
+    assert "--no-color" in calls["command"]
 
 
 if __name__ == "__main__":

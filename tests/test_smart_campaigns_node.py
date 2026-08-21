@@ -1,4 +1,6 @@
 from webpent.agents.smart_campaigns.agent import (
+    _javascript_surface_records,
+    _smart_task_cap,
     build_smart_campaign_tasks,
     smart_campaigns_execution_node,
     smart_campaigns_node,
@@ -72,6 +74,44 @@ def _state(*, enabled: bool = True) -> dict:
             ]
         },
     }
+
+
+def test_javascript_routes_project_only_same_origin_concrete_routes() -> None:
+    state = {
+        "target": {"url": "https://target.test"},
+        "javascript_intelligence": {
+            "routes": [
+                {
+                    "route": "/rest/user/whoami",
+                    "method_hint": "GET",
+                    "discovery_kind": "literal-route",
+                    "evidence_ref": "js:whoami",
+                },
+                {
+                    "route": "https://third-party.test/collect",
+                    "method_hint": "POST",
+                    "evidence_ref": "js:external",
+                },
+                {"route": "/rest/products?q=${query}", "evidence_ref": "js:template"},
+            ]
+        },
+    }
+
+    records = _javascript_surface_records(state)
+    assert [record["url"] for record in records] == [
+        "https://target.test/rest/user/whoami"
+    ]
+    assert records[0]["category"] == "api"
+    assert records[0]["evidence_ref"] == "js:whoami"
+
+
+def test_authorized_active_campaign_cap_is_bounded_and_safe_smart_is_unchanged() -> None:
+    assert _smart_task_cap({"smart_governance": {"profile": "safe-smart"}}) == 3
+    assert _smart_task_cap({"smart_governance": {"profile": "authorized-active"}}) == 6
+    assert _smart_task_cap(
+        {"smart_governance": {"profile": "authorized-active"}},
+        type("SettingsStub", (), {"smart_campaign_task_cap": 99})(),
+    ) == 10
 
 
 def test_disabled_node_is_additive_and_does_not_plan() -> None:
@@ -528,3 +568,63 @@ def test_user_agent_fallback_replaces_legacy_default(monkeypatch) -> None:
     monkeypatch.delenv("WEBPENT_HTTP_USER_AGENT", raising=False)
     get_settings.cache_clear()
     assert _user_agent({"settings": get_settings()}) == _DEFAULT_BROWSER_USER_AGENT
+
+
+def test_generic_campaigns_use_same_origin_structured_hypotheses() -> None:
+    state = _state()
+    state["campaign_inventory"] = "generic"
+    state["crawled_data"] = {}
+    state["campaign_plan"] = {"entries": []}
+    state["hypotheses"] = [
+        {
+            "id": "h-xss",
+            "target_url": "https://target.test/search?q=demo",
+            "statement": "The search parameter reflects input in the response.",
+            "vuln_class": "xss",
+            "request_method": "GET",
+            "target_param": "q",
+        },
+        {
+            "id": "h-out-of-scope",
+            "target_url": "https://other.test/search?q=demo",
+            "statement": "An unrelated origin should never become a campaign surface.",
+            "vuln_class": "xss",
+            "request_method": "GET",
+            "target_param": "q",
+        },
+    ]
+
+    tasks, outcomes = build_smart_campaign_tasks(state, max_tasks=10)
+
+    assert any(
+        task.vulnerability_class == "xss_reflected"
+        and task.target_url == "https://target.test/search?q=demo"
+        for task in tasks
+    )
+    assert all(task.target_url != "https://other.test/search?q=demo" for task in tasks)
+    assert all(item["reason"] != "missing_concrete_surface_url" for item in outcomes)
+
+
+def test_structured_hypothesis_model_is_projected_without_network_execution() -> None:
+    state = _state()
+    state["campaign_inventory"] = "generic"
+    state["crawled_data"] = {}
+    state["campaign_plan"] = {"entries": []}
+    state["hypotheses"] = [
+        {
+            "id": "h-sqli",
+            "target_url": "https://target.test/search?q=demo",
+            "statement": "Search input may reach a database query.",
+            "vuln_class": "sqli",
+            "request_method": "GET",
+            "target_param": "q",
+            "request_data": {"q": "demo"},
+        }
+    ]
+
+    tasks, _ = build_smart_campaign_tasks(state, max_tasks=10)
+
+    sqli_tasks = [task for task in tasks if task.vulnerability_class == "sqli_param"]
+    assert len(sqli_tasks) == 1
+    assert sqli_tasks[0].metadata["source"] == "campaign_plan"
+    assert sqli_tasks[0].target_url == "https://target.test/search?q=demo"
