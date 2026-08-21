@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1108 passed, 54 warnings in 29.26s"
+        "1112 passed, 122 warnings in 29.35s"
       ]
     },
     {
@@ -74,9 +74,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1057",
+        "  \"total_test_functions\": 1061",
         "}",
-        "OK: preserved test-function count 1057 >= minimum 818"
+        "OK: preserved test-function count 1061 >= minimum 818"
       ]
     },
     {
@@ -90,7 +90,9 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"output\": \"/tmp/webpent_v72_git_recovered/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}"
+        "{\"output\": \"/tmp/webpent_v72_git_recovered/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
+        "/tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
+        "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)"
       ]
     },
     {
@@ -215,11 +217,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 632, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
+        "{\"file_count\": 633, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-21T12:37:10.427248+00:00",
+  "generated_at": "2026-08-21T13:12:55.199181+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
