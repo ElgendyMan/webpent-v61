@@ -46,6 +46,7 @@ class WorkflowObservation(BaseModel):
     signals: list[WorkflowSignal] = Field(default_factory=list)
     prerequisites: list[str] = Field(default_factory=list, max_length=12)
     identity_ref: str | None = Field(default=None, max_length=200)
+    tenant_ref: str | None = Field(default=None, max_length=200)
     identity_context: list[str] = Field(default_factory=list, max_length=8)
     subject_refs: list[str] = Field(default_factory=list, max_length=20)
     authorization_boundary: Literal[
@@ -70,6 +71,7 @@ class WorkflowObservation(BaseModel):
         "from_state",
         "to_state",
         "identity_ref",
+        "tenant_ref",
         "identity_context",
         "subject_refs",
         "intent_tags",

@@ -20,9 +20,24 @@ def _sealed_proof():
     return build_proof_bundle(
         engagement_id="engagement-eq",
         finding_id="finding-eq-1",
+        hypothesis_id="hypothesis-eq-1",
+        target_fingerprint="sha256:target-eq",
+        scope_context={"origin": "https://target.test"},
+        identity_context={"actor": "owner", "control_actor": "anonymous"},
         evidence=[{"status": 200, "fingerprint": "owner"}],
         evidence_refs=["execution:eq:1"],
         negative_control={"status": 403, "fingerprint": "anonymous"},
+        baseline={"status": 403, "fingerprint": "baseline"},
+        request_evidence=[{"method": "GET", "path": "/item/1"}],
+        response_evidence=[{"status": 200, "fingerprint": "owner"}],
+        causal_oracle={
+            "causal_signal": True,
+            "negative_control_complete": True,
+        },
+        validator_id="test.validator",
+        validator_version="1.0",
+        replay_metadata={"replayable": True},
+        cleanup_status="not_applicable",
     ).seal(actor="test").model_dump(mode="json")
 
 

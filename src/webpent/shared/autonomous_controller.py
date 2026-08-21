@@ -305,8 +305,20 @@ class AutonomousController:
 
 
 def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
-    """Graph-safe controller node; transport remains caller-injected only."""
-    return AutonomousController().run(state)
+    """Graph-safe controller node using the single injected runtime spine."""
+    from webpent.shared.runtime import RuntimeContext, RuntimeFactory
+
+    runtime = state.get("runtime_context")
+    if not isinstance(runtime, RuntimeContext):
+        return RuntimeFactory.blocked_result(
+            node="autonomous_controller",
+            reason="runtime_context_required",
+        )
+    if not runtime.valid:
+        return runtime.blocked_result(node="autonomous_controller")
+    result = AutonomousController(action_executor=runtime.action_executor).run(state)
+    result["runtime_diagnostics"] = runtime.diagnostics()
+    return result
 
 
 __all__ = ["AutonomousController", "autonomous_controller_node"]

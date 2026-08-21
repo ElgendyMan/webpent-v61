@@ -284,22 +284,28 @@ def _check_redis_security() -> dict[str, object]:
 
 
 def _enforce_redis_security(report: dict[str, dict[str, object]]) -> None:
-    """Require TLS for Redis whenever authentication is enabled."""
+    """Require TLS for Redis whenever authentication or strict profile is enabled."""
     try:
         from webpent.config.settings import get_settings
 
-        auth_enabled = get_settings().auth_enabled
+        settings = get_settings()
+        auth_enabled = settings.auth_enabled
+        profile = getattr(getattr(settings, "environment_profile", None), "value", "lab")
     except Exception as exc:
         raise SystemExit("Preflight blocked startup: Redis security posture is unknown") from exc
-    if not auth_enabled or _truthy_env("WEBPENT_ALLOW_PLAINTEXT_REDIS"):
+    strict_profile = profile in {"staging", "production"}
+    if not auth_enabled and not strict_profile:
+        return
+    if _truthy_env("WEBPENT_ALLOW_PLAINTEXT_REDIS") and not strict_profile:
         return
     broker = report["redis_security"]["broker"]
     rate_limit = report["redis_security"]["rate_limit"]
     insecure = any(item.get("configured") and not item.get("tls") for item in (broker, rate_limit))
     if insecure:
         raise SystemExit(
-            "Preflight blocked startup: AUTH_ENABLED=true requires rediss:// for Redis "
-            "broker and rate limiter (or an explicit lab-only override)"
+            "Preflight blocked startup: authenticated/staging/production deployments "
+            "require rediss:// for Redis broker and rate limiter "
+            "(plaintext is lab-only)"
         )
 
 
@@ -326,12 +332,18 @@ def _enforce_api_security_posture(
         from webpent.config.settings import get_settings
 
         settings = get_settings()
+        profile = getattr(getattr(settings, "environment_profile", None), "value", "lab")
         public_bind = normalized_host in {
             "0.0.0.0",
             "::",
             "0:0:0:0:0:0:0:0",
         }
+        strict_profile = profile in {"staging", "production"}
         insecure_combo = public_bind and settings.auth_enabled is False
+        if strict_profile and settings.auth_enabled is False:
+            raise SystemExit(
+                "Preflight blocked startup: staging/production requires authentication"
+            )
     except Exception as exc:
         # Settings construction already has its own hard stops for secret
         # posture. A failed read must not turn this gate into an accidental
@@ -370,6 +382,57 @@ def _enforce_api_security_posture(
         "Preflight blocked startup: unsafe 0.0.0.0/public bind with auth "
         "disabled; enable auth or use a loopback bind"
     )
+
+
+def _profile_security_posture() -> dict[str, object]:
+    """Describe and enforce deployment-profile security invariants."""
+    try:
+        from webpent.config.settings import get_settings
+
+        settings = get_settings()
+        profile = getattr(getattr(settings, "environment_profile", None), "value", "lab")
+        if profile not in {"staging", "production"}:
+            return {
+                "profile": profile,
+                "status": "ok — lab security defaults preserved",
+                "fail_closed": True,
+            }
+
+        failures: list[str] = []
+        if not getattr(settings, "auth_enabled", False):
+            failures.append("authentication is disabled")
+        cors_origins = list(getattr(settings, "cors_origins", []) or [])
+        if not cors_origins or "*" in cors_origins:
+            failures.append("CORS origins must be explicit")
+        if not getattr(settings, "rate_limit_enabled", False):
+            failures.append("rate limiting is disabled")
+        if failures:
+            return {
+                "profile": profile,
+                "status": "FAIL — " + "; ".join(failures),
+                "failures": failures,
+                "fail_closed": True,
+            }
+        return {
+            "profile": profile,
+            "status": "ok — strict security defaults satisfied",
+            "fail_closed": True,
+        }
+    except Exception as exc:
+        return {
+            "profile": "unknown",
+            "status": "unknown — security profile could not be evaluated",
+            "reason": type(exc).__name__,
+            "fail_closed": True,
+        }
+
+
+def _enforce_profile_security(report: dict[str, dict[str, object]]) -> None:
+    """Stop startup when staging/production security invariants are not met."""
+    posture = report["profile_security"]
+    status = str(posture.get("status", "unknown"))
+    if status.startswith("FAIL") or status.startswith("unknown"):
+        raise SystemExit(f"Preflight blocked startup: {status}")
 
 
 def _posture_state(report: dict[str, dict[str, object]], profile: str) -> dict[str, object]:
@@ -418,6 +481,7 @@ def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
         "celery_payload_key": _check_celery_payload_key(),
         "redis_security": _check_redis_security(),
         "llm": _check_llm_providers(),
+        "profile_security": _profile_security_posture(),
     }
     try:
         from webpent.shared.capability_manifest import build_capability_manifest
@@ -442,6 +506,7 @@ def run_preflight(host: str | None = None) -> dict[str, dict[str, object]]:
     except Exception:
         profile = "unknown"
     report["posture"] = _posture_state(report, profile)
+    _enforce_profile_security(report)
     _enforce_redis_security(report)
     _enforce_api_security_posture(host=host, report=report)
     # Emit one INFO line per capability so the operator sees the full

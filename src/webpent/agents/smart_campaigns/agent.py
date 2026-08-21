@@ -18,10 +18,9 @@ from webpent.config.settings import ScanMode, get_settings
 from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 from webpent.models.research import ResearchContext
-from webpent.shared.action_authority import ActionAuthority, ActionRisk
+from webpent.shared.action_authority import ActionRisk
 from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.campaign_executor import (
-    ActionExecutor,
     CampaignTask,
     CampaignTaskStatus,
     NextBestActionEngine,
@@ -42,9 +41,12 @@ from webpent.shared.research_contracts import (
 from webpent.shared.research_intelligence import (
     ActionClass,
     KnowledgeGapEngine,
+    NegativeEvidence,
+    PositiveEvidence,
     ResearchSession,
     SmartNextBestActionEngine,
 )
+from webpent.shared.runtime import RuntimeContext, RuntimeFactory
 from webpent.validators.causal_validator import validate_causal_observation
 from webpent.validators.proof_validator import validate_proof_bundle
 
@@ -547,6 +549,19 @@ def _information_task_from_record(
         )
     except (TypeError, ValueError):
         information_gain = 0.0
+    proof_evidence = record.get("proof_evidence")
+    if isinstance(proof_evidence, (list, tuple)):
+        proof_evidence = [redact_sensitive(item)[0] for item in proof_evidence[:8]]
+    else:
+        proof_evidence = []
+    evidence_refs = record.get("evidence_refs")
+    if isinstance(evidence_refs, str):
+        evidence_refs = [evidence_refs]
+    if not isinstance(evidence_refs, (list, tuple)):
+        evidence_refs = []
+    negative_control_payload = record.get("negative_control_payload")
+    if negative_control_payload is not None:
+        negative_control_payload = redact_sensitive(negative_control_payload)[0]
     return CampaignTask(
         task_id=f"research-information:{action_id}:{index}",
         engagement_id=str(state.get("engagement_id") or "engagement:unknown")[:160],
@@ -579,10 +594,69 @@ def _information_task_from_record(
             "justification": str(record.get("justification") or "")[:240],
             "human_approved": bool(state.get("auto_approve", False)) or not requires_approval,
             "observed_preconditions": ["planned_same_origin_information_action"],
+            "proof_evidence": proof_evidence,
+            "evidence_refs": [str(item)[:200] for item in evidence_refs[:8]],
+            "negative_control_payload": negative_control_payload,
         },
         tenant_context=str(record.get("tenant_context") or "unknown")[:120],
         validator_id="research_information_observation",
     )
+
+
+def _record_information_evidence(
+    session: ResearchSession,
+    task: CampaignTask,
+    record: Mapping[str, Any],
+    outcome: Mapping[str, Any],
+) -> str:
+    """Persist only explicit, bounded evidence from an executed information action."""
+    if str(outcome.get("status") or "") != CampaignTaskStatus.EXECUTED.value:
+        return "inconclusive"
+    if outcome.get("output_available") is not True:
+        return "inconclusive"
+    fingerprint = str(record.get("fingerprint") or task.normalized_idempotency_key())[:160]
+    action_id = str(record.get("action_id") or task.task_id)[:160]
+    action_class = str(record.get("action_class") or ActionClass.DISCOVERY.value)
+    redacted_reason, _ = redact_sensitive(
+        str(record.get("objective") or outcome.get("reason") or "observed response")
+    )
+    reason = " ".join(str(redacted_reason).split())[:240]
+    evidence_id = f"research-evidence:{action_id}:{fingerprint}"[:240]
+    common = {
+        "evidence_id": evidence_id,
+        "hypothesis_id": task.hypothesis_id[:160],
+        "action_fingerprint": fingerprint,
+        "identity_context": task.identity_context[:120],
+        "tenant_context": task.tenant_context[:120],
+        "method": task.method.upper()[:16],
+        "workflow_state": task.workflow_state[:120],
+        "reason": reason,
+    }
+    proof_sealed = outcome.get("proof_bundle_sealed") is True
+    if action_class == ActionClass.NEGATIVE_CONTROL.value:
+        if outcome.get("negative_control_present") is not True and not proof_sealed:
+            return "inconclusive"
+        session.record_negative(
+            NegativeEvidence(
+                **common,
+                confidence=0.9 if proof_sealed else 0.7,
+                reusable_if=("same_engagement",),
+                client_id=session.client_id[:128],
+                engagement_id=session.engagement_id[:128],
+                scope=(task.target_url[:240],),
+            )
+        )
+        return "negative"
+    if proof_sealed:
+        session.record_positive(
+            PositiveEvidence(
+                **common,
+                confidence=0.85,
+                reusable_if=("same_engagement",),
+            )
+        )
+        return "positive"
+    return "inconclusive"
 
 
 def _update_research_action_outcome(
@@ -1059,15 +1133,72 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 ],
                 "errors": ["action ledger could not be initialized; execution stopped"],
             }
-    authority = ActionAuthority(
-        settings=runtime_settings,
-        allowed_origin=root,
-        manifest=state.get("capability_manifest") or {},
-        used_actions=int((state.get("action_budget") or {}).get("used_actions", 0)),
-        used_budget=float((state.get("action_budget") or {}).get("used_cost", 0.0)),
-        ledger=ledger,
-    )
-    executor = ActionExecutor(authority)
+    if not str(state.get("engagement_id") or "").strip():
+        observed_preconditions = state.get("observed_preconditions", ())
+        blocked_preconditions = state.get("blocked_preconditions", ())
+        if isinstance(observed_preconditions, str):
+            observed_preconditions = (observed_preconditions,)
+        if isinstance(blocked_preconditions, str):
+            blocked_preconditions = (blocked_preconditions,)
+        configuration_blockers: list[dict[str, Any]] = []
+        planned_information = state.get("smart_information_actions") or []
+        if isinstance(planned_information, list):
+            for index, record in enumerate(planned_information[:3]):
+                if not isinstance(record, Mapping):
+                    continue
+                information_task = _information_task_from_record(
+                    record, state=state, index=index
+                )
+                if information_task is None:
+                    continue
+                ready, missing = resolve_preconditions(
+                    information_task,
+                    observed_preconditions=observed_preconditions,
+                    blocked_preconditions=blocked_preconditions,
+                    require_observations=True,
+                )
+                if not ready:
+                    configuration_blockers.append(
+                        {
+                            "task_id": information_task.task_id,
+                            "engagement_id": "",
+                            "vulnerability_class": information_task.vulnerability_class,
+                            "status": CampaignTaskStatus.BLOCKED_BY_PRECONDITION.value,
+                            "reason": "precondition_failed",
+                            "missing_preconditions": list(missing),
+                        }
+                    )
+        if configuration_blockers:
+            return {
+                **RuntimeFactory.blocked_result(
+                    node="smart_campaigns",
+                    reason="identity:engagement_id_required",
+                ),
+                "campaign_task_outcomes": configuration_blockers,
+                "smart_http_observations": [],
+                "findings": list(state.get("findings") or []),
+            }
+
+    runtime_context = state.get("runtime_context")
+    if isinstance(runtime_context, RuntimeContext):
+        if not runtime_context.valid:
+            return runtime_context.blocked_result(node="smart_campaigns")
+        runtime = runtime_context
+    else:
+        runtime = RuntimeFactory.create(
+            engagement_id=str(state.get("engagement_id") or ""),
+            campaign_id=str(state.get("campaign_id") or "smart-campaign"),
+            target_origin=root,
+            settings=runtime_settings,
+            manifest=state.get("capability_manifest") or None,
+            ledger=ledger,
+            use_default_ledger=bool(ledger_path),
+            used_actions=int((state.get("action_budget") or {}).get("used_actions", 0)),
+            used_budget=float((state.get("action_budget") or {}).get("used_cost", 0.0)),
+        )
+        if not runtime.valid:
+            return runtime.blocked_result(node="smart_campaigns")
+    executor = runtime.action_executor
     observations: list[dict[str, Any]] = []
     outcomes = list(blocked)
     direct_findings: list[Finding] = []
@@ -1244,6 +1375,18 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             information_record,
             outcome=outcome_name,
         )
+        evidence_classification = _record_information_evidence(
+            research_session,
+            information_task,
+            information_record,
+            information_outcome,
+        )
+        if evidence_classification != "inconclusive":
+            _update_research_action_outcome(
+                research_session,
+                information_record,
+                outcome=f"{outcome_name}:{evidence_classification}",
+            )
 
     if profile == "authorized-active":
         swagger_task = _build_swagger_ssrf_task(state, root)

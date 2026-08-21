@@ -54,6 +54,18 @@ def _node_id(node_type: str, label: str, method: str) -> str:
     return f"surface:{hashlib.sha256(raw.encode('utf-8', 'ignore')).hexdigest()[:16]}"
 
 
+def _provenance(item: Any, fallback: str = "passive_observation") -> list[str]:
+    """Return bounded, redacted source labels for graph traceability."""
+    if not isinstance(item, Mapping):
+        return [fallback]
+    values: list[str] = []
+    for key in ("source", "source_kind", "adapter", "discovery_kind", "identity", "workflow_state"):
+        value = str(item.get(key) or "").strip().lower()
+        if value and value not in values:
+            values.append(value[:80])
+    return values[:20] or [fallback]
+
+
 def _surface_family(item: Any) -> str:
     if not isinstance(item, Mapping):
         return "web_page"
@@ -125,6 +137,7 @@ def build_surface_evidence_graph(
             method=method,
             metadata=dict(metadata or {}),
             evidence_refs=[f"obs:{hashlib.sha256(node_id.encode()).hexdigest()[:16]}"],
+            provenance=_provenance(metadata),
             disposition="needs_validator",
         )
         nodes.setdefault(node_id, node)
@@ -135,6 +148,7 @@ def build_surface_evidence_graph(
                 disposition="needs_validator",
                 required_capability=capability,
                 reason=reason,
+                provenance=_provenance(metadata),
             ),
         )
         return nodes[node_id]
@@ -150,6 +164,7 @@ def build_surface_evidence_graph(
                 target_id=target.node_id,
                 relation=relation,
                 evidence_refs=source.evidence_refs[:1] + target.evidence_refs[:1],
+                provenance=list(dict.fromkeys(source.provenance + target.provenance))[:20],
             ),
         )
 

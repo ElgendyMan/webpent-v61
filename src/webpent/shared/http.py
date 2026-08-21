@@ -271,10 +271,14 @@ def _is_blocked_host(host: str | None) -> bool:
     # --- Case 2: host is a DNS hostname — resolve and check every A/AAAA ---
     try:
         infos = socket.getaddrinfo(cleaned, None)
-    except socket.gaierror:
-        # Unresolvable hostname — let httpx surface the eventual
-        # connection error rather than falsely accusing it of SSRF.
-        return False
+    except (socket.gaierror, OSError) as exc:
+        # DNS failure is intentionally fail-closed.  A hostname that cannot
+        # be resolved is not evidence of a safe public destination, and
+        # treating it as clean would let a later resolver/redirect path make
+        # an independent decision.  Callers may surface this as an
+        # infrastructure/inconclusive result, but never as a permitted host.
+        logger.warning("SSRF host resolution failed for %s: %s", cleaned, exc)
+        return True
 
     for _family, _stype, _proto, _canon, sockaddr in infos:
         ip_str = sockaddr[0]
@@ -316,7 +320,10 @@ def _resolve_first_ip(
         allow_blocked = is_engagement_target_host(host)
     try:
         infos = socket.getaddrinfo(host, port)
-    except socket.gaierror:
+    except (socket.gaierror, OSError) as exc:
+        # No usable pin means no connection.  This is deliberately a typed
+        # fail-closed outcome rather than a fallback to httpx's resolver.
+        logger.warning("DNS pinning failed for %s: %s", host, exc)
         return None
     for _family, _stype, _proto, _canon, sockaddr in infos:
         ip_str = sockaddr[0]

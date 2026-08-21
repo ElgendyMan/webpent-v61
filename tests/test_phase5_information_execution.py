@@ -81,7 +81,9 @@ def test_information_adapter_fails_closed_for_out_of_scope_targets(target_ref: s
     )
 
 
-def test_information_execution_returns_research_session_and_evidence_ledgers(monkeypatch) -> None:
+def test_information_execution_returns_research_session_and_evidence_ledgers(
+    monkeypatch, tmp_path
+) -> None:
     class Response:
         status_code = 204
         content = b""
@@ -99,6 +101,7 @@ def test_information_execution_returns_research_session_and_evidence_ledgers(mon
             return Response()
 
     state = _base_state()
+    state["action_ledger_path"] = str(tmp_path / "actions.sqlite3")
     state["smart_information_actions"] = [
         {
             "action_id": "research:health",

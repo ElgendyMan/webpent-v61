@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from webpent.models.proof_bundle import validate_proof_bundle
+from webpent.models.proof_bundle import proof_bundle_promotion_ready, validate_proof_bundle
 
 
 class EvidenceClassification(str, Enum):
@@ -42,6 +42,7 @@ class EvidenceAssessment(BaseModel):
     causal_signal: bool = False
     negative_control_complete: bool = False
     proof_bundle_valid: bool = False
+    promotion_ready_proof_bundle: bool = False
     reproducible: bool = False
     contradictory_signal: bool = False
     present_signals: list[str] = Field(default_factory=list, max_length=12)
@@ -117,8 +118,9 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
     """Assess evidence using bounded deterministic signals only.
 
     ``Tool-Confirmed`` is considered evidence-confirmed only when all of the
-    following are present: a causal signal, a completed negative control, a
-    valid sealed proof bundle requiring that control, and reproducible evidence.
+        following are present: a causal signal, a completed negative control,
+        a promotion-ready sealed proof bundle requiring that control, and reproducible
+        evidence.
     A contradictory validator result always wins and produces ``unconfirmed``.
     """
     level, evidence, evidence_bundle = _finding_parts(finding)
@@ -135,9 +137,9 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
 
     causal_signal = _bool_signal(evidence, "causal_signal")
     negative_control_complete = _bool_signal(evidence, "negative_control_complete")
-    proof_bundle_valid = validate_proof_bundle(
-        _proof_bundle(_as_dict(finding), evidence), require_negative_control=True
-    )
+    proof_bundle = _proof_bundle(_as_dict(finding), evidence)
+    proof_bundle_valid = validate_proof_bundle(proof_bundle, require_negative_control=True)
+    promotion_ready_proof_bundle = proof_bundle_promotion_ready(proof_bundle)
     reproducible = _has_reproduction(evidence, evidence_bundle) or proof_bundle_valid
     contradictory_signal = bool(
         evidence.get("contradictory_evidence") is True
@@ -154,6 +156,7 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
         ("causal_signal", causal_signal),
         ("negative_control_complete", negative_control_complete),
         ("sealed_proof_bundle", proof_bundle_valid),
+        ("promotion_ready_proof_bundle", promotion_ready_proof_bundle),
         ("reproducible_evidence", reproducible),
     ):
         (present_signals if present else missing_signals).append(name)
@@ -177,11 +180,11 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
         level == "Tool-Confirmed"
         and causal_signal
         and negative_control_complete
-        and proof_bundle_valid
+        and promotion_ready_proof_bundle
         and reproducible
     ):
         classification = EvidenceClassification.CONFIRMED
-        reasons.append("causal_signal_negative_control_and_replayable_proof_present")
+        reasons.append("causal_signal_negative_control_and_strict_replayable_proof_present")
     elif causal_signal or negative_control_complete or proof_bundle_valid or reproducible:
         classification = (
             EvidenceClassification.NEEDS_HUMAN_REVIEW
@@ -201,6 +204,7 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
         causal_signal=causal_signal,
         negative_control_complete=negative_control_complete,
         proof_bundle_valid=proof_bundle_valid,
+        promotion_ready_proof_bundle=promotion_ready_proof_bundle,
         reproducible=reproducible,
         contradictory_signal=contradictory_signal,
         present_signals=present_signals,

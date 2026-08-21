@@ -13,6 +13,23 @@ SessionHealth = Literal["unknown", "healthy", "stale", "invalid"]
 CleanupStatus = Literal["not_started", "required", "completed", "failed", "not_applicable"]
 
 
+class ReplayStateSnapshot(BaseModel):
+    """Redacted state evidence captured before or after a replay."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, use_enum_values=True)
+
+    state_ref: str = Field(default="unknown", min_length=1, max_length=160)
+    fingerprint: str | None = Field(default=None, max_length=128)
+    status: Literal["unknown", "observed", "changed", "unchanged", "inconclusive"] = "unknown"
+    evidence_refs: list[str] = Field(default_factory=list, max_length=12)
+
+    @field_validator("state_ref", "fingerprint", "evidence_refs", mode="before")
+    @classmethod
+    def _redact_values(cls, value):
+        clean, _ = redact_sensitive(value)
+        return clean
+
+
 class ReplayIdentityContext(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, use_enum_values=True)
 
@@ -21,8 +38,17 @@ class ReplayIdentityContext(BaseModel):
     session_health: SessionHealth = "unknown"
     secret_ref: str | None = Field(default=None, max_length=200)
     capability_refs: list[str] = Field(default_factory=list, max_length=12)
+    tenant_ref: str | None = Field(default=None, max_length=200)
+    object_refs: list[str] = Field(default_factory=list, max_length=20)
 
-    @field_validator("role", "secret_ref", "capability_refs", mode="before")
+    @field_validator(
+        "role",
+        "secret_ref",
+        "capability_refs",
+        "tenant_ref",
+        "object_refs",
+        mode="before",
+    )
     @classmethod
     def _redact_values(cls, value):
         clean, _ = redact_sensitive(value)
@@ -39,8 +65,19 @@ class ReplayStep(BaseModel):
     evidence_needed: list[str] = Field(default_factory=list, max_length=12)
     non_destructive: bool = True
     approval_required: bool = True
+    request_fingerprint: str | None = Field(default=None, max_length=128)
+    response_fingerprint: str | None = Field(default=None, max_length=128)
+    pre_state: ReplayStateSnapshot = Field(default_factory=ReplayStateSnapshot)
+    post_state: ReplayStateSnapshot = Field(default_factory=ReplayStateSnapshot)
 
-    @field_validator("endpoint_ref", "expected_state", "evidence_needed", mode="before")
+    @field_validator(
+        "endpoint_ref",
+        "expected_state",
+        "evidence_needed",
+        "request_fingerprint",
+        "response_fingerprint",
+        mode="before",
+    )
     @classmethod
     def _redact_values(cls, value):
         clean, _ = redact_sensitive(value)
@@ -68,6 +105,8 @@ class WorkflowReplayPlan(BaseModel):
     plan_id: str = Field(..., min_length=8, max_length=160)
     workflow_fingerprint: str = Field(..., min_length=8, max_length=128)
     identity: ReplayIdentityContext
+    tenant_ref: str | None = Field(default=None, max_length=200)
+    object_refs: list[str] = Field(default_factory=list, max_length=20)
     steps: list[ReplayStep] = Field(default_factory=list, max_length=5)
     cleanup: list[CleanupAction] = Field(default_factory=list, max_length=8)
     scope_decision: Literal["allowed", "denied", "unknown"] = "unknown"
@@ -75,12 +114,21 @@ class WorkflowReplayPlan(BaseModel):
     approval_required: bool = True
     max_requests: int = Field(default=1, ge=0, le=5)
     executed: bool = False
+    cleanup_status: CleanupStatus = "not_started"
+    cleanup_evidence_refs: list[str] = Field(default_factory=list, max_length=12)
+
+    @field_validator("tenant_ref", "object_refs", "cleanup_evidence_refs", mode="before")
+    @classmethod
+    def _redact_replay_refs(cls, value):
+        clean, _ = redact_sensitive(value)
+        return clean
 
 
 __all__ = [
     "CleanupAction",
     "CleanupStatus",
     "ReplayIdentityContext",
+    "ReplayStateSnapshot",
     "ReplayStatus",
     "ReplayStep",
     "SessionHealth",

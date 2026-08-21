@@ -40,6 +40,15 @@ class ValidatorPluginSpec:
     evidence_schema: str
     report_renderer: str
     evidence_mode: str = "deterministic"
+    preconditions: tuple[str, ...] = ()
+    action_plan: tuple[str, ...] = ()
+    baseline: str = ""
+    negative_control: str = ""
+    causal_oracle: str = ""
+    cleanup: str = ""
+    proof_schema: str = ""
+    replay_function: str = ""
+    confidence_policy: str = ""
 
     @property
     def complete(self) -> bool:
@@ -50,6 +59,15 @@ class ValidatorPluginSpec:
             and self.stages == PLUGIN_STAGES
             and bool(self.evidence_schema)
             and bool(self.report_renderer)
+            and bool(self.preconditions)
+            and bool(self.action_plan)
+            and bool(self.baseline)
+            and bool(self.negative_control)
+            and bool(self.causal_oracle)
+            and bool(self.cleanup)
+            and bool(self.proof_schema)
+            and bool(self.replay_function)
+            and bool(self.confidence_policy)
         )
 
 
@@ -74,6 +92,17 @@ def build_validator_plugin_registry() -> tuple[ValidatorPluginSpec, ...]:
                 evidence_schema="EvidenceLedgerEntry:v1",
                 report_renderer="finding_renderer:v1",
                 evidence_mode="deterministic" if registered_id else "human-review",
+                preconditions=("in_scope_target", "authorized_execution"),
+                action_plan=("baseline", "negative_control", "causal_probe", "replay"),
+                baseline="paired_baseline_observation",
+                negative_control="paired_negative_control_observation",
+                causal_oracle="deterministic_validator_oracle",
+                cleanup="bounded_cleanup_or_explicit_not_applicable",
+                proof_schema="ProofBundle:v1",
+                replay_function="replay_from_sealed_bundle",
+                confidence_policy=(
+                    "tool_confirmed_only_with_causal_signal_negative_control_sealed_proof_and_replay"
+                ),
             )
         )
     return tuple(plugins)

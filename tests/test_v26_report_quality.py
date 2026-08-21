@@ -67,6 +67,7 @@ def test_quality_gate_ready_uses_shared_lifecycle_and_returns_no_values():
         "causal_signal",
         "negative_control_complete",
         "sealed_proof_bundle",
+        "promotion_ready_proof_bundle",
     ]
     assert _SECRET not in str(dumped)
     assert "evidence_bundle" not in str(dumped)

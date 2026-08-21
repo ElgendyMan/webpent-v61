@@ -281,6 +281,9 @@ def extract_workflow_observations(
             authorization_boundary,
         ) = _identity_context(record)
         intent_tags = _intent_tags(record, endpoint)
+        tenant_ref = _text(
+            record.get("tenant_ref") or record.get("tenant_id") or record.get("tenant")
+        )[:200] or None
         if not signals:
             continue
         scope_decision = "unknown"
@@ -296,6 +299,7 @@ def extract_workflow_observations(
             "to_state": to_state,
             "signals": signals,
             "identity_context": identity_context,
+            "tenant_ref": tenant_ref,
             "authorization_boundary": authorization_boundary,
             "intent_tags": intent_tags,
             "source_ref": source_ref,
@@ -326,6 +330,7 @@ def extract_workflow_observations(
             signals=signals,
             prerequisites=_prerequisites(record),
             identity_ref=identity_ref,
+            tenant_ref=tenant_ref,
             identity_context=identity_context,
             subject_refs=subject_refs,
             authorization_boundary=authorization_boundary,

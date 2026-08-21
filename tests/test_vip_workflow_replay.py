@@ -14,7 +14,9 @@ def _observation(*, scope_decision: str = "allowed", destructive: bool = False):
         to_state="paid",
         signals=["workflow_intent", "identity_context"],
         identity_ref="identity:owner",
+        tenant_ref="tenant:acme",
         identity_context=["owner"],
+        object_refs=["object:order-1"],
         authorization_boundary="same_identity",
         evidence_refs=["ev:response"],
         scope_decision=scope_decision,
@@ -34,6 +36,14 @@ def test_replay_plan_is_ready_only_for_allowed_healthy_identity():
     assert plan.identity.secret_ref == "vault:owner"
     assert plan.steps[0].approval_required is True
     assert plan.cleanup[0].status == "required"
+    assert plan.tenant_ref == "tenant:acme"
+    assert plan.object_refs == ["object:order-1"]
+    assert plan.identity.tenant_ref == "tenant:acme"
+    assert plan.steps[0].request_fingerprint == "wf-fingerprint-001"
+    assert plan.steps[0].response_fingerprint is None
+    assert plan.steps[0].pre_state.state_ref == "cart"
+    assert plan.steps[0].post_state.state_ref == "paid"
+    assert plan.cleanup_status == "required"
 
 
 def test_replay_plan_blocks_unknown_scope_or_unhealthy_session():

@@ -44,9 +44,10 @@ class IntentNode(BaseModel):
     label: str = Field(..., min_length=1, max_length=160)
     attributes: dict[str, Any] = Field(default_factory=dict)
     evidence_refs: list[str] = Field(default_factory=list, max_length=20)
+    provenance: list[str] = Field(default_factory=list, max_length=20)
     confidence: float = Field(default=0.3, ge=0.0, le=1.0)
 
-    @field_validator("label", "attributes", "evidence_refs", mode="before")
+    @field_validator("label", "attributes", "evidence_refs", "provenance", mode="before")
     @classmethod
     def _redact_values(cls, value: Any) -> Any:
         clean, _ = redact_sensitive(value)
@@ -63,8 +64,9 @@ class IntentEdge(BaseModel):
     target_id: str = Field(..., min_length=8, max_length=160)
     relation: str = Field(..., min_length=1, max_length=80)
     evidence_refs: list[str] = Field(default_factory=list, max_length=20)
+    provenance: list[str] = Field(default_factory=list, max_length=20)
 
-    @field_validator("relation", "evidence_refs", mode="before")
+    @field_validator("relation", "evidence_refs", "provenance", mode="before")
     @classmethod
     def _redact_values(cls, value: Any) -> Any:
         clean, _ = redact_sensitive(value)
@@ -84,8 +86,9 @@ class IdentityContext(BaseModel):
     session_health: Literal["unknown", "healthy", "stale", "invalid"] = "unknown"
     capability_refs: list[str] = Field(default_factory=list, max_length=12)
     evidence_refs: list[str] = Field(default_factory=list, max_length=20)
+    provenance: list[str] = Field(default_factory=list, max_length=20)
 
-    @field_validator("tenant_ref", "capability_refs", "evidence_refs", mode="before")
+    @field_validator("tenant_ref", "capability_refs", "evidence_refs", "provenance", mode="before")
     @classmethod
     def _redact_values(cls, value: Any) -> Any:
         clean, _ = redact_sensitive(value)
