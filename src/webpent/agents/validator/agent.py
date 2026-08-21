@@ -2041,8 +2041,13 @@ def _validate_with_tool(
         return validate_captcha(finding, cookies=session_cookies)
     elif vuln_class == "brute_force":
         from webpent.agents.validator.structural_checks import validate_brute_force
-
         return validate_brute_force(finding, cookies=session_cookies)
+    elif vuln_class == "jwt_weakness":
+        # Offline weak-secret findings already carry the API-testing replay
+        # proof. Revalidate the sealed bundle centrally; do not perform a
+        # second network probe or infer confirmation from a token shape.
+        from webpent.agents.validator.structural_checks import validate_jwt_weakness
+        return validate_jwt_weakness(finding)
     else:
         # V4.5/V8 hardening: no validator is evidence of a coverage gap,
         # not evidence that the vulnerability is AI-Assessed.  Mark the

@@ -47,6 +47,9 @@ _IMPLEMENTED_VALIDATORS: Final[dict[str, str]] = {
     "cryptography": "cryptography",
     "captcha": "captcha",
     "brute_force": "brute_force",
+    # Offline weak-secret verification emits a sealed ProofBundle and a
+    # wrong-secret negative control; the central validator revalidates it.
+    "jwt_weakness": "jwt_weakness",
 }
 
 _OFFLINE_FIXTURE_VALIDATORS: Final[dict[str, str]] = {

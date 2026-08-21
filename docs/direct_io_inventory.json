@@ -248,42 +248,42 @@
     {
       "file": "src/webpent/agents/validator/agent.py",
       "kind": "safe_boundary_call",
-      "line": 2279,
+      "line": 2284,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
     {
       "file": "src/webpent/agents/validator/agent.py",
       "kind": "safe_boundary_call",
-      "line": 3572,
+      "line": 3577,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
     {
       "file": "src/webpent/agents/validator/agent.py",
       "kind": "safe_boundary_call",
-      "line": 3672,
+      "line": 3677,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
     {
       "file": "src/webpent/agents/validator/structural_checks.py",
       "kind": "safe_boundary_call",
-      "line": 102,
+      "line": 103,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
     {
       "file": "src/webpent/agents/validator/structural_checks.py",
       "kind": "safe_boundary_call",
-      "line": 572,
+      "line": 573,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },
     {
       "file": "src/webpent/agents/validator/structural_checks.py",
       "kind": "safe_boundary_call",
-      "line": 1107,
+      "line": 1108,
       "symbol": "make_safe_httpx_client",
       "transport": "http_sync"
     },

@@ -40,7 +40,7 @@ Total records: **64**.
 | `src/webpent/agents/recon/agent.py` | 684 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
 | `src/webpent/agents/request_smuggling/agent.py` | 36 | `import` | `socket` | `raw_tcp_dns_implementation` |
 | `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1297 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1158 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 13 | `import` | `socket` | `raw_tcp_dns_implementation` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 89 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 140 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
@@ -51,12 +51,12 @@ Total records: **64**.
 | `src/webpent/agents/validator/agent.py` | 1353 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
 | `src/webpent/agents/validator/agent.py` | 1692 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
 | `src/webpent/agents/validator/agent.py` | 1752 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/agent.py` | 2279 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/agent.py` | 3572 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/agent.py` | 3672 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/structural_checks.py` | 102 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/structural_checks.py` | 572 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
-| `src/webpent/agents/validator/structural_checks.py` | 1107 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 2284 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 3577 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 3677 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 103 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 573 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 1108 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
 | `src/webpent/cli/__init__.py` | 188 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` |
 | `src/webpent/cli/__init__.py` | 190 | `call` | `sync_playwright` | `browser_playwright` |
 | `src/webpent/cli/git_source.py` | 6 | `import` | `subprocess` | `subprocess_implementation` |
@@ -83,7 +83,7 @@ Total records: **64**.
 | `src/webpent/tools/recon/ffuf.py` | 103 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
 | `src/webpent/tools/recon/httpx.py` | 107 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
 | `src/webpent/tools/recon/katana.py` | 167 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
-| `src/webpent/tools/recon/nuclei.py` | 162 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/nuclei.py` | 194 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
 | `src/webpent/tools/recon/subfinder.py` | 64 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
 | `src/webpent/tools/utils/subprocess.py` | 68 | `import` | `subprocess` | `subprocess_implementation` |
 | `src/webpent/tools/utils/subprocess.py` | 243 | `call` | `subprocess.Popen` | `subprocess` |

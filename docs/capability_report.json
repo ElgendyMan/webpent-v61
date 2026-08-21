@@ -283,7 +283,7 @@
       "validator_status": "offline-fixture"
     }
   ],
-  "generated_at": "2026-08-21T17:41:08.056265+00:00",
+  "generated_at": "2026-08-21T18:09:17.471133+00:00",
   "ledger": "docs/waptlab_coverage_ledger.json",
   "live_qualification": false,
   "notes": [
@@ -475,9 +475,9 @@
       "vuln_class": "cloud_storage_exposure"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "deterministic",
+      "validator_id": "jwt_weakness",
+      "validator_status": "tested",
       "vuln_class": "jwt_weakness"
     },
     {
@@ -511,13 +511,12 @@
     "request_smuggling",
     "subdomain_takeover",
     "cloud_storage_exposure",
-    "jwt_weakness",
     "jwt_key_confusion",
     "unknown"
   ],
   "vip_scope_validator_status_counts": {
-    "missing-validator": 8,
+    "missing-validator": 7,
     "offline-fixture": 2,
-    "tested": 24
+    "tested": 25
   }
 }

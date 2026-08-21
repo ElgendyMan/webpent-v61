@@ -55,6 +55,7 @@ from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from webpent.models.findings import Confidence, Finding
+from webpent.models.proof_bundle import proof_bundle_promotion_ready
 from webpent.shared.bac_identity_tester import (
     assess_access_control,
     build_relational_evidence,
@@ -1533,6 +1534,69 @@ def validate_idor(
         }
     )
 
+
+def validate_jwt_weakness(finding: Finding) -> Finding:
+    """Revalidate an offline weak-secret JWT result without network I/O.
+
+    The API-testing path is the only local proof-grade source for this class:
+    it verifies a captured signature against a bounded candidate and records a
+    wrong-secret negative control.  The central validator must preserve that
+    result only when the serialized bundle still satisfies the promotion
+    contract.  Any missing, tampered, or incomplete bundle is downgraded to
+    ``Needs Human Review``; this function never creates a new confirmation.
+    """
+    evidence = dict(finding.evidence or {})
+    evidence_bundle = dict(finding.evidence_bundle or {})
+    proof_bundle = evidence.get("proof_bundle") or evidence_bundle.get("proof_bundle")
+    causal_signal = (
+        evidence.get("causal_signal") is True
+        or evidence_bundle.get("causal_signal") is True
+    )
+    negative_control_complete = (
+        evidence.get("negative_control_complete") is True
+        or evidence_bundle.get("negative_control") is not None
+    )
+    proof_ready = bool(
+        proof_bundle
+        and proof_bundle_promotion_ready(proof_bundle)
+        and causal_signal
+        and negative_control_complete
+    )
+    if finding.confidence_level == "Tool-Confirmed" and proof_ready:
+        return finding.model_copy(
+            update={
+                "confidence": Confidence.FIRM.value,
+                "confidence_level": "Tool-Confirmed",
+                "evidence": {
+                    **evidence,
+                    "validator_path": "jwt_weakness_offline_proof_revalidation",
+                    "proof_bundle_verified": True,
+                    "causal_signal": True,
+                    "negative_control_complete": True,
+                },
+            }
+        )
+
+    return finding.model_copy(
+        update={
+            "confidence_level": "Needs Human Review",
+            "evidence": {
+                **evidence,
+                "validator_path": "jwt_weakness_offline_proof_revalidation",
+                "proof_bundle_verified": False,
+                "validation_failure_reason": (
+                    "jwt_weakness_requires_sealed_proof_bundle_and_negative_control"
+                ),
+            },
+            "reasoning": (
+                "JWT weak-secret evidence was not promoted because the central "
+                "validator could not verify a sealed ProofBundle with causal and "
+                "negative-control evidence."
+            ),
+        }
+    )
+
+
 __all__ = [
     "validate_auth_bypass",
     "validate_api_issue",
@@ -1543,5 +1607,6 @@ __all__ = [
     "validate_idor",
     "validate_info_disclosure",
     "validate_javascript",
+    "validate_jwt_weakness",
     "validate_weak_session",
 ]

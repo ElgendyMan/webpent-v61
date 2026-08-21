@@ -2,7 +2,7 @@
 
 **Baseline commit:** `1174294ffe53e4bd611da1ce6892a55f1e4a2642`
 **Baseline tests:** `1167 passed, 207 warnings`
-**Current local gate:** `1181 passed, 217 warnings`; Ruff clean; G-02 inventory regenerated with 64 records.
+**Current local gate:** `1183 passed, 217 warnings`; Ruff clean; G-02 inventory regenerated with 64 records.
 **Scope restriction:** no WAPTLab, Juice Shop, or external target was contacted or modified during this execution.
 **Rule:** `verified` means supported by local source plus executable tests/artifacts; it does not mean live qualification unless explicitly stated.
 
@@ -39,10 +39,10 @@
 | 7.2 Next Best Action | Information gain, risk, coverage, cost, prerequisites, bounded batches and replanning | `campaign_executor.py`, controller/parallel/causal tests | verified as bounded local path | Fixed benchmark showing discovery/confirmation improvement |
 | 7.3 Hypothesis/memory | Provenance, fingerprint, negative evidence, expiry/invalidation | intelligence/memory modules and isolation tests | partial | Full target revalidation and invalidation benchmark |
 | 7.4 LLM safety | Structured proposals only; no tool/policy override; injection/poisoning/timeout tests | `shared/llm.py`, compatibility/adversarial tests, usage trace | verified locally for contracts | Provider matrix and real runtime path qualification |
-| 8 Validator expansion | Runtime validators for declared classes with oracle/control/replay contracts | validator registry, capability report (20 catalog entries plus explicit 34-class broader VIP-scope matrix) | strong local / partial | Catalog coverage is 18 tested + 2 offline-fixture; broader VIP scope is 24 tested + 2 offline-fixture + 8 missing-validator, surfaced explicitly and requiring implementation or declared scope exclusion |
+| 8 Validator expansion | Runtime validators for declared classes with oracle/control/replay contracts | validator registry, capability report (20 catalog entries plus explicit 34-class broader VIP-scope matrix) | strong local / partial | Catalog coverage is 18 tested + 2 offline-fixture; broader VIP scope is 25 tested + 2 offline-fixture + 7 missing-validator. JWT weak-secret revalidation is now proof-preserving and offline; request smuggling, subdomain takeover, cloud storage exposure, mass assignment, JWT key confusion, race condition, and unknown remain explicit gaps until their complete causal/negative-control contracts exist. |
 | 9 Tool adapters | Pinned, scoped, bounded, parsed, redacted adapters with fallback and tests | adapter modules, G-02 inventory, adapter tests | partial | Qualify all declared tools in runtime and classify absent tools as capability gaps |
 | 10 Runtime/packaging | Full compose topology, crash/retry/concurrency/migration/redaction/resource tests; slim archive | Docker/Compose files, release ZIP, SBOM/audit artifacts | partial | Docker daemon access and live distributed qualification unavailable |
-| 11 Test strategy | Unit, contract, integration, fixture, browser, multi-identity, API/multipart/GraphQL/WebSocket, distributed, prompt injection, replay/tamper, benchmark | 1181 passing tests, 14/14 VIP hard checks, 174 test files | partial/strong local | Some live/browser/distributed/benchmark dimensions remain unqualified |
+| 11 Test strategy | Unit, contract, integration, fixture, browser, multi-identity, API/multipart/GraphQL/WebSocket, distributed, prompt injection, replay/tamper, benchmark | 1183 passing tests, 14/14 VIP hard checks, 175 test files | partial/strong local | Some live/browser/distributed/benchmark dimensions remain unqualified |
 | 12 WAPTLab qualification | Three clean live runs, 15+/20 confirmed, precision ≥90%, reproducibility ≥95%, sealed bundles | `docs/waptlab_qualification_report.json` explicitly says `live_qualification=false` and `target_contacted=false` | blocked by explicit user restriction | Must be run later on authorized local instance; not performed here |
 | 13 VIP gates | G0–G10 all pass | `docs/vip_quality_gate.json`, `docs/release_manifest.json` | not passed | G4/G5/G7/G9/G10 require live qualification or additional runtime evidence |
 | 14 Definition of Done | Every workstream runtime-qualified, all numeric gates, signed release, final report | local closure/release artifacts | not complete | Live qualification, distributed runtime qualification, signing, and final gate closure remain |
@@ -58,7 +58,7 @@
 | G4 Identity | partial | isolation contracts exist; live multi-identity proof absent |
 | G5 Workflow | partial | replay/session structures exist; browser/live workflow proof absent |
 | G6 Autonomy | pass locally as bounded autonomy | gap/NBA/causal/parallel/recovery contracts and tests pass |
-| G7 Validators | strong local / partial | 20 catalog entries are 18 tested + 2 offline-fixture; broader VIP-scope missing validators are explicit in capability_report; live qualification absent |
+| G7 Validators | strong local / partial | 20 catalog entries are 18 tested + 2 offline-fixture; broader VIP scope is 25 tested + 2 offline-fixture + 7 explicit missing validators in capability_report; live qualification absent |
 | G8 Proof | pass locally as enforcement contracts | promotion is fail-closed; live sealed bundle chain absent |
 | G9 Reliability | blocked | Docker daemon unavailable and distributed qualification not executed |
 | G10 VIP Qualification | blocked | no WAPTLab live runs by explicit restriction |
