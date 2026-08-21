@@ -389,3 +389,126 @@ def test_proof_bundle_requires_causal_signal_negative_control_and_clean_state():
             **value.model_dump(exclude={"after_state"}),
             after_state={"password": "not-allowed"},
         )
+
+
+def test_browser_crash_returns_infrastructure_failure_and_resume_stays_safe(tmp_path):
+    runtime = build_control_plane_runtime(
+        engagement_id=ENGAGEMENT,
+        scope=_scope(),
+        executor=_browser_executor(),
+        profile_root=str(tmp_path),
+    )
+    session = runtime.session_manager.create_session(
+        engagement_id=ENGAGEMENT,
+        profile_ref="profile-crash",
+        authenticated_origins=(ORIGIN,),
+        cookie_fingerprint="sha256:" + "g" * 64,
+    )
+    request = BrowserActionRequest(
+        action_id="browser-crash-1",
+        engagement_id=ENGAGEMENT,
+        session_id=session.session_id,
+        operation="navigate",
+        url=f"{ORIGIN}/crash-test",
+        scope_decision=evaluate_scope(_scope(), f"{ORIGIN}/crash-test"),
+        idempotency_key="browser-crash-idem",
+    )
+
+    def crashing_handler(_request):
+        raise RuntimeError("fixture-browser-crash")
+
+    receipt = runtime.replay_engine.replay_browser(
+        request,
+        session,
+        BrowserActionAdapter(crashing_handler),
+        target_url=request.url,
+        g02_inventory_ref=G02_HTTP_INVENTORY_REF,
+        g02_proof_contract=G02_HTTP_PROOF_CONTRACT,
+    )
+    assert receipt.status == "infrastructure_failure"
+    assert "RuntimeError" in receipt.reason
+    assert runtime.session_manager.get(session.session_id, engagement_id=ENGAGEMENT)
+
+
+def test_delayed_email_is_quarantined_without_artifact():
+    now = datetime.now(timezone.utc)
+    query = EmailCorrelationQuery(
+        engagement_id=ENGAGEMENT,
+        mailbox_ref="mailbox://delayed",
+        recipient_ref="user@example.test",
+        sender_domains=("example.test",),
+        correlation_nonce="nonce-delayed-1234",
+        target_origin=ORIGIN,
+        not_before=now - timedelta(minutes=1),
+        not_after=now + timedelta(minutes=1),
+    )
+    parsed = GmailAdapter(
+        lambda _query: {
+            "message_id": "delayed-1",
+            "sender": "noreply@example.test",
+            "recipient": "user@example.test",
+            "subject": "Verify account",
+            "body": "nonce-delayed-1234 https://app.example.test/activate",
+            "received_at": now + timedelta(minutes=5),
+        }
+    ).read_correlated(query, _scope())
+    assert parsed.quarantined is True
+    assert parsed.artifact is None
+    assert "message_outside_time_window" in parsed.reasons
+
+
+def test_duplicate_email_is_deduplicated_without_reusing_artifact():
+    now = datetime.now(timezone.utc)
+    query = EmailCorrelationQuery(
+        engagement_id=ENGAGEMENT,
+        mailbox_ref="mailbox://duplicate",
+        recipient_ref="user@example.test",
+        sender_domains=("example.test",),
+        correlation_nonce="nonce-duplicate-1234",
+        target_origin=ORIGIN,
+        not_before=now - timedelta(minutes=1),
+        not_after=now + timedelta(minutes=1),
+    )
+    message = {
+        "message_id": "duplicate-1",
+        "sender": "noreply@example.test",
+        "recipient": "user@example.test",
+        "subject": "Verify account",
+        "body": "nonce-duplicate-1234 https://app.example.test/activate",
+        "received_at": now,
+    }
+    adapter = GmailAdapter(lambda _query: message)
+    first = adapter.read_correlated(query, _scope())
+    second = adapter.read_correlated(query, _scope())
+    assert first.quarantined is False
+    assert first.artifact is not None
+    assert second.quarantined is True
+    assert second.artifact is None
+    assert "duplicate_message" in second.reasons
+
+
+def test_expired_otp_correlation_window_is_quarantined():
+    now = datetime.now(timezone.utc)
+    query = EmailCorrelationQuery(
+        engagement_id=ENGAGEMENT,
+        mailbox_ref="mailbox://expired-otp",
+        recipient_ref="user@example.test",
+        sender_domains=("example.test",),
+        correlation_nonce="nonce-expired-1234",
+        target_origin=ORIGIN,
+        not_before=now - timedelta(minutes=10),
+        not_after=now - timedelta(seconds=1),
+    )
+    parsed = GmailAdapter(
+        lambda _query: {
+            "message_id": "expired-otp-1",
+            "sender": "noreply@example.test",
+            "recipient": "user@example.test",
+            "subject": "Your OTP",
+            "body": "nonce-expired-1234 OTP 654321",
+            "received_at": now - timedelta(minutes=2),
+        }
+    ).read_correlated(query, _scope())
+    assert parsed.quarantined is True
+    assert parsed.artifact is None
+    assert "correlation_window_expired" in parsed.reasons

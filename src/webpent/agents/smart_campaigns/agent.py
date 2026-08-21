@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlsplit
@@ -787,7 +787,19 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     campaign_plan = _campaign_plan_for_state(state)
     task_state = {**state, "campaign_plan": campaign_plan}
     tasks, outcomes = build_smart_campaign_tasks(task_state)
-    gap_engine = KnowledgeGapEngine()
+    runtime_for_planning = state.get("runtime_context")
+    if not isinstance(runtime_for_planning, RuntimeContext) or not runtime_for_planning.valid:
+        runtime_for_planning = None
+    gap_engine = (
+        runtime_for_planning.knowledge_gap_engine
+        if runtime_for_planning is not None
+        else KnowledgeGapEngine()
+    )
+    information_ranker = (
+        runtime_for_planning.next_best_action_engine
+        if runtime_for_planning is not None
+        else SmartNextBestActionEngine()
+    )
     knowledge_gaps = gap_engine.derive(task_state)
     research_session = ResearchSession.from_state(state)
     research_session.coverage_gaps = [gap.gap_id for gap in knowledge_gaps]
@@ -805,7 +817,7 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             for item in state.get("research_decision_trace", [])
             if isinstance(item, Mapping)
         }
-        ranked_information = SmartNextBestActionEngine().rank(
+        ranked_information = information_ranker.rank(
             selected_gap.candidate_actions,
             attempted_fingerprints=attempted_information,
             coverage_value=1.0,
@@ -850,7 +862,12 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         for item in state.get("campaign_task_outcomes", [])
         if isinstance(item, Mapping)
     }
-    engine = NextBestActionEngine()
+    engine = (
+        runtime_for_planning.campaign_next_best_action_engine
+        if runtime_for_planning is not None
+        and runtime_for_planning.campaign_next_best_action_engine is not None
+        else NextBestActionEngine()
+    )
     planned: list[dict[str, Any]] = []
     decision_trace: list[dict[str, Any]] = []
     for task in tasks:
@@ -949,6 +966,80 @@ def _finding_value(finding: Any, key: str, default: Any = None) -> Any:
     if isinstance(finding, Mapping):
         return finding.get(key, default)
     return getattr(finding, key, default)
+
+
+def _feedback_items(value: Any) -> list[dict[str, Any]]:
+    """Keep only report-safe runtime feedback fields."""
+    if isinstance(value, Mapping):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    projected: list[dict[str, Any]] = []
+    for item in value[:32]:
+        if not isinstance(item, Mapping):
+            continue
+        status = str(item.get("status") or item.get("event") or "").strip()[:80]
+        if not status:
+            continue
+        record = {"status": status}
+        for key in ("target_ref", "target_url", "reason"):
+            value_text = str(item.get(key) or "").strip()
+            if value_text:
+                record[key] = value_text[:320 if key != "reason" else 240]
+        evidence_refs = item.get("evidence_refs") or item.get("evidence_ref") or ()
+        if isinstance(evidence_refs, str):
+            evidence_refs = (evidence_refs,)
+        if isinstance(evidence_refs, (list, tuple)):
+            record["evidence_refs"] = [str(ref)[:240] for ref in evidence_refs[:20]]
+        projected.append(record)
+    return projected
+
+
+def _runtime_feedback_projection(
+    state: Mapping[str, Any],
+    *,
+    outcomes: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Merge explicit adapter feedback without retaining raw transport data."""
+    existing = state.get("runtime_feedback") or {}
+    feedback: dict[str, Any] = {"browser": [], "gmail": [], "validator": [], "events": []}
+    if isinstance(existing, Mapping):
+        for source in feedback:
+            feedback[source] = _feedback_items(existing.get(source))
+    for source, state_key in (
+        ("browser", "browser_feedback"),
+        ("gmail", "gmail_feedback"),
+        ("validator", "validator_feedback"),
+    ):
+        feedback[source].extend(_feedback_items(state.get(state_key)))
+    validator_statuses = {
+        "missing-validator",
+        "missing_validator",
+        "infrastructure_failure",
+        "tool_unavailable",
+        "inconclusive",
+    }
+    for outcome in outcomes:
+        status = str(outcome.get("status") or "").strip().lower()
+        if status not in validator_statuses:
+            continue
+        feedback["validator"].append(
+            _feedback_items(
+                {
+                    "status": status,
+                    "target_url": outcome.get("target_url"),
+                    "reason": outcome.get("reason"),
+                    "evidence_refs": outcome.get("evidence_refs"),
+                }
+            )[0]
+        )
+    for source in feedback:
+        unique: dict[str, dict[str, Any]] = {}
+        for item in feedback[source]:
+            key = repr(sorted(item.items()))
+            unique.setdefault(key, item)
+        feedback[source] = list(unique.values())[:64]
+    return feedback
 
 
 def _swagger_promotion_is_proven(state: Mapping[str, Any]) -> bool:
@@ -1495,7 +1586,16 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             )
             outcomes.append(executor.execute(swagger_task, handler, preconditions_met=ready))
 
-    projection_state = dict(state)
+    runtime_feedback = _runtime_feedback_projection(state, outcomes=outcomes)
+    feedback_state = dict(state)
+    feedback_state["runtime_feedback"] = runtime_feedback
+    updated_knowledge_gaps = runtime.knowledge_gap_engine.derive(feedback_state)
+    research_session.coverage_gaps = [gap.gap_id for gap in updated_knowledge_gaps]
+
+    projection_state = dict(feedback_state)
+    projection_state["knowledge_gaps"] = [
+        gap.as_dict() for gap in updated_knowledge_gaps
+    ]
     projection_state["campaign_task_outcomes"] = [
         *(state.get("campaign_task_outcomes") or []),
         *outcomes,
@@ -1528,6 +1628,8 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         "decision_trace": list(executor.decision_trace),
         "lifecycle_events": list(executor.lifecycle_events),
         "coverage_ledger": coverage_ledger,
+        "runtime_feedback": runtime_feedback,
+        "knowledge_gaps": [gap.as_dict() for gap in updated_knowledge_gaps],
         "research_session": research_session.as_dict(),
         "positive_evidence_ledger": list(research_session.positive_evidence_ledger),
         "negative_evidence_ledger": list(research_session.negative_evidence_ledger),

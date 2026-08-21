@@ -78,6 +78,26 @@ def _contains_secret_key(value: Any) -> bool:
     return False
 
 
+def _intent_binding(value: Any | None) -> tuple[str, str]:
+    """Return schema and digest for a bounded passive intent projection."""
+    if value is None:
+        return "", ""
+    if hasattr(value, "model_dump"):
+        payload = value.model_dump(mode="json")
+    elif isinstance(value, Mapping):
+        payload = dict(value)
+    else:
+        raise ValueError("application_intent_invalid")
+    if _contains_secret_key(payload):
+        raise ValueError("application_intent_contains_secret")
+    if payload.get("bounded") is not True or payload.get("passive_only") is not True:
+        raise ValueError("application_intent_must_be_bounded_passive")
+    schema = str(payload.get("schema_version") or "").strip()[:80]
+    if not schema:
+        raise ValueError("application_intent_schema_required")
+    return schema, _digest(payload)
+
+
 class EmailCorrelationQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
@@ -173,6 +193,8 @@ def parse_email_message(
     attachment_names = tuple(str(item)[:120] for item in raw_message.get("attachments", ()) or ())
     clean_text = _strip_active_html(body)
     reasons: list[str] = []
+    if current < query.not_before or current > query.not_after:
+        reasons.append("correlation_window_expired")
     if not message_id:
         reasons.append("message_id_missing")
     if not sender or (query.sender_domains and sender not in query.sender_domains):
@@ -356,7 +378,12 @@ class BrowserActionAdapter:
                 status="blocked_by_precondition",
                 reason="browser_operation_not_allowlisted",
             )
-        result = self._handler(request)
+        try:
+            result = self._handler(request)
+        except Exception as exc:
+            raise RuntimeError(
+                f"browser_handler_failure:{type(exc).__name__}"
+            ) from exc
         if not isinstance(result, Mapping) or _contains_secret_key(result):
             return ActionOutcome(
                 action_id=request.action_id,
@@ -379,6 +406,8 @@ class GmailAdapter:
 
     def __init__(self, reader: Callable[[EmailCorrelationQuery], Mapping[str, Any] | None]) -> None:
         self._reader = reader
+        self._seen_message_digests: set[str] = set()
+        self._lock = RLock()
 
     def read_correlated(
         self,
@@ -390,7 +419,31 @@ class GmailAdapter:
             raise RuntimeError("mailbox_message_unavailable")
         if not isinstance(raw, Mapping):
             raise RuntimeError("mailbox_adapter_output_invalid")
-        return parse_email_message(raw, query, scope)
+        parsed = parse_email_message(raw, query, scope)
+        message_id = str(raw.get("message_id") or "").strip()
+        message_digest = _digest(message_id) if message_id else ""
+        with self._lock:
+            duplicate = bool(message_digest and message_digest in self._seen_message_digests)
+            if message_digest:
+                self._seen_message_digests.add(message_digest)
+        if not duplicate:
+            return parsed
+        duplicate_event = parsed.event.model_copy(
+            update={
+                "artifact_ref": "",
+                "confidence": 0.0,
+                "status": "quarantined",
+                "quarantined": True,
+            }
+        )
+        return parsed.model_copy(
+            update={
+                "event": duplicate_event,
+                "artifact": None,
+                "quarantined": True,
+                "reasons": (*parsed.reasons, "duplicate_message"),
+            }
+        )
 
     def __getattr__(self, name: str) -> Any:
         if name in {"send", "change_password", "change_recovery", "add_forwarding", "delete"}:
@@ -408,6 +461,8 @@ class WorkflowRecord(BaseModel):
     state: str = "created"
     completed_step_ids: tuple[str, ...] = ()
     idempotency_keys: tuple[str, ...] = ()
+    application_intent_schema: str = ""
+    application_intent_fingerprint: str = ""
     status: WorkflowStatus = WorkflowStatus.PENDING
     reason: str = ""
 
@@ -426,18 +481,36 @@ class WorkflowStateMachine:
         engagement_id: str,
         identity: IdentityProfileRef,
         session: BrowserSessionRef,
+        intent_model: Any | None = None,
     ) -> WorkflowRecord:
         if identity.engagement_id != engagement_id or session.engagement_id != engagement_id:
             raise ValueError("workflow_binding_mismatch")
+        intent_schema, intent_fingerprint = _intent_binding(intent_model)
         record = WorkflowRecord(
             workflow_id=workflow_id,
             engagement_id=engagement_id,
             identity_id=identity.identity_id,
             session_id=session.session_id,
+            application_intent_schema=intent_schema,
+            application_intent_fingerprint=intent_fingerprint,
         )
         with self._lock:
             current = self._records.get(workflow_id)
             if current is not None:
+                if (
+                    current.application_intent_fingerprint
+                    and intent_fingerprint
+                    and current.application_intent_fingerprint != intent_fingerprint
+                ):
+                    raise ValueError("workflow_intent_mismatch")
+                if not current.application_intent_fingerprint and intent_fingerprint:
+                    current = current.model_copy(
+                        update={
+                            "application_intent_schema": intent_schema,
+                            "application_intent_fingerprint": intent_fingerprint,
+                        }
+                    )
+                    self._records[workflow_id] = current
                 return current
             self._records[workflow_id] = record
         return record
@@ -450,6 +523,7 @@ class WorkflowStateMachine:
         identity_id: str,
         session_id: str,
         idempotency_key: str,
+        intent_model: Any | None = None,
     ) -> WorkflowRecord:
         with self._lock:
             current = self._records.get(step.workflow_id)
@@ -461,6 +535,17 @@ class WorkflowStateMachine:
                 session_id,
             ):
                 raise ValueError("workflow_binding_mismatch")
+            if current.application_intent_fingerprint:
+                _, intent_fingerprint = _intent_binding(intent_model)
+                if intent_fingerprint != current.application_intent_fingerprint:
+                    updated = current.model_copy(
+                        update={
+                            "status": WorkflowStatus.BLOCKED,
+                            "reason": "workflow_intent_mismatch",
+                        }
+                    )
+                    self._records[step.workflow_id] = updated
+                    return updated
             if idempotency_key in current.idempotency_keys:
                 return current
             transition = step.expected_state_transition.split("->", 1)

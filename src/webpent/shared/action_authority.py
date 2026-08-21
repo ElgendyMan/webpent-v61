@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from webpent.config.settings import ScanMode, Settings, get_settings
 from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.capability_manifest import capability_available
+from webpent.shared.safety_gate import EngagementSafetyGate
 
 
 class ActionRisk(str, Enum):
@@ -104,6 +105,7 @@ class ActionAuthority:
         ledger: SQLiteActionLedger | None = None,
         adapter_registry: Any | None = None,
         require_g02: bool = False,
+        safety_gate: EngagementSafetyGate | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.allowed_origin = self._normalize_origin(allowed_origin)
@@ -113,6 +115,7 @@ class ActionAuthority:
         self.ledger = ledger
         self.adapter_registry = adapter_registry
         self.require_g02 = bool(require_g02)
+        self.safety_gate = safety_gate
         self.trace: list[dict[str, Any]] = []
 
     @staticmethod
@@ -149,6 +152,11 @@ class ActionAuthority:
         method = request.method.upper().strip()
         mode = getattr(self.settings.scan_mode, "value", self.settings.scan_mode)
         target_origin = self._normalize_origin(request.target_url)
+
+        if self.safety_gate is not None:
+            safety_decision = self.safety_gate.authorize_request(request)
+            if not safety_decision.allowed:
+                reasons.extend(safety_decision.reasons)
 
         if not request.task_id or not request.engagement_id:
             reasons.append("identity:task_and_engagement_required")

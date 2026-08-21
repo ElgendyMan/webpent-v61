@@ -201,8 +201,116 @@ class KnowledgeGapEngine:
         parts = [part for part in str(url).rstrip("/").split("/") if part]
         return bool(parts and parts[-1].isdigit())
 
+    def _feedback_gaps(self, state: Mapping[str, Any]) -> list[KnowledgeGap]:
+        """Convert explicit runtime failures into bounded research gaps."""
+        raw_feedback = state.get("runtime_feedback") or {}
+        if not isinstance(raw_feedback, Mapping):
+            return []
+        items: list[Mapping[str, Any]] = []
+        for source in ("browser", "gmail", "validator"):
+            raw_items = raw_feedback.get(source) or []
+            if isinstance(raw_items, Mapping):
+                raw_items = [raw_items]
+            if isinstance(raw_items, (list, tuple)):
+                items.extend(
+                    {
+                        **dict(item),
+                        "source": source,
+                    }
+                    for item in raw_items
+                    if isinstance(item, Mapping)
+                )
+        events = raw_feedback.get("events") or []
+        if isinstance(events, (list, tuple)):
+            items.extend(item for item in events if isinstance(item, Mapping))
+        gaps: list[KnowledgeGap] = []
+        known: set[str] = set()
+        for item in items:
+            source = _clean(item.get("source"), 40).lower()
+            status = _clean(item.get("status") or item.get("event"), 80).lower()
+            if status in {"", "completed", "executed", "success", "clean", "resolved"}:
+                continue
+            if source == "browser" and status in {
+                "crash",
+                "browser_crash",
+                "session_crash",
+                "safe_resume_failed",
+            }:
+                kind, objective, unknown, action_class = (
+                    GapKind.WORKFLOW,
+                    "prove browser crash recovery before workflow replay",
+                    "browser session recovery after a crash",
+                    ActionClass.BROWSER_ACTION,
+                )
+            elif source == "gmail" and status in {
+                "delayed",
+                "delayed_delivery",
+                "duplicate",
+                "duplicate_email",
+                "expired_otp",
+            }:
+                kind, objective, unknown, action_class = (
+                    GapKind.WORKFLOW,
+                    "prove email/OTP workflow handling before identity use",
+                    f"safe handling for {status}",
+                    ActionClass.WORKFLOW_REPLAY,
+                )
+            elif source == "validator" and status in {
+                "missing-validator",
+                "missing_validator",
+                "infrastructure_failure",
+                "tool_unavailable",
+                "inconclusive",
+            }:
+                kind, objective, unknown, action_class = (
+                    GapKind.ORACLE,
+                    "obtain a deterministic validator or stop safely",
+                    f"validator feedback: {status}",
+                    ActionClass.VALIDATOR_RETRY,
+                )
+            else:
+                continue
+            target = _clean(item.get("target_ref") or item.get("target_url"), 320)
+            gap_id = self._gap_id(kind, target, unknown)
+            if gap_id in known:
+                continue
+            known.add(gap_id)
+            evidence = item.get("evidence_refs") or item.get("evidence_ref") or ()
+            if isinstance(evidence, str):
+                evidence = (evidence,)
+            if not isinstance(evidence, (list, tuple)):
+                evidence = ()
+            action = InformationAction(
+                action_id=f"{gap_id}:feedback",
+                action_class=action_class,
+                objective=objective,
+                target_ref=target,
+                expected_information_gain=0.7,
+                cost=0.8,
+                capability="control_plane_feedback",
+                justification=f"explicit {source} runtime status requires a bounded follow-up",
+                metadata={"source": source, "status": status},
+            )
+            gaps.append(
+                KnowledgeGap(
+                    gap_id=gap_id,
+                    kind=kind,
+                    objective=objective,
+                    unknown=unknown,
+                    target_ref=target,
+                    affected_actor=source,
+                    supporting_evidence=_clean_items(evidence),
+                    candidate_actions=(action,),
+                    expected_information_gain=0.7,
+                    cost=0.8,
+                    risk=0.05,
+                )
+            )
+        return gaps
+
     def derive(self, state: Mapping[str, Any]) -> list[KnowledgeGap]:
         gaps: list[KnowledgeGap] = []
+        gaps.extend(self._feedback_gaps(state))
         surface = state.get("crawled_data") or {}
         records = surface.get("surface_records", []) if isinstance(surface, Mapping) else []
         if not isinstance(records, list):
@@ -304,7 +412,12 @@ class KnowledgeGapEngine:
                     supporting_evidence=("bac_coverage_gap",),
                 )
             )
-        return sorted(gaps, key=lambda gap: (-gap.priority(), gap.gap_id))[: self.max_gaps]
+        deduplicated: dict[str, KnowledgeGap] = {}
+        for gap in gaps:
+            deduplicated.setdefault(gap.gap_id, gap)
+        return sorted(
+            deduplicated.values(), key=lambda gap: (-gap.priority(), gap.gap_id)
+        )[: self.max_gaps]
 
     def choose(self, gaps: Sequence[KnowledgeGap]) -> KnowledgeGap | None:
         open_gaps = [gap for gap in gaps if gap.status == GapStatus.OPEN]

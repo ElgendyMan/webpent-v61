@@ -20,7 +20,7 @@ from webpent.config.settings import Settings, get_settings
 from webpent.models.evidence import redact_sensitive
 from webpent.shared.action_authority import ActionAuthority
 from webpent.shared.action_ledger import SQLiteActionLedger
-from webpent.shared.campaign_executor import ActionExecutor
+from webpent.shared.campaign_executor import ActionExecutor, NextBestActionEngine
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.engagement_scope import OriginPolicy
 from webpent.shared.proof_bundle_store import ProofBundleStore
@@ -29,6 +29,7 @@ from webpent.shared.research_intelligence import (
     KnowledgeGapEngine,
     SmartNextBestActionEngine,
 )
+from webpent.shared.safety_gate import EngagementSafetyGate
 
 
 class RuntimeConfigurationError(ValueError):
@@ -240,6 +241,8 @@ class RuntimeContext:
     configuration_errors: tuple[str, ...] = ()
     capability_gaps: tuple[RuntimeCapabilityGap, ...] = ()
     control_plane_runtime: Any | None = None
+    campaign_next_best_action_engine: NextBestActionEngine | None = None
+    safety_gate: EngagementSafetyGate | None = None
 
     @property
     def valid(self) -> bool:
@@ -411,6 +414,10 @@ class RuntimeFactory:
             errors.append("scope:origin_policy_invalid")
             scope_matcher = OriginPolicy.from_url("http://127.0.0.1")
 
+        safety_gate = EngagementSafetyGate(
+            engagement_id=normalized_engagement,
+            allowed_origins=(normalized_origin,) if normalized_origin else (),
+        )
         capability_registry = CapabilityRegistry(settings)
         if manifest is not None:
             capability_registry._manifest = dict(manifest)
@@ -434,6 +441,7 @@ class RuntimeFactory:
             ledger=action_ledger,
             adapter_registry=registry,
             require_g02=True,
+            safety_gate=safety_gate,
         )
         bundle_store = (
             proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
@@ -487,6 +495,7 @@ class RuntimeFactory:
             campaign_id=normalized_campaign,
             payload={"target_origin": normalized_origin},
         )
+        campaign_action_engine = NextBestActionEngine()
         return RuntimeContext(
             schema_version="runtime-context-v1",
             engagement_id=normalized_engagement,
@@ -511,6 +520,8 @@ class RuntimeFactory:
             configuration_errors=tuple(dict.fromkeys(errors)),
             capability_gaps=capability_gaps,
             control_plane_runtime=control_plane_runtime,
+            campaign_next_best_action_engine=campaign_action_engine,
+            safety_gate=safety_gate,
         )
 
     @staticmethod
@@ -531,6 +542,15 @@ class RuntimeFactory:
             "capability_gaps": [gap.as_dict() for gap in context.capability_gaps],
             "manifest": context.capabilities.ensure_discovered(),
             "control_plane_enabled": context.control_plane_runtime is not None,
+            "safety_gate_enabled": context.safety_gate is not None,
+            "kill_switch_tripped": bool(
+                context.safety_gate is not None and context.safety_gate.kill_switch.tripped
+            ),
+            "kill_switch_reason": (
+                context.safety_gate.kill_switch.reason
+                if context.safety_gate is not None
+                else ""
+            ),
         }
 
     @classmethod
@@ -552,7 +572,7 @@ class RuntimeFactory:
             if updates:
                 settings = settings.model_copy(update=updates)
             manifest = descriptor.get("manifest")
-            return cls.create(
+            context = cls.create(
                 engagement_id=str(descriptor.get("engagement_id") or ""),
                 campaign_id=str(descriptor.get("campaign_id") or ""),
                 target_origin=str(descriptor.get("target_origin") or ""),
@@ -562,6 +582,11 @@ class RuntimeFactory:
                 used_budget=float(descriptor.get("used_budget") or 0.0),
                 enable_control_plane=bool(descriptor.get("control_plane_enabled", False)),
             )
+            if context.safety_gate is not None and descriptor.get("kill_switch_tripped"):
+                context.safety_gate.kill_switch.trip(
+                    str(descriptor.get("kill_switch_reason") or "checkpoint_stop")
+                )
+            return context
         except (TypeError, ValueError, OSError):
             return None
 

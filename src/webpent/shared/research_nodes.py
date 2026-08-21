@@ -17,6 +17,7 @@ from webpent.shared.research_intelligence import (
     ResearchSession,
     SmartNextBestActionEngine,
 )
+from webpent.shared.runtime import RuntimeContext
 
 
 def _bounded_items(values: list[dict[str, Any]], limit: int = 100) -> list[dict[str, Any]]:
@@ -124,7 +125,14 @@ def next_best_action_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 actions.append(action)
     context = ResearchContext.from_state(dict(state))
     attempted = tuple(context.attempted_action_fingerprints)
-    ranked = SmartNextBestActionEngine().rank(
+    runtime_context = state.get("runtime_context")
+    ranker = (
+        runtime_context.next_best_action_engine
+        if isinstance(runtime_context, RuntimeContext)
+        and runtime_context.valid
+        else SmartNextBestActionEngine()
+    )
+    ranked = ranker.rank(
         actions,
         attempted_fingerprints=attempted,
         new_evidence=bool(state.get("novel_behavior_observations")),

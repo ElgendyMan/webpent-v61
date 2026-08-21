@@ -234,6 +234,16 @@ def test_execution_node_uses_bounded_get_and_records_safe_metadata(monkeypatch) 
     assert result["smart_replanning"]["get_only"] is True
     assert result["coverage_ledger"]["entries"][0]["attempts"] == 1
     assert result["coverage_ledger"]["entries"][0]["status"] == "inconclusive"
+    assert set(result["runtime_feedback"]) == {
+        "browser",
+        "gmail",
+        "validator",
+        "events",
+    }
+    assert isinstance(result["knowledge_gaps"], list)
+    assert result["research_session"]["coverage_gaps"] == [
+        gap["gap_id"] for gap in result["knowledge_gaps"]
+    ]
 
 
 def test_execution_node_does_not_send_cross_origin_targets(monkeypatch) -> None:
@@ -712,3 +722,32 @@ def test_observed_basket_route_without_identity_does_not_match_idor_campaign() -
         and outcome["vulnerability_class"] == "idor_object"
         for outcome in outcomes
     )
+
+
+def test_planning_uses_runtime_injected_engines(monkeypatch) -> None:
+    bootstrap = build_initial_state(
+        Target(url="https://target.test"),
+        engagement_id="eng-smart-campaigns",
+        campaign_id="campaign-smart-campaigns",
+        auto_approve=True,
+        enable_control_plane=True,
+    )
+    state = _state()
+    state["runtime_context"] = bootstrap["runtime_context"]
+
+    class ForbiddenEngineConstruction:
+        def __init__(self) -> None:
+            raise AssertionError("planning must use runtime-injected engines")
+
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.KnowledgeGapEngine",
+        ForbiddenEngineConstruction,
+    )
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.SmartNextBestActionEngine",
+        ForbiddenEngineConstruction,
+    )
+
+    result = smart_campaigns_node(state)
+    assert result["knowledge_gaps"]
+    assert result["smart_next_actions"]

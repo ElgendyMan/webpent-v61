@@ -40,7 +40,7 @@ Total records: **63**.
 | `src/webpent/agents/recon/agent.py` | 684 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/request_smuggling/agent.py` | 36 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
 | `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` | `approved` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1166 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1257 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 13 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 89 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` | `approved` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 140 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |

@@ -1,11 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from webpent.models.application_intent import ApplicationIntentModel
 from webpent.shared.action_authority import ActionAuthority
 from webpent.shared.campaign_executor import ActionExecutor
 from webpent.shared.control_plane import (
     BrowserActionRequest,
     IdentityProfileRef,
+    WorkflowStep,
     compile_scope,
     evaluate_scope,
 )
@@ -84,6 +86,71 @@ def test_control_plane_runtime_descriptor_omits_live_handlers_and_secrets(tmp_pa
     assert descriptor["control_plane"]["replay"] == "action_executor_only"
     assert "handler" not in repr(descriptor)
     assert "password" not in repr(descriptor).lower()
+
+
+def test_workflow_facade_binds_application_intent_and_rejects_drift(tmp_path: Path) -> None:
+    scope = scope_for()
+    runtime = build_control_plane_runtime(
+        engagement_id=scope.engagement_id,
+        scope=scope,
+        executor=executor_for(),
+        profile_root=str(tmp_path / "profiles"),
+    )
+    identity = IdentityProfileRef(
+        identity_id="id-intent",
+        engagement_id=scope.engagement_id,
+        email_ref="vault://email/id-intent",
+        username_ref="vault://username/id-intent",
+        tenant_ref="tenant-a",
+        provenance="test",
+    )
+    session = runtime.session_manager.create_session(
+        engagement_id=scope.engagement_id,
+        profile_ref=identity.identity_id,
+        authenticated_origins=("https://app.target.example",),
+        cookie_fingerprint="sha256:" + "i" * 64,
+    )
+    intent = ApplicationIntentModel(
+        evidence_refs=("observation://intent/1",),
+    )
+    record = runtime.start_workflow(
+        workflow_id="workflow-intent",
+        identity=identity,
+        session=session,
+        intent_model=intent,
+    )
+    assert record.application_intent_schema == "application-intent-v1"
+    assert record.application_intent_fingerprint.startswith("sha256:")
+
+    step = WorkflowStep(
+        workflow_id="workflow-intent",
+        step_id="load",
+        action_id="action-load",
+        expected_state_transition="created->loaded",
+    )
+    updated = runtime.apply_workflow_step(
+        step,
+        identity=identity,
+        session=session,
+        idempotency_key="intent-step-1",
+        intent_model=intent,
+    )
+    assert updated.state == "loaded"
+
+    changed_intent = intent.model_copy(
+        update={"evidence_refs": ["observation://intent/2"]}
+    )
+    blocked = runtime.apply_workflow_step(
+        step.model_copy(
+            update={"step_id": "load-again", "action_id": "action-load-again"}
+        ),
+        identity=identity,
+        session=session,
+        idempotency_key="intent-step-2",
+        intent_model=changed_intent,
+    )
+    assert blocked.status.value == "blocked_by_precondition"
+    assert blocked.reason == "workflow_intent_mismatch"
 
 
 def test_browser_replay_uses_action_executor_and_deduplicates(tmp_path: Path) -> None:

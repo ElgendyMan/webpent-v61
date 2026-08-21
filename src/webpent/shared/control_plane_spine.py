@@ -19,10 +19,12 @@ from webpent.shared.control_plane import (
     EngagementScope,
     IdentityProfileRef,
     ScopeDecisionType,
+    WorkflowStep,
 )
 from webpent.shared.control_plane_runtime import (
     BrowserActionAdapter,
     BrowserSessionManager,
+    WorkflowRecord,
     WorkflowStateMachine,
 )
 from webpent.shared.secret_vault import SecretVault
@@ -199,6 +201,58 @@ class ControlPlaneRuntime:
     workflow_state_machine: WorkflowStateMachine
     replay_engine: ActionReplayEngine
     secret_vault: SecretVault
+
+    def start_workflow(
+        self,
+        *,
+        workflow_id: str,
+        identity: IdentityProfileRef,
+        session: BrowserSessionRef,
+        intent_model: Any | None = None,
+    ) -> WorkflowRecord:
+        """Start a graph-bound workflow with an optional passive intent binding."""
+        self.identity_graph.register(identity)
+        if not self.identity_graph.authorize(
+            identity_id=identity.identity_id,
+            tenant_ref=identity.tenant_ref,
+        ):
+            raise ValueError("workflow_identity_not_authorized")
+        return self.workflow_state_machine.start(
+            workflow_id=workflow_id,
+            engagement_id=self.engagement_id,
+            identity=identity,
+            session=session,
+            intent_model=intent_model,
+        )
+
+    def apply_workflow_step(
+        self,
+        step: WorkflowStep,
+        *,
+        identity: IdentityProfileRef,
+        session: BrowserSessionRef,
+        idempotency_key: str,
+        intent_model: Any | None = None,
+    ) -> WorkflowRecord:
+        """Apply a workflow step while preserving identity/session/intent binding."""
+        if (
+            identity.engagement_id != self.engagement_id
+            or session.engagement_id != self.engagement_id
+        ):
+            raise ValueError("workflow_binding_mismatch")
+        if not self.identity_graph.authorize(
+            identity_id=identity.identity_id,
+            tenant_ref=identity.tenant_ref,
+        ):
+            raise ValueError("workflow_identity_not_authorized")
+        return self.workflow_state_machine.apply(
+            step,
+            engagement_id=self.engagement_id,
+            identity_id=identity.identity_id,
+            session_id=session.session_id,
+            idempotency_key=idempotency_key,
+            intent_model=intent_model,
+        )
 
     def descriptor(self) -> dict[str, Any]:
         """Return metadata only; handlers, profiles, and secret values are omitted."""
