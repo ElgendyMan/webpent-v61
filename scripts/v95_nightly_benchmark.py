@@ -1,10 +1,10 @@
 """Offline v95 benchmark gate using deterministic fixture expectations."""
+
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
-
 
 MIN_CONFIRMED = 1
 MIN_EVIDENCE_BACKED = 1
@@ -23,7 +23,11 @@ def evaluate(report: dict) -> tuple[bool, dict[str, int]]:
         if isinstance(finding.get("evidence"), dict)
         and finding["evidence"].get("evidence_bundle")
     )
-    metrics = {"findings": len(findings), "confirmed": confirmed, "evidence_backed": evidence_backed}
+    metrics = {
+        "findings": len(findings),
+        "confirmed": confirmed,
+        "evidence_backed": evidence_backed,
+    }
     return confirmed >= MIN_CONFIRMED and evidence_backed >= MIN_EVIDENCE_BACKED, metrics
 
 

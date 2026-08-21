@@ -55,7 +55,7 @@
 | Idempotency and duplicate denial | already implemented and reused | `action_ledger.py`, `tests/test_action_ledger.py`, adapter tests | Worker/broker redelivery still requires operational qualification. |
 | Partial/blocked/unsupported/failed/inconclusive/not-scanned states | already implemented and reused | state models, coverage ledger, reporter tests | No live malformed external-tool stream in this pass. |
 | Redaction and custody | implemented but needs hardening | `shared/redaction.py`, evidence/proof/reporter tests | Release gate must re-run secret scans after final packaging. |
-| Static direct-I/O enforcement | already implemented and reused | AST guard tests and local release gate | Requires final CI invocation after latest changes. |
+| Static direct-I/O enforcement | closed and enforced | `scripts/scan_direct_io.py`, `docs/direct_io_inventory.json`, `tests/test_g02_direct_io_inventory.py`, and final local release gate (`1148 passed`, Ruff=0) | Runtime qualification of each external capability remains environment-specific. |
 
 ## Gate 3 — reasoning and autonomy
 
@@ -165,7 +165,7 @@
 | Source/security/privacy/dependency/license reports | implemented but needs hardening | `docs/vip_source_reports.md`, AutoPentestX audit, existing project audit | Exact pinned source/license review for every optional priority project remains incomplete where the plan did not provide a source checkout. |
 | Integration decision matrix | implemented and locally verified | `docs/integration_decision_matrix.md`, `docs/vip_source_reports.md`, and this checklist | Live useful-coverage comparison remains unmeasured. |
 | Native adapter contracts/manifests | already implemented and reused | Nettacker/AutoPentestX adapters and capability manifest |
-| Direct-I/O execution-plane proof | implemented and locally verified | AST tests, source inventory, `verify_all.py`, `scripts/verify_release_artifacts.py` | Runtime qualification remains local-only. |
+| Direct-I/O execution-plane proof | implemented and locally verified | AST tests, complete source inventory, `docs/DIRECT_IO_INVENTORY.md`, `verify_all.py`, and `scripts/verify_release_artifacts.py` | Runtime qualification remains environment-specific and was not claimed in this no-lab pass. |
 | WAPTLab/Juice Shop benchmark report | blocked by legal/tooling constraints | No targets run by instruction |
 | Failure-injection/recovery report | implemented but needs hardening | `benchmarks/failure_matrix.py`, `scripts/evaluate_failure_matrix.py`, `docs/vip_failure_injection_report.md`, `docs/vip_failure_matrix_20260820.json`, dedicated tests | Full worker/tool/broker matrix remains deferred. |
 | ProofBundle/replay audit | implemented but needs hardening | proof/replay tests and models; no live bundles |

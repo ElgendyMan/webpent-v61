@@ -1,6 +1,8 @@
 # WebPent v3 Direct-I/O Inventory
 
-**الغرض:** تسجيل كل موضع محتمل للـHTTP/browser/socket/subprocess/file I/O قبل بناء allowlist CI. هذه الوثيقة لا تمنح استثناءات تلقائية؛ كل entry يحتاج adapter contract واختبار policy مكافئ.
+**الغرض:** تسجيل كل موضع فعلي للـHTTP/browser/socket/subprocess I/O وبناء allowlist قابلة للتحقق آليًا. هذه الوثيقة لا تمنح استثناءات تلقائية؛ كل entry يحتاج boundary contract واختبار policy مكافئ.
+
+> الحالة الحالية: **CLOSED للـstatic inventory/allowlist contract**. الـruntime qualification لكل capability منفصلة ولم تُستنتج من هذا الإغلاق.
 
 ## مصادر التنفيذ الحالية
 
@@ -24,8 +26,8 @@
 
 ## الوضع الحالي
 
-تم توليد candidate inventory آليًا من `src/webpent/**/*.py` في Phase A. توجد wrappers آمنة جزئيًا، لكن لا يوجد حتى الآن enforcement واحد يمنع كل graph nodes من حقن handlers أو استخدام transport خارج runtime spine. لذلك حالة G-08 هي `OPEN`، ولا يمكن إعلان G2 مغلقًا.
+يولّد `scripts/scan_direct_io.py` inventory AST كاملًا إلى `docs/direct_io_inventory.json`، ويُنتج `scripts/render_direct_io_inventory.py` النسخة المقروءة `docs/DIRECT_IO_INVENTORY.md`. يغطي artifact كل direct imports/calls المكتشفة حاليًا، مع تمييز HTTP sync/async وPlaywright وraw TCP/DNS وsubprocess، وتوثيق API وGraphQL وfile-upload وOOB كـlogical HTTP transports. الاستثناءات الخام محكومة بـ`APPROVED_DIRECT_FILES`.
 
-## الاختبار المطلوب
+## اختبار القبول المنفذ
 
-يجب أن يحتوي direct-I/O CI على كشف AST/import، مقارنة manifest، واختبارات تشغيلية لرفض host/port/redirect خارج scope، ورفض capability غير المسجلة، وإثبات أن blocked/inconclusive لا تتحول إلى clean.
+`tests/test_g02_direct_io_inventory.py` يطابق artifact مع source AST حرفيًا، ويتحقق من تطابق logical contracts وallowlist، ويرفض transport غير مصنف أو record مكرر. لذلك يفشل CI إذا أضيف direct-I/O جديد دون إعادة توليد ومراجعة artifact. أما اختبارات scope/host/redirect ورفض capability غير المسجلة فتبقى runtime policy gates مستقلة، ولا تُعد نتيجة static inventory وحدها qualification حية.
