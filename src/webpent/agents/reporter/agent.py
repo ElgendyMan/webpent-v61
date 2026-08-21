@@ -651,6 +651,7 @@ def reporter_node(state: PentestState) -> dict:
             # projection-only smart coverage ledger.
             campaign_ledger["campaign_plan"] = campaign_plan
         campaign_ledger["coverage_projection"] = project_coverage_ledger(state)
+        campaign_ledger["llm_budget_trace"] = list(state.get("llm_budget_trace") or [])
         campaign_ledger["task_outcome_count"] = len(state.get("campaign_task_outcomes") or [])
         campaign_ledger["http_observation_count"] = len(state.get("smart_http_observations") or [])
         paths = export_all_formats(

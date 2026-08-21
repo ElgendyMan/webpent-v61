@@ -94,6 +94,7 @@ NODE_AUTH = "auth"
 NODE_RECON = "recon"
 NODE_CRAWLER = "crawler"
 NODE_SCOPE_ENFORCER = "scope_enforcer"
+NODE_SCOPE_REVIEW = "scope_review"
 NODE_WAF_DETECTOR = "waf_detector"
 NODE_HYPOTHESIS = "hypothesis"
 NODE_PAYLOAD_GENERATOR = "payload_generator"
@@ -280,6 +281,24 @@ def route_after_auth(state: PentestState) -> str:
             return NODE_TARGET_UNDERSTANDING
         return NODE_HYPOTHESIS
     return NODE_RECON
+
+
+def route_after_scope_enforcer(state: PentestState) -> str:
+    """Stop on discovered scope drift until an operator approves it."""
+    return NODE_SCOPE_REVIEW if state.get("scope_drift_detected") else NODE_WAF_DETECTOR
+
+
+def scope_review_node(state: PentestState) -> dict[str, Any]:
+    """Record the explicit scope-review checkpoint without authorizing it."""
+    return {
+        "scope_review_blocked": state.get("scope_drift_approved") is not True,
+        "scope_review_required": True,
+    }
+
+
+def route_after_scope_review(state: PentestState) -> str:
+    """Continue only after an explicit operator approval; otherwise stop."""
+    return NODE_WAF_DETECTOR if state.get("scope_drift_approved") is True else END
 
 
 def route_after_hypothesis(state: PentestState) -> str:
@@ -574,6 +593,7 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_CLOUD_STORAGE, cloud_storage_node)
     graph.add_node(NODE_TARGET_UNDERSTANDING, target_understanding_node)
     graph.add_node(NODE_SCOPE_ENFORCER, scope_enforcer_node)
+    graph.add_node(NODE_SCOPE_REVIEW, scope_review_node)
     graph.add_node(NODE_WAF_DETECTOR, waf_detector_node)
     graph.add_node(NODE_HYPOTHESIS, hypothesis_node)
     graph.add_node(NODE_PAYLOAD_GENERATOR, payload_generator_node)
@@ -652,7 +672,16 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
         },
     )
     graph.add_edge(NODE_TARGET_UNDERSTANDING, NODE_SCOPE_ENFORCER)
-    graph.add_edge(NODE_SCOPE_ENFORCER, NODE_WAF_DETECTOR)
+    graph.add_conditional_edges(
+        NODE_SCOPE_ENFORCER,
+        route_after_scope_enforcer,
+        {NODE_SCOPE_REVIEW: NODE_SCOPE_REVIEW, NODE_WAF_DETECTOR: NODE_WAF_DETECTOR},
+    )
+    graph.add_conditional_edges(
+        NODE_SCOPE_REVIEW,
+        route_after_scope_review,
+        {NODE_WAF_DETECTOR: NODE_WAF_DETECTOR, END: END},
+    )
     graph.add_edge(NODE_WAF_DETECTOR, NODE_HYPOTHESIS)
 
     graph.add_conditional_edges(
@@ -808,7 +837,7 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     else:
         compiled = graph.compile(
             checkpointer=checkpointer,
-            interrupt_before=[NODE_EXECUTION_SANDBOX],
+            interrupt_before=[NODE_SCOPE_REVIEW, NODE_EXECUTION_SANDBOX],
         )
         logger.info("Graph compiled with HITL interrupt before %s", NODE_EXECUTION_SANDBOX)
 

@@ -42,6 +42,7 @@ def test_high_finding_gets_independent_provider_signal() -> None:
     assert review["provider"] == "anthropic"
     assert review["verdict"] == "agree"
     assert review["evidence_preserved"] is True
+    assert result[0].evidence["evidence_bundle"]["ensemble_review"]["verdict"] == "agree"
 
 
 def test_low_finding_is_not_sent_to_ensemble() -> None:

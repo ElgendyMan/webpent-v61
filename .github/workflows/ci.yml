@@ -68,7 +68,7 @@ jobs:
           --cov=webpent
           --cov-report=term-missing
           --cov-report=xml:coverage.xml
-          --cov-fail-under=35
+          --cov-fail-under=66
 
       - name: Lint touched P0/P1 surfaces
         run: >-

@@ -284,6 +284,11 @@ def build_report_data(
             else {}
         ),
         "campaign_ledger": _redact_report_value(campaign_ledger or {}),
+        "llm_budget_trace": _redact_report_value(
+            (campaign_ledger or {}).get("llm_budget_trace", [])
+            if isinstance(campaign_ledger, dict)
+            else []
+        ),
         "proof_observability": _redact_report_value(proof_observability or {}),
         "smart_coverage_gate": {
             "status": "ready" if smart_gate_ledger else "not_available",

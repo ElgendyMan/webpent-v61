@@ -88,12 +88,16 @@ def apply_ensemble_review(
             raw = _invoke_review(runnable, finding)
             verdict, reason = _parse_signal(raw)
             evidence = dict(_field(finding, "evidence", {}) or {})
-            evidence["ensemble_review"] = {
+            review = {
                 "provider": provider,
                 "verdict": verdict,
                 "reason": reason,
                 "evidence_preserved": True,
             }
+            evidence["ensemble_review"] = review
+            bundle = dict(evidence.get("evidence_bundle") or {})
+            bundle["ensemble_review"] = review
+            evidence["evidence_bundle"] = bundle
             output.append(
                 finding.model_copy(update={"evidence": evidence})
                 if hasattr(finding, "model_copy")

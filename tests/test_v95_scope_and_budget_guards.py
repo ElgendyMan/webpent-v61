@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from webpent.graph.builder import (
+    END,
+    NODE_SCOPE_REVIEW,
+    NODE_WAF_DETECTOR,
+    route_after_scope_enforcer,
+    route_after_scope_review,
+)
 from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.shared.kev import enrich_finding_with_kev
 from webpent.shared.llm_reliability import llm_budget_allows
@@ -14,6 +21,12 @@ def test_scope_drift_requires_human_approval() -> None:
     assert event["detected"] is True
     assert event["requires_human_approval"] is True
     assert event["out_of_scope_origins"] == ["https://api.test"]
+
+
+def test_scope_drift_routes_to_explicit_review_and_stops_without_approval() -> None:
+    assert route_after_scope_enforcer({"scope_drift_detected": True}) == NODE_SCOPE_REVIEW
+    assert route_after_scope_review({"scope_drift_approved": False}) == END
+    assert route_after_scope_review({"scope_drift_approved": True}) == NODE_WAF_DETECTOR
 
 
 def test_same_origin_has_no_scope_drift() -> None:
@@ -45,5 +58,8 @@ def test_kev_context_is_advisory_only() -> None:
     )
     enriched = enrich_finding_with_kev(finding, ["CVE-2024-12345"])
     assert enriched.severity == finding.severity
+    assert enriched.confidence == "firm"
+    assert enriched.confidence_level == finding.confidence_level
+    assert enriched.evidence["kev_context"]["confidence_adjustment"]["to"] == "firm"
     assert enriched.evidence["kev_context"]["advisory_only"] is True
     assert enriched.evidence["kev_context"]["does_not_confirm"] is True
