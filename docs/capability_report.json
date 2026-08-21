@@ -283,7 +283,7 @@
       "validator_status": "offline-fixture"
     }
   ],
-  "generated_at": "2026-08-21T19:05:02.003761+00:00",
+  "generated_at": "2026-08-21T19:20:54.367998+00:00",
   "ledger": "docs/waptlab_coverage_ledger.json",
   "live_qualification": false,
   "notes": [

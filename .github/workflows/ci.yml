@@ -51,10 +51,11 @@ jobs:
           uv lock --check
           uv run python -m pip check
 
-      - name: Run G-02 static and execution-plane gate
+      - name: Run G-02 static, independent, and pre-commit gate
         run: |
           uv run python scripts/scan_direct_io.py
           uv run python scripts/check_g02_runtime.py
+          uv run python scripts/check_g02_precommit.py
 
       - name: Run critical security contracts
         run: >-
@@ -74,6 +75,9 @@ jobs:
           --cov-report=term-missing
           --cov-report=xml:coverage.xml
           --cov-fail-under=66
+
+      - name: Lint source, tests, and scripts
+        run: uv run ruff check src tests scripts --output-format concise
 
       - name: Lint touched P0/P1 surfaces
         run: >-
@@ -109,6 +113,22 @@ jobs:
       - name: Dependency vulnerability audit
         run: uv run pip-audit --strict --requirement requirements-audit.txt --format json --output pip-audit.json
 
+      - name: Generate CycloneDX SBOM
+        run: >-
+          uv run pip-audit --requirement requirements-audit.txt
+          --format cyclonedx-json --output sbom.cdx.json
+
+      - name: Scan tracked source/config for high-confidence secrets
+        run: uv run python scripts/check_tracked_secrets.py
+
+      - name: Verify release artifact integrity and reproducibility contracts
+        run: >-
+          uv run pytest
+          tests/test_release_artifact_audit.py
+          tests/test_report_hash_integrity.py
+          tests/test_v61_remaining_plan_artifacts.py
+          --strict-markers --tb=short
+
       - name: Upload quality artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -118,6 +138,7 @@ jobs:
             coverage.xml
             pip-audit.json
             requirements-audit.txt
+            sbom.cdx.json
           if-no-files-found: ignore
 
       - name: Upload coverage artifact
