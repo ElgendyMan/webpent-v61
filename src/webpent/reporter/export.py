@@ -32,6 +32,7 @@ from webpent.shared.report_quality import (
     enforce_report_quality,
     evaluate_report_quality,
     lifecycle_stage,
+    normalize_report_finding,
 )
 from webpent.state.reducers import model_get
 from webpent.utils.compliance import tag_finding
@@ -154,7 +155,10 @@ def build_report_data(
     final report as an explainability appendix — a natural extension of
     the project's existing audit-trail ethos."
     """
-    findings_dicts = [_redact_report_value(_finding_to_dict(f)) for f in findings]
+    normalized_findings = [normalize_report_finding(f) for f in findings]
+    findings_dicts = [
+        _redact_report_value(_finding_to_dict(f)) for f in normalized_findings
+    ]
     quality_result = (
         enforce_report_quality(findings, require_proof_bundle=require_proof_bundle)
         if strict_quality_gate

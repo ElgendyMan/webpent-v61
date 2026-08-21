@@ -325,6 +325,55 @@ class RuntimeFactory:
         )
 
     @staticmethod
+    def descriptor(context: RuntimeContext) -> dict[str, Any]:
+        """Return a checkpoint-safe descriptor, never live handlers or transports."""
+        settings = context.settings
+        return {
+            "schema_version": context.schema_version,
+            "engagement_id": context.engagement_id,
+            "campaign_id": context.campaign_id,
+            "target_origin": context.target_origin,
+            "scan_mode": str(getattr(settings.scan_mode, "value", settings.scan_mode)),
+            "action_ledger_path": str(settings.action_ledger_path),
+            "smart_max_actions": int(settings.smart_max_actions),
+            "smart_action_budget": float(settings.smart_action_budget),
+            "used_actions": int(context.action_authority.used_actions),
+            "used_budget": float(context.action_authority.used_budget),
+            "manifest": context.capabilities.ensure_discovered(),
+        }
+
+    @classmethod
+    def from_descriptor(cls, descriptor: Mapping[str, Any]) -> RuntimeContext | None:
+        """Rebuild a live context from a redacted checkpoint descriptor."""
+        if not isinstance(descriptor, Mapping):
+            return None
+        try:
+            settings = get_settings()
+            updates: dict[str, Any] = {}
+            for key in (
+                "scan_mode",
+                "action_ledger_path",
+                "smart_max_actions",
+                "smart_action_budget",
+            ):
+                if key in descriptor and descriptor[key] not in (None, ""):
+                    updates[key] = descriptor[key]
+            if updates:
+                settings = settings.model_copy(update=updates)
+            manifest = descriptor.get("manifest")
+            return cls.create(
+                engagement_id=str(descriptor.get("engagement_id") or ""),
+                campaign_id=str(descriptor.get("campaign_id") or ""),
+                target_origin=str(descriptor.get("target_origin") or ""),
+                settings=settings,
+                manifest=dict(manifest) if isinstance(manifest, Mapping) else None,
+                used_actions=int(descriptor.get("used_actions") or 0),
+                used_budget=float(descriptor.get("used_budget") or 0.0),
+            )
+        except (TypeError, ValueError, OSError):
+            return None
+
+    @staticmethod
     def blocked_result(*, node: str, reason: str) -> dict[str, Any]:
         return {
             "status": "blocked_by_configuration",

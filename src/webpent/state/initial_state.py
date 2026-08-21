@@ -11,16 +11,24 @@ load credentials from disk, or print operator-supplied values.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
-from webpent.config.settings import ScanMode, ScanProfile, get_settings, resolve_scan_profile
+from webpent.config.settings import (
+    ScanMode,
+    ScanProfile,
+    get_settings,
+    profile_requires_proof_bundle,
+    resolve_scan_profile,
+)
 from webpent.shared.campaign_planner import build_campaign_plan
 from webpent.shared.campaigns import (
     build_generic_campaign_ledger,
     build_waptlab_campaign_ledger,
 )
 from webpent.shared.capability_manifest import build_capability_manifest
+from webpent.shared.runtime import RuntimeFactory
 
 if TYPE_CHECKING:
     from webpent.models.targets import Target
@@ -49,6 +57,7 @@ def build_initial_state(
     additional_target_origins: list[str] | None = None,
     client_id: str | None = None,
     engagement_id: str | None = None,
+    campaign_id: str | None = None,
     credentials: dict[str, str] | None = None,
     session_cookies: dict[str, str] | None = None,
     identity_profiles: dict[str, Any] | None = None,
@@ -93,6 +102,10 @@ def build_initial_state(
     else:
         raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
     settings = get_settings()
+    if action_ledger_path:
+        settings = settings.model_copy(
+            update={"action_ledger_path": Path(action_ledger_path).expanduser()}
+        )
     resolved_scan_mode = settings.scan_mode
     if profile is not None:
         resolved_profile, resolved_scan_mode = resolve_scan_profile(profile)
@@ -106,7 +119,19 @@ def build_initial_state(
             ScanMode.SAFE_SMART: ScanProfile.SMART_OBSERVE,
             ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
         }[resolved_scan_mode]
+    vip_proof_required = profile_requires_proof_bundle(resolved_profile)
     capability_manifest = build_capability_manifest(settings)
+    resolved_campaign_id = (
+        str(campaign_id or f"{resolved_engagement_id or 'engagement'}:main").strip()
+        or "engagement:main"
+    )
+    runtime_context = RuntimeFactory.create(
+        engagement_id=resolved_engagement_id or "",
+        campaign_id=resolved_campaign_id,
+        target_origin=target_url,
+        settings=settings,
+        manifest=capability_manifest,
+    )
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)
     governance_profile = profile_value if profile is not None else str(scan_mode_value)
@@ -214,7 +239,12 @@ def build_initial_state(
             "fail_closed": True,
             "auto_approve_requested": bool(auto_approve),
             "smart_auto_approve": bool(settings.smart_auto_approve),
-            "require_idempotency": bool(settings.smart_require_idempotency),
+            "require_idempotency": bool(
+                settings.smart_require_idempotency or vip_proof_required
+            ),
+            "require_proof_bundle": bool(
+                settings.smart_require_proof_bundle or vip_proof_required
+            ),
         },
         "action_ledger_path": action_ledger_path,
         "action_budget": {
@@ -233,6 +263,8 @@ def build_initial_state(
         "rabbit_hole_ledger": {},
         "coverage_ledger": {},
         "campaign_inventory": resolved_inventory,
+        "campaign_id": resolved_campaign_id,
+        "runtime_context": runtime_context,
         "campaign_ledger": (
             build_generic_campaign_ledger()
             if resolved_inventory == "generic"

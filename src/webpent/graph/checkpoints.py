@@ -124,6 +124,15 @@ def _set_busy_timeout(conn: sqlite3.Connection) -> None:
 
 def _redact_channel(channel: str, value: Any) -> Any:
     """Return a checkpoint-safe copy of one state channel."""
+    if channel == "runtime_context":
+        try:
+            from webpent.shared.runtime import RuntimeContext, RuntimeFactory
+
+            if isinstance(value, RuntimeContext):
+                return RuntimeFactory.descriptor(value)
+            return dict(value) if isinstance(value, dict) else {}
+        except Exception:
+            return {}
     if channel in _SECRET_CHANNELS:
         return {}
     if channel == "jwt_weak_secret_candidates":
@@ -152,12 +161,19 @@ def _redact_channel(channel: str, value: Any) -> Any:
 
 def _redact_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
     """Copy a checkpoint and remove operator secrets before serialization."""
-    safe_checkpoint = copy.deepcopy(checkpoint)
-    channels = safe_checkpoint.get("channel_values")
-    if isinstance(channels, dict):
-        safe_checkpoint["channel_values"] = {
+    safe_checkpoint = {
+        key: copy.deepcopy(value)
+        for key, value in checkpoint.items()
+        if key != "channel_values"
+    }
+    channels = checkpoint.get("channel_values")
+    safe_checkpoint["channel_values"] = (
+        {
             channel: _redact_channel(channel, value) for channel, value in channels.items()
         }
+        if isinstance(channels, dict)
+        else {}
+    )
     return safe_checkpoint
 
 
@@ -211,6 +227,23 @@ def _restore_runtime_secrets(checkpoint_tuple: Any) -> Any:
             checkpoint_tuple.config.get("configurable", {}).get("thread_id", ""),
             exc,
         )
+
+    try:
+        from webpent.shared.runtime import RuntimeFactory
+
+        descriptor = channels.get("runtime_context")
+        rebuilt_runtime = RuntimeFactory.from_descriptor(descriptor)
+        if rebuilt_runtime is not None:
+            channels["runtime_context"] = rebuilt_runtime
+        else:
+            channels.pop("runtime_context", None)
+    except Exception as exc:
+        logger.error(
+            "Checkpoint runtime context restoration failed closed for thread_id=%s: %s",
+            checkpoint_tuple.config.get("configurable", {}).get("thread_id", ""),
+            exc,
+        )
+        channels.pop("runtime_context", None)
 
     pending_writes = checkpoint_tuple.pending_writes
     if pending_writes:

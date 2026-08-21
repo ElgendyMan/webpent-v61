@@ -6,6 +6,18 @@
         "reason": "blocked_by_precondition"
       },
       {
+        "capability": "httpx",
+        "reason": "infrastructure_failure"
+      },
+      {
+        "capability": "katana",
+        "reason": "infrastructure_failure"
+      },
+      {
+        "capability": "nuclei",
+        "reason": "infrastructure_failure"
+      },
+      {
         "capability": "active_workflow",
         "reason": "disabled_by_profile"
       }
@@ -15,6 +27,23 @@
         "available": false,
         "policy": "read-only",
         "status": "disabled_by_profile"
+      },
+      "autopentestx_observation": {
+        "authority": "webpent_validator",
+        "available": true,
+        "cleanup": "not_applicable_import_only",
+        "concurrency_limit": 1,
+        "execution_available": false,
+        "fail_closed": true,
+        "max_input_bytes": 524288,
+        "max_records": 256,
+        "network_io": false,
+        "partial_output_supported": true,
+        "retry_budget": 0,
+        "source_commit": "c324bc5b8aa68b549652c403fd674b142617f211",
+        "status": "adapter_only",
+        "subprocess_io": false,
+        "timeout_seconds": 0
       },
       "browser": {
         "available": true,
@@ -34,23 +63,42 @@
         "status": "available"
       },
       "httpx": {
-        "available": true,
+        "available": false,
         "configured": "httpx-pd",
-        "status": "available"
+        "status": "infrastructure_failure"
       },
       "katana": {
-        "available": true,
+        "available": false,
         "configured": "katana",
-        "status": "available"
+        "status": "infrastructure_failure"
       },
       "llm": {
         "available": true,
         "status": "available"
       },
-      "nuclei": {
+      "nettacker_observation": {
+        "authority": "webpent_validator",
         "available": true,
+        "cleanup": "not_applicable_import_only",
+        "concurrency_limit": 1,
+        "execution_available": false,
+        "fail_closed": true,
+        "max_input_bytes": 524288,
+        "max_records": 256,
+        "network_io": false,
+        "partial_output_supported": true,
+        "retry_budget": 0,
+        "source_commit": "d274c40a276076c7d40260489d06943b756bd9d1",
+        "source_project": "Nettacker",
+        "source_version": "0.4.1",
+        "status": "adapter_only",
+        "subprocess_io": false,
+        "timeout_seconds": 0
+      },
+      "nuclei": {
+        "available": false,
         "configured": "nuclei",
-        "status": "available"
+        "status": "infrastructure_failure"
       },
       "oob": {
         "available": false,
@@ -65,8 +113,8 @@
   "checks": {
     "alembic": {
       "available": true,
-      "ini_present": true,
-      "status": "ok",
+      "ini_present": false,
+      "status": "degraded (alembic.ini missing)",
       "version": "1.19.1"
     },
     "celery_payload_key": {
@@ -96,6 +144,11 @@
       "status": "ok (WebSocket SSRF guard active)",
       "version": "1.48.0",
       "ws_guard_available": true
+    },
+    "profile_security": {
+      "fail_closed": true,
+      "profile": "lab",
+      "status": "ok — lab security defaults preserved"
     },
     "redis_security": {
       "broker": {

@@ -132,8 +132,22 @@ def test_html_report_surfaces_quality_gate_and_finding_lifecycle(tmp_path):
 
     assert "Evidence Quality Gate" in html
     assert "Status:" in html
-    assert "Lifecycle: Confirmed" in html
+    assert "Lifecycle: Reproduction" in html
     assert _SECRET not in html
+
+    from webpent.reporter.export import build_report_data
+
+    data = build_report_data("https://target.test", [_finding()])
+    assert data["findings"][0]["confidence_level"] == "Needs Human Review"
+
+
+def test_report_promotion_does_not_mutate_live_finding():
+    from webpent.reporter.export import build_report_data
+
+    finding = _finding()
+    build_report_data("https://target.test", [finding])
+    assert finding["confidence_level"] == "Tool-Confirmed"
+    assert finding["confidence"] == "high"
 
 
 def test_report_quality_flag_is_safe_by_default_and_env_configurable(monkeypatch):

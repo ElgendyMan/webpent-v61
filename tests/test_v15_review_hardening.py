@@ -43,7 +43,8 @@ def test_exporter_accepts_checkpoint_finding_dict_and_builds_tags():
     data = build_report_data("http://target.test", [_finding_dict()])
 
     assert data["total_findings"] == 1
-    assert data["confirmed_count"] == 1
+    assert data["confirmed_count"] == 0
+    assert data["findings"][0]["confidence_level"] == "Needs Human Review"
     assert data["severity_counts"]["high"] == 1
     assert "CWE-79" in data["findings"][0]["compliance_tags"]
     assert data["findings"][0]["evidence_hash"]

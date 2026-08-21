@@ -410,3 +410,7 @@ class PentestState(TypedDict, total=False):
     # checkpoints; lesson retrieval fails closed when either value is absent.
     client_id: str | None
     engagement_id: str | None
+    # Runtime spine identity is additive. The live object is checkpoint-redacted
+    # to a descriptor and rebuilt at resume boundaries.
+    campaign_id: str
+    runtime_context: Any

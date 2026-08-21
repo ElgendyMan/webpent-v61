@@ -19,7 +19,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from webpent.api.scan_registry import get_thread_ids_by_engagement_id
-from webpent.config.settings import get_settings
+from webpent.config.settings import get_settings, profile_requires_proof_bundle
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Finding, Severity
 from webpent.shared.coverage_ledger import project_coverage_ledger
@@ -36,6 +36,22 @@ from webpent.state.reducers import model_get
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
+
+
+def _proof_required_for_state(state: PentestState, settings: Any) -> bool:
+    """Resolve proof policy from settings plus the profile carried by state."""
+    governance = state.get("smart_governance") or {}
+    profile = (
+        state.get("profile")
+        or governance.get("public_profile")
+        or governance.get("profile")
+    )
+    return bool(
+        getattr(settings, "smart_require_proof_bundle", False)
+        or governance.get("require_proof_bundle", False)
+        or profile_requires_proof_bundle(profile)
+    )
+
 
 _REPORT_MD_FILENAME = "report.md"
 _REPORT_HTML_FILENAME = "report.html"
@@ -460,7 +476,7 @@ def reporter_node(state: PentestState) -> dict:
 
     target_url = str(model_get(target, "url", "") or "")
     settings = get_settings()
-    proof_required = bool(getattr(settings, "smart_require_proof_bundle", False))
+    proof_required = _proof_required_for_state(state, settings)
     report_findings = _findings_with_proof_bundles(
         findings,
         state.get("proof_bundles") or [],
@@ -732,7 +748,7 @@ def reporter_node_bug_bounty(state: PentestState) -> dict:
     crawled_data: dict[str, Any] = state.get("crawled_data") or {}
     target_url = str(model_get(target, "url", "") or "")
     settings = get_settings()
-    proof_required = bool(getattr(settings, "smart_require_proof_bundle", False))
+    proof_required = _proof_required_for_state(state, settings)
     report_findings = _findings_with_proof_bundles(
         findings,
         state.get("proof_bundles") or [],

@@ -80,6 +80,14 @@ def resolve_scan_profile(value: str | ScanProfile | None) -> tuple[ScanProfile, 
     return profile, _PROFILE_TO_SCAN_MODE[profile]
 
 
+def profile_requires_proof_bundle(value: str | ScanProfile | None) -> bool:
+    """Return whether a public scan profile requires sealed proof for promotion."""
+    if value is None:
+        return False
+    profile, _ = resolve_scan_profile(value)
+    return profile is ScanProfile.VIP_QUALIFICATION
+
+
 class EnvironmentProfile(str, Enum):
     """Deployment posture used by startup security gates."""
 
@@ -1145,11 +1153,30 @@ class Settings(BaseSettings):
         # Environment profile is explicit and fail-closed for non-lab deployments.
         # The lab default preserves existing local/offline behavior while staging and
         # production cannot silently run with authentication disabled.
-        if self.environment_profile is not EnvironmentProfile.LAB and not self.auth_enabled:
+        strict_profile = self.environment_profile is not EnvironmentProfile.LAB
+        if strict_profile and not self.auth_enabled:
             raise ValueError(
                 "SECURITY HARD STOP: environment_profile staging/production requires "
                 "auth_enabled=True"
             )
+        if strict_profile:
+            if not self.cors_origins or "*" in self.cors_origins:
+                raise ValueError(
+                    "SECURITY HARD STOP: staging/production requires explicit cors_origins"
+                )
+            if not self.rate_limit_enabled:
+                raise ValueError(
+                    "SECURITY HARD STOP: staging/production requires rate_limit_enabled=True"
+                )
+            if not self.rate_limit_redis_url.lower().startswith("rediss://"):
+                raise ValueError(
+                    "SECURITY HARD STOP: staging/production requires a rediss:// "
+                    "rate_limit_redis_url"
+                )
+            if self.allow_insecure_tls:
+                raise ValueError(
+                    "SECURITY HARD STOP: staging/production cannot enable allow_insecure_tls"
+                )
 
         # --- JWT secret hard-stop (V6 Zero-Day Patched P0-2) ---
         if self.auth_enabled is True and self.jwt_secret_key in self._INSECURE_JWT_DEFAULTS:

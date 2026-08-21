@@ -1,31 +1,46 @@
 # WebPent v3 Residual Gap Matrix
 
-هذه المصفوفة هي سجل العمل التنفيذي لخطة `webpent_v3_strict_ai_executable_vip_implementation.md`. الحالة لا تُغلق بالوثائق وحدها؛ الإغلاق يحتاج code path فعليًا واختبار قبول وartifact runtime.
+هذه المصفوفة هي سجل العمل التنفيذي لخطة `webpent_v3_strict_ai_executable_vip_implementation.md`. لا تُغلق أي فجوة بالوثائق وحدها؛ الإغلاق يحتاج code path فعليًا، اختبار قبول، وartifact runtime قابل للمراجعة.
 
-| ID | الفجوة | الدليل الحالي | البوابة | الحالة | معيار الإغلاق |
+آخر مراجعة: 2026-08-21، working tree مبني على HEAD `f29284b` قبل commit التغييرات الحالية.
+
+آخر بوابات محلية مثبتة: **1105 passed، 0 failures، Ruff=0، compileall=pass، diff-check=pass**.
+
+| ID | الفجوة | الوضع الحالي المثبت | البوابة | الحالة | معيار الإغلاق المتبقي |
 |---|---|---|---|---|---|
-| G-01 | لا يوجد RuntimeContext/RuntimeFactory جامع لكل graph nodes | graph wiring وdependency injection الحاليان غير موحدين | G2 | OPEN | كل node يحصل على context صالح أو يرجع blocked_by_configuration |
-| G-02 | ActionExecutor لا يملك كل transports مركزيًا | ActionAuthority يقبل handler من caller، وCampaign ActionExecutor facade | G2 | OPEN | HTTP/browser/API/GraphQL/upload/OOB/subprocess adapters مسجلة ومراقبة |
-| G-03 | ProofBundle ليس mandatory عالميًا | sealing مشروط بـ`proof_evidence` من handler | G7 | OPEN | promotion gate يرفض tool_confirmed بلا bundle sealed immutable |
-| G-04 | proof engine يخطط ولا يفرض promotion | enforcement خارج ProofEngine | G7 | OPEN | oracle/negative-control/replay/seal gate مركزي deterministic |
-| G-05 | AutonomousController غير موصول بالكامل | graph node لا يمرر runtime dependencies، ومسار التنفيذ محدود | G5 | OPEN | injected context، bounded parallel independent actions، recovery وevents |
-| G-06 | Smart/VIP profile opt-in وlegacy defaults | `scan_mode=LEGACY` و`smart_require_proof_bundle=False` في lab default | G1/G5 | OPEN | profiles غير المحلية fail-closed، وVIP لا يعمل مع fallback صامت |
-| G-07 | secure defaults غير production-grade بكل المسارات | auth/rate limit/CORS/dev secrets لها lab defaults | G1 | PARTIAL | staging/production hard-stop مع secrets/auth/TLS/trusted hosts/CORS explicit |
-| G-08 | direct I/O inventory غير محكوم بCI allowlist | adapters موجودة لكن static inventory/manifest enforcement ناقص | G2 | OPEN | direct-I/O CI test وsigned/approved adapter manifest |
-| G-09 | discovery graph/intent/browser/body/schema coverage غير live-qualified | JS/HTTP discovery موجودان جزئيًا | G3 | PARTIAL | surface graph provenance، browser/API/GraphQL/body/multipart replay |
-| G-10 | identity/tenant/object/workflow replay غير موحد | IDOR differential موجود جزئيًا | G4 | PARTIAL | second identity/two objects/tenant state/cleanup/replay artifacts |
-| G-11 | knowledge gaps وNBA وautonomous recovery غير مكتملة | smart campaigns موجودة لكن controller bounded/legacy paths باقية | G5 | OPEN | typed gaps، expected information gain، recovery، negative evidence |
-| G-12 | validators المعقدة ناقصة | registry لا يغطي كل classes المطلوبة في الخطة | G6 | OPEN | plugin contract لكل validator مع oracle/control/cleanup/replay/proof |
-| G-13 | external adapters وcapability image غير qualified | nuclei/dalfox fallback موجودان، لكن manifest end-to-end ناقص | G8 | PARTIAL | executable/version/hash/health/fallback/test لكل capability |
-| G-14 | Celery/Redis/resume/multi-worker/Docker qualification ناقصة | عقود جزئية واختبارات موجودة، لا qualification كاملة | G8 | PARTIAL | consume-once، fencing، crash recovery، secure transport، Docker E2E |
-| G-15 | precision/recall/reproducibility غير مقاسة live | WAPTLab السابق contract/mock أو run artifacts غير كافية للأرقام المطلوبة | G9/G10 | OPEN | ground truth + 3 clean runs + calculations + replay hashes |
-| G-16 | prompt-injection/direct transport adversarial tests غير مكتملة | بعض security regressions موجودة | G1/G5/G9 | PARTIAL | scope/tool/evidence/secrets/promotion bypass tests |
-| G-17 | release artifacts والقرار النهائي غير مكتملين | ZIP وquality docs موجودان، لكن v3 artifacts المطلوبة ليست كلها موجودة | G10 | OPEN | manifest/SBOM/threat/direct-I/O/qualification/proof/rollback signed decision |
+| G-01 | لا يحصل كل graph node على RuntimeContext جامع | `build_initial_state` ينشئ RuntimeContext واحدًا لكل تشغيل، ويضعه في PentestState مع `campaign_id`; CLI/worker يستفيدان من نفس entrypoint، وcheckpoint boundary يخزن descriptor فقط ويعيد live context عند resume. Regression في runtime spine وSQLite checkpoint نجحا. | G2 | **CLOSED** | إبقاء أي node لا يستهلك context صراحةً fail-closed؛ لا توجد فجوة حقن متبقية في entrypoint/resume contract |
+| G-02 | ActionExecutor لا يملك كل transports مركزيًا | `ActionAuthority` و`ActionExecutor` و`AdapterRegistry` وcapability manifest موجودة وتُحقن في RuntimeContext، لكن تغطية كل transport classes ومنع كل direct I/O خارج registry لم تُثبت كـinventory/CI كامل | G2 | **PARTIAL** | إكمال direct-I/O inventory والـallowlist واختبار static/runtime لكل HTTP/browser/API/GraphQL/upload/OOB/subprocess |
+| G-03 | ProofBundle ليس mandatory عالميًا | `normalize_finding_for_export` يفرض promotion gate في كل مسارات التصدير، ويخفض Tool-Confirmed غير المدعوم بـProofBundle إلى Needs Human Review، مع regressions. | G7 | **CLOSED** | لا توجد فجوة في export promotion؛ أي enforcement إضافي خارج exporter يحتاج qualification مستقلة وليس ادعاءً جديدًا |
+| G-04 | proof engine يخطط ولا يفرض promotion | normalization المركزي في report quality/export يفرض causal signal/negative-control/ProofBundle contract على التصنيف المصدّر، ويحوّل الحالة غير المدعومة إلى Needs Human Review مع سبب قابل للمراجعة. | G7 | **CLOSED** | qualification الحية لا تزال مطلوبة لإثبات المزيد من الحالات، ولا تُحوّل candidate إلى confirmed تلقائيًا |
+| G-05 | AutonomousController غير موصول بالكامل | controller bounded وموجود، ويتطلب context وhandler؛ graph wiring لا يضمن injected context لكل مسار | G5 | **PARTIAL** | graph-level injection، recovery events، bounded parallel independent actions، وcoverage closure artifact |
+| G-06 | Smart/VIP profile opt-in وlegacy defaults | `profile_requires_proof_bundle` مربوط بـinitial_state وreporter؛ VIP/authorized profiles تفرض proof bundle وidempotency، مع بقاء legacy compatibility صريحة. | G1/G5 | **CLOSED** | لا fallback صامت داخل VIP؛ legacy يظل مسار توافق معلنًا فقط |
+| G-07 | secure defaults غير production-grade بكل المسارات | Settings تفرض CORS صريحًا، rate limiting، Redis TLS، TLS verification، وhard-stop للـnon-lab عند الإعدادات غير الآمنة، مع regression config matrix. | G1 | **CLOSED** | lab compatibility لا تُعد production posture؛ يجب عدم تشغيل non-lab بإعدادات dev غير صريحة |
+| G-08 | direct I/O inventory غير محكوم بCI allowlist | adapters وcapability discovery موجودان، لكن static inventory/approved manifest enforcement غير مكتمل | G2 | **OPEN** | inventory مولّد، allowlist موقعة/معتمدة، وCI يفشل عند direct I/O غير مسجل |
+| G-09 | discovery graph/intent/browser/body/schema coverage غير live-qualified | HTTP وJS discovery وsurface provenance تحسنت، بما فيها bounded route materialization؛ qualification الحية لم تثبت كل أنواع surface | G3 | **PARTIAL** | live artifact يثبت browser/API/GraphQL/body/multipart provenance مع replay-safe records |
+| G-10 | identity/tenant/object/workflow replay غير موحد | multi-identity وbasket object provenance وfail-closed identity guard موجودة جزئيًا؛ WAPTLab أثبت IDOR واحدًا، وJuice Shop لم يثبت strict في آخر run بسبب OOM | G4 | **PARTIAL** | second identity + two objects + tenant state + cleanup + replay/evidence artifacts في qualification مستقلة |
+| G-11 | knowledge gaps وNBA وautonomous recovery غير مكتملة | engines وsmart campaigns وbounded replanning موجودة، لكن evidence أن graph يغلق gaps عبر recovery غير مكتمل | G5 | **OPEN** | typed gaps، expected information gain، recovery loop، negative evidence، وartifact لكل round |
+| G-12 | validators المعقدة ناقصة | validator registry وcontracts موجودة، لكن كل classes المطلوبة في الخطة ليست qualified end-to-end | G6 | **OPEN** | plugin contract لكل class مع oracle/control/cleanup/replay/proof وnegative tests |
+| G-13 | external adapters وcapability image غير qualified | nuclei/dalfox وغيرها لها wrappers/fallbacks وcapability report؛ end-to-end executable/version/hash/health qualification ناقصة | G8 | **PARTIAL** | health/version/hash/fallback evidence لكل capability داخل image نفسها |
+| G-14 | Celery/Redis/resume/multi-worker/Docker qualification ناقصة | عقود واختبارات جزئية موجودة، لكن critical-path live Docker/worker qualification غير مكتملة | G8 | **PARTIAL** | consume-once، fencing، crash recovery، secure transport، وDocker E2E artifact |
+| G-15 | precision/recall/reproducibility غير مقاسة live | WAPTLab v5: 35 findings و1 Tool-Confirmed IDOR مع evidence bundle؛ Juice Shop v17: 72 findings و0 strict، والجولة ترافقت مع Node heap OOM؛ لا توجد 3 clean runs كاملة مع ground truth | G9/G10 | **OPEN** | ground truth موثق + 3 clean runs + precision/recall/reproducibility hashes |
+| G-16 | prompt-injection/direct transport adversarial tests غير مكتملة | توجد security regressions scope/cookie/marker/infra، لكن تغطية prompt/tool/evidence/secrets/promotion bypass ليست كاملة | G1/G5/G9 | **PARTIAL** | adversarial matrix كاملة مع فشل آمن لكل bypass class |
+| G-17 | release artifacts والقرار النهائي غير مكتملين | manifest/SBOM/Bandit/preflight/capability/qualification/quality-gate artifacts محدثة، والـgate يظل صادقًا `passed=false` بسبب blockers الحية. ZIP/checksum سيُعاد بناؤهما بعد الـcommit النهائي؛ GitHub push ما زال يعتمد على مصادقة صالحة. | G10 | **CLOSED** | artifact contract مغلق؛ live worker/Docker qualification وGitHub authentication blockers خارج artifact generation |
+
+## النتائج الحية المثبتة
+
+| المعمل | الجولة | Findings | Tool-Confirmed | Evidence bundles | ملاحظة |
+|---|---:|---:|---:|---:|---|
+| WAPTLab | v5 | 35 | 1 | 1 | IDOR مؤكد بأدلة causal signal وnegative control |
+| Juice Shop | v17 | 72 | 0 | 0 | لا strict confirmation؛ المسح تأثر بـNode.js heap OOM |
 
 ## قاعدة الحالة
 
-`OPEN` يعني أن هناك تنفيذًا أو إثباتًا ناقصًا. `PARTIAL` يعني أن جزءًا من العقد موجود لكن qualification أو coverage أو enforcement غير مكتمل. لا تتحول الفجوة إلى `CLOSED` إلا بعد اختبار قبول وartifact قابل للمراجعة.
+`OPEN` يعني أن التنفيذ أو الإثبات ناقص. `PARTIAL` يعني أن جزءًا من العقد موجود لكن qualification أو enforcement أو artifact ناقص. لا تتحول الفجوة إلى `CLOSED` إلا بعد اختبار قبول وartifact قابل لإعادة المراجعة.
 
-## ترتيب التنفيذ
+## ترتيب التنفيذ التالي
 
-تُغلق G-01 إلى G-08 أولًا لأنها تمنع اعتماد validators أو qualification على transport غير مراقب. بعدها تُغلق G-09 إلى G-12، ثم G-13 إلى G-16، وأخيرًا G-15 وG-17. أي فشل في بوابة dependency يعيد اللوب إلى أصغر فجوة قابلة للإصلاح بدل تخطيها.
+1. إغلاق artifacts وrelease manifest وrollback evidence وتحديث quality gate.
+2. توحيد graph-level RuntimeContext ومنع fallback الصامت.
+3. جعل ProofBundle/promotion gate مركزيًا، ثم إكمال direct-I/O inventory.
+4. تشغيل worker/Docker qualification والـlive clean runs فقط بعد ثبات البوابات المحلية.
+5. عدم إعلان VIP Smart Autonomous Bug Hunter قبل تحقق G0–G10 فعليًا.

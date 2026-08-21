@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from webpent.config.settings import Settings
+from webpent.graph.checkpoints import _redact_channel
+from webpent.models.targets import Target
 from webpent.shared.autonomous_controller import autonomous_controller_node
 from webpent.shared.runtime import (
     AdapterRegistry,
@@ -13,6 +15,7 @@ from webpent.shared.runtime import (
     RuntimeEventSink,
     RuntimeFactory,
 )
+from webpent.state.initial_state import build_initial_state
 
 
 def _settings(tmp_path: Path) -> Settings:
@@ -121,6 +124,31 @@ def test_autonomous_controller_node_blocks_without_runtime_context() -> None:
 
     assert result["status"] == "blocked_by_configuration"
     assert result["reason"] == "runtime_context_required"
+
+
+def test_initial_state_injects_and_checkpoint_roundtrips_runtime_context(
+    tmp_path: Path,
+) -> None:
+    state = build_initial_state(
+        Target(url="http://example.test"),
+        thread_id="engagement:initial-state",
+        engagement_id="engagement:initial-state",
+        profile="smart-observe",
+        action_ledger_path=str(tmp_path / "initial-state.sqlite3"),
+    )
+
+    context = state["runtime_context"]
+    assert context.valid is True
+    assert context.engagement_id == "engagement:initial-state"
+    assert state["campaign_id"] == "engagement:initial-state:main"
+    safe_descriptor = _redact_channel("runtime_context", context)
+    assert isinstance(safe_descriptor, dict)
+    assert "action_executor" not in safe_descriptor
+    restored = RuntimeFactory.from_descriptor(safe_descriptor)
+    assert restored is not None
+    assert restored.valid is True
+    assert restored.target_origin == "http://example.test"
+    assert restored.action_executor.authority is restored.action_authority
 
 
 def test_runtime_factory_rejects_invalid_target_without_raw_transport(

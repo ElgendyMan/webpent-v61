@@ -302,4 +302,35 @@ def test_non_lab_settings_require_auth_and_allow_secure_profile(monkeypatch) -> 
     monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-" + "x" * 40)
     monkeypatch.setenv("AUDIT_SECRET_KEY", "test-audit-secret-" + "x" * 40)
     monkeypatch.setenv("CELERY_PAYLOAD_KEY", "test-celery-key-" + "x" * 40)
+    monkeypatch.setenv("CORS_ORIGINS", '["https://console.example.test"]')
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_REDIS_URL", "rediss://rate-limit.example.test:6380/0")
     assert Settings().environment_profile.value == "production"
+
+
+def test_non_lab_settings_reject_insecure_transport_controls() -> None:
+    from pydantic import ValidationError
+
+    from webpent.config.settings import EnvironmentProfile, Settings
+
+    secure = {
+        "environment_profile": EnvironmentProfile.STAGING,
+        "auth_enabled": True,
+        "jwt_secret_key": "test-jwt-secret-" + "x" * 40,
+        "audit_secret_key": "test-audit-secret-" + "x" * 40,
+        "celery_payload_key": "test-celery-key-" + "x" * 40,
+        "cors_origins": ["https://console.example.test"],
+        "rate_limit_enabled": True,
+        "rate_limit_redis_url": "rediss://rate-limit.example.test:6380/0",
+    }
+    assert Settings(**secure).environment_profile is EnvironmentProfile.STAGING
+
+    for field, value in (
+        ("cors_origins", ["*"]),
+        ("rate_limit_enabled", False),
+        ("rate_limit_redis_url", "redis://rate-limit.example.test:6379/0"),
+        ("allow_insecure_tls", True),
+    ):
+        invalid = {**secure, field: value}
+        with pytest.raises(ValidationError, match="SECURITY HARD STOP"):
+            Settings(**invalid)

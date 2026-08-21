@@ -2,7 +2,7 @@
   "checks": [
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "-m",
         "compileall",
         "-q",
@@ -16,7 +16,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/ruff",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/ruff",
         "check",
         "src",
         "tests",
@@ -31,7 +31,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "-m",
         "pytest",
         "-q"
@@ -40,23 +40,23 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "",
         "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
-        "  /tmp/webpent_v72_git/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
+        "  /tmp/webpent_v72_git_recovered/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
         "    embeddings = HuggingFaceEmbeddings(**kwargs)",
         "",
-        "tests/test_v58_post_form_hypotheses.py: 10 warnings",
+        "tests/test_v58_post_form_hypotheses.py: 20 warnings",
+        "tests/test_v72_json_request_context.py: 21 warnings",
         "tests/test_v72_request_context_and_primary_identity.py: 10 warnings",
-        "  /tmp/webpent_v72_git/.venv/lib/python3.12/site-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
+        "  /tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "955 passed, 140 warnings in 21.22s"
+        "1105 passed, 199 warnings in 29.22s"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "scripts/verify_test_count.py",
         "--minimum",
         "818"
@@ -65,7 +65,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "    \"tests/test_vip_validator_plugins.py\": 6,",
+        "    \"tests/test_vip_validator_plugins.py\": 7,",
         "    \"tests/test_vip_waptlab_regression.py\": 2,",
         "    \"tests/test_vip_workflow_replay.py\": 3,",
         "    \"tests/test_waptlab_catalog_manifest.py\": 6,",
@@ -74,14 +74,14 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 906",
+        "  \"total_test_functions\": 1054",
         "}",
-        "OK: preserved test-function count 906 >= minimum 818"
+        "OK: preserved test-function count 1054 >= minimum 818"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "scripts/build_preflight_report.py",
         "--host",
         "127.0.0.1"
@@ -90,40 +90,40 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"output\": \"/tmp/webpent_v72_git/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
-        "/tmp/webpent_v72_git/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
+        "{\"output\": \"/tmp/webpent_v72_git_recovered/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
+        "/tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
         "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)",
-        "/tmp/webpent_v72_git/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
+        "/tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
         "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "scripts/build_capability_report.py"
       ],
       "name": "capability-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v72_git/docs/capability_report.json\"}"
+        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v72_git_recovered/docs/capability_report.json\"}"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "scripts/build_mock_qualification_report.py"
       ],
       "name": "mock-qualification-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v72_git/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
+        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v72_git_recovered/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/docs/preflight_report.json"
+        "/tmp/webpent_v72_git_recovered/docs/preflight_report.json"
       ],
       "name": "preflight-report-contract",
       "passed": true,
@@ -132,7 +132,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/docs/capability_report.json"
+        "/tmp/webpent_v72_git_recovered/docs/capability_report.json"
       ],
       "name": "capability-report-contract",
       "passed": true,
@@ -141,7 +141,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/docs/waptlab_qualification_report.json"
+        "/tmp/webpent_v72_git_recovered/docs/waptlab_qualification_report.json"
       ],
       "name": "mock-qualification-contract",
       "passed": true,
@@ -150,7 +150,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/bandit",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/bandit",
         "-q",
         "-r",
         "src/webpent",
@@ -160,7 +160,7 @@
         "-f",
         "json",
         "-o",
-        "/tmp/webpent_v72_git/docs/bandit_release.json"
+        "/tmp/webpent_v72_git_recovered/docs/bandit_release.json"
       ],
       "name": "bandit-high-severity",
       "passed": true,
@@ -170,16 +170,16 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/pip-audit",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_git/docs/requirements-audit-release.txt",
+        "/tmp/webpent_v72_git_recovered/docs/requirements-audit-release.txt",
         "--format",
         "cyclonedx-json",
         "--output",
-        "/tmp/webpent_v72_git/docs/sbom.cdx.json"
+        "/tmp/webpent_v72_git_recovered/docs/sbom.cdx.json"
       ],
       "name": "pip-audit-sbom",
       "passed": true,
@@ -191,16 +191,16 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/pip-audit",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_git/docs/requirements-audit-release.txt",
+        "/tmp/webpent_v72_git_recovered/docs/requirements-audit-release.txt",
         "--format",
         "json",
         "--output",
-        "/tmp/webpent_v72_git/docs/pip_audit_release.json"
+        "/tmp/webpent_v72_git_recovered/docs/pip_audit_release.json"
       ],
       "name": "pip-audit-strict",
       "passed": true,
@@ -212,18 +212,18 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git/.venv/bin/python",
+        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
         "scripts/build_release_manifest.py"
       ],
       "name": "release-manifest",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 564, \"output\": \"/tmp/webpent_v72_git/docs/release_manifest.json\"}"
+        "{\"file_count\": 631, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-20T16:28:22.928686+00:00",
+  "generated_at": "2026-08-21T12:01:34.251182+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

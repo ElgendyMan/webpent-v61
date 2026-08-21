@@ -229,6 +229,34 @@ def validate_finding_quality(
     )
 
 
+def normalize_report_finding(finding: Any) -> Any:
+    """Return a report-safe finding without promoting unsupported claims.
+
+    A validator may emit ``Tool-Confirmed`` before the final evidence-quality
+    assessment is available.  The report boundary is the last common path for
+    JSON/HTML/PDF consumers, so it demotes such an unsupported claim to
+    ``Needs Human Review`` without mutating the live Finding or discarding its
+    evidence.  Candidates and clean lifecycle records are left unchanged.
+    """
+    level = str(model_get(finding, "confidence_level", "") or "")
+    if level != "Tool-Confirmed":
+        return finding
+    assessment = assess_finding_evidence(finding)
+    if assessment.classification == "confirmed":
+        return finding
+    data = _as_dict(finding)
+    if not data:
+        return finding
+    normalized = dict(data)
+    normalized["confidence_level"] = "Needs Human Review"
+    if str(normalized.get("confidence", "") or "").lower() in {
+        "confirmed",
+        "high",
+    }:
+        normalized["confidence"] = "tentative"
+    return normalized
+
+
 def evaluate_report_quality(
     findings: Iterable[Any],
     *,
@@ -268,5 +296,6 @@ __all__ = [
     "enforce_report_quality",
     "evaluate_report_quality",
     "lifecycle_stage",
+    "normalize_report_finding",
     "validate_finding_quality",
 ]

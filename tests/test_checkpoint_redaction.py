@@ -4,6 +4,8 @@ import sqlite3
 
 from webpent.auth import reauth_vault
 from webpent.graph.checkpoints import get_checkpointer
+from webpent.models.targets import Target
+from webpent.state.initial_state import build_initial_state
 
 
 def _checkpoint() -> dict[str, object]:
@@ -95,6 +97,42 @@ def test_checkpoint_redacts_api_key_totp_and_nested_secret_keys():
     assert metadata["totp_secret"] == ""
     assert metadata["nested_client_secret_value"] == ""
     assert metadata["public_name"] == "kept"
+
+
+def test_checkpoint_runtime_context_is_descriptor_and_rehydrated(tmp_path):
+    thread_id = "thread-runtime-context"
+    db_path = str(tmp_path / "runtime-context.sqlite")
+    config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    state = build_initial_state(
+        Target(url="http://example.test"),
+        thread_id=thread_id,
+        engagement_id=thread_id,
+        profile="smart-observe",
+        action_ledger_path=str(tmp_path / "actions.sqlite3"),
+    )
+    checkpoint = {
+        "v": 1,
+        "id": "checkpoint-runtime-context",
+        "ts": "2026-08-21T00:00:00+00:00",
+        "channel_values": state,
+        "channel_versions": {},
+        "versions_seen": {},
+        "updated_channels": None,
+    }
+
+    with get_checkpointer(db_path) as saver:
+        saver.put(config, checkpoint, {"source": "input", "step": 1}, {})
+        raw_row = saver.conn.execute(
+            "SELECT checkpoint FROM checkpoints WHERE thread_id = ?", (thread_id,)
+        ).fetchone()
+        assert raw_row is not None
+        assert b"RuntimeContext" not in raw_row[0]
+        loaded = saver.get_tuple(config)
+        assert loaded is not None
+        restored = loaded.checkpoint["channel_values"]["runtime_context"]
+        assert restored.valid is True
+        assert restored.engagement_id == thread_id
+        assert restored.action_executor.authority is restored.action_authority
 
 
 def test_checkpoint_runtime_restore_uses_worker_vault_only(tmp_path):
