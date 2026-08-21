@@ -533,6 +533,9 @@ def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
             *[finding.model_dump(mode="json") for finding in direct_findings],
         ]
     result["runtime_diagnostics"] = runtime.diagnostics()
+    result["runtime_capability_gaps"] = [
+        gap.as_dict() for gap in runtime.capability_gaps
+    ]
     return result
 
 

@@ -24,6 +24,7 @@ from webpent.shared.action_authority import (
     ActionRisk,
     ActionStatus,
 )
+from webpent.shared.proof_bundle_store import ProofBundleStore
 
 
 class CampaignTaskStatus(str, Enum):
@@ -232,9 +233,11 @@ class CampaignExecutor:
         authority: ActionAuthority,
         *,
         action_engine: NextBestActionEngine | None = None,
+        proof_bundle_store: ProofBundleStore | None = None,
     ) -> None:
         self.authority = authority
         self.action_engine = action_engine or NextBestActionEngine()
+        self.proof_bundle_store = proof_bundle_store
         self.coverage: dict[str, dict[str, Any]] = {}
         self.decision_trace: list[dict[str, Any]] = []
         self.lifecycle_events: list[dict[str, Any]] = []
@@ -376,8 +379,22 @@ class CampaignExecutor:
                     evidence_refs=list(evidence_refs),
                     negative_control=output.get("negative_control"),
                 ).seal(actor="action_executor")
-                record["proof_bundle"] = bundle.model_dump(mode="json")
-                record["proof_bundle_sealed"] = bundle.verify_seal()
+                record["proof_bundle_store_status"] = "not_configured"
+                if self.proof_bundle_store is None:
+                    record["proof_bundle"] = bundle.model_dump(mode="json")
+                    record["proof_bundle_sealed"] = bundle.verify_seal()
+                else:
+                    try:
+                        self.proof_bundle_store.put(bundle)
+                    except Exception as exc:
+                        record["proof_bundle_store_status"] = "failed"
+                        record["proof_bundle_store_error"] = type(exc).__name__
+                        record["proof_bundle"] = None
+                        record["proof_bundle_sealed"] = False
+                    else:
+                        record["proof_bundle_store_status"] = "stored"
+                        record["proof_bundle"] = bundle.model_dump(mode="json")
+                        record["proof_bundle_sealed"] = bundle.verify_seal()
                 record["negative_control_present"] = output.get("negative_control") is not None
         with self._bookkeeping_lock:
             self.coverage[task.task_id] = record

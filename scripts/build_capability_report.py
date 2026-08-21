@@ -64,6 +64,19 @@ def main() -> int:
     for entry in entries:
         status = str(entry["validator_status"])
         counts[status] = counts.get(status, 0) + 1
+    vip_scope_entries = [
+        {
+            "vuln_class": capability.vuln_class,
+            "validator_id": capability.validator_id,
+            "validator_status": capability.status,
+            "evidence_mode": capability.evidence_mode,
+        }
+        for capability in all_capabilities()
+    ]
+    vip_scope_counts: dict[str, int] = {}
+    for entry in vip_scope_entries:
+        status = str(entry["validator_status"])
+        vip_scope_counts[status] = vip_scope_counts.get(status, 0) + 1
     payload = {
         "schema_version": "webpent-capability-report-v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -71,12 +84,23 @@ def main() -> int:
         "ledger": str(LEDGER.relative_to(PROJECT_ROOT)),
         "catalog_count": len(entries),
         "validator_status_counts": counts,
+        "vip_scope_count": len(vip_scope_entries),
+        "vip_scope_validator_status_counts": vip_scope_counts,
+        "vip_scope_missing_validators": [
+            entry["vuln_class"]
+            for entry in vip_scope_entries
+            if entry["validator_status"] == "missing-validator"
+        ],
         "live_qualification": False,
         "entries": entries,
+        "vip_scope_entries": vip_scope_entries,
         "notes": [
             "A registered validator does not imply a confirmed vulnerability.",
             "Only deterministic evidence and completed negative controls may support confirmation.",
             "This report is contract/local evidence unless live_qualification is explicitly true.",
+            "The WAPTLab catalog view must not be interpreted as complete "
+            "VIP-scope validator coverage.",
+            "VIP-scope missing validators are explicit blockers, not clean results.",
         ],
     }
     OUTPUT.write_text(

@@ -404,10 +404,10 @@ def _profile_security_posture() -> dict[str, object]:
 
         settings = get_settings()
         profile = getattr(getattr(settings, "environment_profile", None), "value", "lab")
-        if profile not in {"staging", "production"}:
+        if profile not in {"qualification", "staging", "production"}:
             return {
                 "profile": profile,
-                "status": "ok — lab security defaults preserved",
+                "status": "ok — local security defaults preserved",
                 "fail_closed": True,
             }
 
@@ -441,7 +441,7 @@ def _profile_security_posture() -> dict[str, object]:
 
 
 def _enforce_profile_security(report: dict[str, dict[str, object]]) -> None:
-    """Stop startup when staging/production security invariants are not met."""
+    """Stop startup when strict deployment security invariants are not met."""
     posture = report["profile_security"]
     status = str(posture.get("status", "unknown"))
     if status.startswith("FAIL") or status.startswith("unknown"):
@@ -465,7 +465,11 @@ def _posture_state(report: dict[str, dict[str, object]], profile: str) -> dict[s
         for status in statuses
         for token in ("degraded", "disabled", "not configured")
     ):
-        state = "DEGRADED" if profile in {"staging", "production"} else "READY_WITH_WARNING"
+        state = (
+            "DEGRADED"
+            if profile in {"qualification", "staging", "production"}
+            else "READY_WITH_WARNING"
+        )
     else:
         state = "PASS"
     return {

@@ -21,6 +21,10 @@ def test_capability_report_exposes_validator_and_live_boundaries() -> None:
     assert sum(report["validator_status_counts"].values()) == report["catalog_count"]
     assert "offline-fixture" in report["validator_status_counts"]
     assert "missing-validator" not in report["validator_status_counts"]
+    assert report["vip_scope_count"] >= report["catalog_count"]
+    assert sum(report["vip_scope_validator_status_counts"].values()) == report["vip_scope_count"]
+    assert report["vip_scope_missing_validators"]
+    assert "missing-validator" in report["vip_scope_validator_status_counts"]
 
 
 def test_mock_qualification_report_is_reproducible_but_not_live() -> None:

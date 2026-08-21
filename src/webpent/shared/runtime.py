@@ -22,6 +22,7 @@ from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.campaign_executor import ActionExecutor
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.engagement_scope import OriginPolicy
+from webpent.shared.proof_bundle_store import ProofBundleStore
 from webpent.shared.proof_oracles import NegativeControlEngine, OracleEngine
 from webpent.shared.research_intelligence import (
     KnowledgeGapEngine,
@@ -31,6 +32,24 @@ from webpent.shared.research_intelligence import (
 
 class RuntimeConfigurationError(ValueError):
     """Raised when a graph cannot obtain a valid runtime context."""
+
+
+@dataclass(frozen=True)
+class RuntimeCapabilityGap:
+    """Typed, checkpoint-safe description of an unavailable runtime dependency."""
+
+    code: str
+    component: str
+    required_for: str
+    recovery_action: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "code": self.code,
+            "component": self.component,
+            "required_for": self.required_for,
+            "recovery_action": self.recovery_action,
+        }
 
 
 @dataclass(frozen=True)
@@ -164,7 +183,7 @@ class RuntimeContext:
     capabilities: CapabilityRegistry
     adapters: AdapterRegistry
     event_sink: RuntimeEventSink
-    proof_bundle_store: Any | None
+    proof_bundle_store: ProofBundleStore
     oracle_engine: OracleEngine
     negative_control_engine: NegativeControlEngine
     coverage_ledger: dict[str, Any]
@@ -174,6 +193,7 @@ class RuntimeContext:
     knowledge_gap_engine: KnowledgeGapEngine
     next_best_action_engine: SmartNextBestActionEngine
     configuration_errors: tuple[str, ...] = ()
+    capability_gaps: tuple[RuntimeCapabilityGap, ...] = ()
 
     @property
     def valid(self) -> bool:
@@ -190,6 +210,7 @@ class RuntimeContext:
     def blocked_result(self, *, node: str, reason: str = "") -> dict[str, Any]:
         """Return the graph-safe result for an unavailable context."""
         detail = reason or ",".join(self.configuration_errors) or "runtime_context_invalid"
+        gap_payload = [gap.as_dict() for gap in self.capability_gaps]
         self.event_sink.emit(
             "runtime.blocked_by_configuration",
             engagement_id=self.engagement_id,
@@ -202,6 +223,24 @@ class RuntimeContext:
             "node": str(node)[:120],
             "reason": detail[:300],
             "runtime_context_valid": False,
+            "capability_gaps": gap_payload,
+            "clean": False,
+        }
+
+    def require_capability(self, component: str, *, node: str) -> dict[str, Any]:
+        """Return a typed blocked result when a named dependency is unavailable."""
+        normalized = str(component or "").strip()
+        gaps = [gap for gap in self.capability_gaps if gap.component == normalized]
+        if gaps:
+            return self.blocked_result(
+                node=node,
+                reason=f"capability_gap:{normalized}",
+            )
+        return {
+            "status": "capability_available",
+            "node": str(node)[:120],
+            "component": normalized[:120],
+            "runtime_context_valid": self.valid,
             "clean": False,
         }
 
@@ -213,6 +252,7 @@ class RuntimeContext:
             "target_origin": self.target_origin,
             "valid": self.valid,
             "configuration_errors": list(self.configuration_errors),
+            "capability_gaps": [gap.as_dict() for gap in self.capability_gaps],
             "capabilities": self.capabilities.diagnostics(),
             "adapters": self.adapters.manifest(),
             "event_count": len(self.event_sink.snapshot()),
@@ -221,6 +261,53 @@ class RuntimeContext:
 
 class RuntimeFactory:
     """Construct one explicit runtime spine for an engagement/campaign."""
+
+    @staticmethod
+    def _capability_gaps(
+        *,
+        adapters: AdapterRegistry,
+        identity_tenant_object_graph: Any | None,
+        workflow_state_machine: Any | None,
+        replay_engine: Any | None,
+    ) -> tuple[RuntimeCapabilityGap, ...]:
+        gaps: list[RuntimeCapabilityGap] = []
+        if identity_tenant_object_graph is None:
+            gaps.append(
+                RuntimeCapabilityGap(
+                    code="identity_graph_unavailable",
+                    component="identity_tenant_object_graph",
+                    required_for="multi_identity_and_tenant_controls",
+                    recovery_action="register an authorized identity graph provider",
+                )
+            )
+        if workflow_state_machine is None:
+            gaps.append(
+                RuntimeCapabilityGap(
+                    code="workflow_state_machine_unavailable",
+                    component="workflow_state_machine",
+                    required_for="stateful_auth_and_business_workflow_replay",
+                    recovery_action="register a workflow state machine adapter",
+                )
+            )
+        if replay_engine is None:
+            gaps.append(
+                RuntimeCapabilityGap(
+                    code="replay_engine_unavailable",
+                    component="replay_engine",
+                    required_for="replayable_validation_and_proof",
+                    recovery_action="register a policy-checked replay engine",
+                )
+            )
+        if not adapters.manifest():
+            gaps.append(
+                RuntimeCapabilityGap(
+                    code="tool_adapters_unavailable",
+                    component="adapters",
+                    required_for="network_browser_and_external_tool_actions",
+                    recovery_action="register only policy-checked runtime adapters",
+                )
+            )
+        return tuple(gaps)
 
     @staticmethod
     def _origin(value: str) -> str:
@@ -291,9 +378,18 @@ class RuntimeFactory:
             used_budget=max(0.0, float(used_budget)),
             ledger=action_ledger,
         )
-        executor = ActionExecutor(authority)
+        bundle_store = (
+            proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
+        )
+        executor = ActionExecutor(authority, proof_bundle_store=bundle_store)
         sink = event_sink or RuntimeEventSink()
         registry = adapters or AdapterRegistry()
+        capability_gaps = cls._capability_gaps(
+            adapters=registry,
+            identity_tenant_object_graph=identity_tenant_object_graph,
+            workflow_state_machine=workflow_state_machine,
+            replay_engine=replay_engine,
+        )
         sink.emit(
             "runtime.created",
             engagement_id=normalized_engagement,
@@ -312,7 +408,7 @@ class RuntimeFactory:
             capabilities=capability_registry,
             adapters=registry,
             event_sink=sink,
-            proof_bundle_store=proof_bundle_store,
+            proof_bundle_store=bundle_store,
             oracle_engine=OracleEngine(),
             negative_control_engine=NegativeControlEngine(),
             coverage_ledger={},
@@ -322,6 +418,7 @@ class RuntimeFactory:
             knowledge_gap_engine=KnowledgeGapEngine(),
             next_best_action_engine=SmartNextBestActionEngine(),
             configuration_errors=tuple(dict.fromkeys(errors)),
+            capability_gaps=capability_gaps,
         )
 
     @staticmethod
@@ -339,6 +436,7 @@ class RuntimeFactory:
             "smart_action_budget": float(settings.smart_action_budget),
             "used_actions": int(context.action_authority.used_actions),
             "used_budget": float(context.action_authority.used_budget),
+            "capability_gaps": [gap.as_dict() for gap in context.capability_gaps],
             "manifest": context.capabilities.ensure_discovered(),
         }
 
@@ -388,6 +486,7 @@ class RuntimeFactory:
 __all__ = [
     "AdapterRegistry",
     "RegisteredAdapter",
+    "RuntimeCapabilityGap",
     "RuntimeConfigurationError",
     "RuntimeContext",
     "RuntimeEvent",

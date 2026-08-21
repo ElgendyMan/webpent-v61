@@ -438,3 +438,5 @@ class PentestState(TypedDict, total=False):
     # to a descriptor and rebuilt at resume boundaries.
     campaign_id: str
     runtime_context: Any
+    # Additive, report-safe runtime capability gaps; gaps are never clean.
+    runtime_capability_gaps: Annotated[list[dict[str, Any]], merge_lists]

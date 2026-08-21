@@ -274,6 +274,9 @@ def build_initial_state(
         "campaign_inventory": resolved_inventory,
         "campaign_id": resolved_campaign_id,
         "runtime_context": runtime_context,
+        "runtime_capability_gaps": [
+            gap.as_dict() for gap in runtime_context.capability_gaps
+        ],
         "campaign_ledger": (
             build_generic_campaign_ledger()
             if resolved_inventory == "generic"

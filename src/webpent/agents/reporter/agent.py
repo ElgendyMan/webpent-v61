@@ -685,6 +685,7 @@ def reporter_node(state: PentestState) -> dict:
             proof_observability=dict(state.get("proof_observability") or {}),
             authorization_matrix=dict(state.get("authorization_matrix") or {}),
             llm_usage_trace=list(state.get("llm_usage_trace") or []),
+            runtime_capability_gaps=list(state.get("runtime_capability_gaps") or []),
             formats=list(selected_formats) if selected_formats else None,
         )
         export_ok = True

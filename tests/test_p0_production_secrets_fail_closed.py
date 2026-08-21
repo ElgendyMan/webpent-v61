@@ -57,10 +57,24 @@ def test_production_rejects_known_default_secret(
 
 
 def test_non_lab_requires_proof_bundle_even_without_opt_in() -> None:
+    assert deployment_requires_proof_bundle(EnvironmentProfile.DEV) is False
     assert deployment_requires_proof_bundle(EnvironmentProfile.LAB) is False
+    assert deployment_requires_proof_bundle(EnvironmentProfile.QUALIFICATION) is True
     assert deployment_requires_proof_bundle(EnvironmentProfile.STAGING) is True
     assert deployment_requires_proof_bundle(EnvironmentProfile.PRODUCTION) is True
     assert deployment_requires_proof_bundle("future-profile") is True
+
+
+def test_dev_profile_preserves_local_compatibility() -> None:
+    settings = Settings(environment_profile=EnvironmentProfile.DEV)
+
+    assert settings.environment_profile is EnvironmentProfile.DEV
+    assert settings.auth_enabled is False
+
+
+def test_qualification_profile_cannot_disable_authentication() -> None:
+    with pytest.raises(ValidationError, match="auth_enabled=True"):
+        Settings(environment_profile=EnvironmentProfile.QUALIFICATION, auth_enabled=False)
 
 
 def test_non_lab_profile_cannot_disable_authentication() -> None:

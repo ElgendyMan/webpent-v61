@@ -100,13 +100,19 @@ def deployment_requires_proof_bundle(value: str | EnvironmentProfile | None) -> 
         )
     except ValueError:
         return True
-    return profile in {EnvironmentProfile.STAGING, EnvironmentProfile.PRODUCTION}
+    return profile in {
+        EnvironmentProfile.QUALIFICATION,
+        EnvironmentProfile.STAGING,
+        EnvironmentProfile.PRODUCTION,
+    }
 
 
 class EnvironmentProfile(str, Enum):
     """Deployment posture used by startup security gates."""
 
+    DEV = "dev"
     LAB = "lab"
+    QUALIFICATION = "qualification"
     STAGING = "staging"
     PRODUCTION = "production"
 
@@ -1185,29 +1191,36 @@ class Settings(BaseSettings):
         # Environment profile is explicit and fail-closed for non-lab deployments.
         # The lab default preserves existing local/offline behavior while staging and
         # production cannot silently run with authentication disabled.
-        strict_profile = self.environment_profile is not EnvironmentProfile.LAB
+        strict_profile = self.environment_profile in {
+            EnvironmentProfile.QUALIFICATION,
+            EnvironmentProfile.STAGING,
+            EnvironmentProfile.PRODUCTION,
+        }
         if strict_profile and not self.auth_enabled:
             raise ValueError(
-                "SECURITY HARD STOP: environment_profile staging/production requires "
+                "SECURITY HARD STOP: environment_profile qualification/staging/production requires "
                 "auth_enabled=True"
             )
         if strict_profile:
             if not self.cors_origins or "*" in self.cors_origins:
                 raise ValueError(
-                    "SECURITY HARD STOP: staging/production requires explicit cors_origins"
+                    "SECURITY HARD STOP: qualification/staging/production requires "
+                    "explicit cors_origins"
                 )
             if not self.rate_limit_enabled:
                 raise ValueError(
-                    "SECURITY HARD STOP: staging/production requires rate_limit_enabled=True"
+                    "SECURITY HARD STOP: qualification/staging/production requires "
+                    "rate_limit_enabled=True"
                 )
             if not self.rate_limit_redis_url.lower().startswith("rediss://"):
                 raise ValueError(
-                    "SECURITY HARD STOP: staging/production requires a rediss:// "
+                    "SECURITY HARD STOP: qualification/staging/production requires a rediss:// "
                     "rate_limit_redis_url"
                 )
             if self.allow_insecure_tls:
                 raise ValueError(
-                    "SECURITY HARD STOP: staging/production cannot enable allow_insecure_tls"
+                    "SECURITY HARD STOP: qualification/staging/production cannot "
+                    "enable allow_insecure_tls"
                 )
 
         # --- JWT secret hard-stop (V6 Zero-Day Patched P0-2) ---

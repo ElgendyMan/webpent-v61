@@ -1515,6 +1515,9 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "same_origin_only": True,
             "proof_required": True,
         },
+        "runtime_capability_gaps": [
+            gap.as_dict() for gap in runtime.capability_gaps
+        ],
         "current_phase": "smart_campaign_execution",
     }
 
