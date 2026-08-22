@@ -1,0 +1,35 @@
+--- webpent git state ---
+ [31mM[m README.md
+ [31mM[m artifacts/smart_hunter_review/loop_phase5_full_regression_20260823.log
+ [31mM[m docs/DIRECT_IO_INVENTORY.md
+ [31mM[m docs/direct_io_inventory.json
+ [31mM[m pyproject.toml
+ [31mM[m src/webpent/__init__.py
+ [31mM[m src/webpent/shared/llm.py
+ [31mM[m src/webpent/state/initial_state.py
+ [31mM[m tests/test_smart_campaigns_node.py
+ [31mM[m tests/test_v72_llm_caller_contracts.py
+ [31mM[m uv.lock
+[31m??[m .coverage
+[31m??[m .python-version
+[31m??[m artifacts/smart_hunter_review/loop_phase4_kpi_autonomy_20260823.log
+[31m??[m artifacts/smart_hunter_review/loop_phase5_final_gates_20260823.log
+[31m??[m artifacts/smart_hunter_review/loop_phase5_vip_bbscout_20260823.log
+[31m??[m artifacts/smart_hunter_review/phase1_metadata_inventory_20260823.txt
+[31m??[m artifacts/smart_hunter_review/phase1_metadata_validation_20260823.log
+[31m??[m artifacts/smart_hunter_review/phase1_uv_lock_20260823.log
+[31m??[m artifacts/smart_hunter_review/phase1_uv_lock_online_20260823.log
+[31m??[m artifacts/smart_hunter_review/phase1_version_inventory_20260823.txt
+[31m??[m artifacts/smart_hunter_review/phase2_autonomy_inventory_20260823.txt
+[31m??[m artifacts/smart_hunter_review/roadmap_loop_baseline_20260823.txt
+[31m??[m artifacts/smart_hunter_review/webpent_cov_final_20260823.json
+[31m??[m artifacts/smart_hunter_review/webpent_cov_loop_current.json
+[31m??[m webpent.db-shm
+[31m??[m webpent.db-wal
+--- official vip gate ---
+{"output": "/tmp/bbscout_webpent_integration/webpent-git/docs/vip_quality_gate.json", "passed": false}
+vip_gate_exit=1
+--- bbscout offline suite ---
+....................................                                     [100%]
+36 passed in 0.10s
+[1;32mAll checks passed![0m

@@ -1,5 +1,7 @@
 # WebPent
 
+**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). Historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
+
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
 > **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى admission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
@@ -8,12 +10,12 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 ## الحكم الحالي والنتائج الموثقة
 
-الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` و`docs/PLAN4_TRACEABILITY.md` داخل هذه النسخة.
+الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` و`docs/PLAN4_TRACEABILITY.md` داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md).
 
 | البوابة | النتيجة |
 |---|---|
 | bbscout full pytest | 36 passed |
-| WebPent full pytest | 1410 passed، 244 warnings |
+| WebPent full pytest | 1423 passed؛ coverage حوالي 73% |
 | Package/entrypoint/hardening/proof focused suite | 236 passed، 54 warnings |
 | G-02 inventory/runtime/precommit gate | Passed؛ 280 primary records |
 | Ruff | Passed |

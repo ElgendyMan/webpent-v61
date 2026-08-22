@@ -1,0 +1,9 @@
+Using CPython 3.12.3 interpreter at: [36m/usr/bin/python3.12[39m
+  [31m×[0m No solution found when resolving dependencies:
+[31m  ╰─▶ [0mBecause langgraph was not found in the cache and your project depends
+[31m      [0mon langgraph==1.2.11, we can conclude that your project's requirements
+[31m      [0mare unsatisfiable.
+[31m      [0mAnd because your project requires webpent[dev], we can conclude that
+[31m      [0myour project's requirements are unsatisfiable.
+
+[36m[1mhint[0m[39m[1m:[0m Packages were unavailable because the network was disabled. When the network is disabled, registry packages may only be read from the cache.

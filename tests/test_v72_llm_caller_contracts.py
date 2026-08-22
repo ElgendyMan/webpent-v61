@@ -117,16 +117,19 @@ def test_cached_llm_entries_are_isolated_by_task_type(monkeypatch) -> None:
     monkeypatch.setattr(llm_router, "get_llm", fake_get)
 
     analysis = llm_router.get_cached_llm(llm_router.TaskType.ANALYSIS)
+    analysis_again = llm_router.get_cached_llm(llm_router.TaskType.ANALYSIS)
     code = llm_router.get_cached_llm(llm_router.TaskType.CODE)
 
     assert analysis is models[llm_router.TaskType.ANALYSIS]
+    assert analysis_again is analysis
     assert code is models[llm_router.TaskType.CODE]
     assert analysis is not code
     assert built == [llm_router.TaskType.ANALYSIS, llm_router.TaskType.CODE]
 
     metrics = llm_router.get_llm_cache_metrics()
     assert metrics["misses"] == 2
-    assert metrics["hits"] == 0
+    assert metrics["hits"] == 1
+    assert metrics["hit_rate"] == round(1 / 3, 4)
 
     llm_router.clear_cached_llms()
 

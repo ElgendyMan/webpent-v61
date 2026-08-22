@@ -1459,10 +1459,20 @@ def clear_cached_llms() -> None:
             _CACHE_METRICS[metric] = 0
 
 
-def get_llm_cache_metrics() -> dict[str, int]:
-    """Return redaction-safe cache counters for diagnostics and tests."""
+def get_llm_cache_metrics() -> dict[str, int | float]:
+    """Return redaction-safe cache counters and a deterministic hit-rate KPI.
+
+    ``hit_rate`` is computed from cache lookups that either hit or miss. Cache
+    invalidations are reported separately and are not treated as misses twice.
+    No provider, model, key, prompt, or response data is included.
+    """
     with _CACHED_LLMS_LOCK:
-        return dict(_CACHE_METRICS)
+        metrics: dict[str, int | float] = dict(_CACHE_METRICS)
+        lookups = metrics["hits"] + metrics["misses"]
+        metrics["hit_rate"] = (
+            round(metrics["hits"] / lookups, 4) if lookups else 0.0
+        )
+        return metrics
 
 
 # ---------------------------------------------------------------------------

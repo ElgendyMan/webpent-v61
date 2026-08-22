@@ -40,6 +40,21 @@ if TYPE_CHECKING:
     from webpent.models.targets import Target
 
 
+def _profile_enables_autonomous_controller(profile: ScanProfile) -> bool:
+    """Enable the bounded controller for active Smart profiles only.
+
+    Legacy and observe-only profiles retain their historical behavior.  The
+    controller remains bounded by the persisted action/replan budgets and the
+    runtime ActionExecutor authority checks; this resolver only removes the
+    accidental caller-side opt-in requirement for Smart execution profiles.
+    """
+    return profile in {
+        ScanProfile.SMART,
+        ScanProfile.AUTHORIZED_ACTIVE,
+        ScanProfile.VIP_QUALIFICATION,
+    }
+
+
 def _root_goal_nodes() -> dict[str, Any]:
     """Create the engagement root goal without making startup fatal.
 
@@ -79,7 +94,7 @@ def build_initial_state(
     skip_recon: bool = False,
     stealth_mode: bool = False,
     auto_approve: bool = False,
-    enable_autonomous_controller: bool = False,
+    enable_autonomous_controller: bool | None = None,
     scan_mode: str | ScanMode | None = None,
     profile: str | ScanProfile | None = None,
     root_goal_nodes: dict[str, Any] | None = None,
@@ -190,6 +205,11 @@ def build_initial_state(
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)
     governance_profile = profile_value if profile is not None else str(scan_mode_value)
+    controller_enabled = (
+        bool(enable_autonomous_controller)
+        if enable_autonomous_controller is not None
+        else _profile_enables_autonomous_controller(resolved_profile)
+    )
     normalized_payloads = [
         str(item).strip()
         for item in list(custom_payloads or [])
@@ -334,7 +354,7 @@ def build_initial_state(
         "llm_usage_trace": [],
         "report_formats": normalized_formats,
         "auto_approve": bool(auto_approve),
-        "enable_autonomous_controller": bool(enable_autonomous_controller),
+        "enable_autonomous_controller": controller_enabled,
         "autonomous_controller_runs": 0,
         "skip_recon": bool(skip_recon),
         "scan_mode": str(scan_mode_value),

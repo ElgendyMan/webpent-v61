@@ -6,6 +6,10 @@ from webpent.agents.smart_campaigns.agent import (
     smart_campaigns_node,
 )
 from webpent.config.settings import get_settings
+from webpent.graph.builder import (
+    NODE_AUTONOMOUS_CONTROLLER,
+    route_after_smart_campaigns_execution,
+)
 from webpent.models.targets import Target
 from webpent.shared.coverage_ledger import project_coverage_ledger
 from webpent.state.initial_state import build_initial_state
@@ -751,3 +755,69 @@ def test_planning_uses_runtime_injected_engines(monkeypatch) -> None:
     result = smart_campaigns_node(state)
     assert result["knowledge_gaps"]
     assert result["smart_next_actions"]
+
+
+def test_profile_derived_controller_enablement_is_bounded_and_overridable(
+    tmp_path,
+) -> None:
+    expected = {
+        "legacy": False,
+        "smart-observe": False,
+        "smart": True,
+        "authorized-active": True,
+        "vip-qualification": True,
+    }
+    for profile, controller_enabled in expected.items():
+        state = build_initial_state(
+            Target(url="https://target.test"),
+            profile=profile,
+            action_ledger_path=str(tmp_path / f"{profile}.sqlite3"),
+        )
+        assert state["enable_autonomous_controller"] is controller_enabled
+
+    explicitly_disabled = build_initial_state(
+        Target(url="https://target.test"),
+        profile="authorized-active",
+        enable_autonomous_controller=False,
+        action_ledger_path=str(tmp_path / "explicit-disabled.sqlite3"),
+    )
+    assert explicitly_disabled["enable_autonomous_controller"] is False
+
+    explicitly_enabled = build_initial_state(
+        Target(url="https://target.test"),
+        profile="legacy",
+        enable_autonomous_controller=True,
+        action_ledger_path=str(tmp_path / "explicit-enabled.sqlite3"),
+    )
+    assert explicitly_enabled["enable_autonomous_controller"] is True
+
+
+def test_controller_entry_is_reached_for_smart_profile_without_caller_flag(
+    tmp_path,
+) -> None:
+    state = build_initial_state(
+        Target(url="https://target.test"),
+        profile="smart",
+        action_ledger_path=str(tmp_path / "smart-controller.sqlite3"),
+    )
+    assert state["enable_autonomous_controller"] is True
+    assert state["smart_governance"]["profile"] == "smart"
+    assert state["action_budget"]["replans_limit"] > 0
+    state["smart_replanning"] = {
+        "replan_requested": True,
+        "round": 0,
+        "max_replan_rounds": 3,
+    }
+    assert route_after_smart_campaigns_execution(state) == NODE_AUTONOMOUS_CONTROLLER
+
+    legacy = build_initial_state(
+        Target(url="https://target.test"),
+        profile="legacy",
+        action_ledger_path=str(tmp_path / "legacy-controller-route.sqlite3"),
+    )
+    legacy["smart_replanning"] = {
+        "replan_requested": True,
+        "round": 0,
+        "max_replan_rounds": 3,
+    }
+    assert route_after_smart_campaigns_execution(legacy) != NODE_AUTONOMOUS_CONTROLLER

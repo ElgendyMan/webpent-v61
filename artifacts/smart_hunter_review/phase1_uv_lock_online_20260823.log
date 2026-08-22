@@ -1,0 +1,13 @@
+Using CPython 3.12.3 interpreter at: [36m/usr/bin/python3.12[39m
+[2mResolved [1m232 packages[0m [2min 840ms[0m[0m
+[1m[31mRemoved[39m[0m async-timeout v4.0.3, v5.0.1
+[1m[31mRemoved[39m[0m backports-asyncio-runner v1.2.0
+[1m[31mRemoved[39m[0m exceptiongroup v1.3.1
+[1m[31mRemoved[39m[0m importlib-metadata v9.0.0
+[1m[32mUpdated[39m[0m networkx v3.4.2, v3.6.1 -> v3.6.1
+[1m[32mUpdated[39m[0m numpy v2.2.6, v2.4.6, v2.5.2 -> v2.5.2
+[1m[32mUpdated[39m[0m onnxruntime v1.24.3, v1.29.0 -> v1.29.0
+[1m[32mUpdated[39m[0m scikit-learn v1.7.2, v1.9.0 -> v1.9.0
+[1m[32mUpdated[39m[0m scipy v1.15.3, v1.17.1, v1.18.0 -> v1.18.0
+[1m[32mUpdated[39m[0m stevedore v5.8.0, v5.9.0 -> v5.9.0
+[1m[31mRemoved[39m[0m zipp v4.1.0

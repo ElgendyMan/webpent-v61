@@ -1,0 +1,382 @@
+=== RESEARCH NODES ===
+src/webpent/graph/builder.py:72:from webpent.agents.smart_campaigns.agent import (
+src/webpent/graph/builder.py:74:    smart_campaigns_execution_node,
+src/webpent/graph/builder.py:75:    smart_campaigns_node,
+src/webpent/graph/builder.py:90:from webpent.shared.autonomous_controller import autonomous_controller_node
+src/webpent/graph/builder.py:166:NODE_SMART_CAMPAIGNS = "smart_campaigns"
+src/webpent/graph/builder.py:167:NODE_SMART_CAMPAIGNS_EXECUTION = "smart_campaigns_execution"
+src/webpent/graph/builder.py:168:NODE_AUTONOMOUS_CONTROLLER = "autonomous_controller"
+src/webpent/graph/builder.py:222:def _autonomous_controller_enabled(state: PentestState) -> bool:
+src/webpent/graph/builder.py:224:    return state.get("enable_autonomous_controller") is True
+src/webpent/graph/builder.py:227:def _smart_campaigns_enabled(state: PentestState) -> bool:
+src/webpent/graph/builder.py:233:        or state.get("enable_smart_campaigns")
+src/webpent/graph/builder.py:248:    return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
+src/webpent/graph/builder.py:253:    return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
+src/webpent/graph/builder.py:267:def route_after_smart_campaigns_execution(state: PentestState) -> str:
+src/webpent/graph/builder.py:269:    if _autonomous_controller_enabled(state):
+src/webpent/graph/builder.py:270:        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:338:def route_after_autonomous_controller(state: PentestState) -> str:
+src/webpent/graph/builder.py:342:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:565:        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:573:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:588:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:647:    smart_scan = _smart_campaigns_enabled(state)
+src/webpent/graph/builder.py:1026:    graph.add_node(NODE_SMART_CAMPAIGNS, smart_campaigns_node)
+src/webpent/graph/builder.py:1027:    graph.add_node(NODE_SMART_CAMPAIGNS_EXECUTION, smart_campaigns_execution_node)
+src/webpent/graph/builder.py:1028:    graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
+src/webpent/graph/builder.py:1171:        route_after_smart_campaigns_execution,
+src/webpent/graph/builder.py:1180:        route_after_autonomous_controller,
+src/webpent/shared/autonomous_controller.py:5:Legacy graph callers can keep using ``smart_campaigns_node`` unchanged.
+src/webpent/shared/autonomous_controller.py:16:from webpent.agents.smart_campaigns.agent import (
+src/webpent/shared/autonomous_controller.py:19:    smart_campaigns_node,
+src/webpent/shared/autonomous_controller.py:393:            planning = smart_campaigns_node(self._planning_state(working))
+src/webpent/shared/autonomous_controller.py:398:                    "autonomous_controller_runtime_dependencies_required: "
+src/webpent/shared/autonomous_controller.py:722:        update["current_phase"] = "smart_autonomous_controller"
+src/webpent/shared/autonomous_controller.py:726:def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
+src/webpent/shared/autonomous_controller.py:733:            node="autonomous_controller",
+src/webpent/shared/autonomous_controller.py:737:        return runtime.blocked_result(node="autonomous_controller")
+src/webpent/shared/autonomous_controller.py:754:                source="smart_campaigns",
+src/webpent/shared/autonomous_controller.py:769:    result["autonomous_controller_runs"] = int(
+src/webpent/shared/autonomous_controller.py:770:        state.get("autonomous_controller_runs", 0) or 0
+src/webpent/shared/autonomous_controller.py:800:__all__ = ["AutonomousController", "autonomous_controller_node"]
+src/webpent/shared/causal_research.py:17:    NegativeEvidence,
+src/webpent/shared/causal_research.py:18:    NegativeEvidenceLedger,
+src/webpent/shared/causal_research.py:19:    ResearchSession,
+src/webpent/shared/causal_research.py:77:def _load_negative_ledger(state: Mapping[str, Any]) -> NegativeEvidenceLedger:
+src/webpent/shared/causal_research.py:78:    ledger = NegativeEvidenceLedger()
+src/webpent/shared/causal_research.py:87:        evidence = NegativeEvidence(
+src/webpent/shared/causal_research.py:295:    session = ResearchSession.from_state(state)
+src/webpent/shared/coverage_ledger.py:62:class CoverageIntelligence:
+src/webpent/shared/coverage_ledger.py:262:    return CoverageIntelligence().project(state)
+src/webpent/shared/coverage_ledger.py:265:__all__ = ["CoverageIntelligence", "project_coverage_ledger"]
+src/webpent/shared/research_contracts.py:224:class CoverageIntelligence:
+src/webpent/shared/research_contracts.py:283:        coverage: CoverageIntelligence | None = None,
+src/webpent/shared/research_contracts.py:287:        self.coverage = coverage or CoverageIntelligence()
+src/webpent/shared/research_contracts.py:413:    coverage = CoverageIntelligence(
+src/webpent/shared/research_contracts.py:467:    "CoverageIntelligence",
+src/webpent/shared/research_intelligence.py:134:class KnowledgeGap:
+src/webpent/shared/research_intelligence.py:189:class KnowledgeGapEngine:
+src/webpent/shared/research_intelligence.py:205:    def _feedback_gaps(self, state: Mapping[str, Any]) -> list[KnowledgeGap]:
+src/webpent/shared/research_intelligence.py:227:        gaps: list[KnowledgeGap] = []
+src/webpent/shared/research_intelligence.py:296:                KnowledgeGap(
+src/webpent/shared/research_intelligence.py:312:    def derive(self, state: Mapping[str, Any]) -> list[KnowledgeGap]:
+src/webpent/shared/research_intelligence.py:313:        gaps: list[KnowledgeGap] = []
+src/webpent/shared/research_intelligence.py:363:                KnowledgeGap(
+src/webpent/shared/research_intelligence.py:390:                KnowledgeGap(
+src/webpent/shared/research_intelligence.py:416:        deduplicated: dict[str, KnowledgeGap] = {}
+src/webpent/shared/research_intelligence.py:423:    def choose(self, gaps: Sequence[KnowledgeGap]) -> KnowledgeGap | None:
+src/webpent/shared/research_intelligence.py:429:        gap: KnowledgeGap,
+src/webpent/shared/research_intelligence.py:434:    ) -> KnowledgeGap:
+src/webpent/shared/research_intelligence.py:436:        return KnowledgeGap(
+src/webpent/shared/research_intelligence.py:460:class SmartNextBestActionEngine:
+src/webpent/shared/research_intelligence.py:550:class NegativeEvidence:
+src/webpent/shared/research_intelligence.py:573:class NegativeEvidenceLedger:
+src/webpent/shared/research_intelligence.py:584:        self._entries: dict[str, NegativeEvidence] = {}
+src/webpent/shared/research_intelligence.py:587:    def _key(evidence: NegativeEvidence) -> str:
+src/webpent/shared/research_intelligence.py:601:    def _not_expired(evidence: NegativeEvidence) -> bool:
+src/webpent/shared/research_intelligence.py:612:    def record(self, evidence: NegativeEvidence) -> bool:
+src/webpent/shared/research_intelligence.py:614:        if not isinstance(evidence, NegativeEvidence) or not _clean(evidence.client_id, 128):
+src/webpent/shared/research_intelligence.py:629:    ) -> list[NegativeEvidence]:
+src/webpent/shared/research_intelligence.py:635:        matches: list[NegativeEvidence] = []
+src/webpent/shared/research_intelligence.py:809:class ResearchSession:
+src/webpent/shared/research_intelligence.py:833:    def from_state(cls, state: Mapping[str, Any]) -> ResearchSession:
+src/webpent/shared/research_intelligence.py:880:    def record_negative(self, evidence: NegativeEvidence) -> None:
+src/webpent/shared/research_intelligence.py:928:    "KnowledgeGap",
+src/webpent/shared/research_intelligence.py:929:    "KnowledgeGapEngine",
+src/webpent/shared/research_intelligence.py:930:    "NegativeEvidence",
+src/webpent/shared/research_intelligence.py:931:    "NegativeEvidenceLedger",
+src/webpent/shared/research_intelligence.py:935:    "ResearchSession",
+src/webpent/shared/research_intelligence.py:936:    "SmartNextBestActionEngine",
+src/webpent/shared/research_nodes.py:16:    KnowledgeGapEngine,
+src/webpent/shared/research_nodes.py:17:    ResearchSession,
+src/webpent/shared/research_nodes.py:18:    SmartNextBestActionEngine,
+src/webpent/shared/research_nodes.py:30:    gaps = KnowledgeGapEngine(max_gaps=24).derive(state)
+src/webpent/shared/research_nodes.py:133:        else SmartNextBestActionEngine()
+src/webpent/shared/research_nodes.py:192:    """Persist a bounded report-safe ResearchSession projection."""
+src/webpent/shared/research_nodes.py:193:    session = ResearchSession.from_state(state)
+src/webpent/shared/runtime.py:31:    KnowledgeGapEngine,
+src/webpent/shared/runtime.py:32:    SmartNextBestActionEngine,
+src/webpent/shared/runtime.py:264:    knowledge_gap_engine: KnowledgeGapEngine
+src/webpent/shared/runtime.py:265:    next_best_action_engine: SmartNextBestActionEngine
+src/webpent/shared/runtime.py:600:            knowledge_gap_engine=KnowledgeGapEngine(),
+src/webpent/shared/runtime.py:601:            next_best_action_engine=SmartNextBestActionEngine(),
+src/webpent/agents/smart_campaigns/__init__.py:3:from .agent import build_smart_campaign_tasks, smart_campaigns_node
+src/webpent/agents/smart_campaigns/__init__.py:5:__all__ = ["build_smart_campaign_tasks", "smart_campaigns_node"]
+src/webpent/agents/smart_campaigns/agent.py:54:    KnowledgeGapEngine,
+src/webpent/agents/smart_campaigns/agent.py:55:    NegativeEvidence,
+src/webpent/agents/smart_campaigns/agent.py:58:    ResearchSession,
+src/webpent/agents/smart_campaigns/agent.py:59:    SmartNextBestActionEngine,
+src/webpent/agents/smart_campaigns/agent.py:723:    session: ResearchSession,
+src/webpent/agents/smart_campaigns/agent.py:756:            NegativeEvidence(
+src/webpent/agents/smart_campaigns/agent.py:779:    session: ResearchSession,
+src/webpent/agents/smart_campaigns/agent.py:951:def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
+src/webpent/agents/smart_campaigns/agent.py:965:        state.get("smart_mode") is False or state.get("enable_smart_campaigns") is False
+src/webpent/agents/smart_campaigns/agent.py:971:            or state.get("enable_smart_campaigns")
+src/webpent/agents/smart_campaigns/agent.py:996:        else KnowledgeGapEngine()
+src/webpent/agents/smart_campaigns/agent.py:1001:        else SmartNextBestActionEngine()
+src/webpent/agents/smart_campaigns/agent.py:1004:    research_session = ResearchSession.from_state(state)
+src/webpent/agents/smart_campaigns/agent.py:1398:        tool_name="smart_campaigns_execution",
+src/webpent/agents/smart_campaigns/agent.py:1578:def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
+src/webpent/agents/smart_campaigns/agent.py:1669:                    node="smart_campaigns",
+src/webpent/agents/smart_campaigns/agent.py:1680:            return runtime_context.blocked_result(node="smart_campaigns")
+src/webpent/agents/smart_campaigns/agent.py:1701:            return runtime.blocked_result(node="smart_campaigns")
+src/webpent/agents/smart_campaigns/agent.py:1706:    research_session = ResearchSession.from_state(state)
+src/webpent/agents/smart_campaigns/agent.py:1745:                source="smart_campaigns",
+src/webpent/agents/smart_campaigns/agent.py:1922:    "smart_campaigns_execution_node",
+src/webpent/agents/smart_campaigns/agent.py:1923:    "smart_campaigns_node",
+src/webpent/agents/subdomain_takeover/agent.py:21:from webpent.shared.research_intelligence import NegativeEvidence
+src/webpent/agents/subdomain_takeover/agent.py:249:            NegativeEvidence(
+=== FLAGS ===
+src/webpent/config/settings.py:44:    """Runtime authority profile for autonomous behavior."""
+src/webpent/config/settings.py:263:        description="Hard upper bound on autonomous actions in one engagement.",
+src/webpent/config/settings.py:272:        description="Bounded cost budget for policy-authorized autonomous actions.",
+src/webpent/config/settings.py:361:    smart_campaign_task_cap: int = Field(
+src/webpent/config/settings.py:366:            "smart_campaign_task_cap",
+src/webpent/graph/builder.py:72:from webpent.agents.smart_campaigns.agent import (
+src/webpent/graph/builder.py:73:    build_smart_campaign_handler,
+src/webpent/graph/builder.py:74:    smart_campaigns_execution_node,
+src/webpent/graph/builder.py:75:    smart_campaigns_node,
+src/webpent/graph/builder.py:89:from webpent.models.research import CandidateAction
+src/webpent/graph/builder.py:90:from webpent.shared.autonomous_controller import autonomous_controller_node
+src/webpent/graph/builder.py:92:from webpent.shared.causal_research import build_causal_research_projection
+src/webpent/graph/builder.py:103:from webpent.shared.research_contracts import active_research_node
+src/webpent/graph/builder.py:104:from webpent.shared.research_nodes import (
+src/webpent/graph/builder.py:105:    knowledge_gap_node,
+src/webpent/graph/builder.py:106:    next_best_action_node,
+src/webpent/graph/builder.py:107:    research_session_node,
+src/webpent/graph/builder.py:166:NODE_SMART_CAMPAIGNS = "smart_campaigns"
+src/webpent/graph/builder.py:167:NODE_SMART_CAMPAIGNS_EXECUTION = "smart_campaigns_execution"
+src/webpent/graph/builder.py:168:NODE_AUTONOMOUS_CONTROLLER = "autonomous_controller"
+src/webpent/graph/builder.py:169:NODE_ACTIVE_RESEARCH = "active_research"
+src/webpent/graph/builder.py:170:NODE_CAUSAL_RESEARCH = "causal_research"
+src/webpent/graph/builder.py:171:NODE_KNOWLEDGE_GAP = "knowledge_gap"
+src/webpent/graph/builder.py:172:NODE_NEXT_BEST_ACTION = "next_best_action"
+src/webpent/graph/builder.py:173:NODE_RESEARCH_SESSION = "research_session"
+src/webpent/graph/builder.py:222:def _autonomous_controller_enabled(state: PentestState) -> bool:
+src/webpent/graph/builder.py:224:    return state.get("enable_autonomous_controller") is True
+src/webpent/graph/builder.py:227:def _smart_campaigns_enabled(state: PentestState) -> bool:
+src/webpent/graph/builder.py:233:        or state.get("enable_smart_campaigns")
+src/webpent/graph/builder.py:248:    return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
+src/webpent/graph/builder.py:253:    return NODE_SMART_CAMPAIGNS if _smart_campaigns_enabled(state) else NODE_STRATEGIST
+src/webpent/graph/builder.py:256:def _autonomous_max_runs(state: PentestState) -> int:
+src/webpent/graph/builder.py:267:def route_after_smart_campaigns_execution(state: PentestState) -> str:
+src/webpent/graph/builder.py:269:    if _autonomous_controller_enabled(state):
+src/webpent/graph/builder.py:270:        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:273:            if runs < _autonomous_max_runs(state)
+src/webpent/graph/builder.py:289:def _research_candidates_available(state: Mapping[str, Any]) -> bool:
+src/webpent/graph/builder.py:291:    candidates = state.get("research_candidate_actions") or []
+src/webpent/graph/builder.py:294:        for item in (state.get("research_context") or {}).get(
+src/webpent/graph/builder.py:338:def route_after_autonomous_controller(state: PentestState) -> str:
+src/webpent/graph/builder.py:339:    """Return to recovery, smart execution, or bounded research after controller work."""
+src/webpent/graph/builder.py:342:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:348:    if runs >= _autonomous_max_runs(state):
+src/webpent/graph/builder.py:350:    if _research_candidates_available(state) or not state.get("smart_next_actions"):
+src/webpent/graph/builder.py:355:def _active_research_task(candidate: CandidateAction, state: Mapping[str, Any]) -> CampaignTask:
+src/webpent/graph/builder.py:356:    """Convert a validated research candidate into the central task contract."""
+src/webpent/graph/builder.py:360:            "probe_kind": "active_research",
+src/webpent/graph/builder.py:361:            "research_action_id": candidate.action_id,
+src/webpent/graph/builder.py:362:            "research_action_fingerprint": candidate.fingerprint(),
+src/webpent/graph/builder.py:380:        task_id=f"active-research:{candidate.action_id}"[:160],
+src/webpent/graph/builder.py:388:        vulnerability_class="research_information",
+src/webpent/graph/builder.py:389:        hypothesis_id=candidate.hypothesis_id[:160] or f"research-gap:{candidate.action_id}"[:160],
+src/webpent/graph/builder.py:400:        idempotency_key=candidate.idempotency_key or f"active-research:{candidate.fingerprint()}",
+src/webpent/graph/builder.py:407:        validator_id="active_research_observation",
+src/webpent/graph/builder.py:411:def _active_research_runtime_node(state: Mapping[str, Any]) -> dict[str, Any]:
+src/webpent/graph/builder.py:412:    """Run one graph-owned research step through an injected runtime adapter."""
+src/webpent/graph/builder.py:415:        return active_research_node(state)
+src/webpent/graph/builder.py:419:            "research_active_observations": [
+src/webpent/graph/builder.py:433:    handler = build_smart_campaign_handler(
+src/webpent/graph/builder.py:447:                source="active_research",
+src/webpent/graph/builder.py:460:    def injected_research_handler(candidate: CandidateAction) -> Mapping[str, Any]:
+src/webpent/graph/builder.py:464:        task = _active_research_task(candidate, state)
+src/webpent/graph/builder.py:517:        for raw in (state.get("research_candidate_actions") or [])[:100]
+src/webpent/graph/builder.py:519:    result = active_research_node(
+src/webpent/graph/builder.py:521:        handler=injected_research_handler,
+src/webpent/graph/builder.py:532:def causal_research_node(state: Mapping[str, Any]) -> dict[str, Any]:
+src/webpent/graph/builder.py:535:        return build_causal_research_projection(state)
+src/webpent/graph/builder.py:537:        logger.exception("Causal research projection failed; preserving state")
+src/webpent/graph/builder.py:543:                "next_best_action_links": [],
+src/webpent/graph/builder.py:564:    if _recovery_pending(state) and _research_candidates_available(state):
+src/webpent/graph/builder.py:565:        runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:566:        if runs < _autonomous_max_runs(state):
+src/webpent/graph/builder.py:571:def route_after_research_session(state: PentestState) -> str:
+src/webpent/graph/builder.py:572:    """Enter active research only with a validated, unattempted candidate."""
+src/webpent/graph/builder.py:573:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:574:    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
+src/webpent/graph/builder.py:579:def route_after_active_research(state: PentestState) -> str:
+src/webpent/graph/builder.py:581:    if state.get("research_active_observations"):
+src/webpent/graph/builder.py:586:def route_after_causal_research(state: PentestState) -> str:
+src/webpent/graph/builder.py:588:    runs = int(state.get("autonomous_controller_runs", 0) or 0)
+src/webpent/graph/builder.py:589:    if _research_candidates_available(state) and runs < _autonomous_max_runs(state):
+src/webpent/graph/builder.py:647:    smart_scan = _smart_campaigns_enabled(state)
+src/webpent/graph/builder.py:1026:    graph.add_node(NODE_SMART_CAMPAIGNS, smart_campaigns_node)
+src/webpent/graph/builder.py:1027:    graph.add_node(NODE_SMART_CAMPAIGNS_EXECUTION, smart_campaigns_execution_node)
+src/webpent/graph/builder.py:1028:    graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
+src/webpent/graph/builder.py:1034:    graph.add_node(NODE_KNOWLEDGE_GAP, knowledge_gap_node)
+src/webpent/graph/builder.py:1035:    graph.add_node(NODE_NEXT_BEST_ACTION, next_best_action_node)
+src/webpent/graph/builder.py:1036:    graph.add_node(NODE_RESEARCH_SESSION, research_session_node)
+src/webpent/graph/builder.py:1037:    graph.add_node(NODE_ACTIVE_RESEARCH, _active_research_runtime_node)
+src/webpent/graph/builder.py:1038:    graph.add_node(NODE_CAUSAL_RESEARCH, causal_research_node)
+src/webpent/graph/builder.py:1171:        route_after_smart_campaigns_execution,
+src/webpent/graph/builder.py:1180:        route_after_autonomous_controller,
+src/webpent/graph/builder.py:1201:        route_after_research_session,
+src/webpent/graph/builder.py:1209:        route_after_active_research,
+src/webpent/graph/builder.py:1217:        route_after_causal_research,
+=== ROUTE TESTS ===
+tests/test_autonomy_contracts.py:395:    ledger = AutonomousController._update_coverage_ledger({}, [task], [record])
+tests/test_autonomy_contracts.py:484:                if (state.get("coverage_ledger") or {}).get("idor", {}).get("attempts", 0)
+tests/test_autonomy_contracts.py:519:    assert result["coverage_ledger"]["idor"]["attempts"] == 1
+tests/test_autonomy_contracts.py:520:    assert result["coverage_ledger"]["ssti"]["attempts"] == 1
+tests/test_autonomy_contracts.py:645:            "coverage_ledger": {
+tests/test_autopentestx_adapter.py:208:    from webpent.shared.coverage_ledger import project_coverage_ledger
+tests/test_autopentestx_adapter.py:215:    projection = project_coverage_ledger(
+tests/test_coverage_ledger.py:1:from webpent.shared.coverage_ledger import project_coverage_ledger
+tests/test_coverage_ledger.py:18:    result = project_coverage_ledger(_state())
+tests/test_coverage_ledger.py:26:    result = project_coverage_ledger(
+tests/test_coverage_ledger.py:56:    result = project_coverage_ledger(
+tests/test_coverage_ledger.py:78:    result = project_coverage_ledger(
+tests/test_phase4_research_loop.py:7:    NODE_KNOWLEDGE_GAP,
+tests/test_phase4_research_loop.py:11:    route_after_active_research,
+tests/test_phase4_research_loop.py:12:    route_after_autonomous_controller,
+tests/test_phase4_research_loop.py:13:    route_after_causal_research,
+tests/test_phase4_research_loop.py:14:    route_after_research_session,
+tests/test_phase4_research_loop.py:15:    route_after_smart_campaigns_execution,
+tests/test_phase4_research_loop.py:29:    assert route_after_smart_campaigns_execution(state) == NODE_SMART_CAMPAIGNS
+tests/test_phase4_research_loop.py:42:    assert route_after_smart_campaigns_execution(state) == NODE_STRATEGIST
+tests/test_phase4_research_loop.py:55:    assert route_after_smart_campaigns_execution(state) == NODE_STRATEGIST
+tests/test_phase4_research_loop.py:68:    assert route_after_smart_campaigns_execution(state) == NODE_AUTONOMOUS_CONTROLLER
+tests/test_phase4_research_loop.py:101:    assert route_after_autonomous_controller(state) == NODE_RECOVERY
+tests/test_phase4_research_loop.py:115:    assert route_after_autonomous_controller(state) == NODE_KNOWLEDGE_GAP
+tests/test_phase4_research_loop.py:128:    assert route_after_autonomous_controller(state) == NODE_STRATEGIST
+tests/test_phase4_research_loop.py:137:    assert route_after_research_session(state) == NODE_ACTIVE_RESEARCH
+tests/test_phase4_research_loop.py:140:    assert route_after_research_session(state) == NODE_STRATEGIST
+tests/test_phase4_research_loop.py:144:    assert route_after_active_research({}) == NODE_STRATEGIST
+tests/test_phase4_research_loop.py:146:        route_after_active_research({"research_active_observations": [{"status": "observed"}]})
+tests/test_phase4_research_loop.py:157:    assert route_after_causal_research(state) == NODE_AUTONOMOUS_CONTROLLER
+tests/test_phase4_research_loop.py:160:    assert route_after_causal_research(state) == NODE_STRATEGIST
+tests/test_phase5_coverage_intelligence.py:1:from webpent.shared.coverage_ledger import project_coverage_ledger
+tests/test_phase5_coverage_intelligence.py:19:            "negative_evidence_ledger": [{"evidence_id": "negative:one"}],
+tests/test_phase5_coverage_intelligence.py:33:    coverage = project_coverage_ledger(state)["research_coverage"]
+tests/test_phase5_coverage_intelligence.py:39:    assert coverage["negative_evidence_count"] == 1
+tests/test_phase5_coverage_intelligence.py:56:    coverage = project_coverage_ledger(state)["research_coverage"]
+tests/test_phase5_information_execution.py:125:    assert result["negative_evidence_ledger"] == []
+tests/test_phase5_information_execution.py:171:        "negative_evidence_ledger": [{"evidence_id": "negative:one"}],
+tests/test_phase5_information_execution.py:175:    assert result["negative_evidence_ledger"] == [{"evidence_id": "negative:one"}]
+tests/test_phase5_information_execution.py:179:    assert result["research_session"]["negative_evidence_ledger"] == [
+tests/test_phase5_information_execution.py:205:    assert result["negative_evidence_ledger"] == []
+tests/test_phase5_target_understanding.py:8:        builder.route_after_infrastructure({"smart_mode": True})
+tests/test_phase5_target_understanding.py:16:    assert builder.route_after_infrastructure({}) == builder.NODE_SCOPE_ENFORCER
+tests/test_phase5_target_understanding.py:22:    assert builder.route_after_infrastructure({}) == builder.NODE_TARGET_UNDERSTANDING
+tests/test_smart_campaigns_node.py:10:from webpent.shared.coverage_ledger import project_coverage_ledger
+tests/test_smart_campaigns_node.py:235:    assert result["coverage_ledger"]["entries"][0]["attempts"] == 1
+tests/test_smart_campaigns_node.py:236:    assert result["coverage_ledger"]["entries"][0]["status"] == "inconclusive"
+tests/test_smart_campaigns_node.py:349:    result = project_coverage_ledger(state)
+tests/test_v10_exhaustive_audit.py:59:    def test_route_after_validator_dict_findings(self):
+tests/test_v10_exhaustive_audit.py:60:        """route_after_validator must not crash on dict-shaped findings."""
+tests/test_v10_exhaustive_audit.py:64:            route_after_validator,
+tests/test_v10_exhaustive_audit.py:75:        result = route_after_validator(state)
+tests/test_v10_exhaustive_audit.py:78:    def test_route_after_chainer_dict_findings(self):
+tests/test_v10_exhaustive_audit.py:79:        """route_after_chainer must not crash on dict-shaped findings."""
+tests/test_v10_exhaustive_audit.py:80:        from webpent.graph.builder import NODE_PAYLOAD_GENERATOR, route_after_chainer
+tests/test_v10_exhaustive_audit.py:87:        result = route_after_chainer(state)
+tests/test_v10_exhaustive_audit.py:90:    def test_route_after_hypothesis_dict_hypotheses(self):
+tests/test_v10_exhaustive_audit.py:91:        """route_after_hypothesis must detect open hypotheses in dict form."""
+tests/test_v10_exhaustive_audit.py:92:        from webpent.graph.builder import NODE_ACCESS_CONTROL, route_after_hypothesis
+tests/test_v10_exhaustive_audit.py:99:        result = route_after_hypothesis(state)
+tests/test_v10_exhaustive_audit.py:102:    def test_route_after_rabbit_hole_dict_hypotheses(self):
+tests/test_v10_exhaustive_audit.py:103:        """route_after_rabbit_hole must detect RABBIT_HOLE hypotheses in dict form."""
+tests/test_v10_exhaustive_audit.py:104:        from webpent.graph.builder import route_after_rabbit_hole
+tests/test_v10_exhaustive_audit.py:111:        result = route_after_rabbit_hole(state)
+tests/test_v10_exhaustive_audit.py:139:    # dict-safety bug class as route_after_validator etc. above, but were
+tests/test_v10_exhaustive_audit.py:211:        entry = result["coverage_ledger"]["entries"][h["id"]]
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:24:  * route_after_hypothesis routes to NODE_ACCESS_CONTROL (not
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:27:  * route_after_hypothesis still routes to NODE_REPORTER when
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:445:    """route_after_hypothesis must route to access_control when open
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:475:            route_after_hypothesis,
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:482:        result = route_after_hypothesis(state)
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:490:        from webpent.graph.builder import NODE_REPORTER, route_after_hypothesis
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:496:        assert route_after_hypothesis(state) == NODE_REPORTER
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:500:        from webpent.graph.builder import NODE_ACCESS_CONTROL, route_after_hypothesis
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:506:        assert route_after_hypothesis(state) == NODE_ACCESS_CONTROL
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:510:        from webpent.graph.builder import NODE_REPORTER, route_after_hypothesis
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:516:        assert route_after_hypothesis(state) == NODE_REPORTER
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:520:        from webpent.graph.builder import NODE_ACCESS_CONTROL, route_after_hypothesis
+tests/test_v10_p0_status_sqlmap_skiprecon_findings.py:526:        assert route_after_hypothesis(state) == NODE_ACCESS_CONTROL
+tests/test_v12_takeover_cloud.py:100:    assert len(result["negative_evidence_ledger"]) == 1
+tests/test_v12_takeover_cloud.py:101:    evidence = result["negative_evidence_ledger"][0]
+tests/test_v17_target_understanding.py:11:    route_after_auth,
+tests/test_v17_target_understanding.py:12:    route_after_infrastructure,
+tests/test_v17_target_understanding.py:85:    assert route_after_auth({"skip_recon": True}) == NODE_HYPOTHESIS
+tests/test_v17_target_understanding.py:86:    assert route_after_infrastructure({}) == NODE_SCOPE_ENFORCER
+tests/test_v17_target_understanding.py:93:    assert route_after_auth({"skip_recon": True}) == NODE_TARGET_UNDERSTANDING
+tests/test_v17_target_understanding.py:94:    assert route_after_infrastructure({}) == NODE_TARGET_UNDERSTANDING
+tests/test_v25_javascript_intelligence.py:11:    route_after_crawler,
+tests/test_v25_javascript_intelligence.py:161:    assert route_after_crawler({}) == NODE_SUBDOMAIN_TAKEOVER
+tests/test_v25_javascript_intelligence.py:168:    assert route_after_crawler({}) == NODE_JAVASCRIPT_INTELLIGENCE
+tests/test_v3_autonomous_graph_loop.py:7:    route_after_autonomous_controller,
+tests/test_v3_autonomous_graph_loop.py:8:    route_after_smart_campaigns_execution,
+tests/test_v3_autonomous_graph_loop.py:27:    assert route_after_smart_campaigns_execution(_state()) == NODE_AUTONOMOUS_CONTROLLER
+tests/test_v3_autonomous_graph_loop.py:29:        route_after_smart_campaigns_execution(
+tests/test_v3_autonomous_graph_loop.py:37:    assert route_after_autonomous_controller(_state()) == NODE_STRATEGIST
+tests/test_v3_autonomous_graph_loop.py:39:        route_after_autonomous_controller(
+tests/test_v3_autonomous_graph_loop.py:52:        route_after_autonomous_controller(
+tests/test_v3_research_evidence_mapping.py:53:    assert session.negative_evidence_ledger == []
+tests/test_v3_research_evidence_mapping.py:77:    assert session.negative_evidence_ledger == []
+tests/test_v3_research_evidence_mapping.py:91:    assert len(session.negative_evidence_ledger) == 1
+tests/test_v3_research_evidence_mapping.py:114:    assert session.negative_evidence_ledger == []
+tests/test_v58_http_discovery.py:386:    from webpent.graph.builder import NODE_DEVILS_ADVOCATE, route_after_validator
+tests/test_v58_http_discovery.py:403:    assert route_after_validator(
+tests/test_v58_http_discovery.py:414:    from webpent.graph.builder import NODE_DEVILS_ADVOCATE, route_after_validator
+tests/test_v58_http_discovery.py:428:    assert route_after_validator(
+tests/test_v58_validator_idempotency.py:10:    route_after_validator,
+tests/test_v58_validator_idempotency.py:71:    assert route_after_validator(state) == NODE_DEVILS_ADVOCATE
+tests/test_v63_vip_security_regression.py:103:def test_strategist_uses_coverage_ledger_without_fixed_top_n_cap() -> None:
+tests/test_v63_vip_security_regression.py:120:    ledger = result["coverage_ledger"]
+tests/test_v63_vip_security_regression.py:625:    active_entry = next(iter(active_result["coverage_ledger"]["entries"].values()))
+tests/test_v63_vip_security_regression.py:638:    observe_entry = next(iter(observe_result["coverage_ledger"]["entries"].values()))
+tests/test_v65_coverage_copilot_boundary.py:4:from webpent.shared.coverage_ledger import CoverageIntelligence
+tests/test_v70_release_contracts.py:9:from webpent.shared.coverage_ledger import CoverageIntelligence
+tests/test_v91_research_intelligence.py:109:def test_negative_evidence_ledger_enforces_scope_and_explicit_transfer():
+tests/test_v93_capability_registry.py:74:    from webpent.shared.coverage_ledger import CoverageIntelligence
+tests/test_v95_devils_advocate_gate.py:7:    route_after_devils_advocate,
+tests/test_v95_devils_advocate_gate.py:49:    assert route_after_devils_advocate(result) == NODE_VALIDATOR
+tests/test_v95_devils_advocate_gate.py:58:    assert route_after_devils_advocate(state) == NODE_EXPLOIT_CHAINER
+tests/test_v95_devils_advocate_gate.py:59:    assert route_after_devils_advocate({}) == NODE_EXPLOIT_CHAINER
+tests/test_v95_devils_advocate_gate.py:73:    assert route_after_devils_advocate(result) == NODE_EXPLOIT_CHAINER
+tests/test_v95_scope_and_budget_guards.py:7:    route_after_scope_enforcer,
+tests/test_v95_scope_and_budget_guards.py:8:    route_after_scope_review,
+tests/test_v95_scope_and_budget_guards.py:27:    assert route_after_scope_enforcer({"scope_drift_detected": True}) == NODE_SCOPE_REVIEW
+tests/test_v95_scope_and_budget_guards.py:28:    assert route_after_scope_review({"scope_drift_approved": False}) == END
+tests/test_v95_scope_and_budget_guards.py:29:    assert route_after_scope_review({"scope_drift_approved": True}) == NODE_WAF_DETECTOR
+tests/test_v9_round2_wiring_fixes.py:87:    satisfy route_after_validator's `fid in payloads_to_test` gate, so
+tests/test_vip_causal_research.py:6:    route_after_active_research,
+tests/test_vip_causal_research.py:7:    route_after_causal_research,
+tests/test_vip_causal_research.py:60:        "negative_evidence_ledger": [_negative()],
+tests/test_vip_causal_research.py:77:    assert link["negative_evidence_reusable_count"] == 1
+tests/test_vip_causal_research.py:78:    assert result["causal_attack_graph"]["negative_evidence_consulted"] is True
+tests/test_vip_causal_research.py:83:    assert artifact["negative_evidence_consulted"] is True
+tests/test_vip_causal_research.py:94:        "negative_evidence_ledger": [_negative(engagement_id="engagement-1")],
+tests/test_vip_causal_research.py:100:    assert result["research_unified_decision_trace"][0]["negative_evidence_reusable_count"] == 0
+tests/test_vip_causal_research.py:102:        result["research_candidate_actions"][0]["metadata"]["negative_evidence_consulted"]
+tests/test_vip_causal_research.py:110:    assert route_after_active_research(state) == NODE_CAUSAL_RESEARCH
+tests/test_vip_causal_research.py:120:    assert route_after_causal_research(state) == NODE_AUTONOMOUS_CONTROLLER
+tests/test_vip_causal_research.py:123:    assert route_after_causal_research(exhausted) != NODE_AUTONOMOUS_CONTROLLER
+tests/test_vip_recovery_loop.py:9:    route_after_autonomous_controller,
+tests/test_vip_recovery_loop.py:10:    route_after_recovery,
+tests/test_vip_recovery_loop.py:133:    assert route_after_autonomous_controller(state) == NODE_RECOVERY
+tests/test_vip_recovery_loop.py:136:    assert route_after_recovery({**state, **next_state}) == NODE_AUTONOMOUS_CONTROLLER
+tests/test_vip_recovery_loop.py:142:    assert route_after_recovery(exhausted) == NODE_STRATEGIST
+tests/test_vip_recovery_loop.py:160:    assert route_after_autonomous_controller(state) != NODE_RECOVERY
+tests/test_vip_research_contracts.py:122:def test_negative_evidence_reorders_same_gap_without_suppressing_alternate_control():
+tests/test_vip_research_contracts.py:151:        "negative_evidence_ledger": [
+tests/test_waptlab_catalog_manifest.py:60:def test_coverage_ledger_has_all_campaigns_and_safe_dispositions() -> None:
+tests/test_waptlab_catalog_manifest.py:61:    ledger_path = ROOT / "docs" / "waptlab_coverage_ledger.json"
+tests/test_wildcard_scope.py:20:    route_after_crawler_with_identity,
+tests/test_wildcard_scope.py:21:    route_after_wildcard_scope,
+tests/test_wildcard_scope.py:91:    assert route_after_wildcard_scope(output) == NODE_PLANNER
+tests/test_wildcard_scope.py:99:    assert route_after_wildcard_scope(output) == NODE_REPORTER
+tests/test_wildcard_scope.py:139:    from webpent.graph.builder import route_after_planner
+tests/test_wildcard_scope.py:141:    assert route_after_planner({}) == NODE_AUTH
+tests/test_wildcard_scope.py:153:    assert route_after_crawler_with_identity({}) == NODE_SUBDOMAIN_TAKEOVER
+tests/test_wildcard_scope.py:165:    assert route_after_crawler_with_identity({}) == NODE_IDENTITY_PROVISIONING
+tests/test_wildcard_scope.py:202:    assert takeover_output["negative_evidence_ledger"]

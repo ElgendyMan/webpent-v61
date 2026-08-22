@@ -1,6 +1,7 @@
+--- full pytest coverage with bbscout integration path ---
 ........................................................................ [  5%]
 ........................................................................ [ 10%]
-...........................F.........F..........F....................... [ 15%]
+........................................................................ [ 15%]
 ........................................................................ [ 20%]
 ........................................................................ [ 25%]
 ........................................................................ [ 30%]
@@ -18,46 +19,6 @@
 ........................................................................ [ 90%]
 ........................................................................ [ 95%]
 ............................................................             [100%]
-=================================== FAILURES ===================================
-______ test_g02_inventory_is_generated_from_current_source_without_drift _______
-
-    def test_g02_inventory_is_generated_from_current_source_without_drift():
-        inventory = _inventory()
-        assert inventory["schema"] == "webpent.direct_io_inventory.v1"
-        assert inventory["generated_from"] == "src/**/*.py"
->       assert inventory["records"] == scan_direct_io(PROJECT_ROOT / "src")
-E       AssertionError: assert [{'approval_s...y', ...}, ...] == [{'file': 'sr...n', ...}, ...]
-E         
-E         At index 246 diff: {'approval_status': 'not_applicable', 'classification': 'dynamic_resolution', 'column': 47, 'file': 'src/webpent/state/initial_state.py', 'kind': 'dynamic_resolution', 'line': 158, 'normalized_symbol': 'getattr(scan_mode, ... )', 'reason': 'dynamic attribute access observed without a transport signal', 'symbol': 'getattr', 'transport': 'dynamic_resolution', 'transport_family': 'non_transport'} != {'file': 'src/webpent/state/initial_state.py', 'line': 173, 'column': 47, 'kind': 'dynamic_resolution', 'symbol': 'getattr', 'normalized_symbol': 'getattr(sc...
-E         
-E         ...Full output truncated (2 lines hidden), use '-vv' to show
-
-tests/test_g02_direct_io_inventory.py:26: AssertionError
-________ test_precommit_checker_accepts_current_deterministic_artifacts ________
-
-    def test_precommit_checker_accepts_current_deterministic_artifacts() -> None:
->       assert check_repository(project_root=ROOT) == []
-E       AssertionError: assert ['JSON artifa... source scan'] == []
-E         
-E         Left contains 3 more items, first extra item: 'JSON artifact is not the deterministic scanner output'
-E         Use -v to get more diff
-
-tests/test_g02_precommit_enforcement.py:84: AssertionError
-_________________ test_g02_inventory_contract_helper_is_clean __________________
-
-    def test_g02_inventory_contract_helper_is_clean():
-        from json import loads
-    
-        artifact = loads(
-            (PROJECT_ROOT / "docs" / "direct_io_inventory.json").read_text(encoding="utf-8")
-        )
->       assert inventory_contract_errors(artifact, SOURCE_ROOT) == []
-E       AssertionError: assert ['artifact re... source scan'] == []
-E         
-E         Left contains one more item: 'artifact records drift from current source scan'
-E         Use -v to get more diff
-
-tests/test_g02_scanner_expansion.py:59: AssertionError
 =============================== warnings summary ===============================
 tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter
   /tmp/bbscout_webpent_integration/webpent-git/src/webpent/memory/embeddings.py:97: DeprecationWarning: `langchain-community` is being sunset and is no longer actively maintained. See https://github.com/langchain-ai/langchain-community/issues/674 for details and migration guidance toward standalone integration packages.
@@ -357,9 +318,6 @@ src/webpent/workers/observability.py                        63      1    98%
 src/webpent/workers/pentest_worker.py                      397    230    42%
 ----------------------------------------------------------------------------
 TOTAL                                                    30279   8222    73%
-Coverage JSON written to file artifacts/smart_hunter_review/webpent_cov_loop_current.json
-=========================== short test summary info ============================
-FAILED tests/test_g02_direct_io_inventory.py::test_g02_inventory_is_generated_from_current_source_without_drift
-FAILED tests/test_g02_precommit_enforcement.py::test_precommit_checker_accepts_current_deterministic_artifacts
-FAILED tests/test_g02_scanner_expansion.py::test_g02_inventory_contract_helper_is_clean
-3 failed, 1425 passed, 56 warnings in 92.11s (0:01:32)
+Coverage JSON written to file artifacts/smart_hunter_review/webpent_cov_release_20260823.json
+Required test coverage of 70% reached. Total coverage: 72.85%
+1428 passed, 56 warnings in 87.36s (0:01:27)

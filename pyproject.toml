@@ -8,7 +8,7 @@ name = "webpent"
 version = "0.3.0"
 description = "WebPent Framework V3 - Autonomous pentesting with HITL approval, RAG, active browser exploitation, GPU acceleration, and professional HTML reporting"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "==3.12.3"
 license = { text = "MIT" }
 authors = [
     { name = "WebPent Team", email = "security@example.com" },
@@ -19,19 +19,16 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Security",
 ]
 
 dependencies = [
     "torch>=2.2.0",
-    # Security floor: the LangChain/LangGraph 1.x generation contains the
-    # patched releases required by the current pip-audit policy. Keep upper
-    # bounds at the next major version so clean installs remain reproducible.
-    "langgraph>=1.0.10,<2.0",
-    "langgraph-checkpoint-sqlite>=3.1.1,<4.0",
+    # Security floor: these exact LangGraph packages match the validated
+    # Python 3.12.3 release environment and its uv.lock resolution.
+    "langgraph==1.2.11",
+    "langgraph-checkpoint-sqlite==3.1.1",
     "langchain-core>=1.2.22,<2.0",
     "langchain-community>=0.4.2,<1.0",
     # V7 Phase 6 FIX: Cloudflare Workers AI now lives in its own

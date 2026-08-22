@@ -1,0 +1,244 @@
+=== PACKAGE FILES ===
+src/webpent/__init__.py
+src/webpent/agents/__init__.py
+src/webpent/api/__init__.py
+src/webpent/attack_graph/__init__.py
+src/webpent/auth/__init__.py
+src/webpent/benchmark/__init__.py
+src/webpent/cli/__init__.py
+src/webpent/config/__init__.py
+src/webpent/copilot/__init__.py
+src/webpent/coverage/__init__.py
+src/webpent/experience/__init__.py
+src/webpent/graph/__init__.py
+src/webpent/integrations/__init__.py
+src/webpent/knowledge/__init__.py
+src/webpent/memory/__init__.py
+src/webpent/models/__init__.py
+src/webpent/persistence/__init__.py
+src/webpent/reporter/__init__.py
+src/webpent/research/__init__.py
+src/webpent/shared/__init__.py
+src/webpent/state/__init__.py
+src/webpent/tools/__init__.py
+src/webpent/utils/__init__.py
+src/webpent/validators/__init__.py
+src/webpent/workers/__init__.py
+=== VERSION REFERENCES ===
+docs/DIRECT_IO_INVENTORY.md:38:| `src/webpent/agents/access_control/agent.py` | 1143 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+docs/DIRECT_IO_INVENTORY.md:257:| `src/webpent/shared/prioritization.py` | 730 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+docs/V3_RESIDUAL_GAP_MATRIX_20260821.md:23:| G-13 | external adapters وcapability image غير qualified | nuclei/dalfox وغيرها لها wrappers/fallbacks وcapability report؛ end-to-end executable/version/hash/health qualification ناقصة | G8 | **PARTIAL** | health/version/hash/fallback evidence لكل capability داخل image نفسها |
+docs/WEBPENT_RELEASE_AUDIT_20260821.md:5:**المستودع:** [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)
+docs/WEBPENT_VIP_VALIDATION_20260821.md:5:**المستودع:** [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)
+docs/WebPentSmartAutonomousBugHunter_review_report.md:1:# WebPent v60 — Smart Autonomous Bug Hunter Review Report
+docs/audit_remediation_plan_ar.md:1:# خطة معالجة تقرير تدقيق WebPent v60
+docs/audit_remediation_plan_ar.md:4:**المرجع:** `WebPent_v60_Audit_Report.docx`
+docs/audit_remediation_plan_ar.md:25:يجب أن تظل الموارد القديمة قابلة للقراءة، لكن أي resource قديم بلا `owner/tenant/engagement` سيُعامل deny-by-default في المسارات الحساسة. لن نغير شكل state أو checkpoint بلا migration/version gate. لن نسمح بترقية LLM hypothesis إلى `Tool-Confirmed` دون evidence contract. وكل تعديل على network أو subprocess سيحافظ على scope enforcement وHITL وrate/concurrency budgets.
+docs/audit_remediation_plan_ar.md:67:سننظف dead imports، نوحد version/test metadata في README وbaseline وdelivery notes، نصلح template labels وknowledge source identifiers و`doctor-offline.json`، ونحوّل `verify_all.py` إلى check حقيقي أو نحذفه. سنضع Ruff configuration صريحة: بوابة merge محددة ومعلنة، مع فصل legacy violations عن الملفات التي تم لمسها، بدل الادعاء أن المشروع كله نظيف بينما يوجد مئات المخالفات.
+docs/audit_remediation_plan_ar.md:71:لن ندّعي أن إضافة patterns أو GraphQL discovery تعني دعم GraphQL end-to-end. ولن نرقّي المشروع إلى production-ready طالما dependency audit يحتوي advisories أو Redis/secrets/checkpoint controls غير مكتملة. ترقية LangChain/LangGraph major versions ستكون branch منفصلة مع migration tests للحفاظ على checkpoints القديمة.
+docs/audit_remediation_release_ar.md:1:# تقرير إصدار معالجة تدقيق WebPent v60
+docs/audit_remediation_release_ar.md:3:**الإصدار:** Audit Remediation Release — v60 remediation على خط v63
+docs/audit_remediation_release_ar.md:7:**المرجع:** `WebPent_v60_Audit_Report.docx`
+docs/audit_remediation_release_ar.md:13:يوثق هذا الملف الإصلاحات المنفذة استجابةً لتقرير تدقيق WebPent v60، مع الحفاظ على الحواجز الأصلية: **fail-closed، scope enforcement، HITL، Evidence Contract، وعزل client/engagement**. تم تنفيذ التغييرات بصورة محافظة، مع إبقاء واجهات الاستخدام القديمة قدر الإمكان، وإضافة اختبارات regression سلوكية لكل مجموعة أمنية رئيسية.
+docs/audit_remediation_release_ar.md:121:للتراجع المحافظ، يُستخدم archive السابق `webpent_v60_20260817.zip` أو النسخة المسلمة من خط v63، ثم تُعاد بوابات `pytest` و`compileall` و`uv lock --check` و`pip check` قبل تشغيل أي worker. لا ينبغي rollback جزئي لملفات vault/checkpoint/worker منفردة، لأن ذلك قد يعيد مسارًا يضع secrets في state أو يسمح بـresume غير موقع.
+docs/audit_remediation_release_ar.md:126:2. [`WebPent_v60_Audit_Report_extracted.txt`](../WebPent_v60_Audit_Report_extracted.txt) — النص المستخرج من تقرير التدقيق المرجعي.
+docs/audit_remediation_release_ar.md:138:[2]: ../WebPent_v60_Audit_Report_extracted.txt
+docs/autopentestx_benchmark_harness.md:31:A qualification-grade baseline-versus-adapter benchmark still requires an authorized, resettable target, a versioned ground-truth registry, clean isolated engagements, repeated captures, and the normal WebPent evidence gates. No local fixture or offline artifact summary can establish WAPTLab findings, VIP status, precision, recall, or reproducibility by itself.
+docs/autopentestx_execution_report.md:48:| Manifest | يعلن version/commit/budgets/fail-closed/network/subprocess status |
+docs/autopentestx_execution_report.md:95:- Remote: `https://github.com/ElgendyMan/webpent-v61.git`
+docs/autopentestx_selective_integration_audit.md:27:| Common-version checks | Service/version string heuristics, including empty-version matching and `exploitable=True` | Source-present | No | Keep out of confirmation; optionally import as low-confidence enrichment with uncertainty |
+docs/autopentestx_selective_integration_audit.md:28:| CVE enrichment | CIRCL/NVD-style HTTP lookup, permissive version matching, keyword-based exploit availability | Source-present | No as-is | Implement provenance-aware offline parser only; external lookup remains disabled by default |
+docs/autopentestx_selective_integration_audit.md:46:The version scanner marks selected service patterns as exploitable, and the CVE module defaults uncertain version applicability to true. Reference keywords can mark exploit availability without proving target applicability. These values are useful for prioritization only and cannot become WebPent confirmations.
+docs/autopentestx_selective_integration_audit.md:61:| Output | Redacted `AdapterResult` observations with tool name, pinned source revision, source timestamp, version confidence, uncertainty, and evidence digest |
+docs/autopentestx_selective_integration_audit.md:71:The AutoPentestX capabilities are not added to the active execution manifest as available tools by default. A future executable adapter must be explicitly configured, version-pinned, checksum-verified, and invoked only through ActionExecutor. Missing capability, missing executable, failed checksum, scope mismatch, invalid budget, destructive risk, and missing idempotency must fail closed.
+docs/capability_report.json:296:  "schema_version": "webpent-capability-report-v1",
+docs/coverage_escalation_plan.md:5:The v95 quality gate was run with the full test suite and no lab runtime:
+docs/coverage_escalation_plan.md:23:| v95 current | 66% | Keep the full suite green and prevent regression below the measured margin. |
+docs/direct_io_inventory.json:601:      "line": 1143,
+docs/direct_io_inventory.json:3448:      "line": 730,
+docs/g02_dynamic_resolution_hardening_report.md:4:**Repository:** `ElgendyMan/webpent-v61`
+docs/integration/docker_celery_resume_report.md:24:يلزم بيئة Docker/Redis فعلية وصحية، تشغيل workerين مستقلين، إرسال نفس package/confirmation في وقت متزامن، قتل worker أثناء preflight أو بعد lease، استئناف checkpoint، والتحقق من أن lease لا يُستهلك مرتين وأن ProofBundle continuity لا تُفقد. يجب حفظ logs وcontainer versions وRedis state digest، مع إثبات أن external target contact لم يحدث أثناء الاختبارات غير الحية.
+docs/integration/integration_manifest.md:77:| Git remote | `https://github.com/ElgendyMan/webpent-v61` |
+docs/integration/integration_manifest.md:78:| archive التكامل | `webpent_v61_82558c5_bbscout_integration.zip` |
+docs/integration/integration_manifest.md:79:| archive SHA256 | `webpent_v61_82558c5_bbscout_integration.sha256` |
+docs/integration/vip_gap_analysis_20260822.md:21:| Target Knowledge Graph | `shared/attack_graph.py` يبني projection redacted من mental model والعلاقات والـfindings | جزئي قوي | graph حاليًا projection أكثر من كونه مصدر قرار موحّد؛ يلزم adapter واضح للـplanner والـhypothesis engine مع stable versioning |
+docs/integration/vip_gap_analysis_20260822.md:24:| Attack Surface Model | crawled surface، endpoint/route extraction، surface records، capability catalog | جزئي | يلزم canonical surface inventory بمصدر وثقة وتاريخ وmethod/parameter/auth context، مع dedup/versioning وعدم إسقاط endpoints المتعارضة |
+docs/integration/vip_gap_analysis_20260822.md:33:| Deterministic Validator Framework | validator registry/plugins، structural/active/replay validators، proof validators | موجود قوي جزئيًا | يلزم common validator result schema وversioned contracts وconsistent inconclusive/blocked mapping لكل validator |
+docs/integration/vip_gap_analysis_20260822.md:36:| ProofBundle + Replay Engine | sealed/replayable bundle، digests، tamper checks، proof store | موجود قوي جزئيًا | يلزم replay executor contract موحّد يعيد observations من adapter مصرح به، مع schema/version migration وreport continuity |
+docs/integration/vip_gap_analysis_20260822.md:38:| RAG 2.0 | knowledge/lessons/vectorstore وclient/engagement isolation موجودة من الإصدارات السابقة | جزئي | يلزم retrieval contract versioned مع source provenance، confidence، freshness، tenant filter، وقياس retrieval usefulness؛ لا يجوز أن يصبح RAG evidence أو authorization |
+docs/integration/vip_gap_analysis_20260822.md:67:4. اختبار graph/mental-model version conflict وstale workflow identity.
+docs/integration/vip_gap_analysis_20260822.md:77:`QualificationMatrix` يصف ground truth وruns، لكنه لا يثبت بمفرده أن WebPent VIP. المطلوب benchmark versioned يحتوي cases معروفة، expected class، authorized fixture، deterministic adapter، وnegative cases. لكل run يجب تسجيل:
+docs/integration/vip_gap_analysis_20260822.md:83:- reproducibility عبر runs متعددة بنفس input/version.
+docs/integration/vip_gap_analysis_20260822.md:95:1. تثبيت schemas/versioned contracts: `TargetKnowledgeSnapshot`, `ResearchExperiment`, `ValidatorResult`, `AutonomyBudget`, `StopState`، مع redaction وengagement identity.
+docs/integration/vip_gap_analysis_20260822.md:118:تم ربط `smart_campaigns` projection بالحزم الموجودة فعليًا: `KnowledgeBuilder` يعيد بناء target knowledge من state observations، و`AttackGraphBuilder` يعيد graph projection، و`ResearchLoopContract` يسجل fingerprint/version وgaps/actions/outcome taxonomy وbudget/stop telemetry. هذه المخرجات **advisory/report-safe فقط**؛ لا تمنح ActionAuthority، ولا تؤكد finding، ولا تستبدل validator أو sealed ProofBundle. تم إضافة redaction دفاعية للـsecret-like inline identifiers.
+docs/live_waptlab_output_smart/report.json:98:    "schema_version": 1,
+docs/live_waptlab_output_smart/report.json:164:    "version": 1,
+docs/live_waptlab_output_smart_final/report.json:239:    "schema_version": 1,
+docs/live_waptlab_output_smart_final/report.json:404:    "version": 1,
+docs/live_waptlab_output_smart_fixed/report.json:98:    "schema_version": 1,
+docs/live_waptlab_output_smart_fixed/report.json:164:    "version": 1,
+docs/live_waptlab_output_smart_release/report.json:250:    "schema_version": 1,
+docs/live_waptlab_output_smart_release/report.json:424:    "version": 1,
+docs/live_waptlab_output_smart_release2/report.json:3:  "generated_at": "2026-08-18T17:27:41.862730+00:00",
+docs/live_waptlab_output_smart_release2/report.json:250:    "schema_version": 1,
+docs/live_waptlab_output_smart_release2/report.json:424:    "version": 1,
+docs/live_waptlab_output_smart_release2/report.json:692:      "version": 1,
+docs/live_waptlab_output_smart_release3/report.json:250:    "schema_version": 1,
+docs/live_waptlab_output_smart_release3/report.json:424:    "version": 1,
+docs/live_waptlab_output_smart_release3/report.json:692:      "version": 1,
+docs/live_waptlab_output_smart_release4/report.json:250:    "schema_version": 1,
+docs/live_waptlab_output_smart_release4/report.json:424:    "version": 1,
+docs/live_waptlab_output_smart_release4/report.json:692:      "version": 1,
+docs/live_waptlab_output_smart_release5/report.json:250:    "schema_version": 1,
+docs/live_waptlab_output_smart_release5/report.json:424:    "version": 1,
+docs/live_waptlab_output_smart_release5/report.json:692:      "version": 1,
+docs/live_waptlab_output_smart_release6/report.json:239:    "version": 1,
+docs/live_waptlab_output_smart_release6/report.json:401:    "schema_version": 1,
+docs/live_waptlab_output_smart_release6/report.json:411:    "version": 1,
+docs/live_waptlab_output_smart_release6/report.json:679:      "version": 1,
+docs/live_waptlab_output_smart_release7/report.json:239:    "version": 1,
+docs/live_waptlab_output_smart_release7/report.json:401:    "schema_version": 1,
+docs/live_waptlab_output_smart_release7/report.json:411:    "version": 1,
+docs/live_waptlab_output_smart_release7/report.json:679:      "version": 1,
+docs/llm_production_readiness_20260821.md:48:LOCAL_LLM_URL=http://localhost:11434/v1
+docs/phase6_smart_hunter_release_report.md:1:# WebPent v60 — Smart Autonomous Bug Hunter Phase 6
+docs/pip_audit_release.json:1:{"dependencies": [{"name": "aiohappyeyeballs", "version": "2.7.1", "vulns": []}, {"name": "aiohttp", "version": "3.14.3", "vulns": []}, {"name": "multidict", "version": "6.7.1", "vulns": []}, {"name": "yarl", "version": "1.24.5", "vulns": []}, {"name": "aiosignal", "version": "1.4.0", "vulns": []}, {"name": "aiosqlite", "version": "0.22.1", "vulns": []}, {"name": "alembic", "version": "1.19.1", "vulns": []}, {"name": "amqp", "version": "5.3.1", "vulns": []}, {"name": "vine", "version": "5.1.0", "vulns": []}, {"name": "annotated-doc", "version": "0.0.5", "vulns": []}, {"name": "annotated-types", "version": "0.8.0", "vulns": []}, {"name": "anthropic", "version": "0.124.0", "vulns": []}, {"name": "anyio", "version": "4.14.2", "vulns": []}, {"name": "distro", "version": "1.9.0", "vulns": []}, {"name": "docstring-parser", "version": "0.18.0", "vulns": []}, {"name": "httpx", "version": "0.28.1", "vulns": []}, {"name": "httpcore", "version": "1.0.9", "vulns": []}, {"name": "jiter", "version": "0.16.0", "vulns": []}, {"name": "pydantic", "version": "2.13.4", "vulns": []}, {"name": "sniffio", "version": "1.3.1", "vulns": []}, {"name": "typing-extensions", "version": "4.16.0", "vulns": []}, {"name": "asgiref", "version": "3.12.1", "vulns": []}, {"name": "attrs", "version": "26.1.0", "vulns": []}, {"name": "backoff", "version": "2.2.1", "vulns": []}, {"name": "bcrypt", "version": "5.0.0", "vulns": []}, {"name": "beautifulsoup4", "version": "4.15.0", "vulns": []}, {"name": "billiard", "version": "4.2.4", "vulns": []}, {"name": "build", "version": "1.5.0", "vulns": []}, {"name": "celery", "version": "5.6.3", "vulns": []}, {"name": "click", "version": "8.4.2", "vulns": []}, {"name": "certifi", "version": "2026.7.22", "vulns": []}, {"name": "cffi", "version": "2.1.1", "vulns": []}, {"name": "charset-normalizer", "version": "3.5.1", "vulns": []}, {"name": "chroma-hnswlib", "version": "0.7.6", "vulns": []}, {"name": "chromadb", "version": "0.6.3", "vulns": []}, {"name": "click-didyoumean", "version": "0.3.1", "vulns": []}, {"name": "click-plugins", "version": "1.1.1.2", "vulns": []}, {"name": "click-repl", "version": "0.3.0", "vulns": []}, {"name": "cohere", "version": "5.21.1", "vulns": []}, {"name": "fastavro", "version": "1.12.2", "vulns": []}, {"name": "requests", "version": "2.34.2", "vulns": []}, {"name": "idna", "version": "3.19", "vulns": []}, {"name": "tokenizers", "version": "0.22.2", "vulns": []}, {"name": "huggingface-hub", "version": "1.28.0", "vulns": []}, {"name": "hf-xet", "version": "1.6.0", "vulns": []}, {"name": "types-requests", "version": "2.33.0.20260712", "vulns": []}, {"name": "urllib3", "version": "2.7.0", "vulns": []}, {"name": "cryptography", "version": "50.0.0", "vulns": []}, {"name": "cuda-bindings", "version": "13.3.1", "vulns": []}, {"name": "cuda-pathfinder", "version": "1.6.1", "vulns": []}, {"name": "cuda-toolkit", "version": "13.0.3.0", "vulns": []}, {"name": "docker", "version": "7.2.0", "vulns": []}, {"name": "durationpy", "version": "0.10", "vulns": []}, {"name": "fastapi", "version": "0.141.1", "vulns": []}, {"name": "filelock", "version": "3.32.3", "vulns": []}, {"name": "filetype", "version": "1.2.0", "vulns": []}, {"name": "flatbuffers", "version": "25.12.19", "vulns": []}, {"name": "frozenlist", "version": "1.8.0", "vulns": []}, {"name": "fsspec", "version": "2026.7.0", "vulns": []}, {"name": "google-auth", "version": "2.56.3", "vulns": []}, {"name": "google-genai", "version": "2.18.1", "vulns": []}, {"name": "tenacity", "version": "9.1.4", "vulns": []}, {"name": "websockets", "version": "16.1.1", "vulns": []}, {"name": "googleapis-common-protos", "version": "1.75.1", "vulns": []}, {"name": "protobuf", "version": "7.35.1", "vulns": []}, {"name": "greenlet", "version": "3.1.1", "vulns": []}, {"name": "grpcio", "version": "1.83.0", "vulns": []}, {"name": "h11", "version": "0.16.0", "vulns": []}, {"name": "httpcore2", "version": "2.12.0", "vulns": []}, {"name": "httptools", "version": "0.8.0", "vulns": []}, {"name": "httpx-sse", "version": "0.4.3", "vulns": []}, {"name": "httpx2", "version": "2.12.0", "vulns": []}, {"name": "importlib-resources", "version": "7.1.0", "vulns": []}, {"name": "jinja2", "version": "3.1.6", "vulns": []}, {"name": "joblib", "version": "1.5.3", "vulns": []}, {"name": "jsonpatch", "version": "1.33", "vulns": []}, {"name": "jsonpointer", "version": "3.1.1", "vulns": []}, {"name": "kombu", "version": "5.6.2", "vulns": []}, {"name": "kubernetes", "version": "36.0.3", "vulns": []}, {"name": "langchain-anthropic", "version": "1.5.6", "vulns": []}, {"name": "langchain-core", "version": "1.6.0", "vulns": []}, {"name": "langsmith", "version": "0.11.1", "vulns": []}, {"name": "pyyaml", "version": "6.0.3", "vulns": []}, {"name": "uuid-utils", "version": "0.17.0", "vulns": []}, {"name": "langchain-chroma", "version": "0.2.3", "vulns": []}, {"name": "langchain-classic", "version": "1.0.8", "vulns": []}, {"name": "langchain-text-splitters", "version": "1.1.2", "vulns": []}, {"name": "sqlalchemy", "version": "2.0.52", "vulns": []}, {"name": "langchain-cloudflare", "version": "0.3.6", "vulns": []}, {"name": "langchain-cohere", "version": "0.6.0", "vulns": []}, {"name": "types-pyyaml", "version": "6.0.12.20260815", "vulns": []}, {"name": "langchain-community", "version": "0.4.2", "vulns": []}, {"name": "pydantic-settings", "version": "2.15.0", "vulns": []}, {"name": "langchain-google-genai", "version": "4.3.4", "vulns": []}, {"name": "langchain-mistralai", "version": "1.1.6", "vulns": []}, {"name": "langchain-openai", "version": "1.5.2", "vulns": []}, {"name": "openai", "version": "3.3.1", "vulns": []}, {"name": "tiktoken", "version": "0.14.0", "vulns": []}, {"name": "langchain-protocol", "version": "0.0.18", "vulns": []}, {"name": "langgraph", "version": "1.2.11", "vulns": []}, {"name": "langgraph-checkpoint", "version": "4.2.0", "vulns": []}, {"name": "langgraph-prebuilt", "version": "1.1.0", "vulns": []}, {"name": "langgraph-sdk", "version": "0.4.3", "vulns": []}, {"name": "langgraph-checkpoint-sqlite", "version": "3.1.1", "vulns": []}, {"name": "mako", "version": "1.4.1", "vulns": []}, {"name": "markdown-it-py", "version": "4.2.0", "vulns": []}, {"name": "mdurl", "version": "0.1.2", "vulns": []}, {"name": "markupsafe", "version": "3.0.3", "vulns": []}, {"name": "mmh3", "version": "5.2.1", "vulns": []}, {"name": "mpmath", "version": "1.3.0", "vulns": []}, {"name": "narwhals", "version": "2.24.0", "vulns": []}, {"name": "networkx", "version": "3.6.1", "vulns": []}, {"name": "numpy", "version": "2.5.2", "vulns": []}, {"name": "nvidia-cublas", "version": "13.1.1.3", "vulns": []}, {"name": "nvidia-cuda-cupti", "version": "13.0.85", "vulns": []}, {"name": "nvidia-cuda-nvrtc", "version": "13.0.88", "vulns": []}, {"name": "nvidia-cuda-runtime", "version": "13.0.96", "vulns": []}, {"name": "nvidia-cudnn-cu13", "version": "9.20.0.48", "vulns": []}, {"name": "nvidia-cufft", "version": "12.0.0.61", "vulns": []}, {"name": "nvidia-cufile", "version": "1.15.1.6", "vulns": []}, {"name": "nvidia-curand", "version": "10.4.0.35", "vulns": []}, {"name": "nvidia-cusolver", "version": "12.0.4.66", "vulns": []}, {"name": "nvidia-cusparse", "version": "12.6.3.3", "vulns": []}, {"name": "nvidia-cusparselt-cu13", "version": "0.8.1", "vulns": []}, {"name": "nvidia-nccl-cu13", "version": "2.29.7", "vulns": []}, {"name": "nvidia-nvjitlink", "version": "13.3.33", "vulns": []}, {"name": "nvidia-nvshmem-cu13", "version": "3.4.5", "vulns": []}, {"name": "nvidia-nvtx", "version": "13.0.85", "vulns": []}, {"name": "oauthlib", "version": "3.3.1", "vulns": []}, {"name": "onnxruntime", "version": "1.29.0", "vulns": []}, {"name": "opentelemetry-api", "version": "1.44.0", "vulns": []}, {"name": "opentelemetry-exporter-otlp-proto-common", "version": "1.44.0", "vulns": []}, {"name": "opentelemetry-exporter-otlp-proto-grpc", "version": "1.44.0", "vulns": []}, {"name": "opentelemetry-sdk", "version": "1.44.0", "vulns": []}, {"name": "opentelemetry-instrumentation", "version": "0.65b0", "vulns": []}, {"name": "wrapt", "version": "2.3.0", "vulns": []}, {"name": "opentelemetry-instrumentation-asgi", "version": "0.65b0", "vulns": []}, {"name": "opentelemetry-instrumentation-fastapi", "version": "0.65b0", "vulns": []}, {"name": "opentelemetry-proto", "version": "1.44.0", "vulns": []}, {"name": "opentelemetry-semantic-conventions", "version": "0.65b0", "vulns": []}, {"name": "opentelemetry-util-http", "version": "0.65b0", "vulns": []}, {"name": "orjson", "version": "3.12.0", "vulns": []}, {"name": "ormsgpack", "version": "1.12.2", "vulns": []}, {"name": "overrides", "version": "7.7.0", "vulns": []}, {"name": "playwright", "version": "1.48.0", "vulns": []}, {"name": "posthog", "version": "7.39.1", "vulns": []}, {"name": "prompt-toolkit", "version": "3.0.53", "vulns": []}, {"name": "propcache", "version": "0.5.2", "vulns": []}, {"name": "pyasn1", "version": "0.6.4", "vulns": []}, {"name": "pyasn1-modules", "version": "0.4.2", "vulns": []}, {"name": "pycparser", "version": "3.0", "vulns": []}, {"name": "pydantic-core", "version": "2.46.4", "vulns": []}, {"name": "pyee", "version": "12.0.0", "vulns": []}, {"name": "pygments", "version": "2.21.0", "vulns": []}, {"name": "pyjwt", "version": "2.13.0", "vulns": []}, {"name": "pypdf", "version": "6.16.1", "vulns": []}, {"name": "pypika", "version": "0.51.1", "vulns": []}, {"name": "pyproject-hooks", "version": "1.2.0", "vulns": []}, {"name": "python-dateutil", "version": "2.9.0.post0", "vulns": []}, {"name": "python-dotenv", "version": "1.2.3", "vulns": []}, {"name": "python-multipart", "version": "0.0.32", "vulns": []}, {"name": "redis", "version": "5.3.1", "vulns": []}, {"name": "regex", "version": "2026.7.19", "vulns": []}, {"name": "requests-oauthlib", "version": "2.0.0", "vulns": []}, {"name": "requests-toolbelt", "version": "1.0.0", "vulns": []}, {"name": "rich", "version": "15.0.0", "vulns": []}, {"name": "safetensors", "version": "0.8.0", "vulns": []}, {"name": "scikit-learn", "version": "1.9.0", "vulns": []}, {"name": "scipy", "version": "1.18.0", "vulns": []}, {"name": "sentence-transformers", "version": "6.0.0", "vulns": []}, {"name": "transformers", "version": "5.15.1", "vulns": []}, {"name": "shellingham", "version": "1.5.4", "vulns": []}, {"name": "six", "version": "1.17.0", "vulns": []}, {"name": "soupsieve", "version": "2.9.2", "vulns": []}, {"name": "sqlalchemy-cloudflare-d1", "version": "0.3.11", "vulns": []}, {"name": "sqlite-vec", "version": "0.1.9", "vulns": []}, {"name": "starlette", "version": "1.6.0", "vulns": []}, {"name": "structlog", "version": "26.1.0", "vulns": []}, {"name": "sympy", "version": "1.14.0", "vulns": []}, {"name": "threadpoolctl", "version": "3.6.0", "vulns": []}, {"name": "torch", "version": "2.13.0", "vulns": []}, {"name": "tqdm", "version": "4.70.0", "vulns": []}, {"name": "triton", "version": "3.7.1", "vulns": []}, {"name": "truststore", "version": "0.10.4", "vulns": []}, {"name": "typer", "version": "0.27.1", "vulns": []}, {"name": "typing-inspection", "version": "0.4.4", "vulns": []}, {"name": "tzdata", "version": "2026.3", "vulns": []}, {"name": "tzlocal", "version": "5.4.4", "vulns": []}, {"name": "uvicorn", "version": "0.52.4", "vulns": []}, {"name": "uvloop", "version": "0.22.1", "vulns": []}, {"name": "watchfiles", "version": "1.2.0", "vulns": []}, {"name": "wcwidth", "version": "0.8.2", "vulns": []}, {"name": "websocket-client", "version": "1.9.0", "vulns": []}, {"name": "xxhash", "version": "4.0.1", "vulns": []}, {"name": "zstandard", "version": "0.25.0", "vulns": []}], "fixes": []}
+docs/plan_gap_audit.md:3:**Source under review:** `webpent_v60_smart_hunter.zip` (SHA256 `261c26a0d85f19662f4f22d81f4404564f1a647e36932c15f7f77b99c53d2605`)
+docs/preflight_report.json:53:        "sha256": "36cbbb620daeb933ae7861de07fcff05b5e1f7527303b5992459b8aa6707b845",
+docs/preflight_report.json:55:        "version": "Chromium 151.0.7922.71 built on Ubuntu 24.04.4 LTS"
+docs/preflight_report.json:93:        "source_version": "0.4.1",
+docs/preflight_report.json:118:      "version": "1.19.1"
+docs/preflight_report.json:160:      "version": "1.48.0",
+docs/preflight_report.json:192:  "schema_version": "webpent-preflight-v1"
+docs/python_environment_inventory.json:2:  "format": "package-name-version-list",
+docs/python_environment_inventory.json:6:      "version": "2.7.1"
+docs/python_environment_inventory.json:10:      "version": "3.14.3"
+docs/python_environment_inventory.json:14:      "version": "1.4.0"
+docs/python_environment_inventory.json:18:      "version": "0.22.1"
+docs/python_environment_inventory.json:22:      "version": "1.19.1"
+docs/python_environment_inventory.json:26:      "version": "5.3.1"
+docs/python_environment_inventory.json:30:      "version": "0.0.5"
+docs/python_environment_inventory.json:34:      "version": "0.8.0"
+docs/python_environment_inventory.json:38:      "version": "0.125.0"
+docs/python_environment_inventory.json:42:      "version": "4.14.2"
+docs/python_environment_inventory.json:46:      "version": "3.12.1"
+docs/python_environment_inventory.json:50:      "version": "0.8.0"
+docs/python_environment_inventory.json:54:      "version": "26.1.0"
+docs/python_environment_inventory.json:58:      "version": "2.2.1"
+docs/python_environment_inventory.json:62:      "version": "1.9.4"
+docs/python_environment_inventory.json:66:      "version": "5.0.0"
+docs/python_environment_inventory.json:70:      "version": "4.15.0"
+docs/python_environment_inventory.json:74:      "version": "4.2.4"
+docs/python_environment_inventory.json:78:      "version": "5.0"
+docs/python_environment_inventory.json:82:      "version": "1.5.0"
+docs/python_environment_inventory.json:86:      "version": "0.14.4"
+docs/python_environment_inventory.json:90:      "version": "5.6.3"
+docs/python_environment_inventory.json:94:      "version": "2026.7.22"
+docs/python_environment_inventory.json:98:      "version": "2.1.1"
+docs/python_environment_inventory.json:102:      "version": "3.5.1"
+docs/python_environment_inventory.json:106:      "version": "0.7.6"
+docs/python_environment_inventory.json:110:      "version": "0.6.3"
+docs/python_environment_inventory.json:114:      "version": "8.4.2"
+docs/python_environment_inventory.json:118:      "version": "0.3.1"
+docs/python_environment_inventory.json:122:      "version": "1.1.1.2"
+docs/python_environment_inventory.json:126:      "version": "0.3.0"
+docs/python_environment_inventory.json:130:      "version": "5.21.1"
+docs/python_environment_inventory.json:134:      "version": "7.15.4"
+docs/python_environment_inventory.json:138:      "version": "50.0.0"
+docs/python_environment_inventory.json:142:      "version": "13.3.1"
+docs/python_environment_inventory.json:146:      "version": "1.6.1"
+docs/python_environment_inventory.json:150:      "version": "13.0.3.0"
+docs/python_environment_inventory.json:154:      "version": "11.12.0"
+docs/python_environment_inventory.json:158:      "version": "0.7.1"
+docs/python_environment_inventory.json:162:      "version": "1.9.0"
+docs/python_environment_inventory.json:166:      "version": "7.2.0"
+docs/python_environment_inventory.json:170:      "version": "0.18.0"
+docs/python_environment_inventory.json:174:      "version": "0.10"
+docs/python_environment_inventory.json:178:      "version": "0.141.1"
+docs/python_environment_inventory.json:182:      "version": "1.12.2"
+docs/python_environment_inventory.json:186:      "version": "3.32.3"
+docs/python_environment_inventory.json:190:      "version": "1.2.0"
+docs/python_environment_inventory.json:194:      "version": "25.12.19"
+docs/python_environment_inventory.json:198:      "version": "1.8.0"
+docs/python_environment_inventory.json:202:      "version": "2026.7.0"
+docs/python_environment_inventory.json:206:      "version": "2.56.3"
+docs/python_environment_inventory.json:210:      "version": "2.19.0"
+docs/python_environment_inventory.json:214:      "version": "1.75.1"
+docs/python_environment_inventory.json:218:      "version": "3.1.1"
+docs/python_environment_inventory.json:222:      "version": "1.83.0"
+docs/python_environment_inventory.json:226:      "version": "0.16.0"
+docs/python_environment_inventory.json:230:      "version": "1.6.0"
+docs/python_environment_inventory.json:234:      "version": "1.0.9"
+docs/python_environment_inventory.json:238:      "version": "2.12.0"
+docs/python_environment_inventory.json:242:      "version": "0.8.0"
+docs/python_environment_inventory.json:246:      "version": "0.28.1"
+docs/python_environment_inventory.json:250:      "version": "0.4.3"
+docs/python_environment_inventory.json:254:      "version": "2.12.0"
+docs/python_environment_inventory.json:258:      "version": "1.28.0"
+docs/python_environment_inventory.json:262:      "version": "3.19"
+docs/python_environment_inventory.json:266:      "version": "7.1.0"
+docs/python_environment_inventory.json:270:      "version": "2.3.0"
+docs/python_environment_inventory.json:274:      "version": "3.1.6"
+docs/python_environment_inventory.json:278:      "version": "0.16.0"
+docs/python_environment_inventory.json:282:      "version": "1.5.3"
+docs/python_environment_inventory.json:286:      "version": "1.33"
+docs/python_environment_inventory.json:290:      "version": "3.1.1"
+docs/python_environment_inventory.json:294:      "version": "5.6.2"
+docs/python_environment_inventory.json:298:      "version": "36.0.3"
+docs/python_environment_inventory.json:302:      "version": "1.6.1"
+docs/python_environment_inventory.json:306:      "version": "0.2.3"
+docs/python_environment_inventory.json:310:      "version": "1.0.8"
+docs/python_environment_inventory.json:314:      "version": "0.3.6"
+docs/python_environment_inventory.json:318:      "version": "0.6.0"
+docs/python_environment_inventory.json:322:      "version": "0.4.2"
+docs/python_environment_inventory.json:326:      "version": "1.6.0"
+docs/python_environment_inventory.json:330:      "version": "4.3.5"
+docs/python_environment_inventory.json:334:      "version": "1.1.6"
+docs/python_environment_inventory.json:338:      "version": "1.6.0"
+docs/python_environment_inventory.json:342:      "version": "0.0.18"
+docs/python_environment_inventory.json:346:      "version": "1.1.2"
+docs/python_environment_inventory.json:350:      "version": "1.2.11"
+docs/python_environment_inventory.json:354:      "version": "4.2.0"
+docs/python_environment_inventory.json:358:      "version": "3.1.1"
+docs/python_environment_inventory.json:362:      "version": "1.1.0"
+docs/python_environment_inventory.json:366:      "version": "0.4.3"
+docs/python_environment_inventory.json:370:      "version": "0.11.1"
+docs/python_environment_inventory.json:374:      "version": "0.15.0"
+docs/python_environment_inventory.json:378:      "version": "30.4.4"
+=== DELIVERY FILES ===
+./DELIVERY_NOTES_V55.md
+./DELIVERY_NOTES_V56.md
+./DELIVERY_NOTES_V57.md
+./DELIVERY_NOTES_V58.md
+./DELIVERY_NOTES_V59.md
+./DELIVERY_NOTES_V61.md
+./PHASE0_BASELINE_NOTES.md
+./PROJECT_BASELINE_AR.md
+./V95_PHASE5_DELIVERY.md
+./artifacts/smart_hunter_review/loop_baseline_20260823.log
+./artifacts/smart_hunter_review/plan_baseline_20260822.log
+./artifacts/smart_hunter_review/roadmap_loop_baseline_20260823.txt
+./audit/autonomous_upgrade_baseline.json
+./audit/autonomous_upgrade_baseline_raw.txt
+./baseline
+./baseline-symbols.txt
+./baseline-vip-audit.txt
+./combined_plan_baseline.sha256
+./docs/V3_PHASE_A_BASELINE_20260821.md
+./docs/VIP_PHASE2_6_DELIVERY_20260821.md
+./docs/full_project_vip_audit_baseline.md
+./docs/g02_baseline_20260821
+./docs/g02_baseline_20260821/BASELINE.md
+./docs/last20_review_delivery.md
+./docs/smart_autonomous_bug_hunter_baseline.md
+./docs/vip_audit_delivery_notes.md
+./docs/vip_baseline.json
+./docs/vip_baseline_inventory.txt
+./docs/vip_local_baseline_20260820.md
+./docs/waptlab_baseline_manifest.json
+./scripts/capture_vip_baseline.py
+./tests/test_vip_baseline.py
+./webpent_archive_baseline.sha256
+=== UV ===
+/usr/local/bin/uv
+uv 0.12.1 (x86_64-unknown-linux-musl)

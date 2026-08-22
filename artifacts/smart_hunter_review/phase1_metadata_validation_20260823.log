@@ -1,0 +1,7 @@
+python= 3.12.3
+webpent_version= 0.3.0
+pyproject_requires=11:requires-python = "==3.12.3"
+lock_requires=3:requires-python = "==3.12.3"
+langgraph_specs=30:    "langgraph==1.2.11",
+31:    "langgraph-checkpoint-sqlite==3.1.1",
+[1;32mAll checks passed![0m
