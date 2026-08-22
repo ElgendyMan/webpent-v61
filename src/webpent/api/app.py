@@ -17,6 +17,7 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import threading
@@ -49,6 +50,11 @@ from webpent.memory.db import get_db_manager
 from webpent.models.findings import Finding
 from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
+from webpent.shared.package_execution_intake import (
+    PackageExecutionIntakeError,
+    ensure_package_request_fields,
+    validate_package_for_dispatch,
+)
 from webpent.shared.persistent_finding_ledger import PersistentFindingLedger
 from webpent.shared.preflight import run_startup_preflight
 from webpent.shared.resume_capability import issue_resume_capability
@@ -476,6 +482,38 @@ class ScanRequest(BaseModel):
             "They are allowlisted only when supplied by the operator."
         ),
     )
+    target_package: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Optional signed bbscout Target Package v2. Raw content is transient and "
+            "is admitted again in the worker; it is never checkpointed."
+        ),
+    )
+    target_package_confirmation: dict[str, Any] | None = Field(
+        default=None,
+        description="Explicit confirmation for this exact package, digest, engagement, and target.",
+    )
+    target_package_trust_map: dict[str, str] | None = Field(
+        default=None,
+        description="Runtime-supplied key_id to Ed25519 public-key material mapping.",
+    )
+
+    @field_validator("target_package", "target_package_confirmation", "target_package_trust_map")
+    @classmethod
+    def _validate_package_json_size(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is None:
+            return None
+        try:
+            encoded_size = len(
+                json.dumps(v, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+                    "utf-8"
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("target package fields must be JSON objects") from exc
+        if encoded_size > 512 * 1024:
+            raise ValueError("target package field exceeds 512 KiB")
+        return v
 
     @field_validator("additional_target_origins")
     @classmethod
@@ -796,6 +834,36 @@ def start_scan(
         request.url,
         effective_client_id,
     )
+    validated_package: dict[str, Any] | None = None
+    if any(
+        value is not None
+        for value in (
+            request.target_package,
+            request.target_package_confirmation,
+            request.target_package_trust_map,
+        )
+    ):
+        try:
+            ensure_package_request_fields(
+                request.target_package,
+                request.target_package_confirmation,
+                request.target_package_trust_map,
+            )
+            validated_package, _context, package_engagement_id = validate_package_for_dispatch(
+                request.target_package or {},
+                request.target_package_confirmation or {},
+                trusted_public_keys=request.target_package_trust_map or {},
+            )
+            if package_engagement_id != resolved_engagement_id:
+                raise PackageExecutionIntakeError("confirmation_engagement_id_mismatch")
+            confirmation = request.target_package_confirmation or {}
+            confirmation_target = str(
+                confirmation.get("target_url") or confirmation.get("target_origin") or ""
+            ).strip()
+            if confirmation_target != request.url:
+                raise PackageExecutionIntakeError("confirmation_target_url_mismatch")
+        except (PackageExecutionIntakeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="target package admission blocked") from exc
     logger.info(
         "Dispatching pentest task: url=%s portswigger=%s auto_approve=%s "
         "thread_id=%s client_id=%s engagement_id=%s user=%s role=%s",
@@ -851,6 +919,17 @@ def start_scan(
             additional_target_origins=request.additional_target_origins,
             client_id=effective_client_id,
             engagement_id=resolved_engagement_id,
+            target_package=validated_package,
+            target_package_confirmation=(
+                dict(request.target_package_confirmation)
+                if request.target_package_confirmation is not None
+                else None
+            ),
+            target_package_trust_map=(
+                dict(request.target_package_trust_map)
+                if request.target_package_trust_map is not None
+                else None
+            ),
         )
     except Exception as exc:
         logger.error("Failed to dispatch Celery task: %s", exc)

@@ -156,11 +156,11 @@ Total records: **280**.
 | `src/webpent/agents/validator/structural_checks.py` | 1111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/waf_detector/agent.py` | 92 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/waf_detector/agent.py` | 93 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 278 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 297 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/cli/__init__.py` | 905 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 907 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 1016 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 285 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 304 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/cli/__init__.py` | 982 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 984 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 1093 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/cli/git_source.py` | 6 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
 | `src/webpent/cli/git_source.py` | 71 | `call` | `subprocess.run` | `subprocess` | `approved` |
 | `src/webpent/cli/ingest.py` | 105 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
@@ -272,9 +272,9 @@ Total records: **280**.
 | `src/webpent/shared/stealth.py` | 56 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/target_workspace.py` | 174 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/trust_matrix.py` | 17 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 127 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 160 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 158 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 190 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 191 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 33 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 52 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/tools/exploitation/dalfox.py` | 172 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
@@ -298,14 +298,14 @@ Total records: **280**.
 | `src/webpent/tools/utils/subprocess.py` | 257 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
 | `src/webpent/utils/compliance.py` | 154 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/utils/task_crypto.py` | 134 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 95 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 109 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 128 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 129 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 130 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 228 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 989 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 1094 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 102 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 116 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 135 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 136 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 137 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 235 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1083 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1188 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 
 ## Enforcement rules
 

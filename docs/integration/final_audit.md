@@ -6,24 +6,25 @@
 
 ## الحكم النهائي
 
-تكامل Target Package v2 أصبح **منفذًا وقابلًا للتدقيق محليًا** في مسارات admission، engagement binding، scope/action authorization، capability preflight، validator continuity، ProofBundle، والتقرير. لا توجد نتيجة صادقة تسمح بوصف المشروع حاليًا بأنه **VIP Smart Autonomous Bug Hunter**؛ قرار promotion الرسمي هو **NO** لأن قياسات WAPTLab المطلوبة، التكرار المستقل، precision/reproducibility، والqualification الموزعة لم تُنفذ في هذه الجولة.
+تكامل Target Package v2 أصبح **موصولًا وقابلًا للتدقيق محليًا** في admission وCLI وFastAPI/Celery first-run وresume/redelivery، إضافة إلى engagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقرير. لا توجد نتيجة صادقة تسمح بوصف المشروع حاليًا بأنه **VIP Smart Autonomous Bug Hunter**؛ قرار promotion الرسمي هو **NO** لأن قياسات WAPTLab المطلوبة، التكرار المستقل، precision/reproducibility، والqualification الموزعة لم تُنفذ في هذه الجولة.
 
 ## ما تم تنفيذه
 
 تم الحفاظ على الفصل بين `source_response_sha256` وcanonical package/content digest. أُضيف توقيع Ed25519 detached حقيقي بمفتاح خاص runtime-only وخريطة public keys موثوقة runtime-only؛ `unsigned-local-mvp` مرفوض للاستهلاك التنفيذي. أُضيف `EngagementFactory` بعملية lease ذرية تمنع duplicate/conflicting consumption. أُنشئ `ScopeCompiler` target-agnostic يراجع scheme/host/port/path/wildcard/exclusion/method/action/redirects ويصدر قرارات typed. تم ربط RuntimeFactory وinitial state وActionAuthority وgraph preflight والمسار الذكي بهذه القيود.
 
-تم أيضًا إكمال continuity من action metadata إلى verifier وProofBundle والتقرير، مع redaction-safe top-level `target_package_continuity` يدخل في audit/master hash. تمت إضافة capability intersection وحالات knowledge gaps وblocked tasks دون تحويلها إلى clean. أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
+تم أيضًا إكمال continuity من action metadata إلى verifier وProofBundle والتقرير، مع redaction-safe top-level `target_package_continuity` يدخل في audit/master hash. في البداية ينشئ worker lease بعد إعادة التحقق الفعلي من الحزمة والتوقيع، بينما redelivery/resume يتحقق من binding والـlease الموجودين دون consume ثانٍ. تمت إضافة capability intersection وحالات knowledge gaps وblocked tasks دون تحويلها إلى clean. أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
 
 ## نتائج التحقق
 
 | الاختبار/الفحص | النتيجة |
 |---|---:|
 | bbscout full pytest | 7 passed |
-| WebPent full pytest | 1373 passed، 294 warnings |
-| package + hardening + G-02 focused | 31 passed، 2 warnings |
+| WebPent full pytest | 1379 passed، 294 warnings |
+| package/entrypoint/hardening focused | 35 passed، 2 warnings |
 | Ruff full | passed |
 | compileall | passed |
 | G-02 runtime check | passed، 280 primary records، external_target_contacted=false |
+| G-02 artifact/precommit parity | passed بعد regeneration من source الحالي |
 | tracked secret scan | passed، no high-confidence secrets |
 | Bandit changed-file scan | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
 | LLM doctor | 0 active providers؛ fallback deterministic paths remain available |
@@ -54,4 +55,4 @@
 
 ## Release identity
 
-آخر commit مرفوع إلى `ElgendyMan/webpent-v61` هو `fa99bcc0699746b89fe3655e9a6927b1c94da198`. الأرشيف النظيف النهائي هو `webpent_bbscout_integration_release.zip`، وSHA256 النهائي محفوظ في الملف الجانبي `webpent_bbscout_integration_release.sha256`.
+سيُحدّث commit/الأرشيف بعد إتمام بوابات التحقق النهائية لهذه الجولة. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.

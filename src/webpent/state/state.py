@@ -89,6 +89,8 @@ class PentestState(TypedDict, total=False):
     target_package_capability_matrix: Annotated[dict[str, Any], merge_dicts]
     target_package_knowledge_gaps: Annotated[list[dict[str, Any]], merge_lists]
     target_package_blocked_tasks: Annotated[list[dict[str, Any]], merge_lists]
+    # Redacted one-time lease identity; raw package and trust roots never enter state.
+    target_package_binding: dict[str, Any]
     # Explicit operator-declared companion origins (for example a separate
     # frontend origin used by the target login flow). Legacy checkpoints omit
     # this optional field and remain valid.

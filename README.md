@@ -2,7 +2,7 @@
 
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
-> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل منفذ ومختبر محليًا في مسارات admission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
+> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى admission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
@@ -13,8 +13,8 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | البوابة | النتيجة |
 |---|---|
 | bbscout full pytest | 7 passed |
-| WebPent full pytest | 1373 passed، 294 warnings |
-| Package/hardening focused suite | 31 passed، 2 warnings |
+| WebPent full pytest | 1379 passed، 294 warnings |
+| Package/entrypoint/hardening focused suite | 35 passed، 2 warnings |
 | G-02 focused suite | 22 passed |
 | Ruff | Passed |
 | compileall | Passed |
@@ -50,6 +50,12 @@ flowchart LR
 التنفيذ package-backed يتطلب detached Ed25519 signature بحالة `verified`، ومفتاحًا عامًا موثوقًا يمرره المستدعي وقت التشغيل. الحالة `unsigned-local-mvp` صالحة للمراجعة المحلية فقط، وليست صالحة لإنشاء engagement تنفيذي.
 
 `EngagementFactory` ينشئ binding أحادي الاستهلاك في SQLite صغير لا يحفظ raw package أو secrets. يتم رفض confirmation الناقصة، ومخالفة package ID أو digest، والهدف الخارج عن النطاق، وانتهاء الحزمة أو إلغائها، وإعادة استهلاك الحزمة أو engagement ID.
+
+### تشغيل الحزمة عبر نقاط التشغيل الفعلية
+
+في CLI يمكن تشغيل الحزمة الموقعة باستخدام `--target-package` و`--target-package-confirmation` و`--target-package-trust-map`. يقرأ CLI الملفات transiently، ويتحقق من Ed25519 عبر public-key map يقدمه المشغّل وقت التشغيل، ثم ينشئ lease قبل دخول graph؛ لا يُحفظ raw package أو trust material في checkpoint.
+
+في API تُرسل الحقول نفسها داخل `ScanRequest` بحدود حجم ونوع، وتُجرى validation أولية قبل dispatch. العامل يعيد التحقق من التوقيع والـscope والـconfirmation قبل أول graph node، ولا يعتمد على `signature_state` المرسل أو على تحقق API وحده. عند redelivery/resume يستعيد binding redacted ويتحقق من lease continuity دون استهلاك lease ثانية. الطلبات القديمة بلا Target Package تستمر في legacy flow وفق سياساتها الحالية.
 
 يستخدم `ScopeCompiler` قواعد normalized scope مرة واحدة داخل WebPent، ويفحص scheme وhost وport وpath وwildcard وexclusion وmethod وaction class وredirect chain. القرارات typed وتشمل `allow` و`allow_with_constraints` و`deny_out_of_scope` و`deny_policy` و`deny_expired` و`deny_revoked` و`deny_ambiguous`.
 
@@ -261,7 +267,7 @@ PYTHONPATH=../bbscout/src:src python -m pytest \
   tests/test_g02_scanner_expansion.py -q
 ```
 
-شغّل `make doctor` و`preflight` قبل stack الكامل. نجاح الاختبارات المحلية لا يثبت أن Docker أو Redis أو Celery أو checkpoint resume مؤهل إنتاجيًا. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials في release.
+شغّل `make doctor` و`preflight` قبل stack الكامل. نجاح الاختبارات المحلية لا يثبت أن Docker أو Redis أو Celery أو checkpoint resume مؤهل إنتاجيًا؛ اختبارات worker الحالية تستخدم graph/storage mocks ولا تمثل multi-worker أو broker qualification. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials في release.
 
 ## Docker وCelery وproduction
 

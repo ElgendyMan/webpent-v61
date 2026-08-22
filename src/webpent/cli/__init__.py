@@ -46,6 +46,13 @@ from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.coverage_ledger import CoverageIntelligence
 from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
+from webpent.shared.package_execution_intake import (
+    PackageExecutionIntake,
+    PackageExecutionIntakeError,
+    admit_and_bind_package,
+    ensure_package_request_fields,
+    load_json_mapping,
+)
 from webpent.shared.persistent_finding_ledger import (
     PersistentFindingLedger,
     current_release_id,
@@ -373,6 +380,21 @@ def scan(
             "use a new value to start an isolated campaign."
         ),
     ),
+    target_package_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--target-package",
+        help="Local signed bbscout Target Package v2 JSON file.",
+    ),
+    target_package_confirmation_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--target-package-confirmation",
+        help="Local JSON file containing explicit package execution confirmation.",
+    ),
+    target_package_trust_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--target-package-trust-map",
+        help="Local JSON object mapping signature key_id to trusted public key material.",
+    ),
     campaign_inventory: str = typer.Option(
         "auto",
         "--campaign-inventory",
@@ -593,6 +615,52 @@ def scan(
     resolved_thread_id = thread_id or str(uuid4())
     resolved_engagement_id = engagement_id or default_engagement_id(url, client_id)
 
+    # --- Admit and bind an optional signed Target Package before graph startup ---
+    package_intake: PackageExecutionIntake | None = None
+    package_inputs = (
+        target_package_file,
+        target_package_confirmation_file,
+        target_package_trust_file,
+    )
+    if any(item is not None for item in package_inputs):
+        if not all(item is not None for item in package_inputs):
+            err_console.print(
+                "[red]Error:[/red] --target-package, --target-package-confirmation, "
+                "and --target-package-trust-map must be supplied together"
+            )
+            raise typer.Exit(1)
+        try:
+            package = load_json_mapping(
+                target_package_file, label="target_package", max_bytes=512 * 1024
+            )
+            confirmation = load_json_mapping(
+                target_package_confirmation_file,
+                label="target_package_confirmation",
+                max_bytes=32 * 1024,
+            )
+            trust_map = load_json_mapping(
+                target_package_trust_file,
+                label="target_package_trust_map",
+                max_bytes=512 * 1024,
+            )
+            ensure_package_request_fields(package, confirmation, trust_map)
+            package_intake = admit_and_bind_package(
+                package,
+                confirmation,
+                trusted_public_keys=trust_map,
+                lease_path=get_settings().target_package_lease_path,
+            )
+            if package_intake.binding.engagement_id != resolved_engagement_id:
+                raise PackageExecutionIntakeError("confirmation_engagement_id_mismatch")
+            confirmed_target = str(
+                confirmation.get("target_url") or confirmation.get("target_origin") or ""
+            ).strip()
+            if confirmed_target != url:
+                raise PackageExecutionIntakeError("confirmation_target_url_mismatch")
+        except (PackageExecutionIntakeError, ValueError, OSError) as exc:
+            err_console.print(f"[red]Error:[/red] target package admission blocked: {exc}")
+            raise typer.Exit(1) from exc
+
     # --- Display engagement header ---
     header = Table(show_header=False, border_style="steel_blue", expand=False)
     header.add_column("Key", style="dim")
@@ -607,6 +675,9 @@ def scan(
     header.add_row("Auto-Approve", "Yes" if auto_approve else "No")
     header.add_row("Mode", resolved_mode.value)
     header.add_row("Profile", resolved_profile.value)
+    if package_intake is not None:
+        header.add_row("Target Package", package_intake.binding.package_id)
+        header.add_row("Package Lease", package_intake.binding.lease_id)
     header.add_row("PortSwigger", "Yes" if portswigger else "No")
     header.add_row(
         "Credentials",
@@ -751,6 +822,12 @@ def scan(
                     profile=resolved_profile,
                     action_ledger_path=str(settings.action_ledger_path),
                     campaign_inventory=campaign_inventory,
+                    target_package_context=(
+                        package_intake.context if package_intake is not None else None
+                    ),
+                    target_package_binding=(
+                        package_intake.binding_projection if package_intake is not None else None
+                    ),
                 )
 
                 config = {

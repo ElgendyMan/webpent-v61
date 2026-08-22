@@ -11,6 +11,7 @@ load credentials from disk, or print operator-supplied values.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
@@ -30,7 +31,10 @@ from webpent.shared.campaigns import (
 )
 from webpent.shared.capability_manifest import build_capability_manifest
 from webpent.shared.runtime import RuntimeFactory
-from webpent.shared.target_package_context import admit_target_package
+from webpent.shared.target_package_context import (
+    TargetPackageContext,
+    admit_target_package,
+)
 
 if TYPE_CHECKING:
     from webpent.models.targets import Target
@@ -85,6 +89,8 @@ def build_initial_state(
     control_plane_profile_root: str | None = None,
     raw_scope_entries: list[str] | None = None,
     target_package: dict[str, Any] | None = None,
+    target_package_context: TargetPackageContext | None = None,
+    target_package_binding: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -97,9 +103,34 @@ def build_initial_state(
     resolved_owner_username = str(owner_username or "").strip() or None
     resolved_client_id = str(client_id or "").strip() or None
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
-    target_package_context = (
+    if target_package is not None and target_package_context is not None:
+        raise ValueError(
+            "raw target_package and admitted target_package_context are mutually exclusive"
+        )
+    admitted_package_context = target_package_context or (
         admit_target_package(target_package) if target_package is not None else None
     )
+    binding_projection = dict(target_package_binding or {})
+    if admitted_package_context is None and binding_projection:
+        raise ValueError("target_package_binding requires an admitted target package context")
+    # A raw package remains supported for legacy projection-only callers. It is
+    # not an executable package-backed engagement because no lease binding was
+    # created. The executable entrypoints pass an already-admitted context and
+    # therefore must provide the durable binding below.
+    binding_required = target_package_context is not None
+    if binding_required and admitted_package_context is not None:
+        required_binding = {
+            "engagement_id": str(resolved_engagement_id or ""),
+            "package_id": admitted_package_context.package_id,
+            "package_sha256": admitted_package_context.package_sha256,
+            "scope_digest": admitted_package_context.scope_digest,
+            "policy_digest": admitted_package_context.policy_digest,
+        }
+        for key, expected in required_binding.items():
+            if str(binding_projection.get(key) or "") != expected:
+                raise ValueError(f"target_package_binding_{key}_mismatch")
+        if binding_required and not str(binding_projection.get("lease_id") or ""):
+            raise ValueError("target_package_binding_lease_missing")
     requested_inventory = str(campaign_inventory or "waptlab").strip().lower()
     if requested_inventory == "auto":
         parsed_target = urlsplit(target_url)
@@ -151,8 +182,8 @@ def build_initial_state(
         control_plane_profile_root=control_plane_profile_root,
         raw_scope_entries=list(raw_scope_entries or []),
         target_package=(
-            target_package_context.as_state()
-            if target_package_context is not None
+            admitted_package_context.as_state()
+            if admitted_package_context is not None
             else None
         ),
     )
@@ -178,41 +209,46 @@ def build_initial_state(
     return {
         "target": target,
         "target_package": (
-            target_package_context.as_state() if target_package_context is not None else {}
+            admitted_package_context.as_state() if admitted_package_context is not None else {}
         ),
         "target_package_status": (
-            "ready" if target_package_context is not None else "not_provided"
+            "ready" if admitted_package_context is not None else "not_provided"
         ),
         "target_package_id": (
-            target_package_context.package_id if target_package_context is not None else None
+            admitted_package_context.package_id if admitted_package_context is not None else None
         ),
         "target_package_sha256": (
-            target_package_context.package_sha256 if target_package_context is not None else None
+            admitted_package_context.package_sha256
+            if admitted_package_context is not None
+            else None
         ),
         "target_package_scope_digest": (
-            target_package_context.scope_digest if target_package_context is not None else None
+            admitted_package_context.scope_digest if admitted_package_context is not None else None
         ),
         "target_package_policy_digest": (
-            target_package_context.policy_digest if target_package_context is not None else None
+            admitted_package_context.policy_digest if admitted_package_context is not None else None
         ),
         "target_package_capability_digest": (
-            target_package_context.capability_digest if target_package_context is not None else None
+            admitted_package_context.capability_digest
+            if admitted_package_context is not None
+            else None
         ),
         "target_package_authorization": (
             {
-                "expires_at": target_package_context.expires_at,
-                "revocation_state": target_package_context.revocation_state,
+                "expires_at": admitted_package_context.expires_at,
+                "revocation_state": admitted_package_context.revocation_state,
                 "user_confirmed": True,
             }
-            if target_package_context is not None
+            if admitted_package_context is not None
             else {}
         ),
         "target_package_preflight_status": (
-            "not_requested" if target_package_context is not None else "not_provided"
+            "not_requested" if admitted_package_context is not None else "not_provided"
         ),
         "target_package_capability_matrix": {},
         "target_package_knowledge_gaps": [],
         "target_package_blocked_tasks": [],
+        "target_package_binding": binding_projection,
         "additional_target_origins": normalized_origins,
         "messages": [],
         "findings": [],

@@ -5,7 +5,7 @@
 
 ## النتيجة التنفيذية
 
-تم تنفيذ طبقة intake additive لـ`Target Package v2` داخل WebPent. الحزمة لا تمنح صلاحية جديدة؛ هي فقط تصف الهوية والنطاق والسياسة والقدرات والـprovenance، ثم تُقبل بعد فحوص integrity وfreshness وrevocation وconfirmation والتوقيع detached. كل action package-backed يمر عبر `ActionAuthority` المركزي، ولا يوجد transport أو HTTP/browser bypass جديد.
+تم تنفيذ وربط طبقة intake additive لـ`Target Package v2` داخل WebPent عبر CLI وFastAPI/Celery first-run وresume. الحزمة لا تمنح صلاحية جديدة؛ هي فقط تصف الهوية والنطاق والسياسة والقدرات والـprovenance، ثم تُقبل بعد فحوص integrity وfreshness وrevocation وconfirmation والتوقيع detached. كل action package-backed يمر عبر `ActionAuthority` المركزي، ولا يوجد transport أو HTTP/browser bypass جديد.
 
 التوقيع التنفيذي أصبح **Ed25519 detached حقيقيًا**. حالة `unsigned-local-mvp` تظل صالحة للفحص المحلي والتدقيق فقط، لكنها لا تُستهلك لإنشاء engagement قابل للتنفيذ. لا توجد private keys أو provider secrets أو cookies أو OTPs أو passwords في المصدر أو الحزم أو state أو التقارير أو الأرشيف.
 
@@ -22,6 +22,7 @@
 | scope compiler | `webpent/shared/package_scope.py` | منفذ | URL/method/action/redirect adversarial tests |
 | central authority | `ActionAuthority` يطبق package identity/digest وscope/policy | منفذ | action-authority tests |
 | runtime wiring | `RuntimeFactory` وinitial state وsmart campaign fallback | منفذ | full WebPent suite |
+| entrypoint wiring | CLI flags، `ScanRequest`، API dispatch، worker first-run، redelivery/resume continuity | منفذ offline | entrypoint/hardening tests؛ لا broker/multi-worker qualification |
 | graph preflight | `package_preflight` قبل wildcard/planner، مع legacy no-package route | منفذ | preflight tests |
 | capability intersection | `package_capabilities.py` ينتج available/unavailable/blocked_by_policy/not_qualified/optional | منفذ | capability/preflight tests |
 | proof continuity | package id/digests تدخل action metadata وverifier وsealed ProofBundle | منفذ | E2E hardening test |
@@ -41,8 +42,8 @@
 | البوابة | النتيجة |
 |---|---:|
 | bbscout full pytest | **7 passed** |
-| WebPent full pytest | **1373 passed, 294 warnings** |
-| package/G-02 focused suite | **31 passed, 2 warnings** |
+| WebPent full pytest | **1379 passed, 294 warnings** |
+| package/entrypoint/hardening focused suite | **35 passed, 2 warnings** |
 | Ruff full | **passed** بعد إصلاح integration formatting/imports |
 | compileall | **passed** |
 | G-02 runtime | **passed؛ 280 primary records؛ لا اتصال خارجي** |
@@ -62,7 +63,7 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit | `fa99bcc0699746b89fe3655e9a6927b1c94da198` |
+| Git commit | يحدّث بعد commit التحقق النهائي |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |

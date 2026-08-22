@@ -95,17 +95,16 @@ class EngagementFactory:
                 return str(value).strip()
         return ""
 
-    def create_from_package(
+    def _admit_and_validate(
         self,
         package: Mapping[str, Any],
         confirmation: Mapping[str, Any],
-    ) -> EngagementBinding:
-        """Validate and consume a package once, returning its redacted binding."""
+    ) -> tuple[TargetPackageContext, str]:
+        """Perform all non-mutating checks shared by create and restore."""
         if not isinstance(confirmation, Mapping):
             raise EngagementAdmissionError("confirmation_required")
         if confirmation.get("user_confirmed") is not True:
             raise EngagementAdmissionError("explicit_user_confirmation_required")
-
         context = admit_target_package(package, now=self.clock(), require_signature=True)
         if self.signature_verifier is None:
             raise EngagementAdmissionError("detached_signature_verifier_required")
@@ -138,7 +137,15 @@ class EngagementFactory:
             raise EngagementAdmissionError(
                 f"confirmed_target_{scope_decision.status.value}"
             )
+        return context, engagement_id
 
+    def create_from_package(
+        self,
+        package: Mapping[str, Any],
+        confirmation: Mapping[str, Any],
+    ) -> EngagementBinding:
+        """Validate and consume a package once, returning its redacted binding."""
+        context, engagement_id = self._admit_and_validate(package, confirmation)
         consumed_at = self.clock().astimezone(UTC).isoformat().replace("+00:00", "Z")
         lease_id = "lease-" + uuid.uuid4().hex
         try:
@@ -188,6 +195,36 @@ class EngagementFactory:
             context=context,
         )
 
+    def restore_existing_binding(
+        self,
+        package: Mapping[str, Any],
+        confirmation: Mapping[str, Any],
+    ) -> EngagementBinding:
+        """Reconstitute an exact prior lease without consuming it again."""
+        context, engagement_id = self._admit_and_validate(package, confirmation)
+        existing = self.get_binding(context.package_id)
+        if existing is None:
+            raise EngagementAdmissionError("package_binding_missing")
+        expected = {
+            "engagement_id": engagement_id,
+            "package_id": context.package_id,
+            "package_sha256": context.package_sha256,
+            "scope_digest": context.scope_digest,
+            "policy_digest": context.policy_digest,
+        }
+        if any(str(existing.get(key) or "") != value for key, value in expected.items()):
+            raise EngagementAdmissionError("package_binding_continuity_mismatch")
+        return EngagementBinding(
+            engagement_id=engagement_id,
+            package_id=context.package_id,
+            package_sha256=context.package_sha256,
+            scope_digest=context.scope_digest,
+            policy_digest=context.policy_digest,
+            lease_id=str(existing["lease_id"]),
+            consumed_at=str(existing["consumed_at"]),
+            context=context,
+        )
+
     def get_binding(self, package_id: str) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
@@ -197,6 +234,38 @@ class EngagementFactory:
                 (str(package_id),),
             ).fetchone()
         return dict(row) if row is not None else None
+
+    def restore_binding_projection(
+        self,
+        binding_projection: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Verify a redacted checkpoint binding against the durable lease.
+
+        Resume must not require the raw package or consume a second lease. The
+        checkpoint still cannot authorize a new engagement: every identity and
+        digest is compared with the SQLite record created during admission.
+        """
+        if not isinstance(binding_projection, Mapping):
+            raise EngagementAdmissionError("package_binding_required")
+        required = (
+            "package_id",
+            "engagement_id",
+            "package_sha256",
+            "scope_digest",
+            "policy_digest",
+            "lease_id",
+        )
+        values = {key: str(binding_projection.get(key) or "") for key in required}
+        if any(not value for value in values.values()):
+            raise EngagementAdmissionError("package_binding_incomplete")
+        existing = self.get_binding(values["package_id"])
+        if existing is None:
+            raise EngagementAdmissionError("package_binding_missing")
+        if any(str(existing.get(key) or "") != value for key, value in values.items()):
+            raise EngagementAdmissionError("package_binding_continuity_mismatch")
+        if str(existing.get("status") or "") != "consumed":
+            raise EngagementAdmissionError("package_binding_not_consumed")
+        return existing
 
 
 __all__ = ["EngagementAdmissionError", "EngagementBinding", "EngagementFactory"]

@@ -683,6 +683,11 @@ class RuntimeFactory:
                 used_budget=float(descriptor.get("used_budget") or 0.0),
                 scope_runtime_handle=scope_runtime_handle,
                 enable_control_plane=bool(descriptor.get("control_plane_enabled", False)),
+                target_package=(
+                    dict(descriptor.get("target_package"))
+                    if isinstance(descriptor.get("target_package"), Mapping)
+                    else None
+                ),
             )
             if context.safety_gate is not None and descriptor.get("kill_switch_tripped"):
                 context.safety_gate.kill_switch.trip(

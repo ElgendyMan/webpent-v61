@@ -183,8 +183,7 @@ def test_scope_compiler_handles_path_exclusion_apex_sibling_and_userinfo():
         is ScopeDecisionStatus.DENY_OUT_OF_SCOPE
     )
     assert (
-        compiler.decide("http://example.test/app2").status
-        is ScopeDecisionStatus.DENY_OUT_OF_SCOPE
+        compiler.decide("http://example.test/app2").status is ScopeDecisionStatus.DENY_OUT_OF_SCOPE
     )
     assert (
         compiler.decide("http://sibling.example.test/app").status
@@ -208,18 +207,13 @@ def test_package_preflight_emits_capability_gap_without_cleaning_it():
             "target": {"url": "http://example.test/app"},
             "target_package": projection,
             "target_package_status": "ready",
-            "capability_manifest": {
-                "capabilities": {"http_read": {"available": True}}
-            },
+            "capability_manifest": {"capabilities": {"http_read": {"available": True}}},
         }
     )
     assert result["target_package_preflight_status"] == "partial"
     assert result["target_package_knowledge_gaps"]
     assert result["target_package_blocked_tasks"]
-    assert all(
-        gap["status"] == "unavailable"
-        for gap in result["target_package_knowledge_gaps"]
-    )
+    assert all(gap["status"] == "unavailable" for gap in result["target_package_knowledge_gaps"])
 
 
 def test_package_preflight_blocks_target_outside_compiled_scope():
@@ -330,8 +324,7 @@ def test_package_continuity_survives_action_verifier_proof_and_report_hash():
         validator_id="fixture.idor",
         validator_version="fixture.v1",
         causal_basis=(
-            "foreign identity received the protected object while anonymous control "
-            "was denied"
+            "foreign identity received the protected object while anonymous control was denied"
         ),
         engagement_id=action.engagement_id,
         hypothesis_id="hyp-e2e",
@@ -376,3 +369,264 @@ def test_package_continuity_survives_action_verifier_proof_and_report_hash():
     assert projection["package_id"] in report["audit_trail"]["master_report_hash"] or isinstance(
         report["audit_trail"]["master_report_hash"], str
     )
+
+
+def test_package_intake_creates_and_restores_one_lease_without_raw_projection(tmp_path):
+    from webpent.shared.package_execution_intake import (
+        admit_and_bind_package,
+        validate_package_for_dispatch,
+        verify_existing_binding_projection,
+    )
+
+    package, private_key = signed_package()
+    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw()}
+    confirmation = {
+        "user_confirmed": True,
+        "package_id": package["package_id"],
+        "package_sha256": package["integrity"]["content_sha256"],
+        "engagement_id": "entrypoint-engagement",
+        "target_url": "http://example.test/app",
+    }
+    lease_path = tmp_path / "entrypoint-leases.sqlite3"
+
+    safe_package, context, engagement_id = validate_package_for_dispatch(
+        package, confirmation, trusted_public_keys=trust_map
+    )
+    assert engagement_id == "entrypoint-engagement"
+    assert safe_package == package
+    assert context.package_sha256 == package["integrity"]["content_sha256"]
+
+    first = admit_and_bind_package(
+        package,
+        confirmation,
+        trusted_public_keys=trust_map,
+        lease_path=lease_path,
+    )
+    restored = admit_and_bind_package(
+        package,
+        confirmation,
+        trusted_public_keys=trust_map,
+        lease_path=lease_path,
+        allow_existing_binding=True,
+    )
+    assert restored.binding.as_dict() == first.binding.as_dict()
+    assert (
+        verify_existing_binding_projection(first.binding_projection, lease_path=lease_path)[
+            "lease_id"
+        ]
+        == first.binding.lease_id
+    )
+
+    state = build_initial_state(
+        Target(url="http://example.test/app"),
+        engagement_id="entrypoint-engagement",
+        action_ledger_path=str(tmp_path / "actions.sqlite3"),
+        target_package_context=first.context,
+        target_package_binding=first.binding_projection,
+    )
+    assert state["target_package_binding"]["lease_id"] == first.binding.lease_id
+    assert "detached_signature" not in repr(state)
+    assert "private_key" not in repr(state).lower()
+
+
+def test_package_intake_rejects_wrong_target_before_graph(tmp_path):
+    from webpent.shared.package_execution_intake import (
+        PackageExecutionIntakeError,
+        admit_and_bind_package,
+    )
+
+    package, private_key = signed_package()
+    confirmation = {
+        "user_confirmed": True,
+        "package_id": package["package_id"],
+        "package_sha256": package["integrity"]["content_sha256"],
+        "engagement_id": "wrong-target-engagement",
+        "target_url": "http://example.test/app/admin",
+    }
+    with pytest.raises(PackageExecutionIntakeError, match="confirmed_target_deny"):
+        admit_and_bind_package(
+            package,
+            confirmation,
+            trusted_public_keys={
+                "fixture-runtime-key": private_key.public_key().public_bytes_raw()
+            },
+            lease_path=tmp_path / "leases.sqlite3",
+        )
+
+
+def test_scan_request_keeps_package_fields_optional_and_bounded():
+    from webpent.api.app import ScanRequest
+
+    request = ScanRequest(
+        url="http://example.test/app",
+        target_package={"package_id": "fixture"},
+        target_package_confirmation={"user_confirmed": True},
+        target_package_trust_map={"fixture-runtime-key": "00" * 32},
+    )
+    assert request.target_package is not None
+    assert request.target_package_confirmation is not None
+    assert request.target_package_trust_map is not None
+    assert ScanRequest(url="http://example.test/app").target_package is None
+
+
+def test_worker_task_contract_contains_package_handoff_fields():
+    import inspect
+
+    from webpent.workers.pentest_worker import run_pentest_task
+
+    parameters = inspect.signature(run_pentest_task.run).parameters
+    assert {
+        "target_package",
+        "target_package_confirmation",
+        "target_package_trust_map",
+    }.issubset(parameters)
+
+
+def test_api_dispatch_forwards_package_handoff_without_logging_or_checkpointing(
+    tmp_path, monkeypatch
+):
+    import importlib
+
+    from starlette.requests import Request
+
+    api_module = importlib.import_module("webpent.api.app")
+    from webpent.api.app import ScanRequest
+    from webpent.api.auth import User
+
+    package, private_key = signed_package()
+    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw().hex()}
+    confirmation = {
+        "user_confirmed": True,
+        "package_id": package["package_id"],
+        "package_sha256": package["integrity"]["content_sha256"],
+        "engagement_id": "api-entrypoint-engagement",
+        "target_url": "http://example.test/app",
+    }
+    request = ScanRequest(
+        url="http://example.test/app",
+        client_id="fixture-client",
+        engagement_id="api-entrypoint-engagement",
+        target_package=package,
+        target_package_confirmation=confirmation,
+        target_package_trust_map=trust_map,
+    )
+    captured: dict[str, object] = {}
+
+    class FakeAsyncResult:
+        id = "task-fixture"
+
+    def fake_delay(**kwargs):
+        captured.update(kwargs)
+        return FakeAsyncResult()
+
+    monkeypatch.setattr(api_module.run_pentest_task, "delay", fake_delay)
+    monkeypatch.setattr(
+        api_module,
+        "_settings",
+        api_module._settings.model_copy(
+            update={
+                "rate_limit_enabled": False,
+                "target_package_lease_path": tmp_path / "leases.sqlite3",
+            }
+        ),
+    )
+    http_request = Request(
+        {"type": "http", "method": "POST", "path": "/api/v1/scans", "headers": []}
+    )
+    response = api_module.start_scan(
+        request,
+        http_request,
+        User(username="fixture-service", hashed_password="x", role="service"),
+    )
+
+    assert response.task_id == "task-fixture"
+    assert captured["target_package"] == package
+    assert captured["target_package_confirmation"] == confirmation
+    assert captured["target_package_trust_map"] == trust_map
+
+
+def test_worker_first_run_admits_before_graph_and_passes_redacted_binding(tmp_path, monkeypatch):
+    import contextlib
+    from types import SimpleNamespace
+
+    import webpent.workers.pentest_worker as worker_module
+
+    package, private_key = signed_package()
+    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw().hex()}
+    confirmation = {
+        "user_confirmed": True,
+        "package_id": package["package_id"],
+        "package_sha256": package["integrity"]["content_sha256"],
+        "engagement_id": "worker-entrypoint-engagement",
+        "target_url": "http://example.test/app",
+    }
+    settings = worker_module.get_settings().model_copy(
+        update={
+            "target_package_lease_path": tmp_path / "leases.sqlite3",
+            "action_ledger_path": tmp_path / "actions.sqlite3",
+        }
+    )
+    captured: dict[str, object] = {}
+
+    class FakeWorkspace:
+        workspace_id = "fixture-workspace"
+
+        @staticmethod
+        def settings_overrides():
+            return {}
+
+    class FakeGraph:
+        def __init__(self):
+            self.state = SimpleNamespace(values={}, next=())
+
+        def get_state(self, _config):
+            return self.state
+
+        def invoke(self, initial_state, config):
+            captured["initial_state"] = initial_state
+            captured["config"] = config
+            self.state = SimpleNamespace(values=initial_state, next=())
+
+        def update_state(self, _config, update):
+            self.state.values.update(update)
+
+    graph = FakeGraph()
+    monkeypatch.setattr(worker_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        worker_module, "build_target_workspace", lambda *args, **kwargs: FakeWorkspace()
+    )
+    monkeypatch.setattr(
+        worker_module, "activate_target_workspace", lambda _workspace: contextlib.nullcontext()
+    )
+    monkeypatch.setattr(
+        worker_module, "activate_settings", lambda _settings: contextlib.nullcontext()
+    )
+    monkeypatch.setattr(
+        worker_module, "get_db_manager", lambda: SimpleNamespace(init_db=lambda: None)
+    )
+    monkeypatch.setattr(worker_module, "get_checkpointer", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(worker_module, "build_graph", lambda **kwargs: graph)
+    monkeypatch.setattr(worker_module, "llm_usage_scope", lambda: contextlib.nullcontext([]))
+    monkeypatch.setattr(worker_module, "_persist_findings", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(worker_module, "sweep_expired", lambda: None)
+    monkeypatch.setattr(worker_module, "clear_reauth_secret", lambda *args: None)
+    monkeypatch.setattr(worker_module, "seal_reauth_secret", lambda *args: None)
+    monkeypatch.setattr(worker_module, "seal_session_cookies", lambda *args: None)
+    monkeypatch.setattr(worker_module, "seal_identity_profiles", lambda *args: None)
+
+    result = worker_module.run_pentest_task.run(
+        target_url="http://example.test/app",
+        is_portswigger=False,
+        thread_id="worker-entrypoint-engagement",
+        engagement_id="worker-entrypoint-engagement",
+        target_package=package,
+        target_package_confirmation=confirmation,
+        target_package_trust_map=trust_map,
+    )
+
+    initial_state = captured["initial_state"]
+    assert result["status"] == "completed"
+    assert initial_state["target_package_id"] == package["package_id"]
+    assert initial_state["target_package_binding"]["lease_id"].startswith("lease-")
+    assert "detached_signature" not in repr(initial_state)
+    assert graph.state.values["target_package_binding"] == initial_state["target_package_binding"]

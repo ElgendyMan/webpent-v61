@@ -25,10 +25,15 @@
 | report | package-backed report | top-level redacted continuity تدخل audit/master hash | PASS |
 | validator | replay callers تحمل package context | verifier/proof يحمل identity/digests | PASS |
 | legacy | no package / `not_provided` | المسار legacy يبقى متوافقًا ولا يُفتح bypass package | PASS |
+| CLI intake | package path + confirmation + trusted public-key map | admission/lease قبل graph، ورفض mismatch قبل التشغيل | PASS |
+| API dispatch | bounded `ScanRequest` package fields | validation أولية ثم handoff للworker دون تسجيل raw package | PASS |
+| worker first-run | package + confirmation + public trust map | إعادة تحقق فعلية قبل أول graph node وتمرير projection/binding redacted | PASS |
+| worker resume/redelivery | binding وlease موجودان | continuity check دون lease consume ثانٍ | PASS |
+| checkpoint/report redaction | raw package/signature/trust material | لا تظهر في checkpoint أو projection أو التقرير | PASS |
 
 ## Evidence
 
-التغطية موجودة في `tests/test_target_package_integration.py` و`tests/test_target_package_v2_hardening.py`. الاختباران يعملان offline ولا يرسلان HTTP أو browser أو provider requests. نتيجة focused gate: **31 passed**. نتيجة WebPent الكاملة: **1373 passed**.
+التغطية موجودة في `tests/test_target_package_integration.py` و`tests/test_target_package_v2_hardening.py` وentrypoint/checkpoint tests المرتبطة. كل الاختبارات تعمل offline ولا ترسل HTTP أو browser أو provider requests؛ اختبار worker يستخدم graph/storage mocks لإثبات ترتيب البوابة فقط. نتيجة package/entrypoint/hardening focused gate: **35 passed، 2 warnings**. نتيجة WebPent الكاملة: **1379 passed، 294 warnings**.
 
 ## Interpretation
 

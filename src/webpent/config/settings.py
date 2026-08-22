@@ -631,6 +631,19 @@ class Settings(BaseSettings):
             "it stores redacted metadata only."
         ),
     )
+    target_package_lease_path: Path = Field(
+        default=Path("~/.webpent/target_package_leases.sqlite3"),
+        validation_alias=AliasChoices(
+            "target_package_lease_path",
+            "TARGET_PACKAGE_LEASE_PATH",
+            "WEBPENT_TARGET_PACKAGE_LEASE_PATH",
+        ),
+        description=(
+            "Global durable one-time lease database for signed bbscout Target Packages. "
+            "Only package identity/digests and lease metadata are stored; raw packages "
+            "and trust roots are never persisted."
+        ),
+    )
     reauth_vault_shared_store: bool = Field(
         default=False,
         validation_alias=AliasChoices(
