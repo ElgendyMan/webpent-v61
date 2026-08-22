@@ -104,7 +104,7 @@
     "docker-compose.dev.yml": "55eda98b447ac77237e637679ca7fcaee66d5c8b25d7d08632bd6e8e49a4517f",
     "docker-compose.test.yml": "a5067f5fe67ec57e981adfa3e4eb930a0976a9bbd3bf3637b6839b7cfb70986f",
     "docker-compose.yml": "ae1f1b6f230d2a80cc91f6f8a253bc48489b346923fc4478811f7c0fdb5e9168",
-    "docs/CURRENT_RELEASE.md": "5b217e16e28595f024d8d04fd688ec5868110afb48b2af4fbde25ba13e935b99",
+    "docs/CURRENT_RELEASE.md": "cbb27a6c887528e765ff4d90988ec6bebba1a6850a697cdcc56ed0b1ead4fc9f",
     "docs/DIRECT_IO_INVENTORY.md": "29b8d8d49ca69316fe815bb071ab43419ef704e185f73b74c4417dc19cfba5f4",
     "docs/PLAN4_TRACEABILITY.md": "4126c87a30a412403e1baa57543c61f8eef08ea420b0ed52468f3d1ce55d925d",
     "docs/V3_DIRECT_IO_INVENTORY_20260821.md": "f75817e657987f9561e116596e3dba1115b28fb1fd72fd233f7e092c0c44bf1e",
@@ -795,8 +795,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T22:18:52.676330+00:00",
-  "git_commit": "f51c8bcd61f1923473fd6f5660049425121bf680",
+  "generated_at": "2026-08-22T22:20:15.180879+00:00",
+  "git_commit": "2161b194e99a1f9cdda24f561c758b3de9ad22d7",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
