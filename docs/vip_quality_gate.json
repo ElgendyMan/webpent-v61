@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1340 passed, 290 warnings in 126.22s (0:02:06)"
+        "1360 passed, 294 warnings in 117.27s (0:01:57)"
       ]
     },
     {
@@ -74,9 +74,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1286",
+        "  \"total_test_functions\": 1306",
         "}",
-        "OK: preserved test-function count 1286 >= minimum 818"
+        "OK: preserved test-function count 1306 >= minimum 818"
       ]
     },
     {
@@ -88,7 +88,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/webpent_v72_qualification/docs/direct_io_inventory.json and /tmp/webpent_v72_qualification/docs/DIRECT_IO_INVENTORY.md (63 records)"
+        "wrote /tmp/webpent_v72_qualification/docs/direct_io_inventory.json and /tmp/webpent_v72_qualification/docs/DIRECT_IO_INVENTORY.md (279 records)"
       ]
     },
     {
@@ -100,7 +100,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 63}"
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 279}"
       ]
     },
     {
@@ -267,11 +267,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 747, \"output\": \"/tmp/webpent_v72_qualification/docs/release_manifest.json\"}"
+        "{\"file_count\": 752, \"output\": \"/tmp/webpent_v72_qualification/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T11:29:58.173119+00:00",
+  "generated_at": "2026-08-22T14:46:30.481806+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
