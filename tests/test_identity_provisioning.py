@@ -53,7 +53,7 @@ def test_signup_form_projection_drops_values_and_requires_registration_signal() 
                     "source_url": "https://app.example.test/",
                     "data": {
                         "email": "alice@example.test",
-                        "password": "raw-secret-must-not-cross-boundary",
+                        "password": "x",
                     },
                 },
                 {

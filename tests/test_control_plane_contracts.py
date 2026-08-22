@@ -115,7 +115,7 @@ def test_secret_shaped_fields_are_rejected_from_refs_and_observations() -> None:
             email_ref="vault://email/i1",
             username_ref="vault://username/i1",
             provenance="operator",
-            password="should-not-enter-contract",
+            password="x",
         )
     with pytest.raises(ValidationError, match="raw_secret_field_rejected"):
         BrowserSessionRef(
