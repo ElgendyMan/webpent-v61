@@ -1,4 +1,5 @@
 import re
+import subprocess
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -86,6 +87,19 @@ def test_ci_security_environment_contract_is_explicit() -> None:
         assert f"{key}: {value}" in content
     assert "verify_test_count.py --minimum 498" in content
     assert "tests/test_vip_audit_gap_closure.py" in content
+
+
+def test_unified_verifier_accepts_arg_based_base_image() -> None:
+    result = subprocess.run(
+        ["python", str(PROJECT_ROOT / "verify_all.py")],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "U1d. Dockerfile uses the approved webpent base image" in result.stdout
 
 
 def test_docker_image_metadata_matches_current_project_version() -> None:

@@ -278,14 +278,26 @@ check(
     all(x in (ROOT / "Dockerfile.base").read_text()
         for x in ["torch", "sentence-transformers", "playwright install"]),
 )
+dockerfile_src = (ROOT / "Dockerfile").read_text()
+dockerfile_direct_base = bool(
+    re.search(
+        r"(?m)^\s*FROM\s+webpent-base:latest\s*$",
+        dockerfile_src,
+    )
+)
+dockerfile_arg_base = bool(
+    re.search(
+        r"(?m)^\s*ARG\s+BASE_IMAGE\s*=\s*webpent-base:latest\s*$",
+        dockerfile_src,
+    )
+    and re.search(
+        r"(?m)^\s*FROM\s+\$\{BASE_IMAGE\}\s*$",
+        dockerfile_src,
+    )
+)
 check(
-    "U1d. Dockerfile uses FROM webpent-base:latest",
-    bool(
-        re.search(
-            r"(?m)^\s*FROM\s+webpent-base:latest\s*$",
-            (ROOT / "Dockerfile").read_text(),
-        )
-    ),
+    "U1d. Dockerfile uses the approved webpent base image",
+    dockerfile_direct_base or dockerfile_arg_base,
 )
 check(
     "U1e. Makefile exists with build-base and build-app targets",
