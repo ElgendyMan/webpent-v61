@@ -63,7 +63,7 @@ Total records: **279**.
 | `src/webpent/agents/cross_reasoning/agent.py` | 264 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/disclosed_report_intel/agent.py` | 63 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/execution_sandbox/agent.py` | 71 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/execution_sandbox/agent.py` | 499 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/execution_sandbox/agent.py` | 564 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/executive_summary/agent.py` | 124 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/executive_summary/agent.py` | 198 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/exploit_chainer/agent.py` | 88 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -257,7 +257,7 @@ Total records: **279**.
 | `src/webpent/shared/rate_governor.py` | 317 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/rate_governor.py` | 318 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/reference_lookup.py` | 111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/shared/runtime.py` | 575 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/runtime.py` | 612 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/safety_gate.py` | 191 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/safety_gate.py` | 199 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/safety_gate.py` | 201 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

@@ -105,10 +105,75 @@ def _try_launch_browser(target_hostnames: list[str] | None = None):
         return None, None
 
 
+def _normalise_auth_state_cookies(
+    raw_cookies: Any,
+    target_url: str,
+) -> list[dict[str, Any]]:
+    """Return target-scoped Playwright cookie records from canonical auth state.
+
+    ``auth_state`` may be produced by a validator as a list containing only
+    ``name``/``value``.  Playwright requires either a valid ``url`` or a
+    ``domain`` plus ``path``; silently passing incomplete records makes the
+    browser verification path fail while the rest of the scan continues.
+    Records are therefore completed from the declared target origin and
+    cross-origin or malformed records are rejected fail-closed.
+    """
+    if not isinstance(raw_cookies, list):
+        return []
+    target = urlparse(str(target_url))
+    target_host = (target.hostname or "").strip().lower()
+    if not target_host or target.scheme not in {"http", "https"}:
+        return []
+
+    result: list[dict[str, Any]] = []
+    for raw in raw_cookies:
+        if not isinstance(raw, dict):
+            continue
+        name = raw.get("name")
+        value = raw.get("value")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        if not isinstance(value, str) or any(char in value for char in ("\r", "\n")):
+            continue
+        name = name.strip()
+        record: dict[str, Any] = {"name": name, "value": value}
+
+        raw_cookie_url = raw.get("url")
+        if raw_cookie_url:
+            cookie_url = urlparse(str(raw_cookie_url))
+            if (
+                cookie_url.scheme not in {"http", "https"}
+                or (cookie_url.hostname or "").strip().lower() != target_host
+            ):
+                continue
+            record["url"] = str(raw_cookie_url)
+        else:
+            raw_domain = str(raw.get("domain") or target_host).strip()
+            cookie_domain = raw_domain.lstrip(".").lower()
+            if cookie_domain != target_host:
+                continue
+            record["domain"] = raw_domain
+            raw_path = raw.get("path")
+            record["path"] = (
+                raw_path
+                if isinstance(raw_path, str) and raw_path.startswith("/")
+                else "/"
+            )
+
+        for key in ("expires", "httpOnly", "secure", "sameSite"):
+            if key in raw:
+                record[key] = raw[key]
+        result.append(record)
+    return result
+
+
 def _inject_cookies(context, url: str, auth_state: dict[str, Any]) -> None:
     # V4.5 Sprint 2: Inject cookies from both auth_state and login session.
-    cookies = auth_state.get("cookies") if auth_state else None
-    if cookies and isinstance(cookies, list):
+    cookies = _normalise_auth_state_cookies(
+        auth_state.get("cookies") if auth_state else None,
+        url,
+    )
+    if cookies:
         try:
             context.add_cookies(cookies)
             logger.debug("Injected %d auth_state cookie(s) for %s", len(cookies), url)

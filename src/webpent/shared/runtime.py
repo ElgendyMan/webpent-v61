@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -154,9 +154,31 @@ class RegisteredAdapter:
             for field, value in required.items()
             if not str(value or "").strip()
         )
-        if self.expires_at and self.expires_at < "2026-08-21":
-            errors.append(f"adapter:{self.name}:approval_expired")
+        expiry = str(self.expires_at or "").strip()
+        if expiry:
+            try:
+                parsed = (
+                    datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+                    if "T" in expiry
+                    else datetime.combine(
+                        date.fromisoformat(expiry),
+                        datetime.min.time(),
+                        tzinfo=UTC,
+                    )
+                )
+            except ValueError:
+                errors.append(f"adapter:{self.name}:expires_at:invalid")
+            else:
+                if parsed.date() < datetime.now(UTC).date():
+                    errors.append(f"adapter:{self.name}:approval_expired")
         return tuple(errors)
+
+
+CONTROL_PLANE_BROWSER_ADAPTER_NAME = "control_plane_browser"
+CONTROL_PLANE_BROWSER_CANONICAL_WRAPPER = "control_plane.browser_action"
+CONTROL_PLANE_BROWSER_SCOPE_POLICY = "engagement_scope_same_origin"
+CONTROL_PLANE_BROWSER_INVENTORY_REF = "control_plane.browser_action.injected"
+CONTROL_PLANE_BROWSER_PROOF_CONTRACT = "observation_only_no_confirmation"
 
 
 class AdapterRegistry:
@@ -425,6 +447,7 @@ class RuntimeFactory:
         raw_scope_entries: list[str] | tuple[str, ...] | None = None,
         enable_control_plane: bool = False,
         control_plane_profile_root: str | None = None,
+        control_plane_browser_adapter: Any | None = None,
     ) -> RuntimeContext:
         settings = settings or get_settings()
         if scope_runtime_handle is None and raw_scope_entries:
@@ -519,6 +542,20 @@ class RuntimeFactory:
                 replay_engine = control_plane_runtime.replay_engine
             except (ImportError, OSError, TypeError, ValueError) as exc:
                 errors.append(f"control_plane:bootstrap_failed:{type(exc).__name__}")
+        if control_plane_browser_adapter is not None:
+            if control_plane_runtime is None:
+                errors.append("control_plane:browser_adapter_requires_bootstrap")
+            else:
+                try:
+                    register_control_plane_browser_adapter(
+                        registry,
+                        control_plane_browser_adapter,
+                    )
+                except RuntimeConfigurationError as exc:
+                    errors.append(
+                        "control_plane:browser_adapter_registration_failed:"
+                        f"{str(exc)[:160]}"
+                    )
         capability_gaps = cls._capability_gaps(
             adapters=registry,
             identity_tenant_object_graph=identity_tenant_object_graph,
@@ -657,9 +694,56 @@ class RuntimeFactory:
         }
 
 
+def register_control_plane_browser_adapter(
+    registry: AdapterRegistry,
+    adapter: Any,
+    *,
+    source: str = "control_plane_runtime",
+    version: str = "1",
+    expires_at: str | None = None,
+) -> None:
+    """Register one explicitly injected browser adapter, never a raw handler.
+
+    The adapter is a typed policy boundary around a caller-owned handler. The
+    handler remains in memory only; descriptors expose metadata, not the live
+    callable. No adapter is created when the caller provides nothing.
+    """
+    from webpent.shared.control_plane_runtime import BrowserActionAdapter
+
+    if not isinstance(adapter, BrowserActionAdapter):
+        raise RuntimeConfigurationError("control_plane_browser:typed_adapter_required")
+    approval_expiry = expires_at or (
+        datetime.now(UTC) + timedelta(hours=1)
+    ).date().isoformat()
+    registration = RegisteredAdapter(
+        name=CONTROL_PLANE_BROWSER_ADAPTER_NAME,
+        capability="browser_action",
+        transport="injected_browser_handler",
+        handler=adapter.execute,
+        source=str(source or "control_plane_runtime")[:160],
+        version=str(version or "1")[:80],
+        policy_checked=True,
+        canonical_wrapper=CONTROL_PLANE_BROWSER_CANONICAL_WRAPPER,
+        scope_policy=CONTROL_PLANE_BROWSER_SCOPE_POLICY,
+        static_inventory_ref=CONTROL_PLANE_BROWSER_INVENTORY_REF,
+        proof_contract=CONTROL_PLANE_BROWSER_PROOF_CONTRACT,
+        expires_at=approval_expiry,
+    )
+    errors = registration.g02_errors()
+    if errors:
+        raise RuntimeConfigurationError(";".join(errors))
+    registry.register(registration)
+
+
 __all__ = [
     "AdapterRegistry",
     "RegisteredAdapter",
+    "CONTROL_PLANE_BROWSER_ADAPTER_NAME",
+    "CONTROL_PLANE_BROWSER_CANONICAL_WRAPPER",
+    "CONTROL_PLANE_BROWSER_SCOPE_POLICY",
+    "CONTROL_PLANE_BROWSER_INVENTORY_REF",
+    "CONTROL_PLANE_BROWSER_PROOF_CONTRACT",
+    "register_control_plane_browser_adapter",
     "RuntimeCapabilityGap",
     "RuntimeConfigurationError",
     "RuntimeContext",

@@ -218,10 +218,25 @@ def _finding_projection(finding: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _load_report(output_dir: Path) -> tuple[dict[str, Any], str | None]:
-    path = output_dir / "report.json"
-    if not path.is_file():
+def _load_report(
+    output_dir: Path,
+    *,
+    workspace_root: Path | None = None,
+) -> tuple[dict[str, Any], str | None]:
+    """Load one report without crossing run/workspace boundaries.
+
+    The CLI activates its target workspace after startup, so ``OUTPUT_DIR`` can
+    be replaced by the workspace's reports directory.  Prefer the explicit
+    output directory, then inspect only the unique run-local workspace root.
+    Ambiguous or malformed output remains unqualified rather than guessing.
+    """
+    candidates = [output_dir / "report.json"]
+    if workspace_root is not None:
+        candidates.extend(sorted(workspace_root.glob("*/reports/report.json")))
+    unique_candidates = list(dict.fromkeys(path for path in candidates if path.is_file()))
+    if len(unique_candidates) != 1:
         return {}, None
+    path = unique_candidates[0]
     try:
         return json.loads(path.read_text(encoding="utf-8")), str(path)
     except (OSError, json.JSONDecodeError):
@@ -258,6 +273,9 @@ def _build_command(args: argparse.Namespace, run_dir: Path, engagement_id: str) 
     ]
     if args.target == "waptlab":
         command.extend(["--additional-target-origin", "http://127.0.0.1:5173"])
+    cookie_file = getattr(args, "cookie_file", None)
+    if cookie_file:
+        command.extend(["--cookie-file", str(cookie_file)])
     return command
 
 
@@ -265,8 +283,10 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
     run_id = f"{args.target}-q{index}"
     run_dir = output_root / run_id
     output_dir = run_dir / "output"
+    workspace_root = run_dir / "target_workspaces"
     run_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
+    workspace_root.mkdir(parents=True, exist_ok=True)
     reset = _reset_waptlab() if args.target == "waptlab" and args.reset_between_runs else {"requested": False, "status": "not_requested"}
     target_wait = _wait_target(args.url)
     env = os.environ.copy()
@@ -275,6 +295,7 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "PATH": f"/tmp/pd-bin:{env.get('PATH', '')}",
         "ENABLE_JS_INTELLIGENCE": "true",
         "OUTPUT_DIR": str(output_dir),
+        "TARGET_WORKSPACE_ROOT": str(workspace_root),
         "DATABASE_URL": f"sqlite:///{run_dir / 'webpent.db'}",
         "ACTION_LEDGER_PATH": str(run_dir / "action_ledger.sqlite3"),
         "FINDINGS_LEDGER_PATH": str(run_dir / "findings_ledger.sqlite3"),
@@ -284,7 +305,7 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
     completed = _run(command, env=env, timeout=args.timeout)
     duration = round(time.time() - start, 3)
     (run_dir / "scan.log").write_text(_redact((completed.stdout or "") + (completed.stderr or "")), encoding="utf-8")
-    report, report_path = _load_report(output_dir)
+    report, report_path = _load_report(output_dir, workspace_root=workspace_root)
     findings = report.get("findings") if isinstance(report.get("findings"), list) else []
     events = report.get("execution_events") if isinstance(report.get("execution_events"), list) else []
     if not events:
@@ -327,6 +348,10 @@ def main() -> int:
     parser.add_argument("--target", choices=["waptlab", "juice-shop"], required=True)
     parser.add_argument("--url", required=True)
     parser.add_argument("--creds-file", required=True)
+    parser.add_argument(
+        "--cookie-file",
+        help="Optional JSON/Netscape cookie jar path; values remain outside reports/logs.",
+    )
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--runs", type=int, default=1, choices=range(1, 4))
     parser.add_argument("--timeout", type=int, default=1200)
