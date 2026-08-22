@@ -30,6 +30,11 @@ from webpent.validators.proof_validator import validate_bundle_structure
 
 logger = logging.getLogger(__name__)
 
+# Alembic's runtime environment uses process-global proxy state. Separate
+# target databases still need serialized upgrade invocations within one
+# process, while the per-database flock below protects cross-process calls.
+_ALEMBIC_UPGRADE_LOCK = threading.RLock()
+
 
 @contextmanager
 def _suppress_sqlite_errors() -> Iterator[None]:
@@ -595,7 +600,8 @@ class DatabaseManager:
                 # ``alembic upgrade`` command itself.
                 # Any migration failure is propagated. Silently falling back
                 # and stamping ``head`` would falsely claim schema integrity.
-                alembic_command.upgrade(cfg, "head")
+                with _ALEMBIC_UPGRADE_LOCK:
+                    alembic_command.upgrade(cfg, "head")
             finally:
                 # Release the file lock and close the lock fd. We do
                 # NOT delete the lock file — leaving it on disk is
@@ -611,7 +617,8 @@ class DatabaseManager:
         # ------------------------------------------------------------------
         # Any migration failure is propagated. Silently stamping ``head``
         # would falsely claim schema integrity even for an in-memory DB.
-        alembic_command.upgrade(cfg, "head")
+        with _ALEMBIC_UPGRADE_LOCK:
+            alembic_command.upgrade(cfg, "head")
 
     def _init_db_legacy(self) -> None:
         """Legacy DDL + ALTER TABLE migration (fallback when Alembic unavailable)."""

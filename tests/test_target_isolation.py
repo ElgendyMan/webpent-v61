@@ -125,3 +125,84 @@ def test_checkpointer_uses_active_target_sessions_database(tmp_path: Path) -> No
     assert workspace_a.sessions_database_path != workspace_b.sessions_database_path
     assert workspace_a.sessions_database_path.exists()
     assert workspace_b.sessions_database_path.exists()
+
+
+def test_concurrent_target_workspaces_keep_storage_and_checkpoint_paths_isolated(
+    tmp_path: Path,
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    workspace_a, workspace_b = _workspace_pair(tmp_path)
+    workspaces = (workspace_a, workspace_b)
+
+    def write_target(index: int) -> dict[str, object]:
+        workspace = workspaces[index]
+        thread_id = f"parallel-{index}"
+        with activate_target_workspace(workspace):
+            db = get_db_manager()
+            db.init_db()
+            finding = _finding(thread_id)
+            db.save_finding(finding)
+            workspace.reports_dir.joinpath("report.json").write_text(
+                f'{{"thread_id": "{thread_id}"}}', encoding="utf-8"
+            )
+            workspace.artifacts_dir.joinpath("marker.txt").write_text(
+                thread_id, encoding="utf-8"
+            )
+            with get_checkpointer() as checkpointer:
+                connection = getattr(checkpointer, "conn", None)
+                checkpoint_path = ""
+                if connection is not None:
+                    checkpoint_path = str(
+                        connection.execute("PRAGMA database_list").fetchone()[2]
+                    )
+            return {
+                "workspace_id": get_active_target_workspace().workspace_id,
+                "finding_ids": [
+                    item.id for item in db.get_findings_by_threads([thread_id])
+                ],
+                "checkpoint_path": checkpoint_path,
+                "report": workspace.reports_dir.joinpath("report.json").read_text(
+                    encoding="utf-8"
+                ),
+                "artifact": workspace.artifacts_dir.joinpath("marker.txt").read_text(
+                    encoding="utf-8"
+                ),
+            }
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(write_target, range(2)))
+
+    assert [result["workspace_id"] for result in results] == [
+        workspace_a.workspace_id,
+        workspace_b.workspace_id,
+    ]
+    assert all(result["finding_ids"] for result in results)
+    assert results[0]["finding_ids"] != results[1]["finding_ids"]
+    assert results[0]["checkpoint_path"] == str(workspace_a.sessions_database_path)
+    assert results[1]["checkpoint_path"] == str(workspace_b.sessions_database_path)
+    assert results[0]["report"] != results[1]["report"]
+    assert results[0]["artifact"] != results[1]["artifact"]
+    assert get_active_target_workspace() is None
+
+
+def test_resume_workspace_descriptor_round_trip_is_target_scoped(tmp_path: Path) -> None:
+    workspace_a, _workspace_b = _workspace_pair(tmp_path)
+    descriptor = workspace_a.as_dict()
+    assert "cookies" not in descriptor
+    assert "credentials" not in descriptor
+    assert "live_handle" not in descriptor
+
+    resumed = build_target_workspace(
+        SimpleNamespace(target_workspace_root=tmp_path),
+        target_origin=descriptor["target_origin"],
+        client_id=descriptor["client_id"],
+        engagement_id=descriptor["engagement_id"],
+    ).ensure()
+
+    assert resumed.workspace_id == workspace_a.workspace_id
+    assert resumed.reports_dir == workspace_a.reports_dir
+    assert resumed.artifacts_dir == workspace_a.artifacts_dir
+    assert resumed.sessions_database_path == workspace_a.sessions_database_path
+    assert resumed.chroma_path == workspace_a.chroma_path
+    assert resumed.findings_ledger_path == workspace_a.findings_ledger_path

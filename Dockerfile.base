@@ -204,9 +204,9 @@ RUN nuclei -update-templates 2>/dev/null || true
 # Cache mounts are optional optimizations; keep this compatible with legacy Docker builders.
 RUN export PIP_RETRIES=5 PIP_DEFAULT_TIMEOUT=100 && \
     for i in 1 2 3 4 5; do \
-        pip install --upgrade pip && \
-        pip install --retries 5 --timeout 100 torch --index-url https://download.pytorch.org/whl/cpu && \
-        pip install --retries 5 --timeout 100 "playwright==1.48.0" sentence-transformers chromadb \
+        pip install --no-cache-dir --upgrade pip && \
+        pip install --no-cache-dir --retries 5 --timeout 100 torch --index-url https://download.pytorch.org/whl/cpu && \
+        pip install --no-cache-dir --retries 5 --timeout 100 "playwright==1.48.0" sentence-transformers chromadb \
         && break \
         || { echo "heavy pip install attempt $i failed (likely a transient network/TLS error), retrying..."; sleep 10; }; \
     done && \

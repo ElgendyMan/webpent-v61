@@ -141,3 +141,34 @@ def test_auto_inventory_selects_generic_for_any_non_explicit_target() -> None:
     assert len(plan["entries"]) == 10
     assert plan["entries"][0]["key"] == "xss_reflected"
     assert plan["summary"].get("missing-validator", 0) == 0
+
+
+def test_auto_inventory_is_target_agnostic_across_unrelated_origins_and_ports() -> None:
+    origins = (
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8080/app",
+        "https://shop.example.test:9443",
+        "https://api.example.test:443/v1",
+        "http://192.0.2.44:18080",
+    )
+
+    plans = [
+        build_campaign_plan(target_url=origin, campaign_inventory="auto")
+        for origin in origins
+    ]
+
+    assert all(len(plan["entries"]) == 10 for plan in plans)
+    assert all(plan["entries"][0]["key"] == "xss_reflected" for plan in plans)
+    assert all(plan["summary"].get("missing-validator", 0) == 0 for plan in plans)
+    assert all("header_sqli" not in {entry["key"] for entry in plan["entries"]} for plan in plans)
+
+
+def test_unknown_campaign_inventory_fails_closed_independent_of_target_url() -> None:
+    for target_url in ("http://127.0.0.1:8000", "https://arbitrary.example:9443"):
+        try:
+            build_campaign_plan(target_url=target_url, campaign_inventory="lab-name-from-host")
+        except ValueError as exc:
+            assert "campaign_inventory" in str(exc)
+        else:
+            raise AssertionError("unknown campaign inventory must fail closed")

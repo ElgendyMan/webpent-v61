@@ -1,6 +1,6 @@
 # pyproject.toml
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel>=0.46.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -51,7 +51,8 @@ dependencies = [
     "langchain-chroma>=0.2.3,<1.0",
     "chromadb>=0.5.0,<1.0",
     "sentence-transformers>=2.7.0",
-    "pypdf>=4.0.0",
+    # Security floor: PYSEC-2026-3655/PYSEC-2026-3656 are fixed in 6.15.0.
+    "pypdf>=6.15.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
     "python-dotenv>=1.0.0",
