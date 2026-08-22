@@ -24,7 +24,8 @@
 |---|---:|
 | bbscout full pytest | 7 passed |
 | WebPent full pytest | 1382 passed، 294 warnings |
-| package/entrypoint/hardening focused | 35 passed، 2 warnings | proof-focused verifier/active suite: 30 passed، 8 warnings |
+| package/entrypoint/hardening focused | 35 passed، 2 warnings |
+| proof-focused verifier/active/package suite | 27 passed، 2 warnings |
 | Ruff full | passed |
 | compileall | passed |
 | G-02 runtime check | passed، 280 primary records، external_target_contacted=false |
@@ -59,4 +60,4 @@
 
 ## Release identity
 
-تغييرات ProofBundle والـvalidator في هذه الجولة تحتاج release identity جديدة بعد اكتمال quality gates. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.
+تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`، وتحتاج أي metadata لاحقة إلى commit توثيقي منفصل. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.

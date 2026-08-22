@@ -66,9 +66,9 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit التنفيذ | `52fc62537d94972b6155868a0fecd413690f5ffb` |
+| Git commit التنفيذ | `d278653` (`Enforce target-backed causal proof bundles`) |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
-| archive content count | 964 entries؛ يتحقق منه `evidence/release_contents.txt` |
+| archive content count | يُحدّث بعد بناء archive النهائي؛ يتحقق منه `evidence/release_contents.txt` |
 | forbidden artifact scan | clean |
