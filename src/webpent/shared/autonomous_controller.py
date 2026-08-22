@@ -18,6 +18,11 @@ from webpent.agents.smart_campaigns.agent import (
     build_smart_campaign_tasks,
     smart_campaigns_node,
 )
+from webpent.shared.autonomy_contracts import (
+    ActionBudgetState,
+    AutonomousCycle,
+    StopDecision,
+)
 from webpent.shared.campaign_executor import (
     ActionExecutor,
     CampaignTask,
@@ -232,8 +237,17 @@ class AutonomousController:
         max_recovery_attempts = max(
             0, min(3, int(recovery_state.get("max_attempts", 2) or 0))
         )
+        budget = ActionBudgetState.from_state(
+            state.get("action_budget"), default_iterations=limit
+        )
+        budget.iterations_limit = min(budget.iterations_limit, limit)
+        cycle_records: list[dict[str, Any]] = []
 
         for round_number in range(limit):
+            if not budget.can_start_iteration():
+                stop_reason = budget.stop_reason or "action_budget_exhausted"
+                break
+            budget.start_iteration()
             state_before = self._state_fingerprint(working)
             planning = smart_campaigns_node(self._planning_state(working))
             last_planning = dict(planning)
@@ -333,6 +347,13 @@ class AutonomousController:
                     }
                 )
                 break
+            estimated_cost = sum(
+                max(0.0, min(100.0, float(candidate.budget)))
+                for candidate in selected
+            )
+            if not budget.reserve(estimated_cost):
+                stop_reason = budget.stop_reason or "action_budget_exhausted"
+                break
             for candidate in selected:
                 seen_actions.add(self._action_signature(candidate))
             task = selected[0]
@@ -390,9 +411,29 @@ class AutonomousController:
                 }.get(status, "action_not_executed")
                 trace_entry["result"] = stop_reason
             working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
+            state_after_batch = self._state_fingerprint(working)
+            cycle_records.append(
+                AutonomousCycle(
+                    cycle_id=f"{working.get('engagement_id', 'controller')}:{round_number}",
+                    phase="execute",
+                    status="blocked" if batch_failed else "completed",
+                    selected_tasks=len(selected),
+                    executed_tasks=sum(
+                        1 for record in records if record.get("status") == "executed"
+                    ),
+                    evidence_added=any(
+                        self._record_has_new_evidence(record) for record in records
+                    ),
+                    knowledge_updated=state_before != state_after_batch,
+                ).as_dict()
+            )
             if batch_failed:
-                if recoverable_failures and recovery_attempts < max_recovery_attempts:
-                    recovery_attempts += 1
+                if (
+                    recoverable_failures
+                    and recovery_attempts < max_recovery_attempts
+                    and budget.record_replan()
+                ):
+                    recovery_attempts = budget.replans
                     seen_actions.difference_update(failed_signatures)
                     for failed_task, failed_record in recoverable_failures:
                         recovery_events.append(
@@ -438,12 +479,9 @@ class AutonomousController:
                 for entry in trace[-len(records) :]:
                     entry["result"] = stop_reason
                 break
-            action_budget = working.get("action_budget")
-            if (
-                isinstance(action_budget, Mapping)
-                and float(action_budget.get("remaining_cost", 1.0) or 0.0) <= 0
-            ):
-                stop_reason = "budget_exhausted"
+            if budget.spent >= budget.limit:
+                budget.stop("action_budget_exhausted")
+                stop_reason = budget.stop_reason
                 trace_entry["result"] = stop_reason
                 break
             state_after = self._state_fingerprint(working)
@@ -486,6 +524,26 @@ class AutonomousController:
             "max_attempts": max_recovery_attempts,
         }
         update["recovery_state"] = recovery_state
+        update["action_budget"] = budget.as_dict()
+        update["autonomous_cycle_records"] = cycle_records
+        update["stop_decision"] = StopDecision(
+            True,
+            stop_reason,
+            category=(
+                "budget" if "budget" in stop_reason else
+                "recovery" if "recovery" in stop_reason else
+                "evidence" if (
+                    "evidence" in stop_reason
+                    or "negative_control" in stop_reason
+                ) else
+                "normal"
+            ),
+            safe_to_resume=stop_reason in {
+                "iteration_limit_reached",
+                "action_budget_exhausted",
+                "no_new_evidence_or_state_delta",
+            },
+        ).as_dict()
         update["smart_replanning"] = replanning
         update["current_phase"] = "smart_autonomous_controller"
         return update

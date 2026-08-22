@@ -219,6 +219,11 @@ class PentestState(TypedDict, total=False):
     autonomous_controller_runs: int
     capability_manifest: Annotated[dict[str, Any], merge_dicts]
     action_budget: Annotated[dict[str, Any], merge_dicts]
+    # Bounded-controller governance telemetry. These fields are additive and
+    # report-safe; they never grant execution authority or confirm findings.
+    autonomous_cycle_records: Annotated[list[dict[str, Any]], merge_lists]
+    stop_decision: Annotated[dict[str, Any], merge_dicts]
+    research_loop_contract: Annotated[dict[str, Any], merge_dicts]
     # Optional LLM advisory validation trace. It is report-safe and never
     # grants execution authority; absent in legacy checkpoints.
     llm_reliability_trace: Annotated[list[dict[str, Any]], merge_lists]

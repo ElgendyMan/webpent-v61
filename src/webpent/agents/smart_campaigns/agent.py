@@ -15,8 +15,10 @@ from contextlib import contextmanager
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlsplit
 
+from webpent.attack_graph.builder import AttackGraphBuilder
 from webpent.config.settings import ScanMode, get_settings
-from webpent.models.evidence import redact_sensitive
+from webpent.knowledge.builder import KnowledgeBuilder
+from webpent.models.evidence import canonical_json, redact_sensitive
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 from webpent.models.research import ResearchContext
 from webpent.shared.action_authority import ActionRisk
@@ -52,6 +54,7 @@ from webpent.shared.research_intelligence import (
     KnowledgeGapEngine,
     NegativeEvidence,
     PositiveEvidence,
+    ResearchLoopContract,
     ResearchSession,
     SmartNextBestActionEngine,
 )
@@ -152,9 +155,31 @@ def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]
         if isinstance(raw_capabilities, Mapping)
         else frozenset()
     )
-    budget = state.get("action_budget") or {}
-    max_cost = float(budget.get("limit", 100.0)) if isinstance(budget, Mapping) else 100.0
-    used_cost = float(budget.get("used_cost", 0.0)) if isinstance(budget, Mapping) else 0.0
+    budget = state.get("action_budget")
+    if not isinstance(budget, Mapping):
+        return [{
+            "status": "rejected",
+            "reasons": ["budget:missing_budget"],
+            "stages": ["budget"],
+            "sanitized": False,
+            "decision_id": "",
+        }]
+    try:
+        max_cost = float(budget.get("limit", budget.get("max_cost", 0.0)))
+        used_cost = float(
+            budget.get(
+                "spent",
+                budget.get("used_cost", budget.get("spent_cost", 0.0)),
+            )
+        )
+    except (TypeError, ValueError):
+        return [{
+            "status": "rejected",
+            "reasons": ["budget:invalid_budget"],
+            "stages": ["budget"],
+            "sanitized": False,
+            "decision_id": "",
+        }]
     result = LLMReliabilityGate().evaluate(
         advisory,
         ReliabilityPolicy(
@@ -747,6 +772,64 @@ def _update_research_action_outcome(
     session.next_best_actions = session.next_best_actions[-100:]
 
 
+def _research_projections(
+    state: Mapping[str, Any],
+    *,
+    knowledge_gaps: Sequence[Mapping[str, Any]] = (),
+    selected_actions: Sequence[Any] = (),
+    outcomes: Sequence[Mapping[str, Any]] = (),
+    evidence_added: bool = False,
+    llm_trace: Sequence[Any] = (),
+) -> dict[str, Any]:
+    """Build deterministic target-knowledge, attack-graph, and loop telemetry.
+
+    The builders consume only the report-safe state projection.  This helper is
+    deliberately advisory: neither projection can authorize actions or promote
+    a finding without the existing validator and proof gates.
+    """
+    knowledge = KnowledgeBuilder.from_state(state).build().as_dict()
+    prior = state.get("target_knowledge")
+    knowledge_changed = canonical_json(knowledge) != canonical_json(prior or {})
+    try:
+        version = int(state.get("target_knowledge_version", 0))
+    except (TypeError, ValueError):
+        version = 0
+    if knowledge_changed:
+        version += 1
+    graph = AttackGraphBuilder().build(
+        state.get("mental_model") or {},
+        relational_evidence=state.get("relational_evidence") or (),
+        findings=state.get("findings") or (),
+        hypotheses=state.get("hypotheses") or (),
+        causal_edges=state.get("causal_edges") or (),
+        coverage_gaps=knowledge_gaps,
+        target_knowledge=knowledge,
+    )
+    outcome_names = [
+        str(item.get("status") or item.get("outcome") or "unknown")
+        for item in outcomes
+        if isinstance(item, Mapping)
+    ]
+    contract_state = dict(state)
+    contract_state["target_knowledge_version"] = version
+    contract = ResearchLoopContract.from_state(
+        contract_state,
+        target_knowledge=knowledge,
+        gap_ids=[item.get("gap_id") for item in knowledge_gaps],
+        selected_actions=selected_actions,
+        outcomes=outcome_names,
+        evidence_added=evidence_added,
+        knowledge_updated=knowledge_changed,
+        llm_trace=llm_trace,
+    )
+    return {
+        "target_knowledge": knowledge,
+        "target_knowledge_version": version,
+        "attack_graph": graph,
+        "research_loop_contract": contract.as_dict(),
+    }
+
+
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
 def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Produce bounded smart task outcomes without executing network actions."""
@@ -914,9 +997,17 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 "source": "smart_campaign_runtime",
             }
         )
+    research_projections = _research_projections(
+        task_state,
+        knowledge_gaps=[gap.as_dict() for gap in knowledge_gaps],
+        selected_actions=[item.get("fingerprint") for item in information_actions],
+        outcomes=outcomes,
+        llm_trace=llm_reliability_trace,
+    )
     return {
         "campaign_plan": campaign_plan,
         "campaign_task_outcomes": outcomes,
+        **research_projections,
         "decision_trace": decision_trace,
         "knowledge_gaps": [gap.as_dict() for gap in knowledge_gaps],
         "research_session": research_session.as_dict(),
@@ -1607,6 +1698,20 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         *outcomes,
     ]
     coverage_ledger = project_coverage_ledger(projection_state)
+    research_projections = _research_projections(
+        projection_state,
+        knowledge_gaps=[gap.as_dict() for gap in updated_knowledge_gaps],
+        selected_actions=[item.get("fingerprint") for item in planned_information],
+        outcomes=outcomes,
+        evidence_added=bool(
+            any(
+                isinstance(item, Mapping)
+                and item.get("proof_bundle_sealed") is True
+                for item in outcomes
+            )
+            or direct_findings
+        ),
+    )
     proof_bundles = [
         dict(item["proof_bundle"])
         for item in outcomes
@@ -1628,6 +1733,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "campaign_plan": campaign_plan,
         "campaign_task_outcomes": outcomes,
+        **research_projections,
         "proof_bundles": proof_bundles,
         "smart_http_observations": observations,
         "findings": direct_findings,

@@ -109,6 +109,48 @@ def test_active_decision_without_approval_is_needs_review():
     assert "policy:active_decision_requires_approval" in result.reasons
 
 
+def test_smart_campaigns_rejects_missing_or_invalid_budget():
+    missing = _llm_reliability_projection(
+        {
+            "target": {"url": "https://lab.local"},
+            "llm_advisory": _payload(),
+            "capability_manifest": {"capabilities": {"http_read": {}}},
+        }
+    )
+    assert missing[0]["status"] == "rejected"
+    assert missing[0]["reasons"] == ["budget:missing_budget"]
+
+    invalid = _llm_reliability_projection(
+        {
+            "target": {"url": "https://lab.local"},
+            "llm_advisory": _payload(),
+            "capability_manifest": {"capabilities": {"http_read": {}}},
+            "action_budget": {"limit": "not-a-number"},
+        }
+    )
+    assert invalid[0]["status"] == "rejected"
+    assert invalid[0]["reasons"] == ["budget:invalid_budget"]
+
+
+def test_llm_causal_claim_remains_advisory_only():
+    trace = _llm_reliability_projection(
+        {
+            "target": {"url": "https://lab.local"},
+            "llm_advisory": _payload(
+                causal_signal=True,
+                negative_control_complete=True,
+                confidence=1.0,
+            ),
+            "capability_manifest": {"capabilities": {"http_read": {}}},
+            "action_budget": {"limit": 10.0, "used_cost": 0.0},
+        }
+    )
+    assert trace[0]["status"] == "accepted"
+    assert "evidence" not in trace[0]
+    assert "confirmed" not in trace[0]
+    assert "execution" not in trace[0]
+
+
 def test_smart_campaigns_records_reliability_trace_without_authority():
     state = {
         "target": {"url": "https://lab.local"},

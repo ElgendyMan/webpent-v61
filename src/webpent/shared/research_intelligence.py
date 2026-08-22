@@ -7,6 +7,7 @@ authorize actions, confirm findings, or replace the existing proof engine.
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -655,6 +656,155 @@ class NegativeEvidenceLedger:
         }
 
 
+_INLINE_SECRET_MARKER = re.compile(
+    r"(?i)(?:api[_-]?key|token|cookie|password|secret|authorization)\s*[:=]"
+)
+
+
+@dataclass(frozen=True)
+class ResearchLoopContract:
+    """Checkpoint-safe contract for one bounded research-cycle projection.
+
+    This is telemetry only: it cannot authorize an action, confirm a finding,
+    or replace the validator/proof boundary.  All values are derived from
+    already-redacted state and are deliberately bounded for resume safety.
+    """
+
+    schema_version: int = 1
+    target_knowledge_version: int = 0
+    target_knowledge_fingerprint: str = ""
+    knowledge_gap_ids: tuple[str, ...] = ()
+    selected_action_fingerprints: tuple[str, ...] = ()
+    outcome_taxonomy: tuple[str, ...] = ()
+    evidence_added: bool = False
+    knowledge_updated: bool = False
+    budget: Mapping[str, Any] = field(default_factory=dict)
+    stop: Mapping[str, Any] = field(default_factory=dict)
+    memory: Mapping[str, Any] = field(default_factory=dict)
+    llm: Mapping[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def _bounded_strings(values: Any, limit: int = 24) -> tuple[str, ...]:
+        if not isinstance(values, (list, tuple, set, frozenset)):
+            return ()
+        cleaned_values: list[str] = []
+        for value in values:
+            redacted, _ = redact_sensitive(str(value or ""))
+            text = _clean(redacted, 160)
+            if _INLINE_SECRET_MARKER.search(text):
+                text = "[REDACTED]"
+            if text:
+                cleaned_values.append(text)
+        return tuple(cleaned_values[:limit])
+
+    @classmethod
+    def from_state(
+        cls,
+        state: Mapping[str, Any],
+        *,
+        target_knowledge: Mapping[str, Any] | None = None,
+        gap_ids: Sequence[Any] = (),
+        selected_actions: Sequence[Any] = (),
+        outcomes: Sequence[Any] = (),
+        evidence_added: bool = False,
+        knowledge_updated: bool = False,
+        llm_trace: Sequence[Any] = (),
+    ) -> ResearchLoopContract:
+        knowledge = dict(target_knowledge) if isinstance(target_knowledge, Mapping) else {}
+        knowledge_json = canonical_json(knowledge)
+        budget = state.get("action_budget")
+        stop = state.get("stop_decision")
+        budget_keys = (
+            "limit",
+            "spent",
+            "remaining",
+            "iterations",
+            "iterations_limit",
+            "replans",
+            "replans_limit",
+            "status",
+        )
+        safe_budget = {
+            key: budget.get(key)
+            for key in budget_keys
+            if isinstance(budget, Mapping) and key in budget
+        }
+        safe_stop = {
+            key: stop.get(key)
+            for key in ("should_stop", "reason", "category", "safe_to_resume")
+            if isinstance(stop, Mapping) and key in stop
+        }
+        raw_memory = state.get("memory_summary")
+        memory_keys = (
+            "records",
+            "retrievals",
+            "retrieval_items",
+            "feedback_records",
+            "retrieval_budget_remaining",
+        )
+        safe_memory = {
+            key: raw_memory.get(key)
+            for key in memory_keys
+            if isinstance(raw_memory, Mapping) and key in raw_memory
+        }
+        statuses = {"accepted": 0, "needs_review": 0, "rejected": 0}
+        if isinstance(llm_trace, (list, tuple)):
+            for item in llm_trace[:24]:
+                if isinstance(item, Mapping):
+                    status = str(item.get("status") or "rejected")
+                    if status in statuses:
+                        statuses[status] += 1
+        safe_llm = {
+            "count": sum(statuses.values()),
+            "accepted": statuses["accepted"],
+            "needs_review": statuses["needs_review"],
+            "rejected": statuses["rejected"],
+        }
+        outcome_values = []
+        for value in outcomes:
+            text = _clean(value, 80).lower()
+            if text and text not in outcome_values:
+                outcome_values.append(text)
+        try:
+            version = int(state.get("target_knowledge_version", 0))
+        except (TypeError, ValueError):
+            version = 0
+        return cls(
+            target_knowledge_version=max(0, version),
+            target_knowledge_fingerprint=hashlib.sha256(
+                knowledge_json.encode()
+            ).hexdigest()[:32],
+            knowledge_gap_ids=cls._bounded_strings(gap_ids),
+            selected_action_fingerprints=cls._bounded_strings(selected_actions),
+            outcome_taxonomy=tuple(outcome_values[:24]),
+            evidence_added=bool(evidence_added),
+            knowledge_updated=bool(knowledge_updated),
+            budget=safe_budget,
+            stop=safe_stop,
+            memory=safe_memory,
+            llm=safe_llm,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        clean, _ = redact_sensitive(
+            {
+                "schema_version": self.schema_version,
+                "target_knowledge_version": self.target_knowledge_version,
+                "target_knowledge_fingerprint": self.target_knowledge_fingerprint,
+                "knowledge_gap_ids": list(self.knowledge_gap_ids),
+                "selected_action_fingerprints": list(self.selected_action_fingerprints),
+                "outcome_taxonomy": list(self.outcome_taxonomy),
+                "evidence_added": self.evidence_added,
+                "knowledge_updated": self.knowledge_updated,
+                "budget": dict(self.budget),
+                "stop": dict(self.stop),
+                "memory": dict(self.memory),
+                "llm": dict(self.llm),
+            }
+        )
+        return clean
+
+
 @dataclass
 class ResearchSession:
     """Persistent, report-safe investigation context for bounded re-planning."""
@@ -781,6 +931,7 @@ __all__ = [
     "NegativeEvidenceLedger",
     "PositiveEvidence",
     "RankedAction",
+    "ResearchLoopContract",
     "ResearchSession",
     "SmartNextBestActionEngine",
     "default_session_expiry",

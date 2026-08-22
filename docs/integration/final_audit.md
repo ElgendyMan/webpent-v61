@@ -18,20 +18,23 @@
 
 أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
 
+تم تنفيذ phase 2–5 من roadmap بصورة additive: `ActionBudgetState` و`StopDecision` و`AutonomousCycle` مع resume-safe legacy aliases؛ research-loop projection موحد يربط gaps/actions/session/target-knowledge/attack-graph؛ memory/RAG وLLM telemetry redaction-safe advisory-only؛ وoffline multi-run qualification harness يحسب canonical outcomes وproof/replay agreement وcandidate FP/FN وunauthorized/out-of-scope وbudget/stop metrics دون target I/O. كل ذلك لا يمنح LLM أو التخطيط صلاحية تنفيذ أو confirmation.
+
 ## نتائج التحقق
 
 | الاختبار/الفحص | النتيجة |
 |---|---:|
 | bbscout full pytest | 7 passed |
-| WebPent full pytest | 1382 passed، 294 warnings |
+| WebPent full pytest | 1401 passed، 294 warnings |
 | package/entrypoint/hardening focused | 35 passed، 2 warnings |
-| proof-focused verifier/active/package suite | 27 passed، 2 warnings |
+| proof-focused verifier/active/package suite | مغطى داخل full suite الأخضر؛ لا regression بعد التوسعة |
 | Ruff full | passed |
 | compileall | passed |
 | G-02 runtime check | passed، 280 primary records، external_target_contacted=false |
 | G-02 artifact/precommit parity | passed بعد regeneration من source الحالي |
 | tracked secret scan | passed، no high-confidence secrets |
 | Bandit changed-file scan | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
+| offline autonomy/research/qualification focused additions | 19 passed ضمن full suite؛ memory/LLM telemetry وFP/FN وproof/replay وbudget/stop مغطاة |
 | LLM doctor | 0 active providers؛ fallback deterministic paths remain available |
 
 ## Bandit interpretation
@@ -46,7 +49,7 @@
 | live WAPTLab/Juice Shop qualification | غير منفذ عمدًا في هذه الجولة |
 | Docker/Celery/Redis multi-worker resume | NOT QUALIFIED |
 | WAPTLab 15+/20 findings و3 independent runs | NOT MEASURED |
-| precision >=90% وreproducibility >=95% | NOT MEASURED |
+| precision >=90% وreproducibility >=95% | NOT MEASURED؛ harness موجود offline فقط ولا يثبت live precision/recall |
 | 100% sealed proofs وzero false-clean/duplicate/scope/signature failures | العقد الداخلي target-backed/sealed/replayable مجتاز offline؛ نسبة qualification الحية NOT MEASURED |
 | VIP promotion | NO |
 
@@ -60,4 +63,4 @@
 
 ## Release identity
 
-تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`، وتحتاج أي metadata لاحقة إلى commit توثيقي منفصل. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.
+تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`. تغييرات roadmap الحالية ستُحفظ في commit لاحق بعد اكتمال gates والأرشيف. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.

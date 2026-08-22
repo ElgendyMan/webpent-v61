@@ -30,6 +30,10 @@
 | sealed/replayable ProofBundle | seal integrity، replay contract، tamper resistance، وعدم حفظ body/cookies/auth material | منفذ | strict verifier tests |
 | report continuity | top-level redacted `target_package_continuity` يدخل audit/master hash | منفذ | E2E hardening test |
 | direct-I/O inventory | G-02 regenerated and runtime-checked | منفذ | 280 primary records; external_target_contacted=false |
+| bounded autonomy contracts | `autonomy_contracts.py`؛ budget/stop/cycle contracts مع legacy resume aliases | منفذ offline | autonomy adversarial tests + full suite |
+| unified research loop | smart campaigns تربط session/gaps/actions/target knowledge/attack graph | منفذ offline | research-loop contract tests؛ لا I/O جديد |
+| memory/RAG + LLM boundary | redaction-safe bounded telemetry؛ advisory-only؛ لا snippets/claims كدليل | منفذ offline | memory/LLM adversarial tests |
+| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | qualification harness tests؛ لا live precision/recall |
 | provider adapters | Bugcrowd/Intigriti/YesWeHack adapters | **MISSING** | لا يوجد ادعاء تنفيذ |
 | live qualification | WAPTLab/Juice Shop live scan | **غير منفذ عمدًا** | لا target I/O في هذه المرحلة |
 | distributed qualification | Docker/Celery multi-run evidence | **غير مؤهل** | انظر تقرير Docker/Celery |
@@ -44,9 +48,9 @@
 | البوابة | النتيجة |
 |---|---:|
 | bbscout full pytest | **7 passed** |
-| WebPent full pytest | **1382 passed, 294 warnings** |
+| WebPent full pytest | **1401 passed, 294 warnings** |
 | package/entrypoint/hardening focused suite | **35 passed, 2 warnings** |
-| proof-focused verifier/active suite | **30 passed, 8 warnings** |
+| autonomy/research/qualification additions | **19 passed ضمن full suite؛ no regression** |
 | Ruff full | **passed** بعد إصلاح integration formatting/imports |
 | compileall | **passed** |
 | G-02 runtime | **passed؛ 280 primary records؛ لا اتصال خارجي** |
@@ -56,7 +60,7 @@
 
 ## حدود الإصدار
 
-هذا الإصدار لا يثبت قدرة اكتشاف أو تأكيد عدد معين من الثغرات، ولا يثبت VIP أو autonomous qualification. confirmation تظل مشروطة بـtarget-backed causal signal مشتق من baseline/candidate، وindependent neutral negative control، وProofBundle sealed قابل لإعادة التشغيل والتحقق من التلاعب. flags أو metadata وحدها لا تكفي. 403 و429 وtimeouts وmissing capabilities والأعطال تُصنف blocked/inconclusive/knowledge gap، ولا تتحول إلى clean.
+هذا الإصدار لا يثبت قدرة اكتشاف أو تأكيد عدد معين من الثغرات، ولا يثبت VIP أو autonomous qualification. أضيف harness متعدد التشغيلات لكنه offline deterministic ولا يمثل precision/recall حيًا. confirmation تظل مشروطة بـtarget-backed causal signal مشتق من baseline/candidate، وindependent neutral negative control، وProofBundle sealed قابل لإعادة التشغيل والتحقق من التلاعب. flags أو metadata وحدها لا تكفي. 403 و429 وtimeouts وmissing capabilities والأعطال تُصنف blocked/inconclusive/knowledge gap، ولا تتحول إلى clean.
 
 ## سياسة التسليم
 
@@ -66,7 +70,8 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit التنفيذ | `d278653` (`Enforce target-backed causal proof bundles`) |
+| Git commit السابق | `d278653` (`Enforce target-backed causal proof bundles`) |
+| Git commit roadmap الحالي | سيُملأ بعد commit/push بوابات phase 6 |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
