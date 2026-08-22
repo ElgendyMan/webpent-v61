@@ -419,7 +419,7 @@ def markdown(report: dict[str, Any]) -> str:
         "> This report is generated from repository paths and saved evidence. "
         "Missing evidence is never promoted to PASS.",
         "",
-        f"**WebPent Git HEAD:** `{report['git_head']}`  ",
+        f"**WebPent Git HEAD:** `{report['git_head']}`",
         f"**Python:** `{report['python']}`",
         "",
         "| Phase | Status | Code files | Test files | Evidence files | Missing |",
@@ -472,7 +472,7 @@ def main() -> int:
         json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    OUTPUT_MD.write_text(markdown(report) + "\n", encoding="utf-8")
+    OUTPUT_MD.write_text(markdown(report).rstrip("\n") + "\n", encoding="utf-8")
     print(json.dumps({"json": str(OUTPUT_JSON), "markdown": str(OUTPUT_MD)}, ensure_ascii=False))
     return 0
 

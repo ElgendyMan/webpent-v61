@@ -1,5 +1,5 @@
 {
-  "git_head": "e82d6e50b0d44155a3b5875ec5bd9ba4a2390fd1",
+  "git_head": "aec7fc1d3b4869804c87ca4b3500a736dbd6f00d",
   "global_safety": {
     "automatic_disclosure_or_submission": "DISABLED",
     "live_provider_io": "NOT RUN",
@@ -23,10 +23,10 @@
           "sha256": "38fc69c473c556fa465a6aadf8a8578ca0d26efc376f145057eac656206e3e12"
         },
         {
-          "bytes": 90378,
+          "bytes": 90497,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "caf887b81e699234e892f3ae50cc9925f4e627e3e44814bbd5ceac3cc59d8664"
+          "sha256": "12a0b9394b7f2229764d7f39a47f7767c6594043aac8d36c4bd12b716d44e4d7"
         }
       ],
       "missing_evidence": [],
@@ -647,7 +647,7 @@
           "bytes": 2347,
           "path": "docs/waptlab_qualification_report.json",
           "present": true,
-          "sha256": "d9b8c4bdf85a21ae975d569659084d4d2267a9632b375af98dff721c07266659"
+          "sha256": "b8ee1db2ae1a55265f034e44b3a5fc7576315ad2d032aa8b979cd0e4f776e97b"
         }
       ],
       "missing_evidence": [],
@@ -685,13 +685,13 @@
           "bytes": 9588,
           "path": "docs/vip_quality_gate.json",
           "present": true,
-          "sha256": "792fcd9c7ebd7895c06a7e2d47b99531a280719fda7d8719b328d15b2da09e38"
+          "sha256": "33e6e519276c431baabe4d15be96768c0082c1fb6a53584bdd14b94606b240b4"
         },
         {
-          "bytes": 90378,
+          "bytes": 90497,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "caf887b81e699234e892f3ae50cc9925f4e627e3e44814bbd5ceac3cc59d8664"
+          "sha256": "12a0b9394b7f2229764d7f39a47f7767c6594043aac8d36c4bd12b716d44e4d7"
         }
       ],
       "missing_evidence": [],
