@@ -1,5 +1,5 @@
 {
-  "git_head": "6196503ef402c592fa28e06b62447b7c5d0196be",
+  "git_head": "1887bbb7b412956e451b469c0d880759e66e56d3",
   "global_safety": {
     "automatic_disclosure_or_submission": "DISABLED",
     "live_provider_io": "NOT RUN",
@@ -26,7 +26,7 @@
           "bytes": 90130,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "5ef4f6a39f5c38fe67dcd8d66406287c96ea9440537c4a8d2e6c133734673e35"
+          "sha256": "04c6f4d9d04229d42efe1dba5840553b8ed52313932656e338001b88ebc39c89"
         }
       ],
       "missing_evidence": [],
@@ -691,7 +691,7 @@
           "bytes": 90130,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "5ef4f6a39f5c38fe67dcd8d66406287c96ea9440537c4a8d2e6c133734673e35"
+          "sha256": "04c6f4d9d04229d42efe1dba5840553b8ed52313932656e338001b88ebc39c89"
         }
       ],
       "missing_evidence": [],
