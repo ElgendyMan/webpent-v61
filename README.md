@@ -8,7 +8,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 ## الحكم الحالي والنتائج الموثقة
 
-آخر commit مرفوع إلى GitHub هو `aec7fc1d3b4869804c87ca4b3500a736dbd6f00d` على فرع `master` في `ElgendyMan/webpent-v61`.
+الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` و`docs/PLAN4_TRACEABILITY.md` داخل هذه النسخة.
 
 | البوابة | النتيجة |
 |---|---|

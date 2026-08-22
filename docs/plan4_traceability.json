@@ -1,5 +1,5 @@
 {
-  "git_head": "aec7fc1d3b4869804c87ca4b3500a736dbd6f00d",
+  "git_head": "2d4a21e7f2ec2e4553577fbf7a3f377f55fe2a95",
   "global_safety": {
     "automatic_disclosure_or_submission": "DISABLED",
     "live_provider_io": "NOT RUN",
@@ -23,10 +23,10 @@
           "sha256": "38fc69c473c556fa465a6aadf8a8578ca0d26efc376f145057eac656206e3e12"
         },
         {
-          "bytes": 90497,
+          "bytes": 89835,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "12a0b9394b7f2229764d7f39a47f7767c6594043aac8d36c4bd12b716d44e4d7"
+          "sha256": "b7799b337a66ab1c92e7b904893c82d474354bd7954502c7490af67be70e6e43"
         }
       ],
       "missing_evidence": [],
@@ -688,10 +688,10 @@
           "sha256": "33e6e519276c431baabe4d15be96768c0082c1fb6a53584bdd14b94606b240b4"
         },
         {
-          "bytes": 90497,
+          "bytes": 89835,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "12a0b9394b7f2229764d7f39a47f7767c6594043aac8d36c4bd12b716d44e4d7"
+          "sha256": "b7799b337a66ab1c92e7b904893c82d474354bd7954502c7490af67be70e6e43"
         }
       ],
       "missing_evidence": [],
