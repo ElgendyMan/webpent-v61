@@ -11,7 +11,7 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `>=3.10` |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Current source revision | Filled by the final release commit; never fabricated in advance |
+| Current source revision | `f51c8bc` (`harden offline autonomy and llm budget controls`) |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
 ## What is validated offline
