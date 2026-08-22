@@ -7,8 +7,9 @@ after the request has passed the deterministic gates here.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from urllib.parse import urlsplit
@@ -16,6 +17,7 @@ from urllib.parse import urlsplit
 from webpent.config.settings import ScanMode, Settings, get_settings
 from webpent.shared.action_ledger import SQLiteActionLedger
 from webpent.shared.capability_manifest import capability_available
+from webpent.shared.package_scope import ScopeCompiler
 from webpent.shared.safety_gate import EngagementSafetyGate
 
 
@@ -106,6 +108,8 @@ class ActionAuthority:
         adapter_registry: Any | None = None,
         require_g02: bool = False,
         safety_gate: EngagementSafetyGate | None = None,
+        target_package: Mapping[str, Any] | None = None,
+        scope_compiler: ScopeCompiler | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.allowed_origin = self._normalize_origin(allowed_origin)
@@ -116,6 +120,8 @@ class ActionAuthority:
         self.adapter_registry = adapter_registry
         self.require_g02 = bool(require_g02)
         self.safety_gate = safety_gate
+        self.target_package = dict(target_package or {})
+        self.scope_compiler = scope_compiler
         self.trace: list[dict[str, Any]] = []
 
     @staticmethod
@@ -160,9 +166,61 @@ class ActionAuthority:
 
         if not request.task_id or not request.engagement_id:
             reasons.append("identity:task_and_engagement_required")
+        if self.target_package:
+            if self.scope_compiler is None:
+                reasons.append("package:scope_compiler_unavailable")
+            else:
+                scope_decision = self.scope_compiler.decide(
+                    request.target_url,
+                    method=method,
+                    action_class=request.action_family,
+                    redirect_chain=tuple(
+                        str(item) for item in (request.metadata.get("redirect_chain") or [])
+                    ),
+                )
+                if not scope_decision.allowed:
+                    reasons.append(f"scope:{scope_decision.status.value}:{scope_decision.reason}")
+            package_status = str(
+                self.target_package.get("status")
+                or self.target_package.get("target_package_status")
+                or ""
+            )
+            if package_status != "ready":
+                reasons.append("package:admission_not_ready")
+            if str(self.target_package.get("revocation_state") or "active") == "revoked":
+                reasons.append("package:revoked")
+            expiry = self.target_package.get("expires_at") or self.target_package.get(
+                "package_expires_at"
+            )
+            try:
+                parsed_expiry = datetime.fromisoformat(
+                    str(expiry).replace("Z", "+00:00")
+                ).astimezone(UTC)
+                if not expiry or parsed_expiry <= datetime.now(UTC):
+                    reasons.append("package:expired_or_invalid_expiry")
+            except (TypeError, ValueError):
+                reasons.append("package:expired_or_invalid_expiry")
+            request_package_id = str(request.metadata.get("target_package_id") or "")
+            package_id = str(
+                self.target_package.get("package_id")
+                or self.target_package.get("target_package_id")
+                or ""
+            )
+            if not package_id or request_package_id != package_id:
+                reasons.append("package:package_id_mismatch")
+            request_digest = str(request.metadata.get("target_package_sha256") or "")
+            package_digest = str(
+                self.target_package.get("package_sha256")
+                or self.target_package.get("target_package_sha256")
+                or ""
+            )
+            if not package_digest or request_digest != package_digest:
+                reasons.append("package:digest_mismatch")
         if request.action_family not in self._ALLOWED_FAMILIES:
             reasons.append("policy:action_family_not_allowlisted")
-        if not self.allowed_origin or target_origin != self.allowed_origin:
+        if not self.target_package and (
+            not self.allowed_origin or target_origin != self.allowed_origin
+        ):
             reasons.append("scope:target_origin_mismatch")
         if method not in self._READ_METHODS:
             if mode != ScanMode.AUTHORIZED_ACTIVE.value:

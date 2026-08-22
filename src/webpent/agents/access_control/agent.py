@@ -32,6 +32,7 @@ from webpent.shared.bac_identity_tester import (
     profile_owns_resource,
     sanitise_probe_result,
 )
+from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
@@ -931,6 +932,7 @@ def access_control_node(state: PentestState) -> dict:
                     "candidate_status_code": int(foreign.get("status_code") or 0),
                     "negative_control_status_code": int(negative_control.get("status_code") or 0),
                 },
+                **package_continuity_kwargs(state),
             )
             finding = finding.model_copy(
                 update={

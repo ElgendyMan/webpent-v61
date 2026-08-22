@@ -23,6 +23,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -64,6 +65,7 @@ from webpent.shared.llm import (
     get_llm as _shared_get_llm,
 )
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 from webpent.tools.registry import get_tool
@@ -1852,6 +1854,7 @@ def _validate_with_tool(
     identity_profiles: dict[str, Any] | None = None,
     engagement_id: str | None = None,
     target_scope: tuple[str, ...] = (),
+    target_package: Mapping[str, Any] | None = None,
 ) -> Finding:
     """Validate a single finding with the appropriate tool + supervisor.
 
@@ -2014,6 +2017,7 @@ def _validate_with_tool(
             finding,
             session_cookies=session_cookies,
             verification_context=verification_context,
+            target_package=dict(target_package) if target_package else None,
         )
     elif vuln_class == "info_disclosure":
         from webpent.agents.validator.structural_checks import validate_info_disclosure
@@ -2028,6 +2032,7 @@ def _validate_with_tool(
             identity_profiles=identity_profiles,
             engagement_id=engagement_id,
             target_scope=target_scope,
+            target_package=dict(target_package) if target_package else None,
         )
     # V10 P1: new structural validators (deterministic, no LLM).
     # Each routes to webpent.agents.validator.structural_checks and
@@ -2055,6 +2060,7 @@ def _validate_with_tool(
             target_url=target_url,
             engagement_id=engagement_id,
             target_scope=target_scope,
+            target_package=dict(target_package) if target_package else None,
         )
     elif vuln_class == "api_issue":
         from webpent.agents.validator.structural_checks import validate_api_issue
@@ -2829,6 +2835,7 @@ def _validate_with_tool(
             "tool_marker_detected": bool(det_confirmed),
             "supervisor_verdict": bool(llm_confirmed),
         },
+        **package_continuity_kwargs(target_package),
     )
     evidence.update(verification.evidence)
     if not verification.passed or verification.proof_bundle is None:
@@ -3383,6 +3390,7 @@ def validator_node(state: PentestState) -> dict:
             identity_profiles=identity_profiles,
             engagement_id=engagement_id,
             target_scope=target_scope,
+            target_package=state.get("target_package"),
         )
         # Every call, including a clean result, a tool failure, and a human-
         # review downgrade, is now explicitly terminal for this pass. The
@@ -3658,6 +3666,7 @@ def _validate_open_redirect(
     *,
     session_cookies: dict[str, str] | None = None,
     verification_context: dict[str, Any] | None = None,
+    target_package: Mapping[str, Any] | None = None,
 ) -> Finding:
     """Confirm an open redirect without following the redirect target."""
     from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -3764,6 +3773,7 @@ def _validate_open_redirect(
             scope_context=context.get("scope_context"),
             identity_context=context.get("identity_context"),
             replay_metadata={"parameter": parameter, "follow_redirects": False},
+            **package_continuity_kwargs(target_package),
         )
         evidence.update(verification.evidence)
         if verification.passed and verification.proof_bundle is not None:

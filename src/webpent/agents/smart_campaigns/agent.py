@@ -1466,6 +1466,12 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             use_default_ledger=bool(ledger_path),
             used_actions=int((state.get("action_budget") or {}).get("used_actions", 0)),
             used_budget=float((state.get("action_budget") or {}).get("used_cost", 0.0)),
+            target_package=(
+                dict(state.get("target_package") or {})
+                if isinstance(state.get("target_package"), Mapping)
+                and state.get("target_package")
+                else None
+            ),
         )
         if not runtime.valid:
             return runtime.blocked_result(node="smart_campaigns")

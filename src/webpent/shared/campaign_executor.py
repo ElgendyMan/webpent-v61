@@ -260,6 +260,33 @@ class CampaignExecutor:
             self.lifecycle_events.append(event)
 
     def _request(self, task: CampaignTask) -> ActionRequest:
+        continuity = task.metadata.get("target_package_continuity", {})
+        if not isinstance(continuity, Mapping):
+            continuity = {}
+        metadata: dict[str, Any] = {
+            "vulnerability_class": task.vulnerability_class,
+            "probe_family": task.probe_family,
+            "body_schema": task.body_schema,
+            "content_type": task.content_type,
+            "tenant_context": task.tenant_context,
+            "validator_id": task.validator_id,
+            "adapter_name": str(task.metadata.get("adapter_name") or "")[:160],
+            "g02_inventory_ref": str(task.metadata.get("g02_inventory_ref") or "")[:240],
+            "g02_proof_contract": str(task.metadata.get("g02_proof_contract") or "")[:240],
+        }
+        continuity_keys = {
+            "package_id": "target_package_id",
+            "package_sha256": "target_package_sha256",
+            "scope_digest": "scope_digest",
+            "policy_digest": "policy_digest",
+        }
+        for source_key, metadata_key in continuity_keys.items():
+            value = str(continuity.get(source_key) or "").strip()
+            if value:
+                metadata[metadata_key] = value[:240]
+        redirect_chain = task.metadata.get("redirect_chain")
+        if isinstance(redirect_chain, (list, tuple)):
+            metadata["redirect_chain"] = [str(item)[:2000] for item in redirect_chain[:8]]
         return ActionRequest(
             task_id=task.task_id,
             engagement_id=task.engagement_id,
@@ -272,21 +299,7 @@ class CampaignExecutor:
             idempotency_key=task.normalized_idempotency_key(),
             estimated_cost=task.budget,
             human_approved=bool(task.metadata.get("human_approved", False)),
-            metadata={
-                "vulnerability_class": task.vulnerability_class,
-                "probe_family": task.probe_family,
-                "body_schema": task.body_schema,
-                "content_type": task.content_type,
-                "tenant_context": task.tenant_context,
-                "validator_id": task.validator_id,
-                "adapter_name": str(task.metadata.get("adapter_name") or "")[:160],
-                "g02_inventory_ref": str(
-                    task.metadata.get("g02_inventory_ref") or ""
-                )[:240],
-                "g02_proof_contract": str(
-                    task.metadata.get("g02_proof_contract") or ""
-                )[:240],
-            },
+            metadata=metadata,
         )
 
     def execute(
@@ -394,12 +407,19 @@ class CampaignExecutor:
                     evidence_refs = (evidence_refs,)
                 if not isinstance(evidence_refs, (list, tuple)):
                     evidence_refs = ()
+                continuity = task.metadata.get("target_package_continuity", {})
+                if not isinstance(continuity, Mapping):
+                    continuity = {}
                 bundle = build_proof_bundle(
                     engagement_id=task.engagement_id,
                     finding_id=str(output.get("finding_id") or task.hypothesis_id),
                     evidence=list(evidence),
                     evidence_refs=list(evidence_refs),
                     negative_control=output.get("negative_control"),
+                    target_package_id=str(continuity.get("package_id") or "") or None,
+                    target_package_sha256=str(continuity.get("package_sha256") or "") or None,
+                    target_package_scope_digest=str(continuity.get("scope_digest") or "") or None,
+                    target_package_policy_digest=str(continuity.get("policy_digest") or "") or None,
                 ).seal(actor="action_executor")
                 record["proof_bundle_store_status"] = "not_configured"
                 if self.proof_bundle_store is None:

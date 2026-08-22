@@ -618,6 +618,10 @@ class ControlPlaneProofInput(BaseModel):
     evidence_refs: tuple[str, ...] = Field(min_length=1, max_length=32)
     validator_id: str = Field(min_length=1, max_length=120)
     validator_version: str = Field(min_length=1, max_length=80)
+    target_package_id: str | None = Field(default=None, max_length=160)
+    target_package_sha256: str | None = None
+    target_package_scope_digest: str | None = None
+    target_package_policy_digest: str | None = None
 
     @model_validator(mode="after")
     def _no_secrets(self) -> ControlPlaneProofInput:
@@ -664,6 +668,10 @@ def seal_control_plane_proof(
         },
         validator_id=value.validator_id,
         validator_version=value.validator_version,
+        target_package_id=value.target_package_id,
+        target_package_sha256=value.target_package_sha256,
+        target_package_scope_digest=value.target_package_scope_digest,
+        target_package_policy_digest=value.target_package_policy_digest,
         replay_metadata=replay_metadata,
         cleanup_status=value.cleanup_status,
     )

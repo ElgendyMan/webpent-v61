@@ -162,6 +162,7 @@ def build_report_data(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    target_package: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the canonical report data structure used by all export formats.
 
@@ -229,6 +230,25 @@ def build_report_data(
         "row_count": len(matrix_rows),
         "comparison_count": len(matrix_comparisons),
     }
+    package_continuity = {}
+    if isinstance(target_package, dict) and target_package:
+        package_continuity = {
+            "package_id": str(target_package.get("package_id") or "")[:240],
+            "package_sha256": str(
+                target_package.get("package_sha256")
+                or target_package.get("content_sha256")
+                or ""
+            )[:128],
+            "scope_digest": str(target_package.get("scope_digest") or "")[:128],
+            "policy_digest": str(target_package.get("policy_digest") or "")[:128],
+            "capability_digest": str(target_package.get("capability_digest") or "")[:128],
+            "signature_state": str(target_package.get("signature_state") or "")[:64],
+            "status": str(
+                target_package.get("status")
+                or target_package.get("target_package_status")
+                or ""
+            )[:64],
+        }
     report_data: dict[str, Any] = {
         "target_url": target_url,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -311,6 +331,7 @@ def build_report_data(
         "llm_usage_trace": _redact_report_value(llm_usage_trace or []),
         "runtime_capability_gaps": _redact_report_value(runtime_capability_gaps or []),
         "proof_observability": _redact_report_value(proof_observability or {}),
+        "target_package_continuity": _redact_report_value(package_continuity),
         "smart_coverage_gate": {
             "status": "ready" if smart_gate_ledger else "not_available",
             "requires_human_review": bool(
@@ -387,6 +408,7 @@ def export_to_json(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    target_package: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a JSON report with audit trail.
 
@@ -419,6 +441,7 @@ def export_to_json(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        target_package=target_package,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "report.json"
@@ -537,6 +560,7 @@ def export_to_html(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    target_package: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a professional HTML report via Jinja2.
 
@@ -575,6 +599,7 @@ def export_to_html(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        target_package=target_package,
     )
 
     template_dir = _TEMPLATE_PATH.parent
@@ -624,6 +649,7 @@ def export_to_pdf(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    target_package: dict[str, Any] | None = None,
 ) -> Path | None:
     """Export findings to a PDF report.
 
@@ -664,6 +690,7 @@ def export_to_pdf(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        target_package=target_package,
     )
     html_content = html_path.read_text(encoding="utf-8")
 
@@ -736,6 +763,7 @@ def export_all_formats(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    target_package: dict[str, Any] | None = None,
     formats: list[str] | None = None,
 ) -> dict[str, Path | None]:
     """Export selected formats; ``None`` preserves historical JSON/HTML/PDF."""
@@ -762,6 +790,7 @@ def export_all_formats(
         "authorization_matrix": authorization_matrix,
         "llm_usage_trace": llm_usage_trace,
         "runtime_capability_gaps": runtime_capability_gaps,
+        "target_package": target_package,
     }
     paths: dict[str, Path | None] = {}
     if "json" in requested:

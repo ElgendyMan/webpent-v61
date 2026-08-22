@@ -24,6 +24,7 @@ from webpent.shared.campaign_executor import ActionExecutor, NextBestActionEngin
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.control_plane import EngagementScope
 from webpent.shared.engagement_scope import OriginPolicy
+from webpent.shared.package_scope import ScopeCompiler
 from webpent.shared.proof_bundle_store import ProofBundleStore
 from webpent.shared.proof_oracles import NegativeControlEngine, OracleEngine
 from webpent.shared.research_intelligence import (
@@ -448,6 +449,7 @@ class RuntimeFactory:
         enable_control_plane: bool = False,
         control_plane_profile_root: str | None = None,
         control_plane_browser_adapter: Any | None = None,
+        target_package: Mapping[str, Any] | None = None,
     ) -> RuntimeContext:
         settings = settings or get_settings()
         if scope_runtime_handle is None and raw_scope_entries:
@@ -489,6 +491,11 @@ class RuntimeFactory:
         )
         sink = event_sink or RuntimeEventSink()
         registry = adapters or AdapterRegistry()
+        package_scope_compiler = (
+            ScopeCompiler.from_projection(dict(target_package))
+            if target_package is not None
+            else None
+        )
         authority = ActionAuthority(
             settings=settings,
             allowed_origin=normalized_origin,
@@ -499,6 +506,8 @@ class RuntimeFactory:
             adapter_registry=registry,
             require_g02=True,
             safety_gate=safety_gate,
+            target_package=dict(target_package or {}),
+            scope_compiler=package_scope_compiler,
         )
         bundle_store = (
             proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
@@ -609,6 +618,7 @@ class RuntimeFactory:
             "engagement_id": context.engagement_id,
             "campaign_id": context.campaign_id,
             "target_origin": context.target_origin,
+            "target_package": dict(context.action_authority.target_package),
             "scan_mode": str(getattr(settings.scan_mode, "value", settings.scan_mode)),
             "action_ledger_path": str(settings.action_ledger_path),
             "smart_max_actions": int(settings.smart_max_actions),

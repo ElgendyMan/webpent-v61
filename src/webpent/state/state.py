@@ -75,6 +75,20 @@ class PentestState(TypedDict, total=False):
     """
 
     target: Target
+    # Optional redaction-safe Target Package v2 projection. Raw provider
+    # responses, credentials, cookies and live handles are never stored here.
+    target_package: dict[str, Any]
+    target_package_status: str
+    target_package_id: str | None
+    target_package_sha256: str | None
+    target_package_scope_digest: str | None
+    target_package_policy_digest: str | None
+    target_package_capability_digest: str | None
+    target_package_authorization: dict[str, Any]
+    target_package_preflight_status: str
+    target_package_capability_matrix: Annotated[dict[str, Any], merge_dicts]
+    target_package_knowledge_gaps: Annotated[list[dict[str, Any]], merge_lists]
+    target_package_blocked_tasks: Annotated[list[dict[str, Any]], merge_lists]
     # Explicit operator-declared companion origins (for example a separate
     # frontend origin used by the target login flow). Legacy checkpoints omit
     # this optional field and remain valid.

@@ -63,6 +63,10 @@ def verify_replay_evidence(
     scope_context: dict[str, Any] | None = None,
     identity_context: dict[str, Any] | None = None,
     replay_metadata: dict[str, Any] | None = None,
+    target_package_id: str | None = None,
+    target_package_sha256: str | None = None,
+    target_package_scope_digest: str | None = None,
+    target_package_policy_digest: str | None = None,
 ) -> VerificationResult:
     """Verify a baseline/candidate replay and create a strict proof bundle.
 
@@ -149,6 +153,10 @@ def verify_replay_evidence(
         finding_id=str(finding.id),
         hypothesis_id=hypothesis_id or f"finding:{finding.id}",
         target_fingerprint=_target_fingerprint(finding.url),
+        target_package_id=target_package_id,
+        target_package_sha256=target_package_sha256,
+        target_package_scope_digest=target_package_scope_digest,
+        target_package_policy_digest=target_package_policy_digest,
         scope_context=clean_scope,
         identity_context=clean_identity,
         evidence=[baseline, candidate],

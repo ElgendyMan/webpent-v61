@@ -99,6 +99,7 @@ from webpent.shared.g02_contract import (
     g02_http_metadata,
 )
 from webpent.shared.identity_provisioning import identity_provisioning_node
+from webpent.shared.package_preflight import target_package_preflight_node
 from webpent.shared.research_contracts import active_research_node
 from webpent.shared.research_nodes import (
     knowledge_gap_node,
@@ -174,6 +175,7 @@ NODE_RECOVERY = "recovery"
 NODE_WILDCARD_SCOPE = "wildcard_scope"
 NODE_IDENTITY_PROVISIONING = "identity_provisioning"
 NODE_IDENTITY_PROVISIONING_PRE_AUTH = "identity_provisioning_pre_auth"
+NODE_TARGET_PACKAGE_PREFLIGHT = "target_package_preflight"
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
 _EXPLOITABLE_CLASSES = EXPLOITABLE_CLASSES
@@ -362,6 +364,14 @@ def _active_research_task(candidate: CandidateAction, state: Mapping[str, Any]) 
             "human_approved": bool(state.get("auto_approve", False)),
         }
     )
+    package_id = str(state.get("target_package_id") or "").strip()
+    if package_id:
+        metadata["target_package_continuity"] = {
+            "package_id": package_id[:160],
+            "package_sha256": str(state.get("target_package_sha256") or "")[:64],
+            "scope_digest": str(state.get("target_package_scope_digest") or "")[:64],
+            "policy_digest": str(state.get("target_package_policy_digest") or "")[:64],
+        }
     observed = state.get("observed_preconditions", ())
     if isinstance(observed, str):
         observed = (observed,)
@@ -673,6 +683,14 @@ def scope_review_node(state: PentestState) -> dict[str, Any]:
 def route_after_scope_review(state: PentestState) -> str:
     """Continue only after an explicit operator approval; otherwise stop."""
     return NODE_WAF_DETECTOR if state.get("scope_drift_approved") is True else END
+
+
+def route_after_target_package_preflight(state: PentestState) -> str:
+    """Route package preflight failures without ever labeling them clean."""
+    status = str(state.get("target_package_preflight_status") or "not_provided")
+    if status == "blocked":
+        return NODE_REPORTER
+    return NODE_WILDCARD_SCOPE
 
 
 def route_after_hypothesis(state: PentestState) -> str:
@@ -1010,6 +1028,7 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_AUTONOMOUS_CONTROLLER, autonomous_controller_node)
     graph.add_node(NODE_RECOVERY, recovery_node)
     graph.add_node(NODE_WILDCARD_SCOPE, wildcard_scope_node)
+    graph.add_node(NODE_TARGET_PACKAGE_PREFLIGHT, target_package_preflight_node)
     graph.add_node(NODE_IDENTITY_PROVISIONING, identity_provisioning_node)
     graph.add_node(NODE_IDENTITY_PROVISIONING_PRE_AUTH, identity_provisioning_node)
     graph.add_node(NODE_KNOWLEDGE_GAP, knowledge_gap_node)
@@ -1022,7 +1041,12 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
 
     # V3.5: CRAWLER -> SCOPE_ENFORCER -> WAF_DETECTOR
     # V6.1: Conditional edge from AUTH — if skip_recon, bypass to HYPOTHESIS.
-    graph.add_edge(START, NODE_WILDCARD_SCOPE)
+    graph.add_edge(START, NODE_TARGET_PACKAGE_PREFLIGHT)
+    graph.add_conditional_edges(
+        NODE_TARGET_PACKAGE_PREFLIGHT,
+        route_after_target_package_preflight,
+        {NODE_WILDCARD_SCOPE: NODE_WILDCARD_SCOPE, NODE_REPORTER: NODE_REPORTER},
+    )
     graph.add_conditional_edges(
         NODE_WILDCARD_SCOPE,
         route_after_wildcard_scope,

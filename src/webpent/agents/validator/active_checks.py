@@ -23,6 +23,7 @@ from typing import Any
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
 from webpent.models.findings import Confidence, Finding
+from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 
 logger = logging.getLogger(__name__)
@@ -271,6 +272,7 @@ def _confirmed(
         scope_context=context.get("scope_context"),
         identity_context=context.get("identity_context"),
         replay_metadata={"payload_label": payload_label},
+        **package_continuity_kwargs(context),
     )
     merged_evidence.update(verification.evidence)
     if not verification.passed or verification.proof_bundle is None:

@@ -53,6 +53,10 @@ class ProofBundle(BaseModel):
     finding_id: str = Field(min_length=1, max_length=160)
     hypothesis_id: str | None = Field(default=None, max_length=160)
     target_fingerprint: str | None = Field(default=None, max_length=200)
+    target_package_id: str | None = Field(default=None, max_length=160)
+    target_package_sha256: str | None = Field(default=None, max_length=64)
+    target_package_scope_digest: str | None = None
+    target_package_policy_digest: str | None = None
     scope_context: dict[str, Any] = Field(default_factory=dict)
     identity_context: dict[str, Any] = Field(default_factory=dict)
     evidence_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
@@ -77,6 +81,7 @@ class ProofBundle(BaseModel):
         "finding_id",
         "hypothesis_id",
         "target_fingerprint",
+        "target_package_id",
         "validator_id",
         "validator_version",
         "cleanup_status",
@@ -100,6 +105,22 @@ class ProofBundle(BaseModel):
     def _redact_metadata(cls, value: Any) -> dict[str, Any]:
         clean, _ = redact_sensitive(value if isinstance(value, dict) else {})
         return clean
+
+    @field_validator(
+        "target_package_sha256",
+        "target_package_scope_digest",
+        "target_package_policy_digest",
+        mode="before",
+    )
+    @classmethod
+    def _validate_package_digest_text(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        text = str(value)
+        if len(text) != 64:
+            raise ValueError("package digest must be 64 hex characters")
+        int(text, 16)
+        return text.lower()
 
     @field_validator(
         "evidence_digests",
@@ -132,6 +153,10 @@ class ProofBundle(BaseModel):
             "finding_id": self.finding_id,
             "hypothesis_id": self.hypothesis_id,
             "target_fingerprint": self.target_fingerprint,
+            "target_package_id": self.target_package_id,
+            "target_package_sha256": self.target_package_sha256,
+            "target_package_scope_digest": self.target_package_scope_digest,
+            "target_package_policy_digest": self.target_package_policy_digest,
             "scope_context": self.scope_context,
             "identity_context": self.identity_context,
             "evidence_refs": list(self.evidence_refs),
@@ -204,6 +229,10 @@ def build_proof_bundle(
     negative_control: Any = None,
     hypothesis_id: str | None = None,
     target_fingerprint: str | None = None,
+    target_package_id: str | None = None,
+    target_package_sha256: str | None = None,
+    target_package_scope_digest: str | None = None,
+    target_package_policy_digest: str | None = None,
     scope_context: dict[str, Any] | None = None,
     identity_context: dict[str, Any] | None = None,
     baseline: Any = None,
@@ -245,6 +274,10 @@ def build_proof_bundle(
         finding_id=finding_id,
         hypothesis_id=hypothesis_id,
         target_fingerprint=target_fingerprint,
+        target_package_id=target_package_id,
+        target_package_sha256=target_package_sha256,
+        target_package_scope_digest=target_package_scope_digest,
+        target_package_policy_digest=target_package_policy_digest,
         scope_context=scope_context or {},
         identity_context=identity_context or {},
         evidence_refs=tuple(str(ref)[:500] for ref in evidence_refs)[:32],
@@ -284,6 +317,14 @@ def proof_bundle_promotion_ready(value: Any) -> bool:
         and bundle.validator_version
         and bundle.replay_metadata.get("replayable") is True
         and bundle.cleanup_status in {"complete", "not_applicable"}
+        and (
+            not bundle.target_package_id
+            or (
+                bool(bundle.target_package_sha256)
+                and bool(bundle.target_package_scope_digest)
+                and bool(bundle.target_package_policy_digest)
+            )
+        )
     )
 
 

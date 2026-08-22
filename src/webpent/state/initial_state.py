@@ -30,6 +30,7 @@ from webpent.shared.campaigns import (
 )
 from webpent.shared.capability_manifest import build_capability_manifest
 from webpent.shared.runtime import RuntimeFactory
+from webpent.shared.target_package_context import admit_target_package
 
 if TYPE_CHECKING:
     from webpent.models.targets import Target
@@ -83,6 +84,7 @@ def build_initial_state(
     enable_control_plane: bool = True,
     control_plane_profile_root: str | None = None,
     raw_scope_entries: list[str] | None = None,
+    target_package: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -95,6 +97,9 @@ def build_initial_state(
     resolved_owner_username = str(owner_username or "").strip() or None
     resolved_client_id = str(client_id or "").strip() or None
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
+    target_package_context = (
+        admit_target_package(target_package) if target_package is not None else None
+    )
     requested_inventory = str(campaign_inventory or "waptlab").strip().lower()
     if requested_inventory == "auto":
         parsed_target = urlsplit(target_url)
@@ -145,6 +150,11 @@ def build_initial_state(
         enable_control_plane=bool(enable_control_plane),
         control_plane_profile_root=control_plane_profile_root,
         raw_scope_entries=list(raw_scope_entries or []),
+        target_package=(
+            target_package_context.as_state()
+            if target_package_context is not None
+            else None
+        ),
     )
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)
@@ -167,6 +177,42 @@ def build_initial_state(
 
     return {
         "target": target,
+        "target_package": (
+            target_package_context.as_state() if target_package_context is not None else {}
+        ),
+        "target_package_status": (
+            "ready" if target_package_context is not None else "not_provided"
+        ),
+        "target_package_id": (
+            target_package_context.package_id if target_package_context is not None else None
+        ),
+        "target_package_sha256": (
+            target_package_context.package_sha256 if target_package_context is not None else None
+        ),
+        "target_package_scope_digest": (
+            target_package_context.scope_digest if target_package_context is not None else None
+        ),
+        "target_package_policy_digest": (
+            target_package_context.policy_digest if target_package_context is not None else None
+        ),
+        "target_package_capability_digest": (
+            target_package_context.capability_digest if target_package_context is not None else None
+        ),
+        "target_package_authorization": (
+            {
+                "expires_at": target_package_context.expires_at,
+                "revocation_state": target_package_context.revocation_state,
+                "user_confirmed": True,
+            }
+            if target_package_context is not None
+            else {}
+        ),
+        "target_package_preflight_status": (
+            "not_requested" if target_package_context is not None else "not_provided"
+        ),
+        "target_package_capability_matrix": {},
+        "target_package_knowledge_gaps": [],
+        "target_package_blocked_tasks": [],
         "additional_target_origins": normalized_origins,
         "messages": [],
         "findings": [],

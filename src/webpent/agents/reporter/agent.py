@@ -655,6 +655,44 @@ def reporter_node(state: PentestState) -> dict:
         campaign_ledger["llm_usage_trace"] = list(state.get("llm_usage_trace") or [])
         campaign_ledger["task_outcome_count"] = len(state.get("campaign_task_outcomes") or [])
         campaign_ledger["http_observation_count"] = len(state.get("smart_http_observations") or [])
+        package_projection = state.get("target_package")
+        if not isinstance(package_projection, dict):
+            package_projection = {}
+        target_package = {
+            "package_id": state.get("target_package_id") or package_projection.get("package_id"),
+            "package_sha256": (
+                state.get("target_package_sha256")
+                or package_projection.get("package_sha256")
+            ),
+            "schema_version": (
+                package_projection.get("schema_version") or "target-package.schema.v2"
+            ),
+            "scope_digest": (
+                state.get("target_package_scope_digest")
+                or package_projection.get("scope_digest")
+            ),
+            "policy_digest": (
+                state.get("target_package_policy_digest")
+                or package_projection.get("policy_digest")
+            ),
+            "capability_digest": (
+                state.get("target_package_capability_digest")
+                or package_projection.get("capability_digest")
+            ),
+            "scope_status": (
+                package_projection.get("scope_status")
+                or state.get("target_package_status")
+            ),
+            "signature_state": package_projection.get("signature_state"),
+            "status": package_projection.get("status") or state.get("target_package_status"),
+            "revocation_state": (
+                (state.get("target_package_authorization") or {}).get("revocation_state")
+                if isinstance(state.get("target_package_authorization"), dict)
+                else None
+            ),
+        }
+        if not target_package["package_id"]:
+            target_package = None
         paths = export_all_formats(
             target_url=target_url,
             findings=report_findings,
@@ -686,6 +724,7 @@ def reporter_node(state: PentestState) -> dict:
             authorization_matrix=dict(state.get("authorization_matrix") or {}),
             llm_usage_trace=list(state.get("llm_usage_trace") or []),
             runtime_capability_gaps=list(state.get("runtime_capability_gaps") or []),
+            target_package=target_package,
             formats=list(selected_formats) if selected_formats else None,
         )
         export_ok = True

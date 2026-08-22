@@ -62,6 +62,7 @@ from webpent.shared.bac_identity_tester import (
     normalise_identity_profiles,
     response_fingerprint,
 )
+from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 
 logger = logging.getLogger(__name__)
@@ -531,6 +532,7 @@ def validate_auth_bypass(
     target_url: str | None = None,
     engagement_id: str = "default-engagement",
     target_scope: tuple[str, ...] = (),
+    target_package: dict[str, Any] | None = None,
 ) -> Finding:
     """Run a conservative auth-bypass differential check.
 
@@ -667,6 +669,7 @@ def validate_auth_bypass(
                     "candidate_status_code": unsigned.status_code,
                     "negative_control_status_code": control.status_code,
                 },
+                **package_continuity_kwargs(target_package),
             )
             if verification.passed:
                 proof_bundle_data = verification.proof_bundle.model_dump(mode="json")
@@ -1273,6 +1276,7 @@ def validate_idor(
     identity_profiles: Any = None,
     engagement_id: str | None = None,
     target_scope: tuple[str, ...] = (),
+    target_package: dict[str, Any] | None = None,
 ) -> Finding:
     """Validate IDOR with a scoped owner/foreign/anonymous differential.
 
@@ -1475,6 +1479,7 @@ def validate_idor(
                         anonymous_row.get("status_code") or 0
                     ),
                 },
+                **package_continuity_kwargs(target_package),
             )
             if verification.passed:
                 sealed_bundle = verification.proof_bundle.model_dump(mode="json")

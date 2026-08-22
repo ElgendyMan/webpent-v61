@@ -27,6 +27,8 @@ from urllib.parse import urljoin, urlparse
 from langchain_core.messages import AIMessage
 
 from webpent.models.findings import Finding, Severity, VulnClass
+from webpent.shared.target_package_context import package_continuity_kwargs
+from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -352,8 +354,6 @@ def _analyze_captured_jwts(
         extract_candidate_jwts,
         redact_jwt_observation,
     )
-    from webpent.shared.verifier import verify_replay_evidence
-
     findings: list[Finding] = []
     observations: list[dict[str, Any]] = []
     coverage_gaps: list[dict[str, Any]] = []
@@ -444,6 +444,7 @@ def _analyze_captured_jwts(
                     "network_io": False,
                     "negative_control": "wrong_secret_rejected",
                 },
+                **package_continuity_kwargs(context),
             )
             if not verification.passed or verification.proof_bundle is None:
                 coverage_gaps.append(

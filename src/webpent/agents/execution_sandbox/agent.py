@@ -31,6 +31,7 @@ from webpent.memory.db import get_db_manager
 from webpent.models.findings import Confidence, Finding, VulnClass
 from webpent.shared.poc_policy import derive_execution_risk, evaluate_execution_gate
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
@@ -508,6 +509,7 @@ def _test_finding_payloads(
                     "dialog_signal": True,
                     "negative_control_triggered": bool(negative_control_triggered),
                 },
+                **package_continuity_kwargs(context),
             )
             if not verification.passed or verification.proof_bundle is None:
                 return finding.model_copy(
