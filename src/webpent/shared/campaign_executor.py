@@ -184,6 +184,8 @@ class NextBestActionEngine:
         attempted_keys: Iterable[str] = (),
         blocked_preconditions: Iterable[str] = (),
         observed_preconditions: Iterable[str] = (),
+        causal_relevance: float = 0.0,
+        coverage_attempts: Mapping[str, int] | None = None,
     ) -> PlannedAction:
         evidence = set(observed_evidence)
         covered = {str(item) for item in covered_classes}
@@ -208,9 +210,25 @@ class NextBestActionEngine:
         if task.vulnerability_class not in covered:
             score += 0.2
             reasons.append("coverage_value")
+        if coverage_attempts is not None:
+            coverage_key = task.vulnerability_class.strip().lower()[:120]
+            try:
+                attempts = max(0, min(1000, int(coverage_attempts.get(coverage_key, 0) or 0)))
+            except (TypeError, ValueError):
+                attempts = 0
+            if attempts == 0:
+                score += 0.2
+                reasons.append("low_coverage_unattempted")
+            elif attempts < 2:
+                score += 0.1
+                reasons.append("low_coverage_path")
         if task.normalized_idempotency_key() in attempted:
             score -= self.duplicate_penalty
             reasons.append("duplication_penalty")
+        causal_value = max(0.0, min(0.35, float(causal_relevance)))
+        if causal_value:
+            score += causal_value
+            reasons.append("causal_graph_relevance")
         if task.budget <= 1.0:
             score += 0.1
             reasons.append("low_cost")
@@ -400,6 +418,16 @@ class CampaignExecutor:
             "proof_bundle_sealed": False,
         }
         if status == CampaignTaskStatus.EXECUTED and isinstance(output, Mapping):
+            for field_name, max_length in (
+                ("causal_next_action_ids", 20),
+                ("causal_next_hypothesis_ids", 20),
+                ("causal_next_vulnerability_classes", 20),
+            ):
+                value = output.get(field_name)
+                if isinstance(value, str):
+                    value = (value,)
+                if isinstance(value, (list, tuple)):
+                    record[field_name] = [str(item)[:200] for item in value[:max_length]]
             evidence = output.get("proof_evidence")
             if isinstance(evidence, (list, tuple)) and evidence:
                 evidence_refs = output.get("evidence_refs", ())
@@ -416,10 +444,25 @@ class CampaignExecutor:
                     evidence=list(evidence),
                     evidence_refs=list(evidence_refs),
                     negative_control=output.get("negative_control"),
+                    hypothesis_id=str(output.get("hypothesis_id") or task.hypothesis_id),
+                    target_fingerprint=str(output.get("target_fingerprint") or "") or None,
                     target_package_id=str(continuity.get("package_id") or "") or None,
                     target_package_sha256=str(continuity.get("package_sha256") or "") or None,
                     target_package_scope_digest=str(continuity.get("scope_digest") or "") or None,
                     target_package_policy_digest=str(continuity.get("policy_digest") or "") or None,
+                    scope_context=output.get("scope_context"),
+                    identity_context=output.get("identity_context"),
+                    baseline=output.get("baseline"),
+                    request_evidence=output.get("request_evidence") or (),
+                    response_evidence=output.get("response_evidence") or (),
+                    causal_oracle=output.get("causal_oracle"),
+                    target_backed=bool(output.get("target_backed")),
+                    negative_control_independent=bool(
+                        output.get("negative_control_independent")
+                    ),
+                    validator_id=str(output.get("validator_id") or task.validator_id) or None,
+                    validator_version=str(output.get("validator_version") or "") or None,
+                    replay_metadata=output.get("replay_metadata"),
                 ).seal(actor="action_executor")
                 record["proof_bundle_store_status"] = "not_configured"
                 if self.proof_bundle_store is None:

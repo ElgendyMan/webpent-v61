@@ -1,0 +1,12 @@
+== scan_direct_io ==
+wrote /tmp/bbscout_webpent_integration/webpent-git/docs/direct_io_inventory.json and /tmp/bbscout_webpent_integration/webpent-git/docs/DIRECT_IO_INVENTORY.md (280 records)
+== check_g02_runtime ==
+{"errors": [], "external_target_contacted": false, "passed": true, "primary_records": 280}
+== check_g02_precommit ==
+{"errors": [], "external_target_contacted": false, "passed": true}
+== check_tracked_secrets ==
+secret scan passed: no high-confidence secrets in tracked source/config
+== ruff ==
+[1;32mAll checks passed![0m
+== compileall ==
+== diff_check ==

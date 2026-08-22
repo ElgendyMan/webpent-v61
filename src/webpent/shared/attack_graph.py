@@ -348,6 +348,7 @@ _ALLOWED_CAUSAL_EDGE_KINDS = {
     "causal_signal",
     "negative_control",
     "observation_supports_hypothesis",
+    "confirmed_finding_leads_to_next_action",
 }
 
 
@@ -359,7 +360,7 @@ def _add_causal_edges(graph: AttackGraph, causal_edges: Iterable[Any]) -> None:
         kind = str(row.get("kind") or "").strip()
         if kind not in _ALLOWED_CAUSAL_EDGE_KINDS:
             continue
-        if kind == "causal_signal" and not (
+        if kind in {"causal_signal", "confirmed_finding_leads_to_next_action"} and not (
             bool(row.get("causal_signal")) and bool(row.get("negative_control_complete"))
         ):
             continue
@@ -377,6 +378,8 @@ def _add_causal_edges(graph: AttackGraph, causal_edges: Iterable[Any]) -> None:
             metadata={
                 "negative_control_complete": bool(row.get("negative_control_complete")),
                 "control_complete": bool(row.get("control_complete")),
+                "target_backed": bool(row.get("target_backed")),
+                "proof_bundle_sealed": bool(row.get("proof_bundle_sealed")),
             },
         )
 

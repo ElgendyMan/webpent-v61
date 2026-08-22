@@ -33,24 +33,26 @@
 | bounded autonomy contracts | `autonomy_contracts.py`؛ budget/stop/cycle contracts مع legacy resume aliases | منفذ offline | autonomy adversarial tests + full suite |
 | unified research loop | smart campaigns تربط session/gaps/actions/target knowledge/attack graph | منفذ offline | research-loop contract tests؛ لا I/O جديد |
 | memory/RAG + LLM boundary | redaction-safe bounded telemetry؛ advisory-only؛ لا snippets/claims كدليل | منفذ offline | memory/LLM adversarial tests |
-| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | qualification harness tests؛ لا live precision/recall |
+| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | `qualification.py` و`run_gate5_offline_qualification.py`؛ Gate 5: 3 runs deterministic، reproducible=true، proof/replay agreement=1.0؛ لا live precision/recall |
 | provider adapters | Bugcrowd/Intigriti/YesWeHack adapters | **MISSING** | لا يوجد ادعاء تنفيذ |
 | live qualification | WAPTLab/Juice Shop live scan | **غير منفذ عمدًا** | لا target I/O في هذه المرحلة |
 | distributed qualification | Docker/Celery multi-run evidence | **غير مؤهل** | انظر تقرير Docker/Celery |
-| VIP promotion | thresholds الرسمية | **NO** | القياسات المطلوبة غير متاحة |
+| causal graph feedback | causal edges مختومة target-backed تغيّر ranking وlow-coverage paths تدخل scorer؛ لا edges من flags/LLM | منفذ offline | Gate 1/2 regression tests؛ لا target I/O |
+| Gate 3 proof artifact | ProofBundle target-backed مختوم مع baseline/candidate/independent negative control وreplay | منفذ offline | `artifacts/smart_hunter_review/gate3/`؛ evaluator يطابق expected proof |
+| VIP promotion | thresholds الرسمية | **NO** | النتائج الثلاثية offline فقط؛ live qualification وdistributed evidence غير متاحة |
 
 ## الملفات المضافة أو المتأثرة
 
-أضيفت طبقات package إلى `webpent/src/webpent/shared/`، واختبارات التكامل إلى `webpent/tests/test_target_package_integration.py` و`webpent/tests/test_target_package_v2_hardening.py`. كما تم تحديث مسارات runtime، graph، state، campaign executor، validator، proof، reporter، وG-02 inventory renderer. المصدر الأصلي لـbbscout غير موجود كـGit repository بعد فك الأرشيف، ولذلك يُسلّم كجزء من integration archive مع checksum منفصل، وليس كcommit مستقل.
+أضيفت طبقات package إلى `webpent/src/webpent/shared/`، واختبارات التكامل إلى `webpent/tests/test_target_package_integration.py` و`webpent/tests/test_target_package_v2_hardening.py`. كما تم تحديث مسارات runtime، graph، state، campaign executor، validator، proof، reporter، وG-02 inventory renderer. أضيف generator قابل لإعادة التشغيل لـGate 3، وأداة منفصلة لمحاكاة qualification offline من ثلاث جولات داخل `scripts/` وartifacts redacted تحت `artifacts/smart_hunter_review/`. المصدر الأصلي لـbbscout يُسلّم كجزء من integration archive مع checksum منفصل، وليس كcommit مستقل.
 
 ## بوابات التحقق
 
 | البوابة | النتيجة |
 |---|---:|
 | bbscout full pytest | **7 passed** |
-| WebPent full pytest | **1401 passed, 294 warnings** |
+| WebPent full pytest | **1409 passed, 244 warnings** |
 | package/entrypoint/hardening focused suite | **35 passed, 2 warnings** |
-| autonomy/research/qualification additions | **19 passed ضمن full suite؛ no regression** |
+| causal/coverage/proof/qualification additions | **مغطاة داخل 1409 اختبارًا ناجحًا؛ Gate 3 وoffline three-run artifact مولدة آليًا** |
 | Ruff full | **passed** بعد إصلاح integration formatting/imports |
 | compileall | **passed** |
 | G-02 runtime | **passed؛ 280 primary records؛ لا اتصال خارجي** |
@@ -71,7 +73,7 @@
 | العنصر | القيمة |
 |---|---|
 | Git commit السابق | `d278653` (`Enforce target-backed causal proof bundles`) |
-| Git commit roadmap الحالي | سيُملأ بعد commit/push بوابات phase 6 |
+| Git commit roadmap الحالي | سيُملأ بعد commit/push بوابات Gate 1–6 |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |

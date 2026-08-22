@@ -18,6 +18,8 @@ from webpent.agents.smart_campaigns.agent import (
     build_smart_campaign_tasks,
     smart_campaigns_node,
 )
+from webpent.models.proof_bundle import proof_bundle_promotion_ready
+from webpent.shared.attack_graph import build_attack_graph
 from webpent.shared.autonomy_contracts import (
     ActionBudgetState,
     AutonomousCycle,
@@ -73,6 +75,10 @@ class AutonomousController:
             "negative_evidence": state.get("negative_evidence_ledger", []),
             "knowledge_gaps": state.get("knowledge_gaps", []),
             "findings": state.get("findings", []),
+            "coverage_ledger": state.get("coverage_ledger", {}),
+            "causal_attack_edges": state.get(
+                "causal_attack_edges", state.get("causal_edges", [])
+            ),
         }
         encoded = json.dumps(relevant, sort_keys=True, default=str, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -80,6 +86,137 @@ class AutonomousController:
     @staticmethod
     def _action_signature(task: CampaignTask) -> str:
         return task.normalized_idempotency_key() or task.task_id
+
+    @staticmethod
+    def _causal_edge_from_record(
+        task: CampaignTask, record: Mapping[str, Any]
+    ) -> dict[str, Any] | None:
+        """Create a graph edge only from a sealed, target-backed causal proof."""
+        if record.get("status") != "executed" or record.get("proof_bundle_sealed") is not True:
+            return None
+        bundle = record.get("proof_bundle")
+        if not isinstance(bundle, Mapping):
+            return None
+        oracle = bundle.get("causal_oracle")
+        if not isinstance(oracle, Mapping):
+            return None
+        if not proof_bundle_promotion_ready(bundle):
+            return None
+        if (
+            bundle.get("target_backed") is not True
+            or bundle.get("negative_control_independent") is not True
+            or oracle.get("causal_signal") is not True
+            or oracle.get("negative_control_complete") is not True
+        ):
+            return None
+        evidence_refs = bundle.get("evidence_refs")
+        if not isinstance(evidence_refs, (list, tuple)) or not evidence_refs:
+            return None
+        finding_id = str(bundle.get("finding_id") or task.hypothesis_id).strip()[:160]
+        if not finding_id:
+            return None
+        target_action_ids = record.get("causal_next_action_ids") or ()
+        if isinstance(target_action_ids, str):
+            target_action_ids = (target_action_ids,)
+        if not isinstance(target_action_ids, (list, tuple)):
+            target_action_ids = ()
+        target_hypothesis_ids = record.get("causal_next_hypothesis_ids") or ()
+        if isinstance(target_hypothesis_ids, str):
+            target_hypothesis_ids = (target_hypothesis_ids,)
+        if not isinstance(target_hypothesis_ids, (list, tuple)):
+            target_hypothesis_ids = ()
+        vulnerability_classes = record.get("causal_next_vulnerability_classes") or ()
+        if isinstance(vulnerability_classes, str):
+            vulnerability_classes = (vulnerability_classes,)
+        if not isinstance(vulnerability_classes, (list, tuple)):
+            vulnerability_classes = ()
+        edge_id = hashlib.sha256(
+            f"{task.engagement_id}|{finding_id}|{task.hypothesis_id}".encode()
+        ).hexdigest()[:32]
+        return {
+            "id": f"causal:{edge_id}",
+            "engagement_id": task.engagement_id,
+            "kind": "confirmed_finding_leads_to_next_action",
+            "source_id": f"finding:{finding_id}",
+            "target_id": f"hypothesis:{task.hypothesis_id}",
+            "confidence": "target_backed_causal_proof",
+            "evidence_refs": [str(ref)[:200] for ref in evidence_refs[:20]],
+            "causal_signal": True,
+            "negative_control_complete": True,
+            "control_complete": True,
+            "target_backed": True,
+            "proof_bundle_sealed": True,
+            "metadata": {
+                "proof_bundle_id": str(bundle.get("bundle_id") or "")[:160],
+                "target_action_ids": [str(value)[:200] for value in target_action_ids[:20]],
+                "target_hypothesis_ids": [
+                    str(value)[:200] for value in target_hypothesis_ids[:20]
+                ],
+                "target_vulnerability_classes": [
+                    str(value)[:120] for value in vulnerability_classes[:20]
+                ],
+            },
+        }
+
+    @staticmethod
+    def _update_coverage_ledger(
+        current: Any,
+        tasks: list[CampaignTask],
+        records: list[Mapping[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        ledger = {
+            str(key): dict(value)
+            for key, value in (current.items() if isinstance(current, Mapping) else ())
+            if isinstance(value, Mapping)
+        }
+        for task, record in zip(tasks, records, strict=True):
+            key = str(task.vulnerability_class)[:120]
+            item = ledger.setdefault(
+                key,
+                {
+                    "attempts": 0,
+                    "proof_confirmed": False,
+                    "last_status": "unknown",
+                    "evidence_refs": [],
+                    "proof_bundle_ids": [],
+                },
+            )
+            item["attempts"] = min(1000, int(item.get("attempts", 0) or 0) + 1)
+            item["last_status"] = str(record.get("status") or "unknown")[:80]
+            bundle = record.get("proof_bundle")
+            if (
+                isinstance(bundle, Mapping)
+                and record.get("proof_bundle_sealed") is True
+                and proof_bundle_promotion_ready(bundle)
+            ):
+                item["proof_confirmed"] = True
+                bundle_id = str(bundle.get("bundle_id") or "")[:160]
+                if bundle_id and bundle_id not in item["proof_bundle_ids"]:
+                    item["proof_bundle_ids"] = [*item["proof_bundle_ids"], bundle_id][-20:]
+            refs = record.get("evidence_refs")
+            if isinstance(refs, (list, tuple)):
+                merged = [*item.get("evidence_refs", []), *(str(ref)[:200] for ref in refs)]
+                item["evidence_refs"] = list(dict.fromkeys(merged))[-20:]
+        return dict(list(ledger.items())[:100])
+
+    @classmethod
+    def _merge_causal_edges(
+        cls,
+        current: Any,
+        tasks: list[CampaignTask],
+        records: list[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        edges = (
+            [dict(item) for item in current if isinstance(item, Mapping)]
+            if isinstance(current, (list, tuple))
+            else []
+        )
+        by_id = {str(item.get("id")): item for item in edges if item.get("id")}
+        for task, record in zip(tasks, records, strict=True):
+            edge = cls._causal_edge_from_record(task, record)
+            if edge is not None:
+                by_id[edge["id"]] = edge
+        return list(by_id.values())[-100:]
 
     @staticmethod
     def _capability_state(
@@ -204,12 +341,16 @@ class AutonomousController:
             {**dict(state), "campaign_plan": planning.get("campaign_plan", {})},
             max_tasks=10,
         )
-        planned_ids = {
-            str(item.get("task", {}).get("task_id"))
-            for item in planning.get("smart_next_actions", [])
-            if isinstance(item, Mapping) and isinstance(item.get("task"), Mapping)
-        }
-        return [task for task in tasks if task.task_id in planned_ids]
+        tasks_by_id = {task.task_id: task for task in tasks}
+        ordered_tasks: list[CampaignTask] = []
+        for item in planning.get("smart_next_actions", []):
+            if not isinstance(item, Mapping) or not isinstance(item.get("task"), Mapping):
+                continue
+            task_id = str(item["task"].get("task_id") or "")
+            task = tasks_by_id.get(task_id)
+            if task is not None and task not in ordered_tasks:
+                ordered_tasks.append(task)
+        return ordered_tasks
 
     def run(
         self,
@@ -410,7 +551,32 @@ class AutonomousController:
                     "stopped": "action_stopped",
                 }.get(status, "action_not_executed")
                 trace_entry["result"] = stop_reason
-            working = {**working, **planning, "campaign_task_outcomes": all_outcomes}
+            working = {
+                **working,
+                **planning,
+                "campaign_task_outcomes": all_outcomes,
+                "coverage_ledger": self._update_coverage_ledger(
+                    working.get("coverage_ledger"), selected, records
+                ),
+            }
+            working["causal_attack_edges"] = self._merge_causal_edges(
+                working.get("causal_attack_edges") or working.get("causal_edges"),
+                selected,
+                records,
+            )
+            working["causal_edges"] = list(working["causal_attack_edges"])
+            try:
+                working["attack_graph"] = build_attack_graph(
+                    working.get("mental_model") or {},
+                    relational_evidence=working.get("relational_evidence") or (),
+                    findings=working.get("findings") or (),
+                    hypotheses=working.get("hypotheses") or (),
+                    causal_edges=working["causal_attack_edges"],
+                    coverage_gaps=working.get("knowledge_gaps") or (),
+                    target_knowledge=working.get("target_knowledge") or {},
+                )
+            except Exception:
+                working["attack_graph"] = working.get("attack_graph") or {}
             state_after_batch = self._state_fingerprint(working)
             cycle_records.append(
                 AutonomousCycle(
@@ -512,6 +678,14 @@ class AutonomousController:
             update["lifecycle_events"] = all_lifecycle
         if recovery_events:
             update["recovery_events"] = recovery_events
+        for state_key in (
+            "coverage_ledger",
+            "causal_attack_edges",
+            "causal_edges",
+            "attack_graph",
+        ):
+            if state_key in working:
+                update[state_key] = working[state_key]
         recovery_state = {
             **recovery_state,
             "status": (
@@ -602,6 +776,20 @@ def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
             *list(state.get("findings") or []),
             *[finding.model_dump(mode="json") for finding in direct_findings],
         ]
+        try:
+            result["attack_graph"] = build_attack_graph(
+                result.get("mental_model") or {},
+                relational_evidence=result.get("relational_evidence") or (),
+                findings=result.get("findings") or (),
+                hypotheses=result.get("hypotheses") or (),
+                causal_edges=result.get("causal_attack_edges")
+                or result.get("causal_edges")
+                or (),
+                coverage_gaps=result.get("knowledge_gaps") or (),
+                target_knowledge=result.get("target_knowledge") or {},
+            )
+        except Exception:
+            result["attack_graph"] = result.get("attack_graph") or {}
     result["runtime_diagnostics"] = runtime.diagnostics()
     result["runtime_capability_gaps"] = [
         gap.as_dict() for gap in runtime.current_capability_gaps()

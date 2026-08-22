@@ -1,0 +1,155 @@
+{
+  "matrix": {
+    "ground_truth": [
+      {
+        "case_id": "offline_gate3_finding",
+        "category": "offline_fixture",
+        "expected": true,
+        "source": "controlled-offline-fixture"
+      }
+    ],
+    "runs": [
+      {
+        "budget_limit": 5.0,
+        "budget_spent": 3.0,
+        "candidate_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "canonical_outcomes": [
+          [
+            "offline_gate3_finding",
+            "confirmed"
+          ]
+        ],
+        "confirmed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "contacted_target": false,
+        "evidence_artifact": "artifacts/smart_hunter_review/gate3/gate3_proof_bundle.json",
+        "findings_are_live": false,
+        "out_of_scope_attempts": 0,
+        "proof_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "replay_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "reviewed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "run_id": "offline-three-run-proof-replay-run-1",
+        "stop_reason": "proof_replay_complete",
+        "target_modified": false,
+        "target_ref": "offline://controlled-proof-fixture",
+        "unauthorized_attempts": 0
+      },
+      {
+        "budget_limit": 5.0,
+        "budget_spent": 3.0,
+        "candidate_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "canonical_outcomes": [
+          [
+            "offline_gate3_finding",
+            "confirmed"
+          ]
+        ],
+        "confirmed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "contacted_target": false,
+        "evidence_artifact": "artifacts/smart_hunter_review/gate3/gate3_proof_bundle.json",
+        "findings_are_live": false,
+        "out_of_scope_attempts": 0,
+        "proof_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "replay_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "reviewed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "run_id": "offline-three-run-proof-replay-run-2",
+        "stop_reason": "proof_replay_complete",
+        "target_modified": false,
+        "target_ref": "offline://controlled-proof-fixture",
+        "unauthorized_attempts": 0
+      },
+      {
+        "budget_limit": 5.0,
+        "budget_spent": 3.0,
+        "candidate_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "canonical_outcomes": [
+          [
+            "offline_gate3_finding",
+            "confirmed"
+          ]
+        ],
+        "confirmed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "contacted_target": false,
+        "evidence_artifact": "artifacts/smart_hunter_review/gate3/gate3_proof_bundle.json",
+        "findings_are_live": false,
+        "out_of_scope_attempts": 0,
+        "proof_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "replay_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "reviewed_case_ids": [
+          "offline_gate3_finding"
+        ],
+        "run_id": "offline-three-run-proof-replay-run-3",
+        "stop_reason": "proof_replay_complete",
+        "target_modified": false,
+        "target_ref": "offline://controlled-proof-fixture",
+        "unauthorized_attempts": 0
+      }
+    ],
+    "summary": {
+      "all_runs_target_unchanged": true,
+      "budget_limits": 15.0,
+      "budget_spent": 9.0,
+      "candidate_cases": 1,
+      "candidate_false_negative_cases": 0,
+      "candidate_false_positives": 0,
+      "confirmed_expected_cases": 1,
+      "coverage": 1.0,
+      "ground_truth_cases": 1,
+      "live_qualification_proven": false,
+      "out_of_scope_attempts": 0,
+      "proof_replay_agreement_cases": 3,
+      "proof_replay_agreement_rate": 1.0,
+      "proof_replay_disagreement_cases": 0,
+      "runs": 3,
+      "stop_reasons": [
+        "proof_replay_complete"
+      ],
+      "unauthorized_attempts": 0
+    }
+  },
+  "qualification": {
+    "all_runs_target_unchanged": true,
+    "live_qualification_proven": false,
+    "name": "offline-three-run-qualification-simulation",
+    "out_of_scope_attempts": 0,
+    "proof_replay_agreement_rate": 1.0,
+    "reproducible": true,
+    "runs_observed": 3,
+    "runs_required": 3,
+    "status": "offline_pass_live_not_qualified",
+    "unauthorized_attempts": 0
+  },
+  "reproducible": true,
+  "run_digests": [
+    "27ae2cf82c5e6fe8f5d32e238b06c4216a8fc11e010d39d7450c5974ea4a16db",
+    "27ae2cf82c5e6fe8f5d32e238b06c4216a8fc11e010d39d7450c5974ea4a16db",
+    "27ae2cf82c5e6fe8f5d32e238b06c4216a8fc11e010d39d7450c5974ea4a16db"
+  ]
+}

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlsplit
@@ -136,6 +136,39 @@ def _target_url(state: Mapping[str, Any]) -> str:
         value = getattr(target, "url", None) or getattr(target, "target_url", None)
     clean, _ = redact_sensitive(str(value or ""))
     return clean[:500]
+
+
+def _coverage_attempts_for_state(state: Mapping[str, Any]) -> dict[str, int]:
+    """Normalize runtime and report-shaped coverage into a decision-safe map."""
+    raw = state.get("coverage_ledger")
+    entries: list[Any] = []
+    if isinstance(raw, Mapping):
+        if isinstance(raw.get("entries"), list):
+            entries = raw["entries"]
+        else:
+            entries = [
+                {"vulnerability_class": key, **dict(value)}
+                for key, value in raw.items()
+                if isinstance(value, Mapping)
+            ]
+    attempts: dict[str, int] = {}
+    for entry in entries[:200]:
+        if not isinstance(entry, Mapping):
+            continue
+        vulnerability_class = str(
+            entry.get("vulnerability_class")
+            or entry.get("key")
+            or entry.get("class")
+            or ""
+        ).strip().lower()[:120]
+        if not vulnerability_class:
+            continue
+        try:
+            count = max(0, min(1000, int(entry.get("attempts", 0) or 0)))
+        except (TypeError, ValueError):
+            count = 0
+        attempts[vulnerability_class] = max(attempts.get(vulnerability_class, 0), count)
+    return attempts
 
 
 def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -831,6 +864,90 @@ def _research_projections(
 
 
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
+def _causal_edges_for_state(state: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Return only sealed, target-backed causal edges from the current engagement."""
+    raw = state.get("causal_attack_edges")
+    if not isinstance(raw, (list, tuple)):
+        raw = state.get("causal_edges")
+    if not isinstance(raw, (list, tuple)):
+        return []
+    engagement_id = str(state.get("engagement_id") or "")
+    edges: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, Mapping):
+            continue
+        if engagement_id and str(item.get("engagement_id") or engagement_id) != engagement_id:
+            continue
+        metadata = item.get("metadata")
+        if not isinstance(metadata, Mapping):
+            metadata = {}
+        if (
+            item.get("proof_bundle_sealed") is not True
+            and metadata.get("proof_bundle_sealed") is not True
+        ):
+            continue
+        if item.get("target_backed") is not True and metadata.get("target_backed") is not True:
+            continue
+        evidence_refs = item.get("evidence_refs")
+        if not isinstance(evidence_refs, (list, tuple)) or not evidence_refs:
+            continue
+        edges.append(
+            {
+                "edge_id": str(item.get("id") or "")[:220],
+                "source_id": str(item.get("source_id") or "")[:200],
+                "target_id": str(item.get("target_id") or "")[:200],
+                "evidence_refs": [str(ref)[:200] for ref in evidence_refs[:20]],
+                "target_action_ids": [
+                    str(value)[:200]
+                    for value in (
+                        item.get("target_action_ids")
+                        or metadata.get("target_action_ids")
+                        or ()
+                    )
+                    if str(value).strip()
+                ][:20],
+                "target_hypothesis_ids": [
+                    str(value)[:200]
+                    for value in (
+                        item.get("target_hypothesis_ids")
+                        or metadata.get("target_hypothesis_ids")
+                        or ()
+                    )
+                    if str(value).strip()
+                ][:20],
+                "target_vulnerability_classes": [
+                    str(value)[:120]
+                    for value in (
+                        item.get("target_vulnerability_classes")
+                        or metadata.get("target_vulnerability_classes")
+                        or ()
+                    )
+                    if str(value).strip()
+                ][:20],
+            }
+        )
+    return edges[:100]
+
+
+def _causal_relevance(task: CampaignTask, edges: Iterable[Mapping[str, Any]]) -> float:
+    """Compute a small deterministic ranking prior; it never confirms a finding."""
+    task_id = str(task.task_id)
+    hypothesis_id = str(task.hypothesis_id)
+    vulnerability_class = str(task.vulnerability_class)
+    for edge in edges:
+        if (
+            task_id in edge.get("target_action_ids", ())
+            or hypothesis_id in edge.get("target_hypothesis_ids", ())
+        ):
+            return 0.35
+    if any(
+        vulnerability_class in edge.get("target_vulnerability_classes", ())
+        for edge in edges
+    ):
+        return 0.2
+    return 0.0
+
+
 def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Produce bounded smart task outcomes without executing network actions."""
     settings = state.get("settings")
@@ -945,6 +1062,14 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         for item in state.get("campaign_task_outcomes", [])
         if isinstance(item, Mapping)
     }
+    causal_edges = _causal_edges_for_state(state)
+    coverage_ledger = state.get("coverage_ledger")
+    coverage_attempts = _coverage_attempts_for_state(state)
+    covered_classes = {
+        str(key)
+        for key, value in (coverage_ledger.items() if isinstance(coverage_ledger, Mapping) else ())
+        if isinstance(value, Mapping) and value.get("proof_confirmed") is True
+    }
     engine = (
         runtime_for_planning.campaign_next_best_action_engine
         if runtime_for_planning is not None
@@ -957,8 +1082,12 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         action = engine.score(
             task,
             observed_evidence=task.source_evidence_ids,
-            covered_classes=(),
+            covered_classes=covered_classes,
             attempted_keys=attempted,
+            causal_relevance=_causal_relevance(task, causal_edges),
+            coverage_attempts=(
+                coverage_attempts if isinstance(coverage_ledger, Mapping) else None
+            ),
         )
         action_record = action.as_dict()
         decision_trace.append(
@@ -969,6 +1098,10 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 "score": float(action.score),
                 "reasons": list(action.reasons),
                 "status": "planned" if action.score >= 0 else "stopped",
+                "causal_relevance": _causal_relevance(task, causal_edges),
+                "coverage_attempts": coverage_attempts.get(
+                    task.vulnerability_class.strip().lower()[:120], 0
+                ),
             }
         )
         if action.score >= 0:

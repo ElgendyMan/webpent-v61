@@ -1,0 +1,20 @@
+[
+  {
+    "category": "offline_fixture",
+    "causal_signal": true,
+    "confirmation_status": "tool_confirmed",
+    "evidence_refs": [
+      "offline://gate3/baseline",
+      "offline://gate3/candidate",
+      "offline://gate3/negative-control"
+    ],
+    "key": "offline_gate3_finding",
+    "negative_control_complete": true,
+    "negative_control_independent": true,
+    "proof_bundle_id": "proof_bundle_cd2ba58eb7124c99a682a9a440f67367",
+    "proof_bundle_replayable": true,
+    "proof_bundle_sealed": true,
+    "status": "confirmed",
+    "target_backed": true
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "all_runs_target_unchanged": true,
+  "live_qualification_proven": false,
+  "name": "offline-three-run-qualification-simulation",
+  "out_of_scope_attempts": 0,
+  "proof_replay_agreement_rate": 1.0,
+  "reproducible": true,
+  "runs_observed": 3,
+  "runs_required": 3,
+  "status": "offline_pass_live_not_qualified",
+  "unauthorized_attempts": 0
+}

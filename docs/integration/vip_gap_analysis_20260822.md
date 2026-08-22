@@ -137,3 +137,22 @@ Docker/Redis/Celery distributed qualification لم تثبت بهذه المرا�
 ## Remaining qualification boundary
 
 النتائج السابقة تثبت contracts وtelemetry وreproducibility harness فقط. لم يتم تشغيل WAPTLab أو Juice Shop في هذه الجولة، ولم يتم ادعاء VIP أو live qualification أو precision/recall. يلزم في المرحلة الأخيرة تشغيل full WebPent tests، فحص G-02، secret scan، مراجعة docs/audit، ثم commit/push فقط إذا بقيت الشجرة نظيفة وكل البوابات خضراء.
+
+
+## Final gates acceptance — Gate 1–7
+
+تم إغلاق Gate 1 وGate 2 وGate 3 بصورة offline قابلة لإعادة التوليد، كما تم تشغيل تكامل bbscout المستقل offline. الـcausal edge لا يُنشأ إلا من ProofBundle مختوم target-backed يحمل baseline/candidate وnegative-control مستقلًا وprovenance؛ والـedge يدخل attack graph serialized ويؤثر في ترتيب next-best-action عبر causal relevance bounded. كما يستهلك controller coverage ledger أثناء loop ويعيده في state النهائي، فتظل أولوية المسارات منخفضة التغطية قابلة للحفظ والاستئناف والتدقيق.
+
+تم إنشاء `scripts/build_gate3_proof_artifact.py` لتوليد أول ProofBundle اصطناعي مختوم وقابل لإعادة التشغيل، و`scripts/run_offline_three_run_qualification.py` لتشغيل ثلاث جولات deterministic من نفس fixture. هذه artifacts تثبت صحة العقد والـreplay agreement وقابلية التكرار offline فقط؛ لا تمثل نتائج WAPTLab أو Juice Shop ولا يجوز عرضها كـlive qualification.
+
+تمت مراجعة تكامل bbscout وتشغيل اختباراته المستقلة بعد استعادة checkout منفصل، مع اختبارات WebPent المركزة الخاصة بالـcausal/coverage/proof/qualification. لم تُفتح أي قناة target/provider جديدة، وظلت ActionAuthority وActionExecutor وحدود scope/authorization وredaction وbounded budget هي الحدود الوحيدة للتنفيذ.
+
+**الحكم النهائي:** تنفيذ الخطة البرمجية والاختبارية تم حتى آخر بوابات offline، لكن **formal VIP qualification = NO / NOT QUALIFIED**. السبب ليس فشلًا مخفيًا في الاختبارات، بل غياب benchmark حي معتمد وground truth مستقل وقياس live precision/recall وzero unauthorized/out-of-scope عبر بيئة قابلة للإعادة، إضافة إلى عدم إثبات distributed Docker/Celery qualification. الصياغة الدقيقة هي: **VIP-oriented, bounded, evidence-driven architecture with offline qualification harness; formal VIP qualification pending live benchmark evidence.**
+
+## Gate 7 evidence boundary
+
+أي أرقام في Gate 3 وoffline three-run simulation تخص fixtures اصطناعية redacted ومولدة من الكود. تم تحديث manifest وaudit ليمنعا الخلط بين هذه الأرقام وبين اكتشافات حقيقية على targets. لا توجد credentials أو cookies أو tokens أو raw target responses أو private keys داخل source أو state أو report أو archive.
+
+## Remaining work after this loop
+
+المتبقي ليس rewrite: تشغيل benchmark حي مصرح به بصورة مستقلة، توثيق ground truth، إثبات end-to-end على adapters حقيقية ضمن نفس ActionAuthority، ثم إعادة تشغيل multi-run qualification مع قياس precision/recall وfalse-positive/false-negative وreplay agreement وunauthorized/out-of-scope counts. إلى أن يتم ذلك يظل قرار VIP مرفوضًا بصورة fail-closed.

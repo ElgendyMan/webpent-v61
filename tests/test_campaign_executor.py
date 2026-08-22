@@ -168,3 +168,51 @@ def test_next_best_action_blocks_only_explicitly_missing_or_blocked_precondition
     assert blocked.score == -1.0
     assert legacy.score >= 0
     assert "blocked_precondition:foreign_identity" in blocked.reasons
+
+
+def test_next_best_action_prioritizes_low_coverage_path() -> None:
+    engine = NextBestActionEngine()
+    untested = _task(
+        task_id="untested",
+        vulnerability_class="ssti",
+        expected_information_gain=0.5,
+    )
+    repeated = _task(
+        task_id="repeated",
+        vulnerability_class="idor",
+        expected_information_gain=0.5,
+    )
+
+    selected = engine.choose(
+        [repeated, untested],
+        coverage_attempts={"idor": 3, "ssti": 0},
+    )
+
+    assert selected is not None
+    assert selected.task.task_id == "untested"
+    assert "low_coverage_unattempted" in selected.reasons
+
+
+def test_next_best_action_records_partial_coverage_without_granting_proof() -> None:
+    engine = NextBestActionEngine()
+    task = _task(vulnerability_class="idor")
+
+    planned = engine.score(task, coverage_attempts={"idor": 1})
+
+    assert planned.score >= 0
+    assert "low_coverage_path" in planned.reasons
+    assert "proof_confirmed" not in planned.reasons
+
+
+def test_next_best_action_keeps_hard_precondition_over_low_coverage_boost() -> None:
+    engine = NextBestActionEngine()
+    task = _task(preconditions=("foreign_identity",))
+
+    planned = engine.score(
+        task,
+        coverage_attempts={"idor": 0},
+        observed_preconditions=("owner_identity",),
+    )
+
+    assert planned.score == -1.0
+    assert planned.reasons == ("blocked_precondition:foreign_identity",)

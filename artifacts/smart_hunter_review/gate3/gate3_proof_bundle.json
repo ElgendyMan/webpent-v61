@@ -1,0 +1,90 @@
+{
+  "limitations": [
+    "offline synthetic observations; not a live target qualification",
+    "must not be used as evidence of WAPTLab or Juice Shop coverage"
+  ],
+  "live_target_io": false,
+  "proof_bundle": {
+    "baseline_digest": "sha256:c9da8d3100b00ab0c285a61b6e2e3959345b1463a132acd20e4d75a47dc3df7f",
+    "bundle_id": "proof_bundle_cd2ba58eb7124c99a682a9a440f67367",
+    "causal_oracle": {
+      "basis": "controlled_differential_offline_fixture",
+      "causal_signal": true,
+      "negative_control_complete": true,
+      "requires_target_backed": true
+    },
+    "chain_of_custody": [
+      {
+        "action": "seal",
+        "actor": "offline-gate3-validator",
+        "at": "2026-08-22T19:58:49.451155Z",
+        "note": ""
+      }
+    ],
+    "cleanup_status": "not_applicable",
+    "engagement_id": "offline-gate3-engagement",
+    "evidence_digests": [
+      "sha256:c9da8d3100b00ab0c285a61b6e2e3959345b1463a132acd20e4d75a47dc3df7f",
+      "sha256:ad69d9231fd6dd9fa62b11803daa32287f046c42f57101f323f5d176eec5511f",
+      "sha256:6982363a07ab90ae2bc0e8afe5aec05be719f82b53226d4433116718bd7548c0"
+    ],
+    "evidence_refs": [
+      "offline://gate3/baseline",
+      "offline://gate3/candidate",
+      "offline://gate3/negative-control"
+    ],
+    "finding_id": "offline-gate3-finding",
+    "hypothesis_id": "offline-gate3-hypothesis",
+    "identity_context": {
+      "mode": "offline-fixture",
+      "role": "redacted"
+    },
+    "negative_control_digest": "sha256:6982363a07ab90ae2bc0e8afe5aec05be719f82b53226d4433116718bd7548c0",
+    "negative_control_independent": true,
+    "redaction_manifest": [
+      "authorization",
+      "cookie",
+      "token",
+      "secret"
+    ],
+    "replay_metadata": {
+      "observation_count": 3,
+      "replay_script": "scripts/build_gate3_proof_artifact.py",
+      "replayable": true
+    },
+    "request_digests": [
+      "sha256:4ea8a0e915db73a3f9b6d6dd880d17cf01a11db299d76556fe9a3f71b4959ed0",
+      "sha256:abae7ed079699b77c93202bca1c49788fda5c69f10bd348a81219a816c810939",
+      "sha256:bdcc1b226216a9166259ab8778481f53ccbb4bef240153de925f8753a100f5f2"
+    ],
+    "response_digests": [
+      "sha256:f24f34a38d430216737eec5914c388f90765b2eeea9282bf8128c390585ae519",
+      "sha256:206266190ea0d58bcce3cdbea3b9c65ebda3166e05c99d1e79fd82e7914b7cc8",
+      "sha256:f68aace4cc145670a9e28f2f9de40ccbe932b4052460e33f9f31b8af4e7123e8"
+    ],
+    "scope_context": {
+      "scope_bound": true,
+      "target_origin": "offline://fixture"
+    },
+    "seal_digest": "sha256:dad816472a2ed6d2c536810babe4a825866ec0cc5cada7d3b1c1f059898ccf59",
+    "sealed": true,
+    "target_backed": true,
+    "target_fingerprint": "target-fingerprint-offline-fixture-v1",
+    "target_package_id": null,
+    "target_package_policy_digest": null,
+    "target_package_scope_digest": null,
+    "target_package_sha256": null,
+    "validator_config_digest": "sha256:5e80db6a92a93d286b6cfe1b4bb33708ef7d3c1579a25f197d9fafbd88db67ed",
+    "validator_id": "offline-gate3-validator",
+    "validator_version": "1.0"
+  },
+  "sealed_replayable_confirmations": 1,
+  "status": "offline_fixture_passed",
+  "verification": {
+    "promotion_ready": true,
+    "replay_observation_count": 3,
+    "replay_result": true,
+    "seal_valid": true,
+    "structurally_valid": true
+  }
+}

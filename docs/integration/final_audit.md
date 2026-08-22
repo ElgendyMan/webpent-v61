@@ -18,14 +18,14 @@
 
 أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
 
-تم تنفيذ phase 2–5 من roadmap بصورة additive: `ActionBudgetState` و`StopDecision` و`AutonomousCycle` مع resume-safe legacy aliases؛ research-loop projection موحد يربط gaps/actions/session/target-knowledge/attack-graph؛ memory/RAG وLLM telemetry redaction-safe advisory-only؛ وoffline multi-run qualification harness يحسب canonical outcomes وproof/replay agreement وcandidate FP/FN وunauthorized/out-of-scope وbudget/stop metrics دون target I/O. كل ذلك لا يمنح LLM أو التخطيط صلاحية تنفيذ أو confirmation.
+تم تنفيذ phase 2–6 من roadmap بصورة additive: `ActionBudgetState` و`StopDecision` و`AutonomousCycle` مع resume-safe legacy aliases؛ research-loop projection موحد يربط gaps/actions/session/target-knowledge/attack-graph؛ memory/RAG وLLM telemetry redaction-safe advisory-only؛ causal attack-graph edges لا تُنشأ إلا من ProofBundle مختوم target-backed؛ low-coverage priority يغيّر ترتيب next action داخل scorer؛ وoffline multi-run qualification harness يحسب canonical outcomes وproof/replay agreement وcandidate FP/FN وunauthorized/out-of-scope وbudget/stop metrics دون target I/O. كل ذلك لا يمنح LLM أو التخطيط صلاحية تنفيذ أو confirmation.
 
 ## نتائج التحقق
 
 | الاختبار/الفحص | النتيجة |
 |---|---:|
 | bbscout full pytest | 7 passed |
-| WebPent full pytest | 1401 passed، 294 warnings |
+| WebPent full pytest | 1409 passed، 244 warnings |
 | package/entrypoint/hardening focused | 35 passed، 2 warnings |
 | proof-focused verifier/active/package suite | مغطى داخل full suite الأخضر؛ لا regression بعد التوسعة |
 | Ruff full | passed |
@@ -34,7 +34,7 @@
 | G-02 artifact/precommit parity | passed بعد regeneration من source الحالي |
 | tracked secret scan | passed، no high-confidence secrets |
 | Bandit changed-file scan | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
-| offline autonomy/research/qualification focused additions | 19 passed ضمن full suite؛ memory/LLM telemetry وFP/FN وproof/replay وbudget/stop مغطاة |
+| offline autonomy/research/qualification focused additions | مغطاة داخل full suite الأخضر؛ Gate 3 proof/replay fixture وoffline three-run simulation موثقان في artifacts، مع bbscout مستقل 7 passed |
 | LLM doctor | 0 active providers؛ fallback deterministic paths remain available |
 
 ## Bandit interpretation
@@ -63,4 +63,4 @@
 
 ## Release identity
 
-تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`. تغييرات roadmap الحالية ستُحفظ في commit لاحق بعد اكتمال gates والأرشيف. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.
+تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`، وهذه الجولة محفوظة في commit `7d48c08`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.
