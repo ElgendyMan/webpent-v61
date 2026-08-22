@@ -62,7 +62,7 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit | `5eebe58db14e6e23b8d2be6dee2534cb31dd8b9e` |
+| Git commit | `fa99bcc0699746b89fe3655e9a6927b1c94da198` |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |

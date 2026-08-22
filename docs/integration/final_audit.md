@@ -54,4 +54,4 @@
 
 ## Release identity
 
-آخر commit مرفوع إلى `ElgendyMan/webpent-v61` هو `5eebe58db14e6e23b8d2be6dee2534cb31dd8b9e`. الأرشيف النظيف النهائي هو `webpent_bbscout_integration_release.zip`، وSHA256 النهائي محفوظ في الملف الجانبي `webpent_bbscout_integration_release.sha256`.
+آخر commit مرفوع إلى `ElgendyMan/webpent-v61` هو `fa99bcc0699746b89fe3655e9a6927b1c94da198`. الأرشيف النظيف النهائي هو `webpent_bbscout_integration_release.zip`، وSHA256 النهائي محفوظ في الملف الجانبي `webpent_bbscout_integration_release.sha256`.
