@@ -139,7 +139,7 @@
     "docs/lab_comparison_20260822.md": "d444978ad1799fb076cbb939ea1ab22d18ccbdcdb3199a8169ba47e297250fd3",
     "docs/last20_governing_requirements.md": "ed1f4a230b28e653ec18d68e7d77a8c783f7f3adb37827688d90def879542143",
     "docs/last20_review_delivery.md": "aa6ba1cc82668978db0f423a270baeb807c131428fe83b718a891981cc0bba8a",
-    "docs/last30_review_report_20260822.md": "880fa5343f778cc2cdf5cf44ea7def0402928d2701ecdfe2cf9da6488f522b93",
+    "docs/last30_review_report_20260822.md": "5109a7449b12b9ff2b321f403291cc03411edfee54f6e575989e9c49236f6ddb",
     "docs/llm_audit_notes_20260821.md": "c6c31f1fef9ac5c4116f085969ef493c0b3d013c01e86bac07c152a2ab853311",
     "docs/llm_production_readiness_20260821.md": "753a9a4ada8031bd932cf4cbc9e96dbb8726e418c24136da53c416710ef34e88",
     "docs/pasted3_loop3_gap_matrix.md": "94d85305b2cab304c45c702498d7ceb6e2de8e357186c8eae91d1900fe33caa0",
@@ -758,8 +758,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T11:32:09.071346+00:00",
-  "git_commit": "0cb66aaf3721dbe0dee84350eeac707e14e60a4e",
+  "generated_at": "2026-08-22T11:34:09.636720+00:00",
+  "git_commit": "e174a54f12717bca707e9301b2a3633b5e5a92fb",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
