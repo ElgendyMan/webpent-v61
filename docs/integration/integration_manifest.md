@@ -62,9 +62,9 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit | `c72c20548af9aee951d3b4df514ab63c3314c9ed` |
+| Git commit | `5eebe58db14e6e23b8d2be6dee2534cb31dd8b9e` |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
-| archive SHA256 قبل توثيق release metadata | `37ab4f108c3a1fc650e17ecd4366a87fca92b1cdeaa21b84f665296da08dd77d` |
-| archive content count | 829 files |
+| archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
+| archive content count | 829 files تقريبًا؛ يتحقق منه `evidence/release_contents.txt` |
 | forbidden artifact scan | clean |

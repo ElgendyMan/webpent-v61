@@ -54,4 +54,4 @@
 
 ## Release identity
 
-Commit التكامل الأولي المرفوع إلى `ElgendyMan/webpent-v61` هو `c72c20548af9aee951d3b4df514ab63c3314c9ed`. الأرشيف النظيف المرحلي هو `webpent_bbscout_integration_release.zip`، وSHA256 المرحلي قبل إضافة هذا التحديث التوثيقي هو `37ab4f108c3a1fc650e17ecd4366a87fca92b1cdeaa21b84f665296da08dd77d`. سيُعاد بناء الأرشيف النهائي بعد تثبيت metadata حتى يكون checksum النهائي هو المرجع الوحيد للتسليم.
+آخر commit مرفوع إلى `ElgendyMan/webpent-v61` هو `5eebe58db14e6e23b8d2be6dee2534cb31dd8b9e`. الأرشيف النظيف النهائي هو `webpent_bbscout_integration_release.zip`، وSHA256 النهائي محفوظ في الملف الجانبي `webpent_bbscout_integration_release.sha256`.
