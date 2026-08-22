@@ -12,15 +12,19 @@
 
 تم الحفاظ على الفصل بين `source_response_sha256` وcanonical package/content digest. أُضيف توقيع Ed25519 detached حقيقي بمفتاح خاص runtime-only وخريطة public keys موثوقة runtime-only؛ `unsigned-local-mvp` مرفوض للاستهلاك التنفيذي. أُضيف `EngagementFactory` بعملية lease ذرية تمنع duplicate/conflicting consumption. أُنشئ `ScopeCompiler` target-agnostic يراجع scheme/host/port/path/wildcard/exclusion/method/action/redirects ويصدر قرارات typed. تم ربط RuntimeFactory وinitial state وActionAuthority وgraph preflight والمسار الذكي بهذه القيود.
 
-تم أيضًا إكمال continuity من action metadata إلى verifier وProofBundle والتقرير، مع redaction-safe top-level `target_package_continuity` يدخل في audit/master hash. في البداية ينشئ worker lease بعد إعادة التحقق الفعلي من الحزمة والتوقيع، بينما redelivery/resume يتحقق من binding والـlease الموجودين دون consume ثانٍ. تمت إضافة capability intersection وحالات knowledge gaps وblocked tasks دون تحويلها إلى clean. أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
+تم أيضًا إكمال continuity من action metadata إلى verifier وProofBundle والتقرير، مع redaction-safe top-level `target_package_continuity` يدخل في audit/master hash. في البداية ينشئ worker lease بعد إعادة التحقق الفعلي من الحزمة والتوقيع، بينما redelivery/resume يتحقق من binding والـlease الموجودين دون consume ثانٍ. تمت إضافة capability intersection وحالات knowledge gaps وblocked tasks دون تحويلها إلى clean.
+
+أصبح مسار confirmation الصارم target-backed فعليًا: لا تكفي booleans أو اختلاف metadata؛ يجب أن يحتوي الدليل على baseline وcandidate وnegative control مستقلين، ولكل observation target fingerprint وrequest/response digests وrole واضح. الـverifier يتحقق من causal differential، اكتمال control، تطابق validator/engagement/package continuity، ثم يبني ProofBundle sealed. الـbundle قابل لإعادة التشغيل والتحقق من سلامته، وأي tampering أو replay ناقص يبقى Needs Human Review ولا ينتج Tool-Confirmed. لا تُحفظ request bodies أو cookies أو auth headers أو OOB secrets، بل redacted metadata وhashes فقط.
+
+أعيد توليد G-02 inventory وتحقق runtime من عدم وجود external target contact.
 
 ## نتائج التحقق
 
 | الاختبار/الفحص | النتيجة |
 |---|---:|
 | bbscout full pytest | 7 passed |
-| WebPent full pytest | 1379 passed، 294 warnings |
-| package/entrypoint/hardening focused | 35 passed، 2 warnings |
+| WebPent full pytest | 1382 passed، 294 warnings |
+| package/entrypoint/hardening focused | 35 passed، 2 warnings | proof-focused verifier/active suite: 30 passed، 8 warnings |
 | Ruff full | passed |
 | compileall | passed |
 | G-02 runtime check | passed، 280 primary records، external_target_contacted=false |
@@ -42,7 +46,7 @@
 | Docker/Celery/Redis multi-worker resume | NOT QUALIFIED |
 | WAPTLab 15+/20 findings و3 independent runs | NOT MEASURED |
 | precision >=90% وreproducibility >=95% | NOT MEASURED |
-| 100% sealed proofs وzero false-clean/duplicate/scope/signature failures | NOT MEASURED |
+| 100% sealed proofs وzero false-clean/duplicate/scope/signature failures | العقد الداخلي target-backed/sealed/replayable مجتاز offline؛ نسبة qualification الحية NOT MEASURED |
 | VIP promotion | NO |
 
 ## تحذيرات التشغيل
@@ -55,4 +59,4 @@
 
 ## Release identity
 
-آخر commit محلي موثق لهذه الجولة هو `52fc62537d94972b6155868a0fecd413690f5ffb`. سيُنشأ archive نظيف مطابق له بعد هذا التحديث. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.
+تغييرات ProofBundle والـvalidator في هذه الجولة تحتاج release identity جديدة بعد اكتمال quality gates. لا يُعد هذا audit إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي.

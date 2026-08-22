@@ -26,6 +26,8 @@
 | graph preflight | `package_preflight` قبل wildcard/planner، مع legacy no-package route | منفذ | preflight tests |
 | capability intersection | `package_capabilities.py` ينتج available/unavailable/blocked_by_policy/not_qualified/optional | منفذ | capability/preflight tests |
 | proof continuity | package id/digests تدخل action metadata وverifier وsealed ProofBundle | منفذ | E2E hardening test |
+| target-backed confirmation | baseline + candidate + independent negative control، target fingerprint وrequest/response digests وvalidator continuity | منفذ fail-closed | strict verifier وactive-validator tests |
+| sealed/replayable ProofBundle | seal integrity، replay contract، tamper resistance، وعدم حفظ body/cookies/auth material | منفذ | strict verifier tests |
 | report continuity | top-level redacted `target_package_continuity` يدخل audit/master hash | منفذ | E2E hardening test |
 | direct-I/O inventory | G-02 regenerated and runtime-checked | منفذ | 280 primary records; external_target_contacted=false |
 | provider adapters | Bugcrowd/Intigriti/YesWeHack adapters | **MISSING** | لا يوجد ادعاء تنفيذ |
@@ -42,8 +44,9 @@
 | البوابة | النتيجة |
 |---|---:|
 | bbscout full pytest | **7 passed** |
-| WebPent full pytest | **1379 passed, 294 warnings** |
+| WebPent full pytest | **1382 passed, 294 warnings** |
 | package/entrypoint/hardening focused suite | **35 passed, 2 warnings** |
+| proof-focused verifier/active suite | **30 passed, 8 warnings** |
 | Ruff full | **passed** بعد إصلاح integration formatting/imports |
 | compileall | **passed** |
 | G-02 runtime | **passed؛ 280 primary records؛ لا اتصال خارجي** |
@@ -53,7 +56,7 @@
 
 ## حدود الإصدار
 
-هذا الإصدار لا يثبت قدرة اكتشاف أو تأكيد عدد معين من الثغرات، ولا يثبت VIP أو autonomous qualification. confirmation تظل مشروطة بـcausal signal وneutral negative control وProofBundle قابل لإعادة التشغيل. 403 و429 وtimeouts وmissing capabilities والأعطال تُصنف blocked/inconclusive/knowledge gap، ولا تتحول إلى clean.
+هذا الإصدار لا يثبت قدرة اكتشاف أو تأكيد عدد معين من الثغرات، ولا يثبت VIP أو autonomous qualification. confirmation تظل مشروطة بـtarget-backed causal signal مشتق من baseline/candidate، وindependent neutral negative control، وProofBundle sealed قابل لإعادة التشغيل والتحقق من التلاعب. flags أو metadata وحدها لا تكفي. 403 و429 وtimeouts وmissing capabilities والأعطال تُصنف blocked/inconclusive/knowledge gap، ولا تتحول إلى clean.
 
 ## سياسة التسليم
 

@@ -11,6 +11,7 @@ replayed from the redaction-safe observations.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -47,6 +48,26 @@ def _digest(value: Any) -> str:
     return f"sha256:{hashlib.sha256(encoded.encode('utf-8', 'replace')).hexdigest()}"
 
 
+def _target_observation_ok(
+    value: Any,
+    *,
+    role: str,
+    target_fingerprint: str,
+) -> bool:
+    """Accept only redacted observations carrying transport-level provenance."""
+    if not isinstance(value, Mapping):
+        return False
+    return bool(
+        value.get("target_backed") is True
+        and value.get("observation_role") == role
+        and value.get("target_fingerprint") == target_fingerprint
+        and isinstance(value.get("request_digest"), str)
+        and value.get("request_digest", "").startswith("sha256:")
+        and isinstance(value.get("response_digest"), str)
+        and value.get("response_digest", "").startswith("sha256:")
+    )
+
+
 def verify_replay_evidence(
     finding: Finding,
     *,
@@ -67,6 +88,7 @@ def verify_replay_evidence(
     target_package_sha256: str | None = None,
     target_package_scope_digest: str | None = None,
     target_package_policy_digest: str | None = None,
+    require_target_backed: bool = False,
 ) -> VerificationResult:
     """Verify a baseline/candidate replay and create a strict proof bundle.
 
@@ -106,6 +128,44 @@ def verify_replay_evidence(
             "causal_signal_and_negative_control_required",
             evidence,
         )
+    target_fingerprint = _target_fingerprint(finding.url)
+    if require_target_backed:
+        if not _target_observation_ok(
+            baseline, role="baseline", target_fingerprint=target_fingerprint
+        ) or not _target_observation_ok(
+            candidate, role="candidate", target_fingerprint=target_fingerprint
+        ):
+            evidence["promotion_guard"] = {
+                "status": "blocked",
+                "reason": "target_backed_baseline_and_candidate_required",
+            }
+            return VerificationResult(
+                False,
+                "target_backed_baseline_and_candidate_required",
+                evidence,
+            )
+        if not _target_observation_ok(
+            negative_control, role="negative_control", target_fingerprint=target_fingerprint
+        ):
+            evidence["promotion_guard"] = {
+                "status": "blocked",
+                "reason": "independent_target_backed_negative_control_required",
+            }
+            return VerificationResult(
+                False,
+                "independent_target_backed_negative_control_required",
+                evidence,
+            )
+        request_digests = {
+            candidate.get("request_digest"),
+            negative_control.get("request_digest"),
+        }
+        if len(request_digests) != 2:
+            evidence["promotion_guard"] = {
+                "status": "blocked",
+                "reason": "negative_control_must_be_independent",
+            }
+            return VerificationResult(False, "negative_control_must_be_independent", evidence)
     provenance_values = {
         "engagement_id": str(engagement_id or "").strip(),
         "validator_id": str(validator_id or "").strip(),
@@ -144,35 +204,41 @@ def verify_replay_evidence(
 
     replay = {
         "replayable": True,
-        "sequence": ["baseline", "candidate"],
-        "negative_control": "baseline",
-        "observations": 2,
+        "sequence": ["baseline", "candidate", "negative_control"],
+        "negative_control": "negative_control",
+        "observations": 3,
+        "target_backed": bool(require_target_backed),
+        "independent_control": bool(require_target_backed),
     }
     bundle = build_proof_bundle(
         engagement_id=engagement_id,
         finding_id=str(finding.id),
         hypothesis_id=hypothesis_id or f"finding:{finding.id}",
-        target_fingerprint=_target_fingerprint(finding.url),
+        target_fingerprint=target_fingerprint,
         target_package_id=target_package_id,
         target_package_sha256=target_package_sha256,
         target_package_scope_digest=target_package_scope_digest,
         target_package_policy_digest=target_package_policy_digest,
         scope_context=clean_scope,
         identity_context=clean_identity,
-        evidence=[baseline, candidate],
+        evidence=[baseline, candidate, negative_control],
         evidence_refs=(
             f"replay:{validator_id}:baseline",
             f"replay:{validator_id}:candidate",
+            f"replay:{validator_id}:negative_control",
         ),
         negative_control=negative_control,
         baseline=baseline,
-        request_evidence=[baseline, candidate],
-        response_evidence=[baseline, candidate],
+        request_evidence=[baseline, candidate, negative_control],
+        response_evidence=[baseline, candidate, negative_control],
         causal_oracle={
             "causal_signal": True,
             "negative_control_complete": True,
+            "requires_target_backed": bool(require_target_backed),
             "basis": str(causal_basis)[:240],
         },
+        target_backed=bool(require_target_backed),
+        negative_control_independent=bool(require_target_backed),
         validator_id=validator_id,
         validator_version=validator_version,
         replay_metadata={**replay, **(replay_metadata or {})},
@@ -195,6 +261,8 @@ def verify_replay_evidence(
     evidence.update(
         {
             "proof_bundle_sealed": True,
+            "target_backed": bool(require_target_backed),
+            "negative_control_independent": bool(require_target_backed),
             "proof_bundle": bundle.model_dump(mode="json"),
             "promotion_guard": {
                 "status": "passed",

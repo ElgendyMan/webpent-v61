@@ -66,6 +66,8 @@ class ProofBundle(BaseModel):
     baseline_digest: str | None = None
     negative_control_digest: str | None = None
     causal_oracle: dict[str, Any] = Field(default_factory=dict)
+    target_backed: bool = False
+    negative_control_independent: bool = False
     validator_id: str | None = Field(default=None, max_length=120)
     validator_version: str | None = Field(default=None, max_length=80)
     validator_config_digest: str | None = None
@@ -166,6 +168,8 @@ class ProofBundle(BaseModel):
             "baseline_digest": self.baseline_digest,
             "negative_control_digest": self.negative_control_digest,
             "causal_oracle": self.causal_oracle,
+            "target_backed": self.target_backed,
+            "negative_control_independent": self.negative_control_independent,
             "validator_id": self.validator_id,
             "validator_version": self.validator_version,
             "validator_config_digest": self.validator_config_digest,
@@ -203,6 +207,13 @@ class ProofBundle(BaseModel):
             f"sha256:{sha256_text(redact_sensitive(item)[0])}"
             for item in evidence_payloads
         )
+        if (
+            len(digests) == 2
+            and len(self.evidence_digests) == 3
+            and not self.causal_oracle.get("requires_target_backed")
+            and negative_control is not None
+        ):
+            digests = (*digests, f"sha256:{sha256_text(redact_sensitive(negative_control)[0])}")
         if digests != self.evidence_digests:
             return False
         if self.negative_control_digest is None:
@@ -239,6 +250,8 @@ def build_proof_bundle(
     request_evidence: tuple[Any, ...] | list[Any] = (),
     response_evidence: tuple[Any, ...] | list[Any] = (),
     causal_oracle: dict[str, Any] | None = None,
+    target_backed: bool = False,
+    negative_control_independent: bool = False,
     validator_id: str | None = None,
     validator_version: str | None = None,
     validator_config: Any = None,
@@ -287,6 +300,8 @@ def build_proof_bundle(
         baseline_digest=baseline_digest,
         negative_control_digest=negative_digest,
         causal_oracle=causal_oracle or {},
+        target_backed=bool(target_backed),
+        negative_control_independent=bool(negative_control_independent),
         validator_id=validator_id,
         validator_version=validator_version,
         validator_config_digest=validator_config_digest,
@@ -313,6 +328,13 @@ def proof_bundle_promotion_ready(value: Any) -> bool:
         and bundle.response_digests
         and bundle.causal_oracle.get("causal_signal") is True
         and bundle.causal_oracle.get("negative_control_complete") is True
+        and (
+            not bundle.causal_oracle.get("requires_target_backed")
+            or (
+                bundle.target_backed is True
+                and bundle.negative_control_independent is True
+            )
+        )
         and bundle.validator_id
         and bundle.validator_version
         and bundle.replay_metadata.get("replayable") is True

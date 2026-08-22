@@ -49,6 +49,34 @@ def _body_digest(body: str) -> str:
     return hashlib.sha256(body.encode("utf-8", "replace")).hexdigest()
 
 
+def _target_fingerprint(url: str) -> str:
+    parsed = urlparse(str(url))
+    shape = urlunparse(parsed._replace(query="", fragment=""))
+    return f"sha256:{hashlib.sha256(shape.encode('utf-8', 'replace')).hexdigest()}"
+
+
+def _request_digest(replay: Replay) -> str:
+    shape = {
+        "method": replay.method,
+        # The complete request shape is hashed only; raw query/body values are
+        # never persisted. This keeps distinct payload replays independent.
+        "url_shape": urlunparse(urlparse(replay.url)._replace(fragment="")),
+        "body_sha256": _body_digest(replay.request_body or ""),
+    }
+    encoded = json.dumps(shape, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
+def _response_digest(replay: Replay) -> str:
+    shape = {
+        "status_code": replay.status_code,
+        "body_sha256": _body_digest(replay.body),
+        "headers": _safe_headers(replay.headers),
+    }
+    encoded = json.dumps(shape, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
 def _safe_headers(headers: dict[str, str]) -> dict[str, str]:
     """Keep harmless response metadata and drop all credential material."""
     return {
@@ -186,6 +214,7 @@ def _evidence(
     baseline: Replay | None,
     probe: Replay | None,
     *,
+    control: Replay | None = None,
     validator: str,
     parameter: str | None,
     payload_label: str,
@@ -197,28 +226,31 @@ def _evidence(
         "parameter": parameter,
         "payload_label": payload_label,
         "matched_marker": matched_marker,
-        "replay": "baseline_then_candidate",
+        "replay": "baseline_then_candidate_then_negative_control",
     }
+
+    def _observation(replay: Replay, role: str) -> dict[str, Any]:
+        return {
+            "target_backed": True,
+            "observation_role": role,
+            "target_fingerprint": _target_fingerprint(replay.url),
+            "request_digest": _request_digest(replay),
+            "response_digest": _response_digest(replay),
+            "method": replay.method,
+            "url": _redact_query_url(replay.url),
+            "status_code": replay.status_code,
+            "body_length": len(replay.body),
+            "body_sha256": _body_digest(replay.body),
+            "headers": _safe_headers(replay.headers),
+            "elapsed_ms": replay.elapsed_ms,
+        }
+
     if baseline is not None:
-        result["baseline"] = {
-            "method": baseline.method,
-            "url": _redact_query_url(baseline.url),
-            "status_code": baseline.status_code,
-            "body_length": len(baseline.body),
-            "body_sha256": _body_digest(baseline.body),
-            "headers": _safe_headers(baseline.headers),
-            "elapsed_ms": baseline.elapsed_ms,
-        }
+        result["baseline"] = _observation(baseline, "baseline")
     if probe is not None:
-        result["candidate"] = {
-            "method": probe.method,
-            "url": _redact_query_url(probe.url),
-            "status_code": probe.status_code,
-            "body_length": len(probe.body),
-            "body_sha256": _body_digest(probe.body),
-            "headers": _safe_headers(probe.headers),
-            "elapsed_ms": probe.elapsed_ms,
-        }
+        result["candidate"] = _observation(probe, "candidate")
+    if control is not None:
+        result["negative_control"] = _observation(control, "negative_control")
     return result
 
 
@@ -252,12 +284,13 @@ def _confirmed(
 
     baseline = merged_evidence.get("baseline")
     candidate = merged_evidence.get("candidate")
+    negative_control = merged_evidence.get("negative_control")
     context = verification_context or {}
     verification = verify_replay_evidence(
         finding,
         baseline=baseline if isinstance(baseline, dict) else None,
         candidate=candidate if isinstance(candidate, dict) else None,
-        negative_control=baseline if isinstance(baseline, dict) else None,
+        negative_control=negative_control,
         causal_signal=bool(merged_evidence.get("causal_signal")),
         negative_control_complete=bool(merged_evidence.get("negative_control_complete")),
         validator_id=str(merged_evidence.get("validator") or "active_validator"),
@@ -271,7 +304,12 @@ def _confirmed(
         hypothesis_id=str(context["hypothesis_id"]) if context.get("hypothesis_id") else None,
         scope_context=context.get("scope_context"),
         identity_context=context.get("identity_context"),
-        replay_metadata={"payload_label": payload_label},
+        replay_metadata={
+            "payload_label": payload_label,
+            "target_backed": True,
+            "negative_control": "independent_control_replay",
+        },
+        require_target_backed=True,
         **package_continuity_kwargs(context),
     )
     merged_evidence.update(verification.evidence)
@@ -361,19 +399,29 @@ def _inband_marker_check(
             },
             f"{vuln_class.upper()} validator could not run: no target parameter was available.",
         )
-    baseline = _replay(finding, parameter, str(finding.request_data.get(parameter, "")), cookies)
+    baseline_value = str(finding.request_data.get(parameter, ""))
+    baseline = _replay(finding, parameter, baseline_value, cookies)
     probe = _replay(finding, parameter, payload, cookies)
-    if baseline is None or probe is None:
+    control_value = f"{baseline_value}-webpent-negative-control"
+    control = _replay(finding, parameter, control_value, cookies)
+    if baseline is None or probe is None or control is None:
         return _ambiguous(
             finding,
             _evidence(
-                baseline, probe, validator=vuln_class, parameter=parameter, payload_label=payload
+                baseline,
+                probe,
+                control=control,
+                validator=vuln_class,
+                parameter=parameter,
+                payload_label=payload,
             ),
-            f"{vuln_class.upper()} validator could not complete a baseline/candidate replay.",
+            f"{vuln_class.upper()} validator could not complete the three replays "
+            "(baseline, candidate, negative control).",
             not_scanned=True,
         )
     lowered = probe.body.lower()
     baseline_lowered = baseline.body.lower()
+    control_lowered = control.body.lower()
     marker = next(
         (
             item
@@ -385,6 +433,7 @@ def _inband_marker_check(
     evidence = _evidence(
         baseline,
         probe,
+        control=control,
         validator=vuln_class,
         parameter=parameter,
         payload_label=payload,
@@ -392,7 +441,7 @@ def _inband_marker_check(
     )
     evidence["causal_signal"] = bool(marker)
     evidence["negative_control_complete"] = bool(
-        marker and baseline is not None and marker.lower() not in baseline_lowered
+        marker and marker.lower() not in control_lowered
     )
     if marker:
         return _confirmed(
@@ -406,8 +455,8 @@ def _inband_marker_check(
     return _ambiguous(
         finding,
         evidence,
-        f"{vuln_class.upper()} replay completed but produced no class-specific marker "
-        "absent from the baseline. No automated confirmation is claimed.",
+        f"{vuln_class.upper()} replay completed but did not produce a class-specific marker "
+        "absent from both baseline and negative control. No automated confirmation is claimed.",
     )
 
 
@@ -456,26 +505,34 @@ def validate_ssti(
         )
     # The expression is deliberately harmless and does not execute a command.
     payload = "{{17*23}}"
-    baseline = _replay(finding, parameter, str(finding.request_data.get(parameter, "")), cookies)
+    baseline_value = str(finding.request_data.get(parameter, ""))
+    baseline = _replay(finding, parameter, baseline_value, cookies)
     probe = _replay(finding, parameter, payload, cookies)
+    control = _replay(
+        finding,
+        parameter,
+        f"{baseline_value}-webpent-negative-control",
+        cookies,
+    )
     evidence = _evidence(
         baseline,
         probe,
+        control=control,
         validator="ssti",
         parameter=parameter,
         payload_label="arithmetic_expression",
         matched_marker="391",
     )
-    if baseline is None or probe is None:
+    if baseline is None or probe is None or control is None:
         return _ambiguous(
             finding,
             evidence,
-            "SSTI validator could not complete a baseline/candidate replay.",
+            "SSTI validator could not complete baseline/candidate/negative-control replays.",
             not_scanned=True,
         )
     evidence["causal_signal"] = "391" in probe.body and "391" not in baseline.body
-    evidence["negative_control_complete"] = bool("391" not in baseline.body)
-    if "391" in probe.body and "391" not in baseline.body:
+    evidence["negative_control_complete"] = "391" not in control.body
+    if "391" in probe.body and "391" not in baseline.body and "391" not in control.body:
         return _confirmed(
             finding,
             evidence,
@@ -513,18 +570,21 @@ def validate_nosql_injection(
     baseline = _replay(finding, parameter, baseline_value, cookies)
     candidate = json.dumps({"$ne": None}, separators=(",", ":"))
     probe = _replay(finding, parameter, candidate, cookies)
+    control_value = "invalid-webpent-negative-control"
+    control = _replay(finding, parameter, control_value, cookies)
     evidence = _evidence(
         baseline,
         probe,
+        control=control,
         validator="nosql_injection",
         parameter=parameter,
         payload_label="json_operator_ne_null",
     )
-    if baseline is None or probe is None:
+    if baseline is None or probe is None or control is None:
         return _ambiguous(
             finding,
             evidence,
-            "NoSQL validator could not complete a baseline/candidate replay.",
+            "NoSQL validator could not complete baseline/candidate/negative-control replays.",
             not_scanned=True,
         )
     auth_boundary = baseline.status_code in {401, 403} and 200 <= probe.status_code < 300
@@ -532,8 +592,8 @@ def validate_nosql_injection(
         32, int(len(baseline.body) * 0.10)
     )
     evidence["causal_signal"] = bool(auth_boundary and materially_changed)
-    evidence["negative_control_complete"] = bool(baseline.status_code in {401, 403})
-    if auth_boundary and materially_changed:
+    evidence["negative_control_complete"] = bool(control.status_code in {401, 403})
+    if auth_boundary and materially_changed and control.status_code in {401, 403}:
         evidence["differential"] = "unauthorized_baseline_to_success_candidate"
         return _confirmed(
             finding,

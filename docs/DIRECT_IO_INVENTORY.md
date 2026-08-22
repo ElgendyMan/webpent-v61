@@ -125,7 +125,7 @@ Total records: **280**.
 | `src/webpent/agents/subdomain_takeover/agent.py` | 91 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` | `approved` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 142 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/subdomain_takeover/agent.py` | 223 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/active_checks.py` | 164 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/active_checks.py` | 192 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/validator/agent.py` | 499 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/validator/agent.py` | 596 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/validator/agent.py` | 745 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |

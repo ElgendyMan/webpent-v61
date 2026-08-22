@@ -1768,7 +1768,7 @@
       "column": 14,
       "file": "src/webpent/agents/validator/active_checks.py",
       "kind": "safe_boundary_call",
-      "line": 164,
+      "line": 192,
       "normalized_symbol": "webpent.shared.http.make_safe_httpx_client",
       "reason": "central hardened wrapper call",
       "symbol": "make_safe_httpx_client",

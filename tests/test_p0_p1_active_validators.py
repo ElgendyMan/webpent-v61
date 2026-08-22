@@ -102,7 +102,7 @@ def test_dispatch_never_falls_back_for_all_p0_1_classes():
 def test_lfi_and_path_traversal_require_new_passwd_marker(monkeypatch):
     def replay(_finding, _parameter, value, _cookies):
         body = "root:x:0:0:webpent:/root:/bin/sh" if "etc/passwd" in value else "safe baseline"
-        return Replay("GET", "https://target.test/view?file=x", None, 200, body, {}, 5)
+        return Replay("GET", f"https://target.test/view?file={value}", None, 200, body, {}, 5)
 
     monkeypatch.setattr("webpent.agents.validator.active_checks._replay", replay)
     for validator, vuln_class in (
@@ -123,7 +123,7 @@ def test_lfi_and_path_traversal_require_new_passwd_marker(monkeypatch):
 def test_ssti_requires_arithmetic_evaluation_not_payload_echo(monkeypatch):
     def replay(_finding, _parameter, value, _cookies):
         body = "391" if "17*23" in value else "baseline"
-        return Replay("GET", "https://target.test/view?file=x", None, 200, body, {}, 5)
+        return Replay("GET", f"https://target.test/view?file={value}", None, 200, body, {}, 5)
 
     monkeypatch.setattr("webpent.agents.validator.active_checks._replay", replay)
     result = validate_ssti(
@@ -139,14 +139,14 @@ def test_nosql_requires_unauthorized_to_success_differential(monkeypatch):
         if value.startswith("{"):
             return Replay(
                 "GET",
-                "https://target.test/login?user=x",
-                None,
-                200,
+                    f"https://target.test/login?user={value}",
+                    None,
+                    200,
                 "authenticated-user-profile-" + ("x" * 100),
                 {},
                 5,
             )
-        return Replay("GET", "https://target.test/login?user=x", None, 403, "denied", {}, 5)
+        return Replay("GET", f"https://target.test/login?user={value}", None, 403, "denied", {}, 5)
 
     monkeypatch.setattr("webpent.agents.validator.active_checks._replay", replay)
     finding = _finding(VulnClass.NOSQL_INJECTION.value, "https://target.test/login?user=x")
