@@ -12,8 +12,8 @@ The WebPent checkout is `master` from `ElgendyMan/webpent-v61`. The bbscout sour
 
 | Check | Result |
 |---|---:|
-| WebPent full pytest with bbscout source on `PYTHONPATH` | **1409 passed, 244 warnings** |
-| bbscout independent pytest | **7 passed** |
+| WebPent full pytest with bbscout source on `PYTHONPATH` | **1410 passed, 244 warnings** |
+| bbscout independent pytest | **16 passed** |
 | Ruff | **passed** |
 | compileall | **passed** |
 | G-02 direct-I/O inventory | **280 records** |
@@ -24,7 +24,7 @@ The WebPent checkout is `master` from `ElgendyMan/webpent-v61`. The bbscout sour
 
 ## Implemented and verified
 
-The controller now validates promotion-ready proof material before creating causal edges, consumes and returns the coverage ledger, includes causal and coverage state in convergence fingerprints, preserves the planner's smart action order, and rebuilds the serialized attack graph after real findings are merged. The tests include the exact causal-ranking and low-coverage-priority paths through controller orchestration, not only isolated scorer tests.
+The controller now validates promotion-ready proof material before creating causal edges, consumes and returns the coverage ledger, includes causal and coverage state in convergence fingerprints, preserves the planner's smart action order, and rebuilds the serialized attack graph after real findings are merged. The tests include the exact causal-ranking and low-coverage-priority paths through controller orchestration, the post-finding attack-graph projection, and a complete bbscout build-to-ingestor-to-engagement offline dry-run path; they are not only isolated scorer tests.
 
 Gate 3 has a deterministic synthetic sealed/replayable ProofBundle artifact. The three-run qualification artifact is intentionally named and reported as an **offline qualification simulation**, not as Gate 5 and not as live qualification. Its generated evidence reports three reproducible runs, 100% proof/replay agreement on the synthetic fixture, zero unauthorized/out-of-scope attempts, and `live_qualification_proven=false`.
 

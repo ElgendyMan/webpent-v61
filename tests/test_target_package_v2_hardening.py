@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from bbscout.models import (
     CapabilityProfile,
@@ -630,3 +632,39 @@ def test_worker_first_run_admits_before_graph_and_passes_redacted_binding(tmp_pa
     assert initial_state["target_package_binding"]["lease_id"].startswith("lease-")
     assert "detached_signature" not in repr(initial_state)
     assert graph.state.values["target_package_binding"] == initial_state["target_package_binding"]
+
+
+def test_bbscout_build_ingest_engagement_dry_run_e2e(tmp_path):
+    """Exercise the complete local handoff without creating a transport client."""
+    from bbscout.webpent_ingestor import TargetPackageIngestor
+
+    package, private_key = signed_package()
+    package_path = tmp_path / "bbscout-target-package.json"
+    package_path.write_text(json.dumps(package), encoding="utf-8")
+
+    ingestor = TargetPackageIngestor()
+    context = ingestor.ingest(package_path)
+    ingestor.authorize_url(context, "http://example.test:80/app")
+
+    factory = EngagementFactory(
+        tmp_path / "dry-run-leases.sqlite3",
+        signature_verifier=lambda value: verify_detached_signature(
+            value,
+            trusted_public_keys={"fixture-runtime-key": private_key.public_key()},
+        ),
+    )
+    binding = factory.create_from_package(
+        package,
+        {
+            "user_confirmed": True,
+            "package_id": package["package_id"],
+            "package_sha256": package["integrity"]["content_sha256"],
+            "engagement_id": "bbscout-dry-run-e2e",
+            "target_url": "http://example.test:80/app",
+        },
+    )
+
+    assert context.package_sha256 == package["integrity"]["content_sha256"]
+    assert binding.engagement_id == "bbscout-dry-run-e2e"
+    assert binding.package_id == package["package_id"]
+    assert binding.as_dict()["target_package_status"] == "consumed"

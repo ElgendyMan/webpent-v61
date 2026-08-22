@@ -24,9 +24,9 @@
 
 | الاختبار/الفحص | النتيجة |
 |---|---:|
-| bbscout full pytest | 7 passed |
-| WebPent full pytest | 1409 passed، 244 warnings |
-| package/entrypoint/hardening focused | 35 passed، 2 warnings |
+| bbscout full pytest | 16 passed |
+| WebPent full pytest | 1410 passed، 244 warnings |
+| package/entrypoint/hardening focused | 36 passed، 2 warnings |
 | proof-focused verifier/active/package suite | مغطى داخل full suite الأخضر؛ لا regression بعد التوسعة |
 | Ruff full | passed |
 | compileall | passed |
@@ -63,4 +63,4 @@
 
 ## Release identity
 
-تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `d278653`، وهذه الجولة محفوظة في commit `7d48c08`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.
+تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `e91d111`، والتحديث التوثيقي النهائي محفوظ في commit `c86c839`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.

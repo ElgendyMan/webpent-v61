@@ -49,10 +49,10 @@
 
 | البوابة | النتيجة |
 |---|---:|
-| bbscout full pytest | **7 passed** |
-| WebPent full pytest | **1409 passed, 244 warnings** |
-| package/entrypoint/hardening focused suite | **35 passed, 2 warnings** |
-| causal/coverage/proof/qualification additions | **مغطاة داخل 1409 اختبارًا ناجحًا؛ Gate 3 وoffline three-run artifact مولدة آليًا** |
+| bbscout full pytest | **16 passed** |
+| WebPent full pytest | **1410 passed, 244 warnings** |
+| package/entrypoint/hardening focused suite | **36 passed, 2 warnings** |
+| causal/coverage/proof/qualification additions | **مغطاة داخل 1410 اختبارًا ناجحًا؛ Gate 3 وoffline three-run artifact مولدة آليًا** |
 | Ruff full | **passed** بعد إصلاح integration formatting/imports |
 | compileall | **passed** |
 | G-02 runtime | **passed؛ 280 primary records؛ لا اتصال خارجي** |
@@ -72,10 +72,10 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit السابق | `d278653` (`Enforce target-backed causal proof bundles`) |
-| Git commit roadmap الحالي | سيُملأ بعد commit/push بوابات Gate 1–6 |
+| Git commit التنفيذ | `e91d111` (`Enforce target-backed causal proof bundles`) |
+| Git commit التوثيق النهائي | `c86c839` |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
-| archive | `webpent_bbscout_integration_release.zip` |
-| archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
-| archive content count | يُحدّث بعد بناء archive النهائي؛ يتحقق منه `evidence/release_contents.txt` |
+| archive WebPent | `webpent_v61_c86c839_clean.zip` — يُسلّم منفصلًا عن مصدر bbscout المستخرج |
+| archive SHA256 | `webpent_v61_c86c839_clean.sha256` |
+| archive content count | يُتحقق منه بأمر `unzip -t` وبـSHA256 عند التسليم |
 | forbidden artifact scan | clean |
