@@ -42,7 +42,7 @@ from webpent.api.scan_registry import (
     release_resume_claim,
     scan_registry_health,
 )
-from webpent.config.settings import get_settings
+from webpent.config.settings import activate_settings, get_settings
 from webpent.graph.builder import NODE_EXECUTION_SANDBOX, build_graph
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
@@ -52,6 +52,8 @@ from webpent.shared.finding_aggregation import aggregate_findings, default_engag
 from webpent.shared.persistent_finding_ledger import PersistentFindingLedger
 from webpent.shared.preflight import run_startup_preflight
 from webpent.shared.resume_capability import issue_resume_capability
+from webpent.shared.target_workspace import TargetWorkspace, build_target_workspace
+from webpent.shared.target_workspace_context import activate_target_workspace
 from webpent.workers.pentest_worker import resume_pentest_task, run_pentest_task
 
 logger = logging.getLogger(__name__)
@@ -210,6 +212,21 @@ def _authorize_scan_resource(thread_id: str, user: User) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Scan not found")
 
     return record
+
+
+def _workspace_for_record(record: dict[str, Any]) -> TargetWorkspace:
+    """Build the isolated storage namespace for an authorized scan record."""
+    return build_target_workspace(
+        get_settings(),
+        target_origin=record["target_url"],
+        client_id=str(record.get("client_id") or ""),
+        engagement_id=record["engagement_id"],
+    ).ensure()
+
+
+def _settings_for_workspace(workspace: TargetWorkspace) -> Any:
+    """Return a Settings copy with only workspace storage paths overridden."""
+    return get_settings().model_copy(update=workspace.settings_overrides())
 
 
 # ===========================================================================
@@ -920,8 +937,12 @@ def get_scan_status(
     version that didn't persist the mapping).
     """
     logger.info("Status check for thread_id=%s (user=%s)", thread_id, user.username)
-    _authorize_scan_resource(thread_id, user)
-    state_info = _get_graph_status(thread_id)
+    record = _authorize_scan_resource(thread_id, user)
+    workspace = _workspace_for_record(record)
+    with activate_target_workspace(workspace), activate_settings(
+        _settings_for_workspace(workspace)
+    ):
+        state_info = _get_graph_status(thread_id)
 
     # V10 P0-0: PRIMARY cross-check — AsyncResult(task_id).state via
     # the persisted thread_id → task_id mapping.
@@ -1215,29 +1236,33 @@ def get_findings(
     logger.info("Fetching findings for thread_id=%s (user=%s)", thread_id, user.username)
     record = _authorize_scan_resource(thread_id, user)
 
+    workspace = _workspace_for_record(record)
     try:
-        # Findings are isolated by the authorized engagement scope, not by the
-        # latest run UUID. This preserves results across repeated scans while
-        # keeping owner/client predicates in the registry lookup.
-        sibling_threads = get_thread_ids_by_engagement_id(
-            str(record.get("engagement_id") or ""),
-            owner_username=str(record.get("owner_username") or user.username),
-            client_id=str(record.get("client_id") or ""),
-        )
-        thread_ids = sibling_threads or [thread_id]
-        db = get_db_manager()
-        all_findings = aggregate_findings(db.get_findings_by_threads(thread_ids))
-        try:
-            ledger_findings = PersistentFindingLedger(
-                get_settings().findings_ledger_path
-            ).get(
+        with activate_target_workspace(workspace), activate_settings(
+            _settings_for_workspace(workspace)
+        ):
+            # Findings are isolated by the authorized engagement scope, not by the
+            # latest run UUID. This preserves results across repeated scans while
+            # keeping owner/client predicates in the registry lookup.
+            sibling_threads = get_thread_ids_by_engagement_id(
                 str(record.get("engagement_id") or ""),
                 owner_username=str(record.get("owner_username") or user.username),
-                client_id=str(record.get("client_id") or "") or None,
+                client_id=str(record.get("client_id") or ""),
             )
-            all_findings = aggregate_findings([*ledger_findings, *all_findings])
-        except Exception:
-            logger.exception("Persistent findings ledger read failed (non-fatal)")
+            thread_ids = sibling_threads or [thread_id]
+            db = get_db_manager()
+            all_findings = aggregate_findings(db.get_findings_by_threads(thread_ids))
+            try:
+                ledger_findings = PersistentFindingLedger(
+                    get_settings().findings_ledger_path
+                ).get(
+                    str(record.get("engagement_id") or ""),
+                    owner_username=str(record.get("owner_username") or user.username),
+                    client_id=str(record.get("client_id") or "") or None,
+                )
+                all_findings = aggregate_findings([*ledger_findings, *all_findings])
+            except Exception:
+                logger.exception("Persistent findings ledger read failed (non-fatal)")
     except Exception as exc:
         logger.error("Failed to read findings from database: %s", exc)
         raise HTTPException(status_code=500, detail=f"Failed to read findings: {exc}") from exc
@@ -1266,27 +1291,31 @@ def get_risk_summary(
     no new computation or storage.
     """
     record = _authorize_scan_resource(thread_id, user)
+    workspace = _workspace_for_record(record)
 
     try:
-        sibling_threads = get_thread_ids_by_engagement_id(
-            str(record.get("engagement_id") or ""),
-            owner_username=str(record.get("owner_username") or user.username),
-            client_id=str(record.get("client_id") or ""),
-        )
-        thread_ids = sibling_threads or [thread_id]
-        db = get_db_manager()
-        findings = aggregate_findings(db.get_findings_by_threads(thread_ids))
-        try:
-            ledger_findings = PersistentFindingLedger(
-                get_settings().findings_ledger_path
-            ).get(
+        with activate_target_workspace(workspace), activate_settings(
+            _settings_for_workspace(workspace)
+        ):
+            sibling_threads = get_thread_ids_by_engagement_id(
                 str(record.get("engagement_id") or ""),
                 owner_username=str(record.get("owner_username") or user.username),
-                client_id=str(record.get("client_id") or "") or None,
+                client_id=str(record.get("client_id") or ""),
             )
-            findings = aggregate_findings([*ledger_findings, *findings])
-        except Exception:
-            logger.exception("Persistent findings ledger read failed (non-fatal)")
+            thread_ids = sibling_threads or [thread_id]
+            db = get_db_manager()
+            findings = aggregate_findings(db.get_findings_by_threads(thread_ids))
+            try:
+                ledger_findings = PersistentFindingLedger(
+                    get_settings().findings_ledger_path
+                ).get(
+                    str(record.get("engagement_id") or ""),
+                    owner_username=str(record.get("owner_username") or user.username),
+                    client_id=str(record.get("client_id") or "") or None,
+                )
+                findings = aggregate_findings([*ledger_findings, *findings])
+            except Exception:
+                logger.exception("Persistent findings ledger read failed (non-fatal)")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to read findings: {exc}") from exc
 

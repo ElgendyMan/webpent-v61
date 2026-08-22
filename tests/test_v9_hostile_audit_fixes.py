@@ -138,6 +138,7 @@ class TestFix6CeleryInspectTimeout:
                 "owner_username": "operator",
                 "client_id": "test-client",
                 "engagement_id": "test-thread-fix6",
+                "target_url": "http://target.example.test/",
             },
         ):
             t0 = time.monotonic()

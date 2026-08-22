@@ -34,6 +34,7 @@ from webpent.cli.loaders import load_cookie_file, load_creds_file, load_payload_
 from webpent.config.settings import (
     ScanMode,
     ScanProfile,
+    activate_settings,
     get_settings,
     resolve_scan_profile,
 )
@@ -48,6 +49,8 @@ from webpent.shared.persistent_finding_ledger import (
     PersistentFindingLedger,
     current_release_id,
 )
+from webpent.shared.target_workspace import build_target_workspace
+from webpent.shared.target_workspace_context import activate_target_workspace
 from webpent.state.initial_state import build_initial_state
 
 app = typer.Typer(
@@ -538,95 +541,162 @@ def scan(
         )
 
     # --- Build and invoke the graph ---
-    from webpent.models.targets import Target
+    # Target-scoped storage must be activated before graph/checkpointer access.
+    # The workspace descriptor contains no credentials or live handles.
+    base_settings = get_settings()
+    workspace = build_target_workspace(
+        base_settings,
+        target_origin=url,
+        client_id=client_id or "",
+        engagement_id=resolved_engagement_id,
+    ).ensure()
+    workspace_settings = base_settings.model_copy(update=workspace.settings_overrides())
 
-    settings = get_settings()
-    target = Target(url=url, is_portswigger_lab=portswigger)
+    with activate_target_workspace(workspace), activate_settings(workspace_settings):
+        from webpent.models.targets import Target
 
-    # V10 HOSTILE P1-2 FIX: credentials are threaded via state["credentials"]
-    # (see initial_state below) — the same secure path the API/worker uses.
-    # The previous version ALSO stuffed username:/password: into
-    # target.description, which gets persisted in the LangGraph checkpoint
-    # (SqliteSaver) as plaintext — the exact problem FIX-10 was designed
-    # to prevent. auth_node reads state["credentials"], NOT
-    # target.description (V4.5 Integration Fix removed the regex
-    # extraction). The description stuffing was dead code that created a
-    # plaintext-password-in-checkpoint risk. Deleted.
+        settings = get_settings()
+        target = Target(url=url, is_portswigger_lab=portswigger)
 
-    from webpent.shared.engagement_scope import (
-        clear_engagement_target_hosts,
-        set_engagement_target_hosts,
-    )
+        # V10 HOSTILE P1-2 FIX: credentials are threaded via state["credentials"]
+        # (see initial_state below) — the same secure path the API/worker uses.
+        # The previous version ALSO stuffed username:/password: into
+        # target.description, which gets persisted in the LangGraph checkpoint
+        # (SqliteSaver) as plaintext — the exact problem FIX-10 was designed
+        # to prevent. auth_node reads state["credentials"], NOT
+        # target.description (V4.5 Integration Fix removed the regex
+        # extraction). The description stuffing was dead code that created a
+        # plaintext-password-in-checkpoint risk. Deleted.
 
-    # V7 P0 FIX: declare this engagement's own target host so the SSRF
-    # guard (shared/http.py) allows connecting to it even if it is a
-    # private/reserved-network address (e.g. a lab DVWA VM). Mirrors
-    # the same call in workers/pentest_worker.py::run_pentest_task —
-    # the CLI is a separate entry point that also invokes the graph
-    # directly and needs the allowlist set independently.
-    token = set_engagement_target_hosts(target.url, *declared_additional_origins)
-    try:
-        from webpent.auth.reauth_vault import (
-            identity_vault_key,
-            seal_identity_profiles,
-            seal_reauth_secret,
-            seal_session_cookies,
+        from webpent.shared.engagement_scope import (
+            clear_engagement_target_hosts,
+            set_engagement_target_hosts,
         )
 
-        # Keep operator secrets in the worker-memory vault, never in the
-        # initial graph state that can be checkpointed.
-        _cli_password = (credentials or {}).get("password", "") or ""
-        if _cli_password:
-            seal_reauth_secret(resolved_thread_id, _cli_password)
-        if operator_cookies:
-            seal_session_cookies(resolved_thread_id, operator_cookies)
-        if identity_profiles:
-            seal_identity_profiles(
-                identity_vault_key(client_id or "", resolved_engagement_id),
-                identity_profiles,
-            )
-        safe_credentials = dict(credentials or {})
-        if "password" in safe_credentials:
-            safe_credentials["password"] = ""
-
-        with get_checkpointer() as checkpointer:
-            graph = build_graph(checkpointer=checkpointer, auto_approve=auto_approve)
-
-            initial_state = build_initial_state(
-                target,
-                thread_id=resolved_thread_id,
-                client_id=client_id or "",
-                engagement_id=resolved_engagement_id,
-                additional_target_origins=declared_additional_origins,
-                credentials=safe_credentials,
-                session_cookies={},
-                identity_profiles=identity_profiles,
-                jwt_weak_secret_candidates=jwt_candidates,
-                jwt_public_key_available=jwt_public_key_available,
-                disclosed_report_corpus=disclosed_report_corpus,
-                llm_override=False if no_llm else None,
-                custom_payloads=custom_payloads,
-                report_formats=selected_report_formats,
-                playwright_enabled=playwright_enabled,
-                skip_recon=skip_recon,
-                stealth_mode=stealth,
-                scan_mode=resolved_mode,
-                profile=resolved_profile,
-                action_ledger_path=str(settings.action_ledger_path),
-                campaign_inventory=campaign_inventory,
+        # V7 P0 FIX: declare this engagement's own target host so the SSRF
+        # guard (shared/http.py) allows connecting to it even if it is a
+        # private/reserved-network address (e.g. a lab DVWA VM). Mirrors
+        # the same call in workers/pentest_worker.py::run_pentest_task —
+        # the CLI is a separate entry point that also invokes the graph
+        # directly and needs the allowlist set independently.
+        token = set_engagement_target_hosts(target.url, *declared_additional_origins)
+        try:
+            from webpent.auth.reauth_vault import (
+                identity_vault_key,
+                seal_identity_profiles,
+                seal_reauth_secret,
+                seal_session_cookies,
             )
 
-            config = {
-                "recursion_limit": settings.max_graph_steps,
-                "configurable": {"thread_id": resolved_thread_id},
-            }
-
+            # Keep operator secrets in the worker-memory vault, never in the
+            # initial graph state that can be checkpointed.
+            _cli_password = (credentials or {}).get("password", "") or ""
             if _cli_password:
-                console.print(
-                    f"[dim]V10 P1-2: sealed reauth vault for thread_id={resolved_thread_id}[/dim]"
+                seal_reauth_secret(resolved_thread_id, _cli_password)
+            if operator_cookies:
+                seal_session_cookies(resolved_thread_id, operator_cookies)
+            if identity_profiles:
+                seal_identity_profiles(
+                    identity_vault_key(client_id or "", resolved_engagement_id),
+                    identity_profiles,
                 )
-            del _cli_password
+            safe_credentials = dict(credentials or {})
+            if "password" in safe_credentials:
+                safe_credentials["password"] = ""
 
+            with get_checkpointer() as checkpointer:
+                graph = build_graph(checkpointer=checkpointer, auto_approve=auto_approve)
+
+                initial_state = build_initial_state(
+                    target,
+                    thread_id=resolved_thread_id,
+                    client_id=client_id or "",
+                    engagement_id=resolved_engagement_id,
+                    additional_target_origins=declared_additional_origins,
+                    credentials=safe_credentials,
+                    session_cookies={},
+                    identity_profiles=identity_profiles,
+                    jwt_weak_secret_candidates=jwt_candidates,
+                    jwt_public_key_available=jwt_public_key_available,
+                    disclosed_report_corpus=disclosed_report_corpus,
+                    llm_override=False if no_llm else None,
+                    custom_payloads=custom_payloads,
+                    report_formats=selected_report_formats,
+                    playwright_enabled=playwright_enabled,
+                    skip_recon=skip_recon,
+                    stealth_mode=stealth,
+                    scan_mode=resolved_mode,
+                    profile=resolved_profile,
+                    action_ledger_path=str(settings.action_ledger_path),
+                    campaign_inventory=campaign_inventory,
+                )
+
+                config = {
+                    "recursion_limit": settings.max_graph_steps,
+                    "configurable": {"thread_id": resolved_thread_id},
+                }
+
+                if _cli_password:
+                    console.print(
+                        "[dim]V10 P1-2: sealed reauth vault for "
+                        f"thread_id={resolved_thread_id}[/dim]"
+                    )
+                del _cli_password
+
+                register_scan(
+                    resolved_thread_id,
+                    f"cli:{resolved_thread_id}",
+                    target_url=url,
+                    owner_username="",
+                    client_id=client_id or "",
+                    engagement_id=resolved_engagement_id,
+                )
+                console.print("\n[bold blue][*] Invoking LangGraph orchestrator...[/bold blue]\n")
+                from webpent.shared.llm import llm_enabled_override, llm_usage_scope
+
+                if stealth:
+                    from webpent.shared.stealth import reset_stealth_telemetry
+
+                    reset_stealth_telemetry()
+                with llm_enabled_override(False if no_llm else None), llm_usage_scope():
+                    final_state = graph.invoke(initial_state, config=config)
+                    if isinstance(final_state, dict):
+                        from webpent.shared.llm import get_llm_usage_trace
+
+                        final_state["llm_usage_trace"] = get_llm_usage_trace()
+
+        except Exception as exc:
+            err_console.print(f"[red]ERROR: Engagement failed — {exc}[/red]")
+            raise typer.Exit(1) from exc
+        finally:
+            # V7 P0 FIX: release the allowlist so a long-lived interactive
+            # shell (or test runner) that invokes multiple engagements in
+            # the same process never carries a stale target forward.
+            clear_engagement_target_hosts(token)
+            # V10 HOSTILE P1-2: clear the reauth vault (same as the worker).
+            # Best-effort — never raises.
+            try:
+                from webpent.auth.reauth_vault import (
+                    clear_reauth_secret,
+                    identity_vault_key,
+                )
+
+                clear_reauth_secret(identity_vault_key(client_id or "", resolved_engagement_id))
+                clear_reauth_secret(resolved_thread_id)
+            except Exception:
+                pass
+
+        # --- Persist and project cumulative results ---
+        findings = list(final_state.get("findings") or [])
+        try:
+            db = get_db_manager()
+            db.init_db()
+            run_findings = [
+                finding.model_copy(update={"thread_id": resolved_thread_id})
+                for finding in findings
+            ]
+            for finding in run_findings:
+                db.save_finding(finding)
             register_scan(
                 resolved_thread_id,
                 f"cli:{resolved_thread_id}",
@@ -635,142 +705,88 @@ def scan(
                 client_id=client_id or "",
                 engagement_id=resolved_engagement_id,
             )
-            console.print("\n[bold blue][*] Invoking LangGraph orchestrator...[/bold blue]\n")
-            from webpent.shared.llm import llm_enabled_override, llm_usage_scope
+            sibling_threads = get_thread_ids_by_engagement_id(
+                resolved_engagement_id,
+                owner_username="",
+                client_id=client_id or "",
+            )
+            findings = aggregate_findings(
+                db.get_findings_by_threads(sibling_threads or [resolved_thread_id])
+            )
+            findings = PersistentFindingLedger(settings.findings_ledger_path).merge(
+                resolved_engagement_id,
+                findings,
+                owner_username="",
+                client_id=client_id or "",
+                release_id=current_release_id(),
+                thread_id=resolved_thread_id,
+            )
+        except Exception as exc:
+            # Reporting must not turn a completed scan into a failed scan. Keep
+            # the graph result as a safe fallback if local persistence is degraded.
+            console.print(f"[yellow]⚠ Cumulative findings unavailable: {exc}[/yellow]")
 
-            if stealth:
-                from webpent.shared.stealth import reset_stealth_telemetry
+        # --- Display results ---
+        if stealth:
+            from webpent.shared.stealth import get_stealth_summary
 
-                reset_stealth_telemetry()
-            with llm_enabled_override(False if no_llm else None), llm_usage_scope():
-                final_state = graph.invoke(initial_state, config=config)
-                if isinstance(final_state, dict):
-                    from webpent.shared.llm import get_llm_usage_trace
-
-                    final_state["llm_usage_trace"] = get_llm_usage_trace()
-
-    except Exception as exc:
-        err_console.print(f"[red]ERROR: Engagement failed — {exc}[/red]")
-        raise typer.Exit(1) from exc
-    finally:
-        # V7 P0 FIX: release the allowlist so a long-lived interactive
-        # shell (or test runner) that invokes multiple engagements in
-        # the same process never carries a stale target forward.
-        clear_engagement_target_hosts(token)
-        # V10 HOSTILE P1-2: clear the reauth vault (same as the worker).
-        # Best-effort — never raises.
-        try:
-            from webpent.auth.reauth_vault import (
-                clear_reauth_secret,
-                identity_vault_key,
+            telemetry = get_stealth_summary()
+            console.print(
+                "[cyan]Stealth telemetry:[/cyan] "
+                f"jitter={telemetry['jitter_calls']} calls, "
+                f"rate-limit={telemetry['rate_limit_calls']} calls, "
+                f"sleep={telemetry['total_sleep_seconds']:.3f}s"
             )
 
-            clear_reauth_secret(identity_vault_key(client_id or "", resolved_engagement_id))
-            clear_reauth_secret(resolved_thread_id)
-        except Exception:
-            pass
+        if findings:
+            table = Table(
+                title=f"Findings ({len(findings)})",
+                title_style="bold white",
+                border_style="grey50",
+                header_style="bold cyan",
+            )
+            table.add_column("#", style="dim", width=4, justify="right")
+            table.add_column("Severity", width=10)
+            table.add_column("Confidence Level", width=18)
+            table.add_column("Title", min_width=30, max_width=60)
+            table.add_column("URL", min_width=30, max_width=50)
 
-    # --- Persist and project cumulative results ---
-    findings = list(final_state.get("findings") or [])
-    try:
-        db = get_db_manager()
-        db.init_db()
-        run_findings = [
-            finding.model_copy(update={"thread_id": resolved_thread_id})
-            for finding in findings
-        ]
-        for finding in run_findings:
-            db.save_finding(finding)
-        register_scan(
-            resolved_thread_id,
-            f"cli:{resolved_thread_id}",
-            target_url=url,
-            owner_username="",
-            client_id=client_id or "",
-            engagement_id=resolved_engagement_id,
-        )
-        sibling_threads = get_thread_ids_by_engagement_id(
-            resolved_engagement_id,
-            owner_username="",
-            client_id=client_id or "",
-        )
-        findings = aggregate_findings(
-            db.get_findings_by_threads(sibling_threads or [resolved_thread_id])
-        )
-        findings = PersistentFindingLedger(settings.findings_ledger_path).merge(
-            resolved_engagement_id,
-            findings,
-            owner_username="",
-            client_id=client_id or "",
-            release_id=current_release_id(),
-            thread_id=resolved_thread_id,
-        )
-    except Exception as exc:
-        # Reporting must not turn a completed scan into a failed scan. Keep
-        # the graph result as a safe fallback if local persistence is degraded.
-        console.print(f"[yellow]⚠ Cumulative findings unavailable: {exc}[/yellow]")
+            sev_styles = {
+                "critical": "bold red",
+                "high": "red",
+                "medium": "yellow",
+                "low": "cyan",
+                "info": "blue",
+            }
 
-    # --- Display results ---
-    if stealth:
-        from webpent.shared.stealth import get_stealth_summary
+            for idx, f in enumerate(findings, 1):
+                sev = str(getattr(f, "severity", "info")).lower()
+                sev_text = Text(sev.upper(), style=sev_styles.get(sev, "white"))
+                conf_level = getattr(f, "confidence_level", "Pending")
+                table.add_row(str(idx), sev_text, conf_level, f.title, f.url)
 
-        telemetry = get_stealth_summary()
+            console.print(table)
+        else:
+            console.print("[dim]No findings discovered.[/dim]")
+
+        # --- Summary panel ---
+        output_dir = settings.ensure_output_dir()
+        report_names = ["json", "html", "pdf", "md"]
+        if selected_report_formats and "all" not in selected_report_formats:
+            report_names = selected_report_formats
+        report_label = ", ".join(report_names)
         console.print(
-            "[cyan]Stealth telemetry:[/cyan] "
-            f"jitter={telemetry['jitter_calls']} calls, "
-            f"rate-limit={telemetry['rate_limit_calls']} calls, "
-            f"sleep={telemetry['total_sleep_seconds']:.3f}s"
+            Panel(
+                f"[bold green]Engagement Completed[/bold green]\n\n"
+                f"  [dim]Thread ID[/dim]    {resolved_thread_id}\n"
+                f"  [dim]Findings[/dim]     {len(findings)}\n"
+                f"  [dim]Reports[/dim]      {report_label} in {output_dir}\n"
+                f"  [dim]Database[/dim]     {settings.database_url}\n"
+                f"  [dim]Release[/dim]      {current_release_id()}\n"
+                f"  [dim]Ledger[/dim]       {settings.findings_ledger_path}\n",
+                border_style="green",
+            )
         )
-
-    if findings:
-        table = Table(
-            title=f"Findings ({len(findings)})",
-            title_style="bold white",
-            border_style="grey50",
-            header_style="bold cyan",
-        )
-        table.add_column("#", style="dim", width=4, justify="right")
-        table.add_column("Severity", width=10)
-        table.add_column("Confidence Level", width=18)
-        table.add_column("Title", min_width=30, max_width=60)
-        table.add_column("URL", min_width=30, max_width=50)
-
-        sev_styles = {
-            "critical": "bold red",
-            "high": "red",
-            "medium": "yellow",
-            "low": "cyan",
-            "info": "blue",
-        }
-
-        for idx, f in enumerate(findings, 1):
-            sev = str(getattr(f, "severity", "info")).lower()
-            sev_text = Text(sev.upper(), style=sev_styles.get(sev, "white"))
-            conf_level = getattr(f, "confidence_level", "Pending")
-            table.add_row(str(idx), sev_text, conf_level, f.title, f.url)
-
-        console.print(table)
-    else:
-        console.print("[dim]No findings discovered.[/dim]")
-
-    # --- Summary panel ---
-    output_dir = settings.ensure_output_dir()
-    report_names = ["json", "html", "pdf", "md"]
-    if selected_report_formats and "all" not in selected_report_formats:
-        report_names = selected_report_formats
-    report_label = ", ".join(report_names)
-    console.print(
-        Panel(
-            f"[bold green]Engagement Completed[/bold green]\n\n"
-            f"  [dim]Thread ID[/dim]    {resolved_thread_id}\n"
-            f"  [dim]Findings[/dim]     {len(findings)}\n"
-            f"  [dim]Reports[/dim]      {report_label} in {output_dir}\n"
-            f"  [dim]Database[/dim]     {settings.database_url}\n"
-            f"  [dim]Release[/dim]      {current_release_id()}\n"
-            f"  [dim]Ledger[/dim]       {settings.findings_ledger_path}\n",
-            border_style="green",
-        )
-    )
 
 
 @app.command()

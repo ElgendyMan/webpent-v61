@@ -341,14 +341,34 @@ def _managed_fallback_saver(conn: sqlite3.Connection) -> Iterator[RedactingSqlit
         conn.close()
 
 
-def get_checkpointer(db_path: str = _DEFAULT_SESSIONS_DB_PATH):
-    """Return a context manager yielding a contention-safe redacting saver."""
-    _ensure_parent_dir(db_path)
+def get_checkpointer(db_path: str | Path | None = None):
+    """Return a target-scoped, contention-safe redacting saver.
+
+    An explicit path always wins.  Otherwise an active target workspace owns
+    the sessions database; callers outside a workspace retain the historical
+    global path for backward compatibility.
+    """
+    resolved_path = db_path
+    if resolved_path is None:
+        try:
+            from webpent.shared.target_workspace_context import (
+                get_active_target_workspace,
+            )
+
+            workspace = get_active_target_workspace()
+        except ImportError:
+            workspace = None
+        if workspace is not None:
+            resolved_path = workspace.sessions_database_path
+    if resolved_path is None:
+        resolved_path = _DEFAULT_SESSIONS_DB_PATH
+    resolved_path = str(resolved_path)
+    _ensure_parent_dir(resolved_path)
     try:
-        saver_factory = SqliteSaver.from_conn_string(conn_string=db_path)
-        logger.info("LangGraph SqliteSaver checkpointer factory created at %s", db_path)
+        saver_factory = SqliteSaver.from_conn_string(conn_string=resolved_path)
+        logger.info("LangGraph SqliteSaver checkpointer factory created at %s", resolved_path)
         return _managed_factory_saver(saver_factory)
     except (TypeError, AttributeError):
         logger.warning("SqliteSaver.from_conn_string unavailable; using explicit connection")
-        conn = sqlite3.connect(db_path, check_same_thread=False)
+        conn = sqlite3.connect(resolved_path, check_same_thread=False)
         return _managed_fallback_saver(conn)

@@ -617,13 +617,13 @@ def inventory_contract_errors(
     observed = inventory.get("records")
     if observed != expected:
         errors.append("artifact records drift from current source scan")
-        return errors
-    keys = [inventory_key(record) for record in observed]
+    observed_records = observed if isinstance(observed, list) else []
+    keys = [inventory_key(record) for record in observed_records]
     if len(keys) != len(set(keys)):
         errors.append("duplicate inventory record key")
     logical = inventory.get("logical_transports") or {}
     families = set(logical)
-    for record in observed:
+    for record in observed_records:
         if record.get("transport") == "unclassified":
             errors.append(f"unclassified transport: {record.get('file')}:{record.get('line')}")
         if (

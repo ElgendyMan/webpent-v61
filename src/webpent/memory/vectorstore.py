@@ -496,43 +496,54 @@ class VectorStoreManager:
 # 5-second embeddings load and produce two competing Chroma handles).
 _SINGLETON_LOCK = threading.Lock()
 _SINGLETON_INSTANCE: VectorStoreManager | None = None
+_SCOPED_INSTANCES: dict[str, VectorStoreManager] = {}
 
 
-def get_vector_store_manager() -> VectorStoreManager:
-    """Return the process-wide :class:`VectorStoreManager` singleton.
+def get_vector_store_manager(
+    persist_path: str | None = None,
+) -> VectorStoreManager:
+    """Return a manager scoped to an explicit or active target RAG path.
 
-    V6 Titanium P2 FIX (CISO audit — Singleton Anti-Pattern):
-        All agents and CLIs that need RAG access should call this
-        function instead of constructing ``VectorStoreManager()``
-        directly. The singleton caches:
-
-          * The sentence-transformers embeddings model (loaded once,
-            ~5 seconds on a cold start).
-          * The Chroma collection handles for ``webpent_lessons`` and
-            ``webpent_knowledge`` (created lazily on first access).
-
-        Reusing the singleton means a warm process answers RAG
-        queries in milliseconds instead of seconds.
-
-    Returns:
-        The shared :class:`VectorStoreManager` instance. Always the
-        same object within a single process; a fresh instance is
-        created only if the process is restarted.
+    Legacy callers outside a target workspace retain the original singleton.
+    During target-scoped execution, omitted ``persist_path`` resolves to the
+    active workspace's Chroma directory and is cached by path.
     """
     global _SINGLETON_INSTANCE
-    if _SINGLETON_INSTANCE is not None:
-        return _SINGLETON_INSTANCE
-    with _SINGLETON_LOCK:
-        # Double-checked locking: re-test inside the lock so the
-        # first thread's assignment is observed by the second thread
-        # without both constructing a manager.
-        if _SINGLETON_INSTANCE is None:
-            _SINGLETON_INSTANCE = VectorStoreManager()
-            logger.debug(
-                "VectorStoreManager singleton created (id=%d).",
-                id(_SINGLETON_INSTANCE),
+    resolved_path = persist_path
+    if resolved_path is None:
+        try:
+            from webpent.shared.target_workspace_context import (
+                get_active_target_workspace,
             )
-    return _SINGLETON_INSTANCE
+
+            workspace = get_active_target_workspace()
+        except ImportError:
+            workspace = None
+        if workspace is not None:
+            resolved_path = str(workspace.chroma_path)
+    if resolved_path is None:
+        if _SINGLETON_INSTANCE is not None:
+            return _SINGLETON_INSTANCE
+        with _SINGLETON_LOCK:
+            if _SINGLETON_INSTANCE is None:
+                _SINGLETON_INSTANCE = VectorStoreManager()
+                logger.debug(
+                    "VectorStoreManager singleton created (id=%d).",
+                    id(_SINGLETON_INSTANCE),
+                )
+        return _SINGLETON_INSTANCE
+    key = str(Path(resolved_path).expanduser().resolve())
+    with _SINGLETON_LOCK:
+        manager = _SCOPED_INSTANCES.get(key)
+        if manager is None:
+            manager = VectorStoreManager(key)
+            _SCOPED_INSTANCES[key] = manager
+            logger.debug(
+                "Target-scoped VectorStoreManager created (path=%s, id=%d).",
+                key,
+                id(manager),
+            )
+        return manager
 
 
 def reset_vector_store_manager() -> None:
@@ -546,3 +557,4 @@ def reset_vector_store_manager() -> None:
     global _SINGLETON_INSTANCE
     with _SINGLETON_LOCK:
         _SINGLETON_INSTANCE = None
+        _SCOPED_INSTANCES.clear()

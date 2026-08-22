@@ -1153,33 +1153,41 @@ class DatabaseManager:
 # through the single shared lock.
 # ======================================================================
 _db_manager_singleton: DatabaseManager | None = None
+_db_manager_singletons: dict[str, DatabaseManager] = {}
 _db_manager_singleton_lock = threading.Lock()
 
 
 def get_db_manager(database_url: str | None = None) -> DatabaseManager:
-    """Return the shared :class:`DatabaseManager` singleton.
+    """Return a manager scoped to an explicit or active target database.
 
-    All callers in the framework (API, workers, agents) MUST use this
-    accessor instead of constructing ``DatabaseManager()`` directly.
-    Multiple direct constructions break the in-process write lock
-    guarantee and re-trigger Alembic migration attempts on every call.
-
-    Args:
-        database_url: Optional database URL. Only honoured on the very
-            first call (i.e. when the singleton has not yet been
-            created); subsequent calls return the existing singleton
-            regardless of this argument. This matches the previous
-            behaviour where most callers relied on the URL derived
-            from ``get_settings()`` inside ``DatabaseManager._db_path``.
-
-    Returns:
-        The shared :class:`DatabaseManager` instance.
+    Legacy callers outside a target workspace keep the original singleton
+    semantics. During a target-scoped execution, an omitted URL resolves to
+    that workspace's database and is cached by its normalized URL, preventing
+    one target from reusing another target's SQLite connection state.
     """
     global _db_manager_singleton
-    if _db_manager_singleton is None:
-        with _db_manager_singleton_lock:
-            # Double-checked locking — prevents two threads from
-            # simultaneously constructing two instances on first call.
-            if _db_manager_singleton is None:
-                _db_manager_singleton = DatabaseManager(database_url)
-    return _db_manager_singleton
+    resolved_url = database_url
+    if resolved_url is None:
+        try:
+            from webpent.shared.target_workspace_context import (
+                get_active_target_workspace,
+            )
+
+            workspace = get_active_target_workspace()
+        except ImportError:
+            workspace = None
+        if workspace is not None:
+            resolved_url = workspace.database_url
+    if resolved_url is None:
+        if _db_manager_singleton is None:
+            with _db_manager_singleton_lock:
+                if _db_manager_singleton is None:
+                    _db_manager_singleton = DatabaseManager()
+        return _db_manager_singleton
+    key = str(resolved_url)
+    with _db_manager_singleton_lock:
+        manager = _db_manager_singletons.get(key)
+        if manager is None:
+            manager = DatabaseManager(key)
+            _db_manager_singletons[key] = manager
+        return manager

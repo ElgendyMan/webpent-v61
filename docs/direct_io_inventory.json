@@ -871,7 +871,7 @@
       "column": 9,
       "file": "src/webpent/cli/__init__.py",
       "kind": "import",
-      "line": 189,
+      "line": 192,
       "normalized_symbol": "playwright.sync_api.sync_playwright",
       "reason": "bounded_playwright_preflight",
       "symbol": "playwright.sync_api.sync_playwright",

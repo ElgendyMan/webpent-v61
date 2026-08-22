@@ -10,6 +10,9 @@ can boot in development without an explicit ``.env`` file.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
@@ -584,6 +587,21 @@ class Settings(BaseSettings):
     phpggc_path: str = "phpggc"
 
     # -- Storage -------------------------------------------------------------
+    # Each scan may derive a deterministic target-scoped workspace beneath
+    # this root. Legacy callers remain compatible because they only opt in
+    # when the scan entrypoint constructs a TargetWorkspace.
+    target_workspace_root: Path = Field(
+        default=Path("~/.webpent/workspaces"),
+        validation_alias=AliasChoices(
+            "target_workspace_root",
+            "TARGET_WORKSPACE_ROOT",
+            "WEBPENT_TARGET_WORKSPACE_ROOT",
+        ),
+        description=(
+            "Root directory for per-target workspaces containing isolated "
+            "reports, sessions, databases, ledgers, and RAG stores."
+        ),
+    )
     output_dir: Path = Field(default=Path("./output"))
     database_url: str = Field(
         default="sqlite:///./webpent.db",
@@ -1407,7 +1425,32 @@ class Settings(BaseSettings):
         return self.output_dir
 
 
+_ACTIVE_SETTINGS: ContextVar[Settings | None] = ContextVar(
+    "webpent_active_settings", default=None
+)
+
+
 @lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    """Return a cached ``Settings`` singleton."""
+def _base_settings() -> Settings:
+    """Return the process-wide legacy Settings singleton."""
     return Settings()
+
+
+def get_settings() -> Settings:
+    """Return active target-scoped settings, or the legacy singleton."""
+    active = _ACTIVE_SETTINGS.get()
+    return active if active is not None else _base_settings()
+
+
+# Preserve the public cache-management hook used by existing tests and callers.
+get_settings.cache_clear = _base_settings.cache_clear  # type: ignore[attr-defined]
+
+
+@contextmanager
+def activate_settings(settings: Settings) -> Iterator[Settings]:
+    """Temporarily activate settings for one target execution context."""
+    token = _ACTIVE_SETTINGS.set(settings)
+    try:
+        yield settings
+    finally:
+        _ACTIVE_SETTINGS.reset(token)

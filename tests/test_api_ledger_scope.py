@@ -5,6 +5,11 @@ from types import SimpleNamespace
 import pytest
 
 
+class _SettingsStub(SimpleNamespace):
+    def model_copy(self, *, update: dict[str, object]):
+        return _SettingsStub(**{**vars(self), **update})
+
+
 class _LedgerSpy:
     calls: list[dict[str, object]] = []
 
@@ -34,6 +39,7 @@ def scoped_api(monkeypatch):
 
     _LedgerSpy.calls = []
     record = {
+        "target_url": "https://target.example.test/",
         "engagement_id": "eng-scope",
         "owner_username": "alice",
         "client_id": "tenant-a",
@@ -52,7 +58,7 @@ def scoped_api(monkeypatch):
     monkeypatch.setattr(
         app_mod,
         "get_settings",
-        lambda: SimpleNamespace(findings_ledger_path="/tmp/test-ledger.sqlite3"),
+        lambda: _SettingsStub(findings_ledger_path="/tmp/test-ledger.sqlite3"),
     )
     monkeypatch.setattr(app_mod, "PersistentFindingLedger", _LedgerSpy)
     return app_mod, SimpleNamespace(username="alice", role="operator")
