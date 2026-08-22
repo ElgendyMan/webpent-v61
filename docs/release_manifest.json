@@ -575,7 +575,7 @@
     "tests/test_campaign_executor.py": "ca9c57597379bb38269f958793b3ed570fe6075b6e1655a931ccdc49de7c87a7",
     "tests/test_checkpoint_redaction.py": "55d7480344373829ae8ed30316e8f5e589352d199b4f518b67668c59fe08aa5d",
     "tests/test_checkpoint_runtime_context.py": "29b31e4bdd94d84e0b8f6afb4d40f2cac161b7b8bd1da416037bfee486088ee1",
-    "tests/test_control_plane_contracts.py": "d89eea04b3d234562d7c61c3a3921121bde5e87d25fd5087990963e9aa5afa43",
+    "tests/test_control_plane_contracts.py": "8fee6e26545f7b2d7a2e4069733641b000017b0c2dda96001fc1141f09f03bc6",
     "tests/test_control_plane_local_harness.py": "27103eff3bc13bfa14024642c071df00f01839129e8d55ca73a7136e443aace2",
     "tests/test_control_plane_runtime.py": "a8a0e2d708f6907be23c05ce668c7818360615b47afa0a3b75ef4a3f5876deff",
     "tests/test_control_plane_spine.py": "8597d1d02c152ecffba75dc3c7ab8f00db81ed5465305614d7b8a0e24d1df095",
@@ -593,7 +593,7 @@
     "tests/test_g02_precommit_enforcement.py": "5e1042fb5d89221b8c3d26883922155fb96fa89705b72427462cfb488dbe209a",
     "tests/test_g02_runtime_invariants.py": "65af19951fcb06fdd8354bcbb106c5655a57802c653901a721e272440de9b5d2",
     "tests/test_g02_scanner_expansion.py": "b2288f9ba93633715a284b3958099ee23cdf6b56cb173174df53115534228cf0",
-    "tests/test_identity_provisioning.py": "badb88cb6f8f19dff1f1d38ba96ade2c9135e997da0a467f5da04fd11a5851ef",
+    "tests/test_identity_provisioning.py": "914989542335deebb35c00a7c795bdf3ff444ca7f9d1895dde8ceb72d6fdd960",
     "tests/test_llm_doctor_contract.py": "50a0aef36768d322d934b0c3b1fdba44342ce1d44fcb706189c9c27d9cb0b476",
     "tests/test_llm_provider_compatibility.py": "4278a86d5192831222e58972690d3b69e47ce5e1f7cabf2024d50e934e64cafc",
     "tests/test_nettacker_adapter.py": "043692abd6ffc384456046b8835ea82e3c9d4d62f4ade4cc853162ef773f4c1d",
@@ -763,8 +763,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T02:46:59.725657+00:00",
-  "git_commit": "6827031c35d18f941ff2ec478551e842776e5594",
+  "generated_at": "2026-08-22T02:48:51.525436+00:00",
+  "git_commit": "95d7e88a876139f617b4a39253fbfc2fcbbc6bdf",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
