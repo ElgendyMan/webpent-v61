@@ -33,7 +33,7 @@
 | bounded autonomy contracts | `autonomy_contracts.py`؛ budget/stop/cycle contracts مع legacy resume aliases | منفذ offline | autonomy adversarial tests + full suite |
 | unified research loop | smart campaigns تربط session/gaps/actions/target knowledge/attack graph | منفذ offline | research-loop contract tests؛ لا I/O جديد |
 | memory/RAG + LLM boundary | redaction-safe bounded telemetry؛ advisory-only؛ لا snippets/claims كدليل | منفذ offline | memory/LLM adversarial tests |
-| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | `qualification.py` و`run_gate5_offline_qualification.py`؛ Gate 5: 3 runs deterministic، reproducible=true، proof/replay agreement=1.0؛ لا live precision/recall |
+| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | `qualification.py` و`run_offline_three_run_qualification.py`؛ offline simulation: 3 runs deterministic، reproducible=true، proof/replay agreement=1.0؛ لا live precision/recall |
 | provider adapters | Bugcrowd/Intigriti/YesWeHack adapters | **MISSING** | لا يوجد ادعاء تنفيذ |
 | live qualification | WAPTLab/Juice Shop live scan | **غير منفذ عمدًا** | لا target I/O في هذه المرحلة |
 | distributed qualification | Docker/Celery multi-run evidence | **غير مؤهل** | انظر تقرير Docker/Celery |
