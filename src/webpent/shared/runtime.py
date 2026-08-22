@@ -31,6 +31,7 @@ from webpent.shared.research_intelligence import (
     SmartNextBestActionEngine,
 )
 from webpent.shared.safety_gate import EngagementSafetyGate
+from webpent.shared.wildcard_scope import ScopeRuntimeHandle, compile_wildcard_scope
 
 
 class RuntimeConfigurationError(ValueError):
@@ -249,6 +250,8 @@ class RuntimeContext:
     identity_provisioning_agent: Any | None = None
     # The immutable control-plane scope used by optional identity workflows.
     engagement_scope: EngagementScope | None = None
+    # Live wildcard scope handle; never placed directly in state/checkpoints.
+    scope_runtime_handle: ScopeRuntimeHandle | None = None
 
     @property
     def valid(self) -> bool:
@@ -400,10 +403,16 @@ class RuntimeFactory:
         workflow_state_machine: Any | None = None,
         replay_engine: Any | None = None,
         identity_provisioning_agent: Any | None = None,
+        scope_runtime_handle: ScopeRuntimeHandle | None = None,
+        raw_scope_entries: list[str] | tuple[str, ...] | None = None,
         enable_control_plane: bool = False,
         control_plane_profile_root: str | None = None,
     ) -> RuntimeContext:
         settings = settings or get_settings()
+        if scope_runtime_handle is None and raw_scope_entries:
+            scope_runtime_handle = ScopeRuntimeHandle(
+                compile_wildcard_scope([str(entry) for entry in raw_scope_entries])
+            )
         normalized_engagement = str(engagement_id or "").strip()[:160]
         normalized_campaign = str(campaign_id or "").strip()[:160]
         normalized_origin = cls._origin(target_origin)
@@ -533,6 +542,7 @@ class RuntimeFactory:
             safety_gate=safety_gate,
             identity_provisioning_agent=identity_provisioning_agent,
             engagement_scope=engagement_scope,
+            scope_runtime_handle=scope_runtime_handle,
         )
 
     @staticmethod
@@ -554,6 +564,11 @@ class RuntimeFactory:
             "manifest": context.capabilities.ensure_discovered(),
             "control_plane_enabled": context.control_plane_runtime is not None,
             "safety_gate_enabled": context.safety_gate is not None,
+            "scope_projection": (
+                context.scope_runtime_handle.as_dict()
+                if context.scope_runtime_handle is not None
+                else None
+            ),
             "kill_switch_tripped": bool(
                 context.safety_gate is not None and context.safety_gate.kill_switch.tripped
             ),
@@ -583,6 +598,14 @@ class RuntimeFactory:
             if updates:
                 settings = settings.model_copy(update=updates)
             manifest = descriptor.get("manifest")
+            scope_runtime_handle = None
+            scope_projection = descriptor.get("scope_projection")
+            if isinstance(scope_projection, Mapping):
+                raw_entries = scope_projection.get("raw_entries")
+                if isinstance(raw_entries, (list, tuple)) and raw_entries:
+                    scope_runtime_handle = ScopeRuntimeHandle(
+                        compile_wildcard_scope([str(entry) for entry in raw_entries])
+                    )
             context = cls.create(
                 engagement_id=str(descriptor.get("engagement_id") or ""),
                 campaign_id=str(descriptor.get("campaign_id") or ""),
@@ -591,6 +614,7 @@ class RuntimeFactory:
                 manifest=dict(manifest) if isinstance(manifest, Mapping) else None,
                 used_actions=int(descriptor.get("used_actions") or 0),
                 used_budget=float(descriptor.get("used_budget") or 0.0),
+                scope_runtime_handle=scope_runtime_handle,
                 enable_control_plane=bool(descriptor.get("control_plane_enabled", False)),
             )
             if context.safety_gate is not None and descriptor.get("kill_switch_tripped"):

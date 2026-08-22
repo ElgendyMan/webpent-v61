@@ -143,6 +143,7 @@ def build_initial_state(
         manifest=capability_manifest,
         enable_control_plane=bool(enable_control_plane),
         control_plane_profile_root=control_plane_profile_root,
+        raw_scope_entries=list(raw_scope_entries or []),
     )
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)

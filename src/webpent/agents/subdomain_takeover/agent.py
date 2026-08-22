@@ -220,12 +220,24 @@ def subdomain_takeover_node(state: dict[str, Any]) -> dict[str, Any]:
     candidates = _candidate_hosts(state)
     in_scope_hosts: list[str] = []
     out_of_scope_evidence: list[dict[str, Any]] = []
-    compiled_scope = state.get("compiled_scope") or {}
+    scope_runtime_handle = getattr(
+        state.get("runtime_context"), "scope_runtime_handle", None
+    )
+    compiled_scope = (
+        scope_runtime_handle.as_dict()
+        if scope_runtime_handle is not None
+        else state.get("compiled_scope") or {}
+    )
     scope_regex = tuple(str(item) for item in compiled_scope.get("compiled_regex", []))
     client_id = str(state.get("client_id") or "").strip()
     engagement_id = str(state.get("engagement_id") or "").strip()
     for host in candidates:
-        if target.is_in_scope(f"https://{host}"):
+        host_in_scope = (
+            scope_runtime_handle.permits_host(host)
+            if scope_runtime_handle is not None
+            else target.is_in_scope(f"https://{host}")
+        )
+        if host_in_scope:
             in_scope_hosts.append(host)
             continue
         if not client_id:
@@ -255,6 +267,11 @@ def subdomain_takeover_node(state: dict[str, Any]) -> dict[str, Any]:
         "subdomain_takeover_observations": observations,
         "subdomain_takeover_coverage_gaps": gaps,
         "negative_evidence_ledger": out_of_scope_evidence,
+        **(
+            {"scope_runtime_fingerprint": scope_runtime_handle.fingerprint}
+            if scope_runtime_handle is not None
+            else {}
+        ),
         "current_phase": "subdomain_takeover",
     }
 

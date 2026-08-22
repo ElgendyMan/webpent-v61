@@ -49,6 +49,47 @@ class CompiledScope:
         }
 
 
+@dataclass(frozen=True)
+class ScopeRuntimeHandle:
+    """Live, immutable scope consumer backed by one compiled scope instance.
+
+    The handle is dependency-injected through ``RuntimeContext`` only.  Its
+    serializable representation is the ``CompiledScope.as_dict`` projection;
+    the handle itself must never be placed in ``PentestState`` or checkpoints.
+    """
+
+    compiled: CompiledScope
+
+    @property
+    def fingerprint(self) -> str:
+        return self.compiled.fingerprint
+
+    def permits_host(self, hostname: str) -> bool:
+        """Return whether a complete hostname is explicitly in compiled scope."""
+        try:
+            normalized = _normalize_host(hostname)
+        except (TypeError, ValueError, WildcardScopeError):
+            return False
+        if normalized in self.compiled.exact_hosts:
+            return True
+        return any(
+            re.fullmatch(pattern, normalized) is not None
+            for pattern in self.compiled.compiled_regex
+            if normalized not in self.compiled.exact_hosts
+        )
+
+    def permits_url(self, url: str) -> bool:
+        """Return whether an HTTP(S) URL's hostname is in this scope."""
+        parsed = urlsplit(str(url or ""))
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+            return False
+        return self.permits_host(parsed.hostname)
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return only the checkpoint-safe projection, never the live handle."""
+        return self.compiled.as_dict()
+
+
 def _normalize_host(hostname: str) -> str:
     value = str(hostname or "").strip().lower().rstrip(".")
     if not value or any(ord(char) > 127 for char in value):

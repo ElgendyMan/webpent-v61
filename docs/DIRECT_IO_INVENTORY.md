@@ -1,8 +1,9 @@
-# G-02 Direct-I/O Inventory
+# G-02 Direct-I/O Transport Inventory
 
 > This artifact is generated from the current `src/**/*.py` AST and is
-> enforced by the G-02 static/runtime gate. New direct transports,
-> unclassified sites, or artifact drift fail closed until reviewed.
+> enforced by `tests/test_g02_direct_io_inventory.py`. A new direct
+> transport or an unclassified site fails the contract test until it is
+> reviewed and catalogued.
 
 ## Logical transport contract
 
@@ -24,74 +25,85 @@
 
 Total records: **63**.
 
-| File | Line | Kind | Symbol | Transport | Approval |
-|---|---:|---|---|---|---|
-| `src/webpent/agents/access_control/agent.py` | 380 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/authentication/agent.py` | 213 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/business_logic_fuzzer/agent.py` | 231 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/cloud_storage/agent.py` | 109 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/crawler/agent.py` | 184 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/crawler/agent.py` | 256 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/execution_sandbox/agent.py` | 71 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/javascript_intelligence/agent.py` | 93 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/post_exploit/agent.py` | 256 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/agents/post_exploit/agent.py` | 337 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/recon/agent.py` | 673 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/recon/agent.py` | 684 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/request_smuggling/agent.py` | 36 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
-| `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` | `approved` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1257 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 14 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 91 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 142 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/active_checks.py` | 163 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 714 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 897 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1353 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1692 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1752 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 2284 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 3577 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 3677 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/structural_checks.py` | 103 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/structural_checks.py` | 573 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/structural_checks.py` | 1108 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/cli/__init__.py` | 189 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/cli/git_source.py` | 6 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
-| `src/webpent/cli/git_source.py` | 71 | `call` | `subprocess.run` | `subprocess` | `approved` |
-| `src/webpent/cli/ingest.py` | 105 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
-| `src/webpent/integrations/webhook.py` | 256 | `safe_boundary_call` | `make_safe_httpx_async_client` | `http_async` | `approved` |
-| `src/webpent/shared/capability_manifest.py` | 14 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
-| `src/webpent/shared/capability_manifest.py` | 59 | `call` | `subprocess.run` | `subprocess` | `approved` |
-| `src/webpent/shared/grounding.py` | 590 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/shared/grounding.py` | 612 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/shared/http.py` | 131 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
-| `src/webpent/shared/http.py` | 135 | `import` | `httpx` | `http_implementation` | `approved` |
-| `src/webpent/shared/http.py` | 273 | `call` | `socket.getaddrinfo` | `raw_tcp_dns` | `approved` |
-| `src/webpent/shared/http.py` | 322 | `call` | `socket.getaddrinfo` | `raw_tcp_dns` | `approved` |
-| `src/webpent/shared/http.py` | 910 | `call` | `httpx.Client` | `http_sync` | `approved` |
-| `src/webpent/shared/http.py` | 966 | `call` | `httpx.AsyncClient` | `http_async` | `approved` |
-| `src/webpent/shared/http_discovery.py` | 359 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/shared/preflight.py` | 78 | `import` | `playwright` | `browser_implementation` | `approved` |
-| `src/webpent/shared/reference_lookup.py` | 111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/tools/exploitation/dalfox.py` | 172 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/exploitation/dalfox.py` | 214 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/exploitation/phpggc.py` | 141 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/exploitation/sqlmap.py` | 442 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/exploitation/ysoserial.py` | 170 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/ffuf.py` | 103 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/httpx.py` | 107 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/katana.py` | 167 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/nuclei.py` | 194 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/subfinder.py` | 64 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/registry.py` | 215 | `dynamic_import` | `importlib.reload` | `dynamic_import` | `approved_with_expiry` |
-| `src/webpent/tools/registry.py` | 217 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
-| `src/webpent/tools/utils/subprocess.py` | 68 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
-| `src/webpent/tools/utils/subprocess.py` | 243 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
-| `src/webpent/tools/utils/subprocess.py` | 257 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
+| File | Line | Kind | Symbol | Transport |
+|---|---:|---|---|---|
+| `src/webpent/agents/access_control/agent.py` | 380 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/authentication/agent.py` | 213 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` |
+| `src/webpent/agents/business_logic_fuzzer/agent.py` | 231 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/cloud_storage/agent.py` | 109 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/crawler/agent.py` | 184 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/crawler/agent.py` | 256 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/execution_sandbox/agent.py` | 71 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` |
+| `src/webpent/agents/javascript_intelligence/agent.py` | 93 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/post_exploit/agent.py` | 256 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/agents/post_exploit/agent.py` | 337 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/recon/agent.py` | 673 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/recon/agent.py` | 684 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/request_smuggling/agent.py` | 36 | `import` | `socket` | `raw_tcp_dns_implementation` |
+| `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1257 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 14 | `import` | `socket` | `raw_tcp_dns_implementation` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 91 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 142 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/active_checks.py` | 163 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 714 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` |
+| `src/webpent/agents/validator/agent.py` | 897 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 1353 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 1692 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 1752 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 2284 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 3577 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/agent.py` | 3677 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 103 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 573 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/agents/validator/structural_checks.py` | 1108 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/cli/__init__.py` | 189 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` |
+| `src/webpent/cli/git_source.py` | 6 | `import` | `subprocess` | `subprocess_implementation` |
+| `src/webpent/cli/git_source.py` | 71 | `call` | `subprocess.run` | `subprocess` |
+| `src/webpent/cli/ingest.py` | 105 | `dynamic_import` | `importlib.import_module` | `dynamic_import` |
+| `src/webpent/integrations/webhook.py` | 256 | `safe_boundary_call` | `make_safe_httpx_async_client` | `http_async` |
+| `src/webpent/shared/capability_manifest.py` | 14 | `import` | `subprocess` | `subprocess_implementation` |
+| `src/webpent/shared/capability_manifest.py` | 59 | `call` | `subprocess.run` | `subprocess` |
+| `src/webpent/shared/grounding.py` | 590 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/shared/grounding.py` | 612 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/shared/http.py` | 131 | `import` | `socket` | `raw_tcp_dns_implementation` |
+| `src/webpent/shared/http.py` | 135 | `import` | `httpx` | `http_implementation` |
+| `src/webpent/shared/http.py` | 273 | `call` | `socket.getaddrinfo` | `raw_tcp_dns` |
+| `src/webpent/shared/http.py` | 322 | `call` | `socket.getaddrinfo` | `raw_tcp_dns` |
+| `src/webpent/shared/http.py` | 910 | `call` | `httpx.Client` | `http_sync` |
+| `src/webpent/shared/http.py` | 966 | `call` | `httpx.AsyncClient` | `http_async` |
+| `src/webpent/shared/http_discovery.py` | 359 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/shared/preflight.py` | 78 | `import` | `playwright` | `browser_implementation` |
+| `src/webpent/shared/reference_lookup.py` | 111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` |
+| `src/webpent/tools/exploitation/dalfox.py` | 172 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/exploitation/dalfox.py` | 214 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/exploitation/phpggc.py` | 141 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/exploitation/sqlmap.py` | 442 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/exploitation/ysoserial.py` | 170 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/ffuf.py` | 103 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/httpx.py` | 107 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/katana.py` | 167 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/nuclei.py` | 194 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/recon/subfinder.py` | 64 | `safe_boundary_call` | `run_command` | `subprocess_boundary` |
+| `src/webpent/tools/registry.py` | 215 | `dynamic_import` | `importlib.reload` | `dynamic_import` |
+| `src/webpent/tools/registry.py` | 217 | `dynamic_import` | `importlib.import_module` | `dynamic_import` |
+| `src/webpent/tools/utils/subprocess.py` | 68 | `import` | `subprocess` | `subprocess_implementation` |
+| `src/webpent/tools/utils/subprocess.py` | 243 | `call` | `subprocess.Popen` | `subprocess` |
+| `src/webpent/tools/utils/subprocess.py` | 257 | `call` | `subprocess.Popen` | `subprocess` |
 
 ## Enforcement rules
 
-Raw imports and raw transport calls are permitted only in reviewed boundary files and symbol-scoped approvals. Application code uses hardened HTTP helpers, the bounded subprocess wrapper, or an explicitly catalogued validator exception.
+Raw imports and raw transport calls are permitted only in reviewed
+boundary files listed in `APPROVED_DIRECT_FILES`. Application code
+uses hardened HTTP helpers, the bounded subprocess wrapper, or an
+explicitly catalogued validator exception.
 
-Unknown and indirect transport resolution remain missing-validator states; they are never promoted to confirmation by this artifact.
+The logical `api`, `graphql`, `file_upload`, and `oob` families do not
+create independent socket implementations: they are HTTP protocols
+and inherit the hardened HTTP boundary. Browser traffic is separately
+catalogued under Playwright. DNS and raw TCP validators remain explicit
+exceptions with bounded scope and no implicit confirmation.
+
+The JSON artifact is the machine-readable source for release review.
+This Markdown file is its human-readable rendering and must be
+regenerated whenever source transport sites change.

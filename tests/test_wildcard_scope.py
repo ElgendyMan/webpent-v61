@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from importlib import import_module
+from types import SimpleNamespace
 
 import pytest
 
+from webpent.agents.subdomain_takeover.agent import subdomain_takeover_node
 from webpent.graph.builder import (
     NODE_AUTH,
     NODE_CRAWLER,
@@ -19,6 +22,7 @@ from webpent.graph.builder import (
 )
 from webpent.models.targets import Target
 from webpent.shared.wildcard_scope import (
+    ScopeRuntimeHandle,
     WildcardScopeError,
     apply_compiled_scope,
     compile_wildcard_scope,
@@ -159,6 +163,43 @@ def test_identity_route_is_inserted_only_when_enabled(monkeypatch: pytest.Monkey
         )(),
     )
     assert route_after_crawler_with_identity({}) == NODE_IDENTITY_PROVISIONING
+
+
+def test_same_runtime_scope_handle_is_consumed_by_takeover_without_state_leak(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    crawler_module = import_module("webpent.agents.crawler.agent")
+
+    compiled = compile_wildcard_scope(["https://*.example.com"])
+    handle = ScopeRuntimeHandle(compiled)
+    target = _target(url="https://example.com", domain="example.com")
+    runtime_context = SimpleNamespace(scope_runtime_handle=handle)
+    state = {
+        "target": target,
+        "runtime_context": runtime_context,
+        "subdomains": ["api.example.com", "outside.attacker.net"],
+        "client_id": "client-a",
+        "engagement_id": "engagement-a",
+    }
+
+    monkeypatch.setattr(crawler_module, "run_katana", lambda *args, **kwargs: [])
+    crawler_output = crawler_module.crawler_node(
+        {**state, "raw_scope_entries": [], "current_phase": "crawling"}
+    )
+    assert crawler_output["scope_runtime_fingerprint"] == handle.fingerprint
+    assert "https://outside.attacker.net" not in crawler_output["crawled_data"]["endpoints"]
+
+    observed_hosts: list[str] = []
+    monkeypatch.setattr(
+        "webpent.agents.subdomain_takeover.agent.verify_subdomain_takeover",
+        lambda _target, hosts: (observed_hosts.extend(hosts) or ([], [], [])),
+    )
+    takeover_output = subdomain_takeover_node(state)
+    assert observed_hosts == ["api.example.com"]
+    assert takeover_output["scope_runtime_fingerprint"] == handle.fingerprint
+    assert "outside.attacker.net" not in observed_hosts
+    assert "scope_runtime_handle" not in takeover_output
+    assert takeover_output["negative_evidence_ledger"]
 
 
 def test_expired_compiled_state_is_not_relevant_to_compiler() -> None:

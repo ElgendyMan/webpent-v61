@@ -758,6 +758,18 @@ def crawler_node(state: PentestState) -> dict:
         logger.warning("Surface-security analysis skipped safely: %s", exc)
         surface_security_update = {}
 
+    scope_runtime_handle = getattr(
+        state.get("runtime_context"), "scope_runtime_handle", None
+    )
+    scope_runtime_fingerprint = ""
+    if scope_runtime_handle is not None:
+        scope_runtime_fingerprint = str(scope_runtime_handle.fingerprint)
+        curated_endpoints = [
+            endpoint
+            for endpoint in curated_endpoints
+            if scope_runtime_handle.permits_url(endpoint)
+        ]
+
     # V7 Cognitive Upgrade — Phase 2: extract Mental Model updates from
     # crawler's discoveries (curated endpoints + JS-extracted secrets
     # as credential nodes + any artifact-looking URLs). Pure additive
@@ -823,6 +835,8 @@ def crawler_node(state: PentestState) -> dict:
     }
     if signup_forms_detected:
         result["signup_forms_detected"] = signup_forms_detected
+    if scope_runtime_fingerprint:
+        result["scope_runtime_fingerprint"] = scope_runtime_fingerprint
     if surface_security_update:
         result["surface_security"] = surface_security_update
     return result
