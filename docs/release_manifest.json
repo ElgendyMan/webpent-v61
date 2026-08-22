@@ -141,7 +141,7 @@
     "docs/integration/integration_manifest.md": "3fda616eadb03be52cf07a163c6dd8fa3f183a6aff636a41be67408c81eec37b",
     "docs/integration/scope_action_proof_matrix.md": "07b308b491bbca2dfa094a23e164350e836cc8c8f7558c46bd3c7f2b15177046",
     "docs/integration/verification_matrix.md": "8162daf40d76ebd74055a0a4f0e2c05e0f1c5b404d3d1f7e5cea8f4c98a1e442",
-    "docs/integration/vip_gap_analysis_20260822.md": "8dccf51d0c8099299503943751563b77b4a5ce76d5351fbaf8eb63c679e4cf67",
+    "docs/integration/vip_gap_analysis_20260822.md": "6803b2975f616ebdbd4de6532315809cc0caceb67f124c0d692bcf1a4acbfb6a",
     "docs/integration_decision_matrix.md": "53286abc9676678126eca7ba60916bf695384e8d78846337c6efd2d0869a3eba",
     "docs/lab_comparison_20260822.md": "d444978ad1799fb076cbb939ea1ab22d18ccbdcdb3199a8169ba47e297250fd3",
     "docs/last20_governing_requirements.md": "ed1f4a230b28e653ec18d68e7d77a8c783f7f3adb37827688d90def879542143",
@@ -782,8 +782,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T18:11:38.838411+00:00",
-  "git_commit": "a261da58d68709d471504f840af0eeae0a414e19",
+  "generated_at": "2026-08-22T18:12:26.364888+00:00",
+  "git_commit": "e4827093408f1a462bcbd298fd73fc645ab0d5ed",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
