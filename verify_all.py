@@ -279,25 +279,50 @@ check(
         for x in ["torch", "sentence-transformers", "playwright install"]),
 )
 dockerfile_src = (ROOT / "Dockerfile").read_text()
-dockerfile_direct_base = bool(
-    re.search(
-        r"(?m)^\s*FROM\s+webpent-base:latest\s*$",
-        dockerfile_src,
+
+
+def dockerfile_uses_approved_base_image(source: str) -> bool:
+    """Validate the Docker base image contract from Dockerfile semantics.
+
+    The check is intentionally small and fail-closed: it accepts the approved
+    image directly, or requires an ARG default for that image and an actual
+    FROM expansion using that ARG.  It does not try to evaluate build-time
+    overrides, because those must remain bounded by the operator's build policy.
+    """
+    approved = "webpent-base:latest"
+    arg_default: str | None = None
+    from_references: list[str] = []
+
+    for raw_line in source.splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        arg_match = re.fullmatch(
+            r"ARG\s+BASE_IMAGE(?:\s*=\s*(\S+))?",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if arg_match:
+            arg_default = arg_match.group(1)
+            continue
+        if re.match(r"^FROM\s+", line, flags=re.IGNORECASE):
+            tokens = line.split()[1:]
+            while tokens and tokens[0].startswith("--"):
+                tokens.pop(0)
+            if tokens:
+                from_references.append(tokens[0])
+
+    if approved in from_references:
+        return True
+    return (
+        arg_default == approved
+        and any(reference in {"$BASE_IMAGE", "${BASE_IMAGE}"} for reference in from_references)
     )
-)
-dockerfile_arg_base = bool(
-    re.search(
-        r"(?m)^\s*ARG\s+BASE_IMAGE\s*=\s*webpent-base:latest\s*$",
-        dockerfile_src,
-    )
-    and re.search(
-        r"(?m)^\s*FROM\s+\$\{BASE_IMAGE\}\s*$",
-        dockerfile_src,
-    )
-)
+
+
 check(
     "U1d. Dockerfile uses the approved webpent base image",
-    dockerfile_direct_base or dockerfile_arg_base,
+    dockerfile_uses_approved_base_image(dockerfile_src),
 )
 check(
     "U1e. Makefile exists with build-base and build-app targets",

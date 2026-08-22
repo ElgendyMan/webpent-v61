@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1307 passed, 235 warnings in 64.95s (0:01:04)"
+        "1315 passed, 235 warnings in 68.16s (0:01:08)"
       ]
     },
     {
@@ -74,9 +74,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1253",
+        "  \"total_test_functions\": 1261",
         "}",
-        "OK: preserved test-function count 1253 >= minimum 818"
+        "OK: preserved test-function count 1261 >= minimum 818"
       ]
     },
     {
@@ -222,6 +222,17 @@
       "requirement_source": "uv-exported-lock",
       "returncode": 0,
       "tail": [
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
+        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
         "No known vulnerabilities found"
       ]
     },
@@ -267,11 +278,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 746, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
+        "{\"file_count\": 752, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T01:31:14.503787+00:00",
+  "generated_at": "2026-08-22T02:45:59.160862+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
