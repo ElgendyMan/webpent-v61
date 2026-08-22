@@ -67,5 +67,5 @@
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
-| archive content count | 829 files تقريبًا؛ يتحقق منه `evidence/release_contents.txt` |
+| archive content count | 964 entries؛ يتحقق منه `evidence/release_contents.txt` |
 | forbidden artifact scan | clean |
