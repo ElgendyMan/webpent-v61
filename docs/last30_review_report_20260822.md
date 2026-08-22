@@ -36,8 +36,8 @@
 | 26 | WAPTLab live qualification | blocked/inconclusive | 403 بدون auth fixture ثم bounded timeout؛ لا report/ProofBundle |
 | 27 | Juice Shop live qualification | blocked/inconclusive | endpoint dict defect اتصلح؛ r2/r2b انتهيا بعد container exit 0 ثم connection refused |
 | 28 | لا تعديل على labs ولا credentials حساسة | منفذ | لا lab source modification ولا Gmail secret/cookie دخل repo/ZIP |
-| 29 | commit/push إلى GitHub | منفذ | remote master يطابق HEAD النهائي `01a98b6b9907e0abe6af6a10d7886859bae577d7` |
-| 30 | تقييم نهائي صريح بدون hallucination | يحتاج تصحيح artifacts | التقرير TargetAgnostic صريح، لكن `vip_assessment_20260822.md` و`vip_quality_gate.json` كانا stale ويعرضان حالة قبل live attempts أو workspace قديم |
+| 29 | commit/push إلى GitHub | منفذ | remote master يطابق HEAD النهائي `812f4465ef501e407dd79e513e5ff0b65df79b6e` |
+| 30 | تقييم نهائي صريح بدون hallucination | منفذ بعد التصحيح | `targetagnostic_qualification_report.md` و`vip_assessment_20260822.md` و`vip_quality_gate.json` متزامنة مع current evidence؛ لا يوجد VIP/confirmed claim غير مدعوم |
 
 ## أخطاء/هلوسات أو claims غير صالحة اكتُشفت
 
