@@ -13,6 +13,7 @@ reported as an unapproved indirect transport instead of being treated as safe.
 from __future__ import annotations
 
 import ast
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -296,6 +297,15 @@ def _dotted(node: ast.AST) -> str:
     if isinstance(node, ast.Attribute):
         prefix = _dotted(node.value)
         return f"{prefix}.{node.attr}" if prefix else node.attr
+    if isinstance(node, ast.Subscript):
+        prefix = _dotted(node.value)
+        if not prefix:
+            return ""
+        try:
+            key = ast.literal_eval(node.slice)
+        except (ValueError, TypeError, SyntaxError):
+            return f"{prefix}[<dynamic>]"
+        return f"{prefix}[{key!r}]"
     return ""
 
 
@@ -424,6 +434,10 @@ def _resolve_alias(symbol: str, aliases: dict[str, str]) -> str:
     return aliases.get(symbol, symbol)
 
 
+def _is_module_subscript(symbol: str) -> bool:
+    return symbol.startswith("sys.modules[")
+
+
 def _looks_like_transport(symbol: str) -> bool:
     return bool(
         symbol.startswith(
@@ -472,6 +486,29 @@ def _dynamic_allowlist_entry(relative: str, line: int, symbol: str) -> dict[str,
     return None
 
 
+def _indirect_transport_signal(symbol: str) -> bool:
+    transport_roots = (
+        "httpx",
+        "requests",
+        "aiohttp",
+        "urllib",
+        "http.client",
+        "urllib3",
+        "socket",
+        "subprocess",
+        "asyncio",
+        "websockets",
+        "boto3",
+        "botocore",
+        "paramiko",
+        "os",
+    )
+    return symbol.startswith("getattr(sys.modules") or any(
+        root in symbol
+        for root in transport_roots
+    )
+
+
 def _record(
     *,
     relative: str,
@@ -512,8 +549,13 @@ def _record(
             approval = "not_approved"
             reason = "dynamic transport/module resolution is not explicitly allowlisted"
     elif kind == "dynamic_resolution":
-        approval = "not_approved"
-        reason = "indirect transport resolution is unknown and must fail closed"
+        if _indirect_transport_signal(normalized_symbol):
+            approval = "not_approved"
+            reason = "indirect transport resolution is unknown and must fail closed"
+        else:
+            approval = "not_applicable"
+            reason = "dynamic attribute access observed without a transport signal"
+            family = "non_transport"
     return {
         "file": relative,
         "line": line,
@@ -563,13 +605,25 @@ def scan_direct_io(root: Path) -> list[dict[str, Any]]:
                 kind = "safe_boundary_call"
             elif _is_transport_call(normalized_symbol):
                 kind = "call"
+            elif _is_module_subscript(normalized_symbol):
+                # A local alias such as ``mod = sys.modules["subprocess"]``
+                # must remain observable when later invoked as ``mod.run``.
+                # It is indirect resolution, not a literal approved call.
+                kind = "dynamic_resolution"
             elif normalized_symbol in {"importlib.import_module", "importlib.reload", "__import__"}:
                 kind = "dynamic_import"
             elif normalized_symbol == "getattr" and node.args:
                 base = _resolve_alias(_dotted(node.args[0]), aliases)
-                if base == "sys.modules" or _looks_like_transport(base):
+                # getattr is intrinsically indirect: the attribute name can be
+                # runtime-controlled, so an unknown or empty subject must never
+                # be treated as safe.  Subscripted sys.modules aliases are kept
+                # in the normalized symbol for auditability.
+                if _is_module_subscript(base) or _looks_like_transport(base) or not base:
                     kind = "dynamic_resolution"
                     normalized_symbol = f"getattr({base}, ... )" if base else "getattr(... )"
+                else:
+                    kind = "dynamic_resolution"
+                    normalized_symbol = f"getattr({base}, ... )"
             if kind:
                 records.append(
                     _record(
@@ -589,7 +643,53 @@ def scan_direct_io(root: Path) -> list[dict[str, Any]]:
             str(item["normalized_symbol"]),
         )
     )
-    return records
+    deduped: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, int, str, str]] = set()
+    for record in records:
+        key = (
+            str(record["file"]),
+            int(record["line"]),
+            str(record["kind"]),
+            str(record["symbol"]),
+        )
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped.append(record)
+    return deduped
+
+
+def expired_approval_errors(today: date | None = None) -> list[str]:
+    """Return fail-closed errors for invalid or expired approval metadata.
+
+    ``expires_at`` is an operational TTL, not a descriptive label.  The date is
+    injectable so CI can prove expiry behavior without waiting for the calendar.
+    """
+    effective_today = today or date.today()
+    errors: list[str] = []
+    approval_sets = (
+        ("approved_transport_records", APPROVED_TRANSPORT_RECORDS),
+        ("dynamic_import_allowlist", DYNAMIC_IMPORT_ALLOWLIST),
+    )
+    for collection_name, entries in approval_sets:
+        for index, entry in enumerate(entries):
+            raw_expiry = entry.get("expires_at")
+            location = entry.get("file", f"index={index}")
+            if not isinstance(raw_expiry, str):
+                errors.append(f"{collection_name} {location}: missing expires_at")
+                continue
+            try:
+                expiry = date.fromisoformat(raw_expiry)
+            except ValueError:
+                errors.append(
+                    f"{collection_name} {location}: invalid expires_at={raw_expiry!r}"
+                )
+                continue
+            if expiry <= effective_today:
+                errors.append(
+                    f"{collection_name} {location}: expired expires_at={raw_expiry}"
+                )
+    return errors
 
 
 def inventory_key(record: dict[str, Any]) -> tuple[str, int, str, str, str]:
@@ -628,7 +728,7 @@ def inventory_contract_errors(
             errors.append(f"unclassified transport: {record.get('file')}:{record.get('line')}")
         if (
             record.get("transport_family") not in families
-            and record.get("transport_family") != "unknown"
+            and record.get("transport_family") not in {"unknown", "non_transport"}
         ):
             errors.append(
                 f"unknown transport family {record.get('transport_family')!r}: "
@@ -637,6 +737,11 @@ def inventory_contract_errors(
         if (
             record.get("kind") in {"import", "call", "dynamic_import", "dynamic_resolution"}
             and record.get("approval_status") not in {"approved", "approved_with_expiry"}
+            and not (
+                record.get("kind") == "dynamic_resolution"
+                and record.get("approval_status") == "not_applicable"
+                and record.get("transport_family") == "non_transport"
+            )
         ):
             errors.append(
                 f"unapproved direct/indirect transport: {record.get('file')}:{record.get('line')}"

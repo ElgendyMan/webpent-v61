@@ -12,6 +12,7 @@ from webpent.shared.direct_io_inventory import (
     APPROVED_TRANSPORT_RECORDS,
     DYNAMIC_IMPORT_ALLOWLIST,
     LOGICAL_TRANSPORTS,
+    expired_approval_errors,
     inventory_contract_errors,
     scan_direct_io,
 )
@@ -163,13 +164,18 @@ def check_repository(
     if observed_markdown != expected_markdown:
         errors.append("Markdown artifact is not the deterministic scanner output")
 
+    errors.extend(expired_approval_errors())
     errors.extend(cross_check_primary(records, source_root))
     errors.extend(runtime_source_invariant_errors(source_root))
     errors.extend(
         f"unapproved direct/indirect transport: {record['file']}:{record['line']}"
         for record in records
         if record["kind"] in {"import", "call", "dynamic_import", "dynamic_resolution"}
-        and record["approval_status"] not in {"approved", "approved_with_expiry"}
+        and record["approval_status"] not in {
+            "approved",
+            "approved_with_expiry",
+            "not_applicable",
+        }
     )
     if require_staged_artifacts:
         staged = _staged_paths(project_root)

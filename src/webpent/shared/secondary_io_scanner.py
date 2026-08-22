@@ -13,6 +13,12 @@ import tokenize
 from pathlib import Path
 from typing import Any
 
+_STRING_TOKEN_TYPES = {tokenize.STRING}
+for _token_name in ("FSTRING_START", "FSTRING_MIDDLE", "FSTRING_END"):
+    _token_type = getattr(tokenize, _token_name, None)
+    if _token_type is not None:
+        _STRING_TOKEN_TYPES.add(_token_type)
+
 _SECONDARY_IMPORT_ROOTS = frozenset(
     {
         "httpx",
@@ -140,13 +146,13 @@ def _aliases_from_lines(cleaned: dict[int, str]) -> dict[str, str]:
 
 def _clean_lines(source: str) -> dict[int, str]:
     lines: dict[int, list[str]] = {}
-    string_lines: set[int] = set()
-    source_lines = source.splitlines()
     try:
         tokens = tokenize.generate_tokens(io.StringIO(source).readline)
         for token in tokens:
-            if token.type == tokenize.STRING:
-                string_lines.update(range(token.start[0], token.end[0] + 1))
+            if token.type in _STRING_TOKEN_TYPES:
+                # Drop only the literal token; retain other calls on the same
+                # physical line so `getattr(obj, "name")` and transport calls
+                # cannot hide beside harmless string arguments.
                 continue
             if token.type in {tokenize.COMMENT, tokenize.ENCODING}:
                 continue
@@ -158,12 +164,7 @@ def _clean_lines(source: str) -> dict[int, str]:
     return {
         line: " ".join(parts)
         for line, parts in lines.items()
-        if line not in string_lines
-        and (parts[0] if parts else "") != "def"
-        and not re.match(
-            r"^\s*[rubfRUBF]{0,3}(?:\"|')",
-            source_lines[line - 1] if line <= len(source_lines) else "",
-        )
+        if (parts[0] if parts else "") != "def"
     }
 
 
@@ -203,6 +204,11 @@ def scan_secondary(root: Path) -> list[dict[str, Any]]:
                     kind = "safe_boundary_call"
                 elif _secondary_is_transport_call(resolved_symbol):
                     kind = "call"
+                elif source_symbol == "getattr":
+                    # The lexical scanner cannot safely infer the subject or
+                    # attribute name after token filtering; every getattr is
+                    # therefore an unresolved dynamic-resolution observation.
+                    kind = "dynamic_resolution"
                 elif resolved_symbol in {
                     "importlib.import_module",
                     "importlib.reload",
@@ -226,7 +232,13 @@ def cross_check_primary(
     primary_keys = {
         (record["file"], int(record["line"]), record["kind"], record["symbol"])
         for record in primary_records
-        if record["kind"] in {"import", "call", "safe_boundary_call", "dynamic_import"}
+        if record["kind"] in {
+            "import",
+            "call",
+            "safe_boundary_call",
+            "dynamic_import",
+            "dynamic_resolution",
+        }
     }
     secondary_keys = {
         (record["file"], int(record["line"]), record["kind"], record["symbol"])

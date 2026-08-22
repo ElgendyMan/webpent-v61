@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from webpent.shared.direct_io_inventory import (
+    expired_approval_errors,
     inventory_contract_errors,
     scan_direct_io,
 )
@@ -77,6 +78,7 @@ def main() -> int:
 
     primary = scan_direct_io(SOURCE_ROOT)
     errors = inventory_contract_errors(artifact, SOURCE_ROOT)
+    errors.extend(expired_approval_errors())
     errors.extend(cross_check_primary(primary, SOURCE_ROOT))
     errors.extend(runtime_source_invariant_errors(SOURCE_ROOT))
     errors.extend(

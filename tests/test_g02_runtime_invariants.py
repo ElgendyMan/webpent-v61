@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -55,6 +56,15 @@ def test_http_runtime_guards_block_tls_downgrade_and_internal_host(monkeypatch):
     with pytest.raises(http_module.SSRFRedirectBlockedError):
         transport.handle_request(request)
     transport.close()
+
+
+def test_expired_approval_errors_fail_closed_with_injected_date():
+    from webpent.shared.direct_io_inventory import expired_approval_errors
+
+    errors = expired_approval_errors(today=date(2099, 1, 1))
+
+    assert errors
+    assert all("expired expires_at=" in error for error in errors)
 
 
 def test_runtime_gate_rejects_each_wrapper_mutation(tmp_path):
