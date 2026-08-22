@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage
 
 from webpent.config.settings import get_settings
 from webpent.models.javascript_intelligence import JavaScriptIntelligence
+from webpent.shared.identity_provisioning import project_signup_form_events
 from webpent.shared.javascript_intelligence import (
     analyze_javascript_source,
     merge_javascript_intelligence,
@@ -201,11 +202,19 @@ def javascript_intelligence_node(state: PentestState) -> dict[str, Any]:
         f"identified {len(output['routes'])} route(s), {len(output['sinks'])} sink(s), "
         f"and {len(output['targeted_tasks'])} bounded targeted task(s)."
     )
+    signup_forms_detected = project_signup_form_events(
+        state.get("crawled_data") or {},
+        engagement_id=str(state.get("engagement_id") or ""),
+        client_id=str(state.get("client_id") or ""),
+        source="javascript_intelligence",
+    )
     result: dict[str, Any] = {
         "javascript_intelligence": output,
         "js_targeted_tasks": output["targeted_tasks"],
         "messages": [AIMessage(content=message)],
     }
+    if signup_forms_detected:
+        result["signup_forms_detected"] = signup_forms_detected
     if surface_security_update:
         result["surface_security"] = surface_security_update
     if crawled_data_update:

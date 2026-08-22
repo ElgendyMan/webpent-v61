@@ -75,6 +75,35 @@ def test_takeover_rejects_out_of_scope_host(monkeypatch):
     assert observations[0]["status"] == "out_of_scope"
 
 
+def test_takeover_node_records_out_of_scope_hosts_without_probing(monkeypatch):
+    target = Target(
+        url="https://example.com",
+        in_scope_regex=[r"^example\.com$", r"^[a-z0-9-]+\.example\.com$"],
+    )
+    observed_hosts: list[str] = []
+
+    def fake_verify(_target, hosts):
+        observed_hosts.extend(hosts)
+        return [], [], []
+
+    monkeypatch.setattr(takeover_agent, "verify_subdomain_takeover", fake_verify)
+    result = takeover_agent.subdomain_takeover_node(
+        {
+            "target": target,
+            "client_id": "client-a",
+            "engagement_id": "eng-1",
+            "compiled_scope": {"fingerprint": "sha256:test", "compiled_regex": []},
+            "crawled_data": {"links": ["https://api.example.com", "https://evil.example.net"]},
+        }
+    )
+    assert observed_hosts == ["api.example.com", "example.com"]
+    assert len(result["negative_evidence_ledger"]) == 1
+    evidence = result["negative_evidence_ledger"][0]
+    assert evidence["reason"] == "discovered_host_out_of_scope"
+    assert evidence["client_id"] == "client-a"
+    assert evidence["engagement_id"] == "eng-1"
+
+
 def test_cloud_listing_requires_provider_specific_evidence(monkeypatch):
     target = Target(url="https://bucket.s3.amazonaws.com")
     body = "<ListBucketResult><Contents><Key>public.txt</Key></Contents></ListBucketResult>"

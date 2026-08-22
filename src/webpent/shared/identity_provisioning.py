@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from webpent.auth.reauth_vault import seal_identity_profiles
+from webpent.auth.reauth_vault import identity_vault_key, seal_identity_profiles
 from webpent.config.settings import get_settings
 from webpent.shared.control_plane import (
     EngagementScope,
@@ -220,7 +220,7 @@ class IdentityProvisioningAgent:
             email_ref=f"vault://{event.engagement_id}/{self._mailbox_ref}/alias",
         )
         seal_identity_profiles(
-            event.engagement_id,
+            identity_vault_key(event.client_id, event.engagement_id),
             {identity_id: {"credentials": {"username": email, "password": password}}},
         )
         material = self._watcher.wait_for_material(submitted)
@@ -266,7 +266,10 @@ class IdentityProvisioningAgent:
                     identity_id=identity_id,
                     engagement_id=event.engagement_id,
                     email_ref=email,
-                    password_ref=f"vault://{event.engagement_id}/identity/{identity_id}/password",
+                    password_ref=(
+                        f"vault://{event.client_id}:{event.engagement_id}"
+                        f"/identity/{identity_id}/password"
+                    ),
                     verification_status=IdentityProvisioningStatus.VERIFIED,
                     proof_ref=material.event_ref,
                     created_at=now,
@@ -280,6 +283,63 @@ class IdentityProvisioningAgent:
                 {"event_ref": material.event_ref, "status": "redacted"}
             ],
         }
+
+
+def project_signup_form_events(
+    crawled_data: Mapping[str, Any] | None,
+    *,
+    engagement_id: str,
+    client_id: str,
+    source: str = "crawler",
+) -> list[dict[str, Any]]:
+    """Project only report-safe signup metadata from crawler/JS observations.
+
+    Form values are intentionally never copied. A form is considered a signup
+    candidate only when its URL or field names contain an explicit registration
+    marker. Missing tenant identifiers or non-HTTP(S) actions are rejected.
+    """
+    if not engagement_id.strip() or not client_id.strip():
+        return []
+    forms = (crawled_data or {}).get("forms") if isinstance(crawled_data, Mapping) else []
+    if not isinstance(forms, list):
+        return []
+    markers = ("signup", "sign-up", "register", "registration", "create-account", "create_account")
+    projected: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    for raw_form in forms[:100]:
+        if not isinstance(raw_form, Mapping):
+            continue
+        target_url = str(raw_form.get("action") or raw_form.get("source_url") or "").strip()
+        parsed = urlparse(target_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            continue
+        raw_data = raw_form.get("data")
+        field_names = tuple(
+            sorted(
+                {
+                    str(name).strip()[:120]
+                    for name in (raw_data.keys() if isinstance(raw_data, Mapping) else ())
+                    if str(name).strip()
+                }
+            )
+        )
+        haystack = " ".join((target_url, *field_names)).lower()
+        if not any(marker in haystack for marker in markers):
+            continue
+        key = (target_url, field_names)
+        if key in seen:
+            continue
+        seen.add(key)
+        projected.append(
+            SignupFormDetected(
+                engagement_id=engagement_id.strip(),
+                client_id=client_id.strip(),
+                target_signup_url=target_url,
+                detected_form_fields=field_names,
+                source=source,
+            ).model_dump(mode="json")
+        )
+    return projected
 
 
 def _aggregate_identity_status(statuses: list[str]) -> str:
@@ -381,6 +441,7 @@ __all__ = [
     "EmailVerificationWatcher",
     "IdentityProvisioningAgent",
     "identity_provisioning_node",
+    "project_signup_form_events",
     "IdentityProvisioningStatus",
     "IdentityRecord",
     "IdentityRequest",

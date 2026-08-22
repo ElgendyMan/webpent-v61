@@ -43,6 +43,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 
 from webpent.auth.reauth_vault import (
+    identity_vault_key,
     seal_identity_profiles,
     unseal_identity_profiles,
     unseal_reauth_secret,
@@ -51,6 +52,29 @@ from webpent.auth.reauth_vault import (
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
+
+
+def _profiles_from_identity_records(state: dict[str, Any]) -> dict[str, Any]:
+    """Project only report-safe profile refs from provisioned identity records."""
+    records = state.get("identity_records") or {}
+    if not isinstance(records, dict):
+        return {}
+    profiles: dict[str, Any] = {}
+    for identity_id, record in records.items():
+        if not isinstance(record, dict):
+            continue
+        profile_ref = record.get("profile_ref")
+        if not isinstance(profile_ref, dict):
+            continue
+        safe_profile = {
+            key: value
+            for key, value in profile_ref.items()
+            if key not in {"password", "password_ref", "otp", "token", "secret"}
+        }
+        if safe_profile.get("identity_id") or identity_id:
+            profiles[str(identity_id)] = safe_profile
+    return profiles
+
 
 _NAV_TIMEOUT_MS = 15_000
 _DEFAULT_BROWSER_USER_AGENT = (
@@ -712,6 +736,16 @@ def auth_node(state: PentestState) -> dict:
         operator_cookies = unseal_session_cookies(thread_id)
     operator_headers: dict[str, str] = dict(state.get("session_headers") or {})
     raw_identity_profiles: dict[str, Any] = dict(state.get("identity_profiles") or {})
+    record_profiles = _profiles_from_identity_records(state)
+    for identity_id, profile in record_profiles.items():
+        raw_identity_profiles.setdefault(identity_id, profile)
+    if not raw_identity_profiles:
+        scoped_identity_key = identity_vault_key(
+            str(state.get("client_id") or ""),
+            str(state.get("engagement_id") or ""),
+        )
+        if scoped_identity_key:
+            raw_identity_profiles = unseal_identity_profiles(scoped_identity_key)
     if not raw_identity_profiles and thread_id:
         raw_identity_profiles = unseal_identity_profiles(thread_id)
     if not operator_headers and raw_identity_profiles:
@@ -823,7 +857,13 @@ def auth_node(state: PentestState) -> dict:
                 **secondary_profiles,
             }
             if thread_id:
-                seal_identity_profiles(thread_id, runtime_profiles)
+                seal_identity_profiles(
+                    identity_vault_key(
+                        str(state.get("client_id") or ""),
+                        str(state.get("engagement_id") or ""),
+                    ) or thread_id,
+                    runtime_profiles,
+                )
             return {
                 "session_cookies": operator_cookies,
                 "auth_state": auth_state,
@@ -863,7 +903,13 @@ def auth_node(state: PentestState) -> dict:
                 **secondary_profiles,
             }
             if thread_id:
-                seal_identity_profiles(thread_id, runtime_profiles)
+                seal_identity_profiles(
+                    identity_vault_key(
+                        str(state.get("client_id") or ""),
+                        str(state.get("engagement_id") or ""),
+                    ) or thread_id,
+                    runtime_profiles,
+                )
             return {
                 "session_cookies": _invalidated_operator_cookies,
                 "session_headers": operator_headers,
@@ -1016,7 +1062,13 @@ def auth_node(state: PentestState) -> dict:
                     "username": str(raw_credentials["username"]),
                     "password": str(raw_credentials["password"]),
                 }
-        seal_identity_profiles(thread_id, vault_profiles)
+        seal_identity_profiles(
+            identity_vault_key(
+                str(state.get("client_id") or ""),
+                str(state.get("engagement_id") or ""),
+            ) or thread_id,
+            vault_profiles,
+        )
 
     return {
         # V9 P0 Fix 1-B: neutralised operator cookies as the base,

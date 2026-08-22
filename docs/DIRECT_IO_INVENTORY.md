@@ -27,13 +27,13 @@ Total records: **63**.
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
 | `src/webpent/agents/access_control/agent.py` | 380 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/authentication/agent.py` | 189 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/agents/authentication/agent.py` | 213 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
 | `src/webpent/agents/business_logic_fuzzer/agent.py` | 231 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/cloud_storage/agent.py` | 109 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/crawler/agent.py` | 183 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/crawler/agent.py` | 255 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/crawler/agent.py` | 184 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/crawler/agent.py` | 256 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/execution_sandbox/agent.py` | 71 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/javascript_intelligence/agent.py` | 92 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/javascript_intelligence/agent.py` | 93 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/post_exploit/agent.py` | 256 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/agents/post_exploit/agent.py` | 337 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/recon/agent.py` | 673 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
@@ -41,9 +41,9 @@ Total records: **63**.
 | `src/webpent/agents/request_smuggling/agent.py` | 36 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
 | `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` | `approved` |
 | `src/webpent/agents/smart_campaigns/agent.py` | 1257 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 13 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 89 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` | `approved` |
-| `src/webpent/agents/subdomain_takeover/agent.py` | 140 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 14 | `import` | `socket` | `raw_tcp_dns_implementation` | `approved` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 91 | `call` | `socket.gethostbyname_ex` | `raw_tcp_dns` | `approved` |
+| `src/webpent/agents/subdomain_takeover/agent.py` | 142 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/validator/active_checks.py` | 163 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/validator/agent.py` | 714 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
 | `src/webpent/agents/validator/agent.py` | 897 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |

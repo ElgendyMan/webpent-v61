@@ -451,6 +451,10 @@ def _public_identity_rows(profiles: list[IdentityProfile]) -> dict[str, dict[str
 
 def _identity_profiles_from_state(state: PentestState) -> list[IdentityProfile]:
     raw = state.get("identity_profiles") or state.get("bac_identities") or state.get("identities")
+    if not raw and state.get("identity_records"):
+        from webpent.agents.authentication.agent import _profiles_from_identity_records
+
+        raw = _profiles_from_identity_records(state)
     fallback = state.get("session_cookies") or None
     if not fallback:
         fallback = cookies_from_auth_state(state.get("auth_state")) or None
@@ -541,6 +545,7 @@ def _refresh_profile_after_throttle(
     try:
         from webpent.agents.authentication.agent import _perform_login
         from webpent.auth.reauth_vault import (
+            identity_vault_key,
             unseal_identity_profiles,
             unseal_reauth_secret,
         )
@@ -548,7 +553,13 @@ def _refresh_profile_after_throttle(
         logger.debug("BAC profile refresh unavailable: %s", exc)
         return None
 
-    raw_profiles = unseal_identity_profiles(thread_id)
+    scoped_key = identity_vault_key(
+        str(state.get("client_id") or ""),
+        str(state.get("engagement_id") or ""),
+    )
+    raw_profiles = unseal_identity_profiles(scoped_key) if scoped_key else {}
+    if not raw_profiles:
+        raw_profiles = unseal_identity_profiles(thread_id)
     raw_profile: dict[str, Any] = {}
     if isinstance(raw_profiles, dict):
         for key, value in raw_profiles.items():

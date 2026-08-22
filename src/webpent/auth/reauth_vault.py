@@ -34,6 +34,21 @@ _SHARED_RECORD_TYPES = ("password", "cookies", "identity")
 _SHARED_DATABASES: dict[str, Any] = {}
 
 
+def identity_vault_key(client_id: str, engagement_id: str) -> str:
+    """Return the engagement-scoped identity vault key.
+
+    The exact key shape is ``client_id:engagement_id:identity``. Colons in
+    caller-provided identifiers are normalized to avoid ambiguous addressing.
+    Empty identifiers fall back to the legacy engagement key so old callers
+    remain readable and cleanup stays backward-compatible.
+    """
+    client = str(client_id or "").strip().replace(":", "_")
+    engagement = str(engagement_id or "").strip().replace(":", "_")
+    if not client or not engagement:
+        return engagement or client
+    return f"{client}:{engagement}:identity"
+
+
 def _shared_store_enabled() -> bool:
     """Return whether encrypted records should also survive worker restarts."""
     return os.getenv(_SHARED_STORE_ENV, "false").strip().lower() in {

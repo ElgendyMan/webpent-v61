@@ -567,6 +567,7 @@ def scan(
     token = set_engagement_target_hosts(target.url, *declared_additional_origins)
     try:
         from webpent.auth.reauth_vault import (
+            identity_vault_key,
             seal_identity_profiles,
             seal_reauth_secret,
             seal_session_cookies,
@@ -580,7 +581,10 @@ def scan(
         if operator_cookies:
             seal_session_cookies(resolved_thread_id, operator_cookies)
         if identity_profiles:
-            seal_identity_profiles(resolved_thread_id, identity_profiles)
+            seal_identity_profiles(
+                identity_vault_key(client_id or "", resolved_engagement_id),
+                identity_profiles,
+            )
         safe_credentials = dict(credentials or {})
         if "password" in safe_credentials:
             safe_credentials["password"] = ""
@@ -656,8 +660,12 @@ def scan(
         # V10 HOSTILE P1-2: clear the reauth vault (same as the worker).
         # Best-effort — never raises.
         try:
-            from webpent.auth.reauth_vault import clear_reauth_secret
+            from webpent.auth.reauth_vault import (
+                clear_reauth_secret,
+                identity_vault_key,
+            )
 
+            clear_reauth_secret(identity_vault_key(client_id or "", resolved_engagement_id))
             clear_reauth_secret(resolved_thread_id)
         except Exception:
             pass

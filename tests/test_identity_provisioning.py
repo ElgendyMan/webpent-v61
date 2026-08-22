@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from webpent.agents.access_control.agent import _identity_profiles_from_state
+from webpent.agents.authentication.agent import _profiles_from_identity_records
+from webpent.auth import reauth_vault
+from webpent.reporter.export import build_report_data
 from webpent.shared.control_plane import EngagementScope, compile_scope
 from webpent.shared.identity_provisioning import (
     EmailVerificationWatcher,
@@ -14,6 +18,7 @@ from webpent.shared.identity_provisioning import (
     SignupSubmitted,
     VerificationMaterialFound,
     identity_provisioning_node,
+    project_signup_form_events,
 )
 
 
@@ -37,6 +42,123 @@ def _event(url: str = "https://app.example.test/signup") -> SignupFormDetected:
         target_signup_url=url,
         detected_form_fields=("email", "password"),
     )
+
+
+def test_signup_form_projection_drops_values_and_requires_registration_signal() -> None:
+    events = project_signup_form_events(
+        {
+            "forms": [
+                {
+                    "action": "https://app.example.test/register",
+                    "source_url": "https://app.example.test/",
+                    "data": {
+                        "email": "alice@example.test",
+                        "password": "raw-secret-must-not-cross-boundary",
+                    },
+                },
+                {
+                    "action": "https://app.example.test/search",
+                    "data": {"q": "register"},
+                },
+            ]
+        },
+        engagement_id="eng-identity",
+        client_id="client-a",
+    )
+    assert len(events) == 1
+    assert events[0]["target_signup_url"].endswith("/register")
+    assert events[0]["detected_form_fields"] == ["email", "password"]
+    assert "raw-secret-must-not-cross-boundary" not in str(events)
+
+
+def test_report_projection_excludes_identity_material() -> None:
+    report = build_report_data(
+        target_url="https://target.example",
+        findings=[],
+        campaign_ledger={
+            "identity_records": {
+                "identity-1": {
+                    "email_ref": "mailbox://private-user@example.test",
+                    "password_ref": "vault://secret",
+                    "status": "verified",
+                }
+            }
+        },
+    )
+    rendered = str(report)
+    assert "private-user@example.test" not in rendered
+    assert "vault://secret" not in rendered
+    assert report["campaign_ledger"]["identity_records"] == "[REDACTED]"
+
+
+def test_access_control_consumes_identity_records_without_vault_refs() -> None:
+    profiles = _identity_profiles_from_state(
+        {
+            "identity_records": {
+                "identity-1": {
+                    "profile_ref": {
+                        "identity_id": "identity-1",
+                        "name": "secondary-owner",
+                        "email_ref": "mailbox://identity-1",
+                        "password_ref": "vault://secret",
+                    }
+                }
+            }
+        }
+    )
+    assert [profile.name for profile in profiles] == ["secondary-owner"]
+    assert "vault://secret" not in str(profiles)
+
+
+def test_auth_projects_identity_records_without_vault_refs() -> None:
+    profiles = _profiles_from_identity_records(
+        {
+            "identity_records": {
+                "identity-1": {
+                    "password_ref": "vault://secret",
+                    "profile_ref": {
+                        "identity_id": "identity-1",
+                        "email_ref": "mailbox://identity-1",
+                        "password_ref": "vault://secret",
+                        "status": "verified",
+                    },
+                }
+            }
+        }
+    )
+    assert profiles["identity-1"]["identity_id"] == "identity-1"
+    assert "password_ref" not in profiles["identity-1"]
+    assert "vault://secret" not in str(profiles)
+
+
+def test_identity_vault_key_is_engagement_scoped() -> None:
+    key = reauth_vault.identity_vault_key("client-a", "eng-identity")
+    assert key == "client-a:eng-identity:identity"
+    assert key != reauth_vault.identity_vault_key("client-b", "eng-identity")
+    assert reauth_vault.identity_vault_key("", "legacy-thread") == "legacy-thread"
+
+
+def test_identity_vault_ttl_and_engagement_cleanup(monkeypatch) -> None:
+    thread_id = "identity-ttl-test"
+    baseline_identity_records = reauth_vault.vault_stats()["identity_records"]
+    now = 10_000.0
+    monkeypatch.setenv("WEBPENT_REAUTH_VAULT_TTL_SECONDS", "60")
+    monkeypatch.setattr(reauth_vault.time, "time", lambda: now)
+    try:
+        reauth_vault.seal_identity_profiles(
+            thread_id,
+            {"identity-1": {"profile_ref": "vault://profile"}},
+        )
+        assert reauth_vault.unseal_identity_profiles(thread_id) == {
+            "identity-1": {"profile_ref": "vault://profile"}
+        }
+        monkeypatch.setattr(reauth_vault.time, "time", lambda: now + 61)
+        assert reauth_vault.unseal_identity_profiles(thread_id) == {}
+        reauth_vault.clear_reauth_secret(thread_id)
+        assert reauth_vault.unseal_identity_profiles(thread_id) == {}
+        assert reauth_vault.vault_stats()["identity_records"] == baseline_identity_records
+    finally:
+        reauth_vault.clear_reauth_secret(thread_id)
 
 
 def test_provisioning_verifies_with_redacted_report_only() -> None:
@@ -69,6 +191,11 @@ def test_provisioning_verifies_with_redacted_report_only() -> None:
     assert "OTP" not in str(result).upper()
     assert result["identity_records"]
     assert result["signup_submissions"]
+    scoped_profiles = reauth_vault.unseal_identity_profiles(
+        "client-a:eng-identity:identity"
+    )
+    assert scoped_profiles
+    reauth_vault.clear_reauth_secret("client-a:eng-identity:identity")
 
 
 def test_mailbox_timeout_is_inconclusive_not_confirmed() -> None:

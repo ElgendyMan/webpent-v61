@@ -5,8 +5,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from webpent.graph.builder import (
+    NODE_AUTH,
     NODE_CRAWLER,
     NODE_IDENTITY_PROVISIONING,
+    NODE_IDENTITY_PROVISIONING_PRE_AUTH,
     NODE_PLANNER,
     NODE_REPORTER,
     NODE_SUBDOMAIN_TAKEOVER,
@@ -101,6 +103,19 @@ def test_graph_registers_wildcard_and_identity_nodes() -> None:
     assert NODE_PLANNER in nodes
 
 
+def test_compiled_graph_wires_pre_auth_identity_and_reactive_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("webpent.graph.builder._identity_provisioning_enabled", lambda: True)
+    monkeypatch.setattr("webpent.graph.builder._js_intelligence_enabled", lambda: False)
+    compiled = build_graph(auto_approve=True)
+    edges = {(edge.source, edge.target) for edge in compiled.get_graph().edges}
+    assert (NODE_PLANNER, NODE_IDENTITY_PROVISIONING_PRE_AUTH) in edges
+    assert (NODE_IDENTITY_PROVISIONING_PRE_AUTH, NODE_AUTH) in edges
+    assert (NODE_CRAWLER, NODE_IDENTITY_PROVISIONING) in edges
+    assert (NODE_IDENTITY_PROVISIONING, NODE_SUBDOMAIN_TAKEOVER) in edges
+
+
 def test_compiled_graph_wires_identity_between_crawler_and_legacy_branch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -110,6 +125,16 @@ def test_compiled_graph_wires_identity_between_crawler_and_legacy_branch(
     edges = {(edge.source, edge.target) for edge in compiled.get_graph().edges}
     assert (NODE_CRAWLER, NODE_IDENTITY_PROVISIONING) in edges
     assert (NODE_IDENTITY_PROVISIONING, NODE_SUBDOMAIN_TAKEOVER) in edges
+
+
+def test_planner_route_is_legacy_compatible_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "webpent.graph.builder.get_settings",
+        lambda: type("Settings", (), {"identity_provisioning_enabled": False})(),
+    )
+    from webpent.graph.builder import route_after_planner
+
+    assert route_after_planner({}) == NODE_AUTH
 
 
 def test_identity_route_is_legacy_compatible_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:

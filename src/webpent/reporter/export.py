@@ -45,6 +45,13 @@ from webpent.utils.crypto import (
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "templates" / "reports" / "report.html.j2"
+_IDENTITY_REPORT_KEYS = {
+    "identity_records",
+    "identity_profiles",
+    "signup_submissions",
+    "verification_material_events",
+    "signup_forms_detected",
+}
 
 
 def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
@@ -114,7 +121,17 @@ def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
 
 
 def _redact_report_value(value: Any, key: str = "") -> Any:
-    """Recursively apply the canonical evidence redaction contract."""
+    """Recursively redact evidence and exclude identity state from reports."""
+    normalized_key = str(key).strip().lower().replace("-", "_")
+    if normalized_key in _IDENTITY_REPORT_KEYS:
+        return "[REDACTED]"
+    if isinstance(value, dict):
+        return {
+            str(item_key): _redact_report_value(item, str(item_key))
+            for item_key, item in value.items()
+        }
+    if isinstance(value, (list, tuple, set)):
+        return [_redact_report_value(item) for item in value]
     clean, _ = redact_sensitive(value, key_hint=key)
     return clean
 

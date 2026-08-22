@@ -173,6 +173,7 @@ NODE_RESEARCH_SESSION = "research_session"
 NODE_RECOVERY = "recovery"
 NODE_WILDCARD_SCOPE = "wildcard_scope"
 NODE_IDENTITY_PROVISIONING = "identity_provisioning"
+NODE_IDENTITY_PROVISIONING_PRE_AUTH = "identity_provisioning_pre_auth"
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
 _EXPLOITABLE_CLASSES = EXPLOITABLE_CLASSES
@@ -606,6 +607,18 @@ def _identity_provisioning_enabled() -> bool:
         return False
 
 
+def route_after_planner(state: PentestState) -> str:
+    """Run opt-in identity setup before auth; preserve planner→auth when OFF."""
+    del state
+    return NODE_IDENTITY_PROVISIONING_PRE_AUTH if _identity_provisioning_enabled() else NODE_AUTH
+
+
+def route_after_pre_auth_identity(state: PentestState) -> str:
+    """Always continue to auth after the bounded pre-auth identity seam."""
+    del state
+    return NODE_AUTH
+
+
 def route_after_crawler(state: PentestState) -> str:
     """Run static JavaScript review only when explicitly enabled."""
     del state
@@ -998,6 +1011,7 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
     graph.add_node(NODE_RECOVERY, recovery_node)
     graph.add_node(NODE_WILDCARD_SCOPE, wildcard_scope_node)
     graph.add_node(NODE_IDENTITY_PROVISIONING, identity_provisioning_node)
+    graph.add_node(NODE_IDENTITY_PROVISIONING_PRE_AUTH, identity_provisioning_node)
     graph.add_node(NODE_KNOWLEDGE_GAP, knowledge_gap_node)
     graph.add_node(NODE_NEXT_BEST_ACTION, next_best_action_node)
     graph.add_node(NODE_RESEARCH_SESSION, research_session_node)
@@ -1014,7 +1028,15 @@ def build_graph(checkpointer: Any = None, auto_approve: bool = False):
         route_after_wildcard_scope,
         {NODE_PLANNER: NODE_PLANNER, NODE_REPORTER: NODE_REPORTER},
     )
-    graph.add_edge(NODE_PLANNER, NODE_AUTH)
+    graph.add_conditional_edges(
+        NODE_PLANNER,
+        route_after_planner,
+        {
+            NODE_AUTH: NODE_AUTH,
+            NODE_IDENTITY_PROVISIONING_PRE_AUTH: NODE_IDENTITY_PROVISIONING_PRE_AUTH,
+        },
+    )
+    graph.add_edge(NODE_IDENTITY_PROVISIONING_PRE_AUTH, NODE_AUTH)
 
     # V6.1: Conditional routing after AUTH — skip recon if requested.
     graph.add_conditional_edges(

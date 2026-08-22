@@ -36,6 +36,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from webpent.shared.exceptions import ToolExecutionError, ToolNotFoundError
 from webpent.shared.http_discovery import discover_http_surface
+from webpent.shared.identity_provisioning import project_signup_form_events
 from webpent.shared.llm import (
     TaskType,
     get_cached_llm,
@@ -808,12 +809,20 @@ def crawler_node(state: PentestState) -> dict:
         )
     logger.info(summary)
 
+    signup_forms_detected = project_signup_form_events(
+        crawled_data,
+        engagement_id=str(state.get("engagement_id") or ""),
+        client_id=str(state.get("client_id") or ""),
+        source="crawler",
+    )
     result = {
         "crawled_data": crawled_data,
         "mental_model": mental_model_update,
         "messages": [AIMessage(content=summary)],
         "current_phase": "crawling",
     }
+    if signup_forms_detected:
+        result["signup_forms_detected"] = signup_forms_detected
     if surface_security_update:
         result["surface_security"] = surface_security_update
     return result

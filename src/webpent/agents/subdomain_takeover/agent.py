@@ -8,6 +8,7 @@ failures are retained as observations rather than promoted to findings.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import socket
@@ -17,6 +18,7 @@ from urllib.parse import urlparse
 from webpent.models.findings import Finding, Severity
 from webpent.models.targets import Target
 from webpent.shared.http import make_safe_httpx_client
+from webpent.shared.research_intelligence import NegativeEvidence
 
 logger = logging.getLogger(__name__)
 
@@ -215,11 +217,44 @@ def subdomain_takeover_node(state: dict[str, Any]) -> dict[str, Any]:
             "current_phase": "subdomain_takeover",
             "errors": ["No target configured for takeover check."],
         }
-    findings, observations, gaps = verify_subdomain_takeover(target, _candidate_hosts(state))
+    candidates = _candidate_hosts(state)
+    in_scope_hosts: list[str] = []
+    out_of_scope_evidence: list[dict[str, Any]] = []
+    compiled_scope = state.get("compiled_scope") or {}
+    scope_regex = tuple(str(item) for item in compiled_scope.get("compiled_regex", []))
+    client_id = str(state.get("client_id") or "").strip()
+    engagement_id = str(state.get("engagement_id") or "").strip()
+    for host in candidates:
+        if target.is_in_scope(f"https://{host}"):
+            in_scope_hosts.append(host)
+            continue
+        if not client_id:
+            continue
+        action_fingerprint = hashlib.sha256(
+            f"subdomain-scope|{host}|{compiled_scope.get('fingerprint', '')}".encode()
+        ).hexdigest()[:32]
+        out_of_scope_evidence.append(
+            NegativeEvidence(
+                evidence_id=f"scope:{action_fingerprint}",
+                hypothesis_id=f"subdomain_scope:{host}",
+                action_fingerprint=action_fingerprint,
+                identity_context="none",
+                tenant_context=client_id,
+                method="scope_filter",
+                workflow_state="subdomain_takeover",
+                reason="discovered_host_out_of_scope",
+                confidence=1.0,
+                client_id=client_id,
+                engagement_id=engagement_id,
+                scope=scope_regex,
+            ).as_dict()
+        )
+    findings, observations, gaps = verify_subdomain_takeover(target, in_scope_hosts)
     return {
         "findings": findings,
         "subdomain_takeover_observations": observations,
         "subdomain_takeover_coverage_gaps": gaps,
+        "negative_evidence_ledger": out_of_scope_evidence,
         "current_phase": "subdomain_takeover",
     }
 
