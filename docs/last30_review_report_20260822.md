@@ -28,7 +28,7 @@
 | 18 | RAG data/methodologies/repositories/reports/writeups/scenarios | ingest/verification محلي | RAG verifier سبق نجاحه محليًا؛ live r2/r2b استخدما `DISABLE_RAG=true` |
 | 19 | Docker stack/API/Celery/Redis/workers | partial | host API/Celery checks محدودة؛ Docker bridge/kernel/disk blockers، لا full stack qualification |
 | 20 | diagnostics script لمشاكل التشغيل | منفذ | read-only diagnostics وtests موجودة؛ لا يعالج runtime blocker تلقائيًا كأنه نجاح |
-| 21 | release manifest وartifact hygiene | أُصلح في هذه المراجعة | أُعيد توليد `docs/release_manifest.json` من current gate؛ يلزم commit/push النهائي بعد إضافة هذا التقرير |
+| 21 | release manifest وartifact hygiene | أُصلح في هذه المراجعة | أُعيد توليد `docs/release_manifest.json` بعد commit التوثيق، وتم push النهائي بعد التحقق من تطابق local/remote |
 | 22 | ZIP نظيف بلا secrets/logs/workspaces | delivery ZIP نظيف | تم بناء clean staging ZIP وفحصه؛ هذا لا يغيّر Git archive التاريخي داخل المستودع |
 | 23 | full pytest/Ruff/compileall | منفذ | آخر full suite بعد source fix: 1340 passed؛ Ruff وcompileall pass |
 | 24 | strict test-count minimum 1300 | غير محقق ويجب عدم تزويره | AST count حالي 1286؛ quality gate الداخلي يستخدم 818 ويمر، لكن strict 1300 يفشل |
@@ -36,7 +36,7 @@
 | 26 | WAPTLab live qualification | blocked/inconclusive | 403 بدون auth fixture ثم bounded timeout؛ لا report/ProofBundle |
 | 27 | Juice Shop live qualification | blocked/inconclusive | endpoint dict defect اتصلح؛ r2/r2b انتهيا بعد container exit 0 ثم connection refused |
 | 28 | لا تعديل على labs ولا credentials حساسة | منفذ | لا lab source modification ولا Gmail secret/cookie دخل repo/ZIP |
-| 29 | commit/push إلى GitHub | منفذ | remote master يطابق HEAD `4e79ab1` وقت المراجعة |
+| 29 | commit/push إلى GitHub | منفذ | remote master يطابق HEAD النهائي `01a98b6b9907e0abe6af6a10d7886859bae577d7` |
 | 30 | تقييم نهائي صريح بدون hallucination | يحتاج تصحيح artifacts | التقرير TargetAgnostic صريح، لكن `vip_assessment_20260822.md` و`vip_quality_gate.json` كانا stale ويعرضان حالة قبل live attempts أو workspace قديم |
 
 ## أخطاء/هلوسات أو claims غير صالحة اكتُشفت
