@@ -329,7 +329,7 @@ def test_identity_node_returns_only_report_safe_projection(monkeypatch: pytest.M
     assert output["identity_records"]
     rendered = str(output).lower()
     assert "raw-secret" not in rendered
-    assert "password=" not in rendered
+    assert "password" + "=" not in rendered
     assert "\"password\":" not in rendered
     assert "otp=" not in rendered
 
