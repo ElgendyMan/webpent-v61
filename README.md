@@ -1,207 +1,183 @@
 # WebPent
 
-WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على **Python 3.12** و**FastAPI** و**Celery** و**LangGraph** و**Pydantic**. يجمع المشروع بين الاكتشاف والتحقق الحتميَّين، والتحليل المساعد بالـLLM ضمن حدود واضحة، والذاكرة، والاستدعاء المعزز بالمعرفة (RAG)، وإنتاج التقارير.
+WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
-الهدف التصميمي ليس تخمين الثغرات؛ فالـ**Finding القابل للتقرير** يجب أن يستند إلى evidence مؤكدة بواسطة أداة أو artifact راجعه إنسان، مع الحفاظ على causal signal وnegative control متى كان ذلك مطلوبًا.
-
-> **الحالة الحالية:** نسخة **v72 Evidence-Aware Bounded Autonomous Bug Hunter / Smart Research Beta**. تشمل إصلاحات Sprint 0–4 الأمنية، Smart profiles، convergence rules، GoalTree، ProofBundle promotion guards، Knowledge Pack/RAG، Target Knowledge Model، Attack Graph، Hypothesis lifecycle، Coverage Intelligence، حدود LLM Copilot، وحقن `RuntimeContext` الآمن مع checkpoint rehydration. آخر baseline محلي موثق هو **1108 اختبارًا ناجحًا و0 failures**، مع `compileall` وRuff و`git diff --check` وBandit وpip-audit وshell syntax وCompose config ناجحين. تم تقوية startup preflight ليكون fail-closed عند الخطأ غير المتوقع، وتوحيد production compose وentrypoint وhealth gates. يظل إعلان production qualification الكاملة مشروطًا بإثبات تشغيل Docker/worker وlive qualification على بيئة مصرح بها؛ كما أن PostgreSQL profile غير مدعوم ما دامت طبقة persistence الفعلية SQLite. هذه النتائج تثبت العقود والـregressions المعروفة، ولا تضمن اكتشاف كل الثغرات على كل هدف. راجع [`docs/production_readiness_20260821.md`](docs/production_readiness_20260821.md)، [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md)، [`docs/v72_release_notes.md`](docs/v72_release_notes.md)، و[`docs/v72_release_handoff.md`](docs/v72_release_handoff.md) للحالة والحدود.
+> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل منفذ ومختبر محليًا في مسارات admission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
-## ابدأ من هنا
+## الحكم الحالي والنتائج الموثقة
 
-للتعرف على المشروع، اقرأ الملفات بالترتيب التالي:
+آخر commit مرفوع إلى GitHub هو `179bdaeb94b50862b5fd56a9eb5cf32dffe3cd00` على فرع `master` في `ElgendyMan/webpent-v61`.
 
-1. [`docs/architecture_simple.md`](docs/architecture_simple.md) — النموذج الذهني المختصر.
-2. [`docs/architecture_detailed.md`](docs/architecture_detailed.md) — topology الـLangGraph والـfeature flags وحدود الأمان.
-3. [`src/webpent/state/initial_state.py`](src/webpent/state/initial_state.py) — الحالة الأساسية للحملة.
-4. [`src/webpent/graph/builder.py`](src/webpent/graph/builder.py) — تسجيل العقد ومسارات التوجيه.
-5. [`src/webpent/shared/knowledge_retrieval.py`](src/webpent/shared/knowledge_retrieval.py) — helper استدعاء الـRAG bounded.
-6. [`scripts/ingest_payloads.py`](scripts/ingest_payloads.py) — مسار الإدخال المعتمد للـknowledge pack.
-7. [`scripts/verify_rag_knowledge_pack.py`](scripts/verify_rag_knowledge_pack.py) — إثبات direct retrieval للأنواع الخمسة.
-8. [`DELIVERY_NOTES_V61.md`](DELIVERY_NOTES_V61.md) — سجل التنفيذ والبوابات والـGit history.
-9. [`docs/v70_validation.md`](docs/v70_validation.md) — تقرير تاريخي عن v62–v70 وحدود الادعاءات.
-10. [`docs/v72_plan_compliance_audit.md`](docs/v72_plan_compliance_audit.md) — مصدر الحقيقة لمراجعة خطة v72 وحالة كل بند.
-11. [`docs/v72_release_notes.md`](docs/v72_release_notes.md) — release notes والبوابات والحدود الحالية.
-
-## ماذا يفعل WebPent؟
-
-تمر الحملة عادةً بالتخطيط، والمصادقة، والاستطلاع، والزحف، وفهم الهدف، وتوليد الفرضيات، والـprobes، والتحقق من الأدلة، والمتابعة المحدودة، والتقييم، والتقرير. يفصل التصميم بين بيانات السطح والفرضيات والأدلة والعلاقات والـFindings المؤكدة.
-
-| مفهوم الحالة | الاستخدام |
+| البوابة | النتيجة |
 |---|---|
-| **Crawled data** | Endpoints وforms وheaders ومراجع JavaScript وحقائق السطح الأخرى. |
-| **Surface observation** | إشارة سلبية إلى احتمال وجود فئة ثغرات؛ لا تُعد Finding وحدها. |
-| **Hypothesis** | فكرة قابلة للاختبار قد تُرقّى أو تُرفض أو تظل inconclusive. |
-| **Canonical evidence** | Request أو response أو tool result أو artifact راجعه إنسان بعد توحيده. |
-| **Relational evidence** | علاقة typed بين identities أو resources أو requests أو findings؛ لا تعني ثغرة تلقائيًا. |
-| **Finding** | نتيجة اجتازت قواعد evidence وconfidence والـvalidation. |
+| bbscout full pytest | 7 passed |
+| WebPent full pytest | 1373 passed، 294 warnings |
+| Package/hardening focused suite | 31 passed، 2 warnings |
+| G-02 focused suite | 22 passed |
+| Ruff | Passed |
+| compileall | Passed |
+| G-02 runtime invariant | Passed؛ 280 primary records؛ لا اتصال خارجي بالهدف |
+| tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
+| Bandit على الملفات المعدلة | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
+
+هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا.
+
+## ما هو Target Package v2؟
+
+`Target Package v2` هو عقد intake يصف البرنامج والهدف والنطاق والسياسة والقدرات ومصدر البيانات. الحزمة **تصف القيود ولا تمنح صلاحيات إضافية**. لا يمكن للحزمة أن توسع target scope أو تتجاوز `ActionAuthority` أو شروط الإثبات.
+
+تمر الحزمة التنفيذية بالمسار التالي:
 
 ```mermaid
 flowchart LR
-    input[Target and scope] --> plan[Plan and authenticate]
-    plan --> discover[Discover and understand]
-    discover --> hypotheses[Generate hypotheses]
-    hypotheses --> validate[Validate with tools and evidence]
-    validate --> review[Challenge, chain, and follow up]
-    review --> report[Score and report]
+    source[bbscout package] --> digest[Canonical digest check]
+    digest --> signature[Detached Ed25519 verification]
+    signature --> confirm[Explicit confirmation]
+    confirm --> lease[One-time engagement lease]
+    lease --> scope[ScopeCompiler and policy decision]
+    scope --> capability[Capability preflight]
+    capability --> authority[Central ActionAuthority]
+    authority --> proof[Verifier and ProofBundle]
+    proof --> report[Redacted report continuity]
 ```
 
-يحتوي الرسم الفعلي على مسارات اختيارية لـJavaScript intelligence وtarget understanding وattack graph وsurface-security projection وbounded payload optimization وexploit chaining وrabbit-hole loops. هذه المسارات feature-flagged أو policy-bounded؛ راجع [الرسم التفصيلي](docs/architecture_detailed.md).
+### قواعد admission والتنفيذ
 
-## القدرات الرئيسية
+يتم إعادة حساب `content_sha256` للتمثيل canonical داخل WebPent، بينما يبقى `source_response_sha256` دليلًا مستقلًا لمصدر الحزمة. لا يتم مقارنة hash المصدر مع hash محتوى الحزمة لأنهما يمثلان شيئَين مختلفين.
 
-| المجال | الوضع الحالي |
+التنفيذ package-backed يتطلب detached Ed25519 signature بحالة `verified`، ومفتاحًا عامًا موثوقًا يمرره المستدعي وقت التشغيل. الحالة `unsigned-local-mvp` صالحة للمراجعة المحلية فقط، وليست صالحة لإنشاء engagement تنفيذي.
+
+`EngagementFactory` ينشئ binding أحادي الاستهلاك في SQLite صغير لا يحفظ raw package أو secrets. يتم رفض confirmation الناقصة، ومخالفة package ID أو digest، والهدف الخارج عن النطاق، وانتهاء الحزمة أو إلغائها، وإعادة استهلاك الحزمة أو engagement ID.
+
+يستخدم `ScopeCompiler` قواعد normalized scope مرة واحدة داخل WebPent، ويفحص scheme وhost وport وpath وwildcard وexclusion وmethod وaction class وredirect chain. القرارات typed وتشمل `allow` و`allow_with_constraints` و`deny_out_of_scope` و`deny_policy` و`deny_expired` و`deny_revoked` و`deny_ambiguous`.
+
+### استمرارية الإثبات والتقرير
+
+أي confirmation قابلة للتقرير يجب أن تعتمد على **causal signal** و**neutral negative control** وProofBundle مختوم وقابل لإعادة التشغيل. candidate أو heuristic أو mock أو timeout أو 403/429 أو missing capability لا يتحول إلى confirmed أو clean.
+
+تنتقل package identity والـdigests من action metadata إلى verifier ثم ProofBundle ثم التقرير. التقرير يحتوي على `target_package_continuity` redacted ويدخل هذا الجزء في audit/master hash. لا يتم وضع private keys أو provider credentials أو cookies أو OTPs داخل state أو checkpoint أو prompt أو report أو archive.
+
+## ابدأ من هنا
+
+للتعرف على النظام، ابدأ بالملفات التالية:
+
+1. [`docs/architecture_simple.md`](docs/architecture_simple.md) — النموذج الذهني المختصر.
+2. [`docs/architecture_detailed.md`](docs/architecture_detailed.md) — topology الـLangGraph وحدود الأمان.
+3. [`src/webpent/state/initial_state.py`](src/webpent/state/initial_state.py) — bootstrap والحالة canonical.
+4. [`src/webpent/graph/builder.py`](src/webpent/graph/builder.py) — العقد ومسارات التوجيه وpackage preflight.
+5. [`src/webpent/shared/action_authority.py`](src/webpent/shared/action_authority.py) — بوابة التنفيذ المركزية.
+6. [`src/webpent/shared/target_package_context.py`](src/webpent/shared/target_package_context.py) — admission وredaction-safe projection.
+7. [`src/webpent/shared/engagement_factory.py`](src/webpent/shared/engagement_factory.py) — confirmation وone-time lease.
+8. [`src/webpent/shared/package_scope.py`](src/webpent/shared/package_scope.py) — canonical scope/policy compiler.
+9. [`src/webpent/shared/package_preflight.py`](src/webpent/shared/package_preflight.py) — package/capability preflight.
+10. [`src/webpent/models/proof_bundle.py`](src/webpent/models/proof_bundle.py) و[`src/webpent/shared/verifier.py`](src/webpent/shared/verifier.py) — قواعد الإثبات وإعادة التشغيل.
+11. [`src/webpent/reporter/export.py`](src/webpent/reporter/export.py) — التقرير وaudit hash.
+12. [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
+13. [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — الحكم النهائي والقيود.
+
+## المكونات الأساسية
+
+| المكوّن | وظيفته |
 |---|---|
-| Workflow orchestration | Graph متعدد المراحل للتخطيط والاكتشاف والفرضيات والتنفيذ والتحقق والتأمل والتقرير. |
-| BAC وAuthorization | Authorization matrix، role-aware severity، candidate expansion من query/body/header/GraphQL، وbounded adjacent-ID enumeration. |
-| جودة الإثبات | عدم ترقية heuristic أو write-up إلى Finding بدون behavior فعلي وevidence وشروط التحقق المطلوبة. |
-| Self-critique | Checkpoints عند فشل validation مع إبقاء النتيجة inconclusive بدل الترقية القسرية. |
-| RAG | Knowledge Pack محلي للـmethodologies والـrepositories والـreports والـwrite-ups والـauthorized scenarios. |
-| LLM safety | محتوى RAG والبيانات الخارجية داخل trust boundary ولا يُعامل كتعليمات تنفيذ. |
-| Memory isolation | عزل lessons حسب `client_id` مع تضييق اختياري حسب `engagement_id`. |
-| Reporting | JSON وHTML وتقرير قابل للتوسعة مع authorization matrix appendix وredaction. |
-| Resumability | Checkpoints وthread state لاستكمال الحملات المنظمة بدل عرض آخر thread فقط. |
+| LangGraph workflow | التخطيط والاكتشاف وفهم الهدف وتوليد الفرضيات والتنفيذ والتحقق والتقرير. |
+| ActionAuthority | نقطة التحكم المركزية لكل action؛ لا يوجد transport خفي يتجاوزها. |
+| Validators | فحوص structural وcausal وreplay مع حالات confirmed وcandidate وinconclusive وblocked. |
+| ProofBundle | ختم proof قابل للتحقق، يتضمن continuity الخاصة بالحزمة عندما يكون engagement package-backed. |
+| Knowledge Pack/RAG | منهجيات وتقارير وwrite-ups وauthorized scenarios ضمن trust boundary؛ محتوى RAG بيانات وليس تعليمات تنفيذ. |
+| Memory isolation | عزل lessons حسب `client_id` و`engagement_id` عند الحاجة. |
+| Smart campaigns | تخطيط bounded وإعادة تخطيط عند المعرفة الناقصة دون تحويل الفشل إلى clean. |
+| Reporter | إخراج redacted متعدد الصيغ مع audit trail وpackage continuity. |
+| Celery/Redis | مسار worker موجود، لكن qualification الموزعة الكاملة تحتاج بيئة staging قابلة لإعادة الإنتاج. |
 
 ## هيكل المشروع
 
 ```text
 .
 ├── src/webpent/
-│   ├── agents/              # عقد LangGraph؛ مجلد لكل مسؤولية
-│   ├── api/                 # FastAPI routes وscan handling
+│   ├── agents/              # عقد LangGraph والـvalidators
+│   ├── api/                 # FastAPI routes
 │   ├── cli/                 # CLI وعمليات الإدخال
 │   ├── config/              # الإعدادات وسياسات الأمان
 │   ├── graph/               # بناء الرسم ومسارات التوجيه
-│   ├── memory/              # Chroma وlessons وembeddings وretrieval
+│   ├── memory/              # Chroma وlessons وretrieval
 │   ├── models/              # النماذج وعقود الأدلة
-│   ├── knowledge/           # Target Knowledge Model وdeterministic builder
-│   ├── research/            # Hypothesis lifecycle وexperiment ledger
-│   ├── validators/          # ProofBundle structural/causal/replay gates
-│   ├── benchmark/           # Evaluation metrics وreproducibility contracts
-│   ├── shared/              # confidence وsafety وauthorization وLLM helpers
+│   ├── shared/              # authority وscope وproof وLLM helpers
 │   ├── state/               # PentestState وreducers
 │   ├── tools/               # adapters واكتشاف الأدوات
 │   └── workers/             # Celery task entrypoints
-├── knowledge_pack/          # corpus المحلي المنظم للـRAG
 ├── tests/                   # unit وintegration وsafety وregression
-├── scripts/                 # doctor وingestion وverification
-├── audit/                   # coverage وreview وdelivery records
-├── docs/                    # architecture وdebugging guides
-├── knowledge_sources.yaml   # المصادر المعتمدة للمعرفة
-├── Makefile                 # أوامر التشغيل المحلي وDocker
-└── pyproject.toml           # metadata وdependencies وtooling
+├── scripts/                 # doctor وG-02 وingestion وverification
+├── knowledge_pack/          # corpus المحلي المنظم للـRAG
+├── docs/                    # architecture وaudit وrelease records
+├── Makefile
+└── pyproject.toml
 ```
 
-## المتطلبات
+يتم تسليم bbscout وschemas المشتركة في archive التكامل بجانب WebPent:
 
-- Python **3.12**.
-- Docker Compose عند استخدام الـstack الكامل.
-- Redis للخدمات التي تعتمد على Celery أو rate limiting.
-- Playwright/Chromium فقط لمسارات browser-based.
-- الحزم الموجودة في `pyproject.toml`.
-- LLM provider وembedding model اختياريان حسب مسار التشغيل.
-
-المسار الحتمي لا يحتاج إلى API key للـLLM. يمكن تشغيل وضع deterministic/offline صراحةً:
-
-```bash
-export LLM_ENABLED=false
-# أو
-export WEBPENT_LLM_ENABLED=false
+```text
+bbscout/src/bbscout/
+contracts/target-package.schema.v2.json
+contracts/capability-profile.schema.v1.json
 ```
 
-لا تضع API keys أو cookies أو credentials في source أو reports أو ZIP أو رسائل الدردشة.
+## المتطلبات والتثبيت
 
-## التثبيت
+- Python 3.12.
+- Redis وDocker Compose فقط لمسارات Celery/stack الكامل.
+- Playwright/Chromium لمسارات browser-based فقط.
+- `cryptography` مطلوب لمسار Ed25519 في bbscout.
+- LLM provider وembedding model اختياريان.
 
-من جذر المشروع:
+من جذر مشروع WebPent:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -e .
-
-# مطلوب لمسارات المتصفح فقط
-playwright install chromium
-
-# إعداد محلي اختياري
-cp .env.example .env
+playwright install chromium  # لمسارات المتصفح فقط
 ```
 
-ولإنشاء قيمة سرية محلية:
+للتشغيل الحتمي بدون LLM:
+
+```bash
+export LLM_ENABLED=false
+export WEBPENT_LLM_ENABLED=false
+```
+
+أنشئ secrets محلية قوية وقت التشغيل فقط، ولا تضع `.env` أو المفاتيح في Git أو التقارير أو archive:
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-ضع القيم الناتجة في environment مثل `JWT_SECRET_KEY` و`AUDIT_SECRET_KEY`، ولا تُدخل `.env` في Git أو archive.
+استخدم القيم الناتجة مع `JWT_SECRET_KEY` و`AUDIT_SECRET_KEY` و`CELERY_PAYLOAD_KEY` حسب مسار التشغيل. لا تضع API keys أو cookies أو credentials داخل source أو prompts أو checkpoints.
 
-## Docker workflow
+## تشغيل WebPent
 
-الـMakefile هو الواجهة المفضلة لأنه يوثق أسماء الخدمات وترتيب التهيئة:
-
-```bash
-make dev-init
-make build-base
-make build-app
-make dev-up
-make dev-logs
-make close
-```
-
-الـdevelopment stack يعرض API عادةً على `http://localhost:8000`. اضبط `ENVIRONMENT_PROFILE=lab` للتشغيل المحلي؛ أما `staging` و`production` فيفرضان `AUTH_ENABLED=true` وsecrets قوية، بالإضافة إلى `LANGGRAPH_STRICT_MSGPACK=true` قبل تشغيل persistence الخاصة بالـcheckpoints. قبل تعريض API خارج localhost، استخدم `CORS_ORIGINS` صريحة و`ALLOW_INSECURE_TLS=false`، واستخدم Redis خارجيًا مع TLS عند الحاجة. يدعم Makefile تلقائيًا Docker Compose v2 (`docker compose`) أو الإصدار القديم (`docker-compose`).
-
-يشغّل `preflight` posture state صريحًا (`UNKNOWN` أو `BLOCKED` أو `PASS` أو `READY_WITH_WARNING` أو `DEGRADED`). حالة `READY_WITH_WARNING` في lab تعني أن التشغيل مسموح مع تحذيرات معلنة، ولا تعني qualification حيًا أو غياب كل المخاطر التشغيلية.
-
-طبقة persistence الحالية SQLite؛ وجود PostgreSQL profile لا يعني أن PostgreSQL backend مدعوم إنتاجيًا. لا تفترض أن نجاح تشغيل SQLite يثبت سلامة تشغيل PostgreSQL.
-
-### Production deployment gate
-
-لا تبدأ stack الإنتاج قبل استخدام ملف بيئة حقيقي وإزالة كل قيم `CHANGE-ME`. نفّذ الأوامر التالية من جذر المشروع:
-
-```bash
-cp .env.example .env
-# حرّر .env وضع secrets مستقلة وقوية وCORS origins صريحة.
-make prod-config
-make build RELEASE_TAG=$(git rev-parse --short HEAD)
-make prod-up
-make prod-health
-```
-
-`prod-config` يفشل مبكرًا عند نقص متطلبات Compose، و`prod-up` لا يعلن نجاحًا قبل فحص `/health`. استخدم `make prod-down` للإيقاف المنظم. يجب تنفيذ image smoke test وworker/Redis/checkpoint-resume وbackup/restore في staging فعلي قبل اعتبار النشر **production-qualified**؛ نجاح الاختبارات المحلية وحده يثبت release candidate محصّنًا، وليس تشغيلًا إنتاجيًا مكتمل الإثبات.
-
-```bash
-cp .env.example .env
-# غيّر كل CHANGE-ME إلى secrets مستقلة.
-make doctor
-.venv/bin/python main.py preflight
-.venv/bin/pytest -q
-```
-
-لا تنشر `.env` أو قواعد SQLite أو cookies أو تقارير تحتوي credentials أو service logs. استخدم reverse proxy مع TLS، ودوّر JWT وaudit وCelery-payload وwebhook وOOB secrets بشكل مستقل. تقارير `docs/` المحلية الخاصة بالـmock والـpreflight لا تثبت تشغيلًا حيًا على WAPTLab.
-
-## CLI وAPI
-
-تحقق دائمًا من الخيارات الفعلية في النسخة التي تشغلها:
+تحقق من options الفعلية في النسخة التي تشغلها:
 
 ```bash
 python main.py --help
 python main.py scan --help
-```
-
-أمثلة التشغيل الأساسية:
-
-```bash
 python main.py status --profile smart-observe
-python main.py scan --url http://127.0.0.1:4280 --profile smart-observe
-python main.py scan --url http://127.0.0.1:4280 --profile smart --auto-approve
 python main.py preflight
 ```
 
-`--profile` يحدد composition/policy الفعلية للحملة (`legacy` أو `smart` أو `smart-observe` أو `vip-qualification`)؛ وهو ليس flag شكليًا، بل يصل إلى graph builder وeffective policy. `status` read-only ويعرض capabilities وblockers. `--auto-approve` يزيل نقطة التوقف قبل `execution_sandbox`. استخدمه فقط على lab مصرح به أو pipeline تمت مراجعتها. الوضع الافتراضي يبقي Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
+مثال local lab مصرح به:
 
-لـAPI، صادق أولًا باستخدام مستخدم مضبوط صراحةً في `WEBPENT_USERS`:
+```bash
+python main.py scan \
+  --url http://127.0.0.1:4280 \
+  --profile smart-observe
+```
+
+`--profile` يحدد composition والسياسة الفعلية للحملة. `--auto-approve` لا يجب استخدامه إلا على lab مصرح به وبعد مراجعة الـscope والـpolicy. الوضع الافتراضي يحافظ على Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
+
+مسار API يتطلب authentication مضبوطًا صراحةً:
 
 ```bash
 curl -X POST http://localhost:8000/token \
@@ -214,206 +190,107 @@ curl -X POST http://localhost:8000/api/v1/scans \
   -d '{"url":"http://127.0.0.1:4280","auto_approve":false}'
 ```
 
-ثم استخدم `thread_id` الناتج:
+## استخدام package موقعة من bbscout
 
-```bash
-curl http://localhost:8000/api/v1/scans/<thread_id>/status \
-  -H 'Authorization: Bearer <TOKEN>'
+التوقيع detached يتم بالمفتاح الخاص الذي يمرره المستدعي في الذاكرة فقط. المثال التالي توضيحي ويجب ألا يحوي private key ثابتًا أو حقيقيًا داخل source:
 
-curl http://localhost:8000/api/v1/scans/<thread_id>/findings \
-  -H 'Authorization: Bearer <TOKEN>'
+```python
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from bbscout.signatures import sign_target_package, verify_detached_signature
+from webpent.shared.engagement_factory import EngagementFactory
+
+private_key = Ed25519PrivateKey.generate()  # مثال offline فقط؛ لا تخزن المفتاح
+public_key = private_key.public_key()
+signed_package = sign_target_package(
+    package,
+    private_key=private_key,
+    key_id="runtime-fixture-key",
+)
+
+factory = EngagementFactory(
+    "/tmp/webpent-engagement-leases.sqlite",
+    signature_verifier=lambda value: verify_detached_signature(
+        value,
+        trusted_public_keys={"runtime-fixture-key": public_key},
+    ),
+)
+binding = factory.create_from_package(
+    signed_package,
+    {
+        "user_confirmed": True,
+        "package_id": signed_package["package_id"],
+        "package_sha256": signed_package["integrity"]["content_sha256"],
+        "engagement_id": "local-lab-engagement",
+        "target_url": "http://example.test/app",
+    },
+)
 ```
 
-لا يحتوي WebPent على cookie downgrade خاص بـDVWA أو WAPTLab ولا يفرض route خاصًا بمختبر؛ credentials وscope وtarget-specific options هي مدخلات المشغل.
+في بيئة حقيقية يجب أن يأتي trusted public-key map من configuration آمنة ومراجعة. لا يكفي تغيير `signature_state` يدويًا إلى `verified`؛ WebPent يعيد حساب digest ويتحقق من التوقيع فعليًا.
 
-## الإعدادات الحساسة
+## Scope وcapability preflight
 
-| الإعداد | الافتراضي | المعنى |
-|---|---:|---|
-| `LLM_ENABLED` / `WEBPENT_LLM_ENABLED` | حسب الإعداد | تشغيل LLM أو fallback حتمي bounded. |
-| `enable_js_intelligence` | `false` | مراجعة JavaScript intelligence بعد crawling. |
-| `enable_target_understanding` | `false` | بناء نموذج للroutes والworkflows وحالة المصادقة. |
-| `enable_attack_graph` | `false` | تشغيل attack-graph reasoning الاختياري. |
-| `enable_surface_security_analysis` | `false` | ملاحظات passive محدودة؛ لا تؤكد ثغرة. |
-| `enable_bug_bounty_reporter` | `false` | اختيار reporter الموسع مع redaction وappendices. |
-| `skip_recon` | `false` | تجاوز recon عند وجود نقطة بداية مضبوطة. |
-| `auto_approve` | `false` | إبقاء حد الموافقة البشرية. |
-| `enable_idor_enumeration` | `false` | adjacent-ID enumeration مغلق افتراضيًا. |
-| `idor_enumeration_neighbor_bound` | `5` | الحد الافتراضي؛ يوجد clamp مطلق لا يتجاوز `10`. |
-| `enable_autonomous_controller` | `false` | Autonomous controller اختياري ومغلق افتراضيًا. |
-| `DISABLE_RAG` | غير مفعّل | استخدم `true` عند الحاجة لمسار دون Chroma/embeddings. |
+قبل التخطيط والتنفيذ، يفحص package preflight حالة الحزمة والتوقيع والانتهاء والإلغاء وnormalized scope، ثم يقطع متطلبات capability مع local manifest. الحالات غير المتاحة أو المحجوبة بالسياسة أو غير المؤهلة تتحول إلى knowledge gaps وblocked/inconclusive tasks، ولا تتحول إلى clean.
 
-## Knowledge Pack وRAG
+غياب Target Package يبقي legacy flow متاحًا وفق سياساته القديمة، لكن أي package-backed engagement يجب أن يمر بكل بوابات admission وlease وscope وauthority. لا يمكن استخدام package لتجاوز origin policy أو G-02 أو confirmation أو proof requirements.
 
-يوجد corpus محلي منظم في `knowledge_pack/`:
+## التقارير وLLM وRAG
 
-| النوع | الغرض |
+يدعم WebPent مسارات التقارير الحالية مثل JSON وHTML وMarkdown وPDF عندما تكون مفعلة في النسخة المستخدمة. التقرير redaction-safe ويشمل package continuity والـaudit hash عند وجود package. لا يتم auto-submit لأي provider report؛ discovery والقراءة فقط ما لم توجد عملية مصرح بها ومنفصلة مع confirmation صريحة.
+
+الـLLM اختياري ومحصور في أدوار مثل التلخيص أو ترتيب الفرضيات أو تحسين payloads ضمن policy. مخرجات LLM لا تعتبر evidence ولا confirmation. عند غياب API key أو تجاوز rate limit أو فشل provider، يجب أن يعود النظام إلى deterministic fallback أو يسجل knowledge gap؛ لا يجوز تحويل الخطأ إلى clean.
+
+بيانات RAG والمصادر الخارجية تعامل كبيانات غير موثوقة داخل trust boundary. لا تُنفذ تعليمات موجودة داخل write-up أو repository أو صفحة خارجية لمجرد أنها ظهرت في المحتوى.
+
+## الاختبارات وبوابات الإصدار
+
+من archive التكامل، حيث مجلدا `bbscout` و`webpent` متجاوران:
+
+```bash
+cd bbscout
+PYTHONPATH=src python -m pytest -q
+
+cd ../webpent
+PYTHONPATH=../bbscout/src:src python -m pytest tests/ -q --tb=short
+ruff check src tests scripts
+python -m compileall -q src scripts tests
+PYTHONPATH=../bbscout/src:src python -m pytest \
+  tests/test_g02_runtime_invariants.py \
+  tests/test_g02_direct_io_inventory.py \
+  tests/test_g02_precommit_enforcement.py \
+  tests/test_g02_scanner_expansion.py -q
+```
+
+شغّل `make doctor` و`preflight` قبل stack الكامل. نجاح الاختبارات المحلية لا يثبت أن Docker أو Redis أو Celery أو checkpoint resume مؤهل إنتاجيًا. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials في release.
+
+## Docker وCelery وproduction
+
+يوجد مسار Docker/Compose وCelery، لكن qualification الموزعة الكاملة تحتاج staging حقيقيًا يثبت image smoke test وworker/Redis/checkpoint-resume وbackup/restore والتعامل مع outages. لا تعتبر حالة `READY_WITH_WARNING` أو نجاح SQLite المحلي دليلًا على production qualification. طبقة persistence الفعلية في هذا التكامل SQLite؛ وجود profile آخر لا يعني أن backend آخر مدعوم إنتاجيًا.
+
+قبل أي تعريض خارج localhost، استخدم secrets قوية وCORS origins صريحة وTLS، واضبط `ALLOW_INSECURE_TLS=false`. لا تنشر `.env` أو قواعد SQLite أو service logs أو تقارير تحتوي على credentials.
+
+## القيود والميزات غير المؤهلة
+
+| البند | الحالة |
 |---|---|
-| `methodology` | OWASP WSTG وNIST وASVS ومراحل الاختبار والتقرير. |
-| `repository` | catalog لمستودعات عامة مع provenance ووظيفة كل مصدر. |
-| `report` | finding contract يتضمن evidence وcausal signal وnegative control وremediation. |
-| `writeup` | فهرس أنماط SQLi وXSS وCSRF وSSRF وBAC وGraphQL وغيرها. |
-| `scenario` | سيناريوهات authorized-lab لـBAC وSQLi وXSS وSSRF وGraphQL. |
+| Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
+| G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
+| Bugcrowd/Intigriti/YesWeHack adapters | **MISSING**؛ لا توجد fake adapters |
+| WAPTLab وJuice Shop live qualification في هذه الجولة | **لم تُنفذ** |
+| Docker/Celery distributed qualification | **غير مثبتة** |
+| Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة** |
+| Auto-submit provider reports | غير مسموح به في هذا المسار |
 
-الـmanifest هو `knowledge_pack/manifest.yaml`، ومربوط بالمصادر العامة في `knowledge_sources.yaml`.
+لذلك قرار promotion الحالي هو **NO** حتى تُجمع الأدلة المطلوبة في بيئة مصرح بها وتُراجع النتائج بصورة مستقلة.
 
-### Dry run والإدخال
+## ملفات التسليم
 
-```bash
-PYTHONPATH=src python scripts/ingest_payloads.py \
-  --manifest knowledge_pack/manifest.yaml \
-  --dry-run
+- `webpent_bbscout_integration_release.zip` — archive نظيف للمشروع والتكامل.
+- `integration_evidence_bundle.zip` — matrices وaudits وtest logs والـpatch.
+- `webpent_target_package_v2.patch` — patch قابل للمراجعة.
+- `webpent_bbscout_integration_release.sha256` — checksum للأرشيف.
+- `integration_evidence_bundle.sha256` — checksum لحزمة الأدلة.
+- [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — manifest المتطلبات.
+- [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — final audit وحدود الادعاء.
 
-PYTHONPATH=src python scripts/ingest_payloads.py \
-  --manifest knowledge_pack/manifest.yaml
-```
-
-الإدخال يستخدم `source_id` ثابتًا وmetadata مثل `doc_type` و`category` و`stack` و`source_url`. لذلك إعادة تشغيل seed لا تكرر chunks في Chroma. قاعدة Chroma runtime محلية وليست corpus قابلًا للـcommit، ويجب ألا تدخل Git أو archive.
-
-### إثبات الاستدعاء الفعلي
-
-```bash
-PYTHONPATH=src python scripts/verify_rag_knowledge_pack.py
-```
-
-التحقق الموثق أثبت direct retrieval للأنواع الخمسة، ومرور context bounded يحمل provenance markers إلى helper المستخدم من الـagents. الـplanner يستدعي `methodology` و`repository` و`scenario`، بينما يستدعي hypothesis analyzer `writeup` و`report` و`scenario`.
-
-الـRAG **advisory-only**: methodology أو write-up أو repository لا يرفع Finding تلقائيًا. يجب أن يثبت السلوك الفعلي ويجتاز evidence وvalidation وconfidence contracts.
-
-## عزل الحملات والذاكرة
-
-استخدم نفس `engagement_id` عندما تمثل عدة تشغيلات حملة واحدة، حتى تتجمع النتائج المختلفة دون استبدال finding مؤكدة بمرشح أضعف. استخدم قيمة جديدة لحملة منفصلة.
-
-`client_id` جزء من contract الخاص بـlessons، والغرض منه منع انتقال المعرفة التشغيلية بين عملاء مختلفين. لا تخلط بين التراكم داخل engagement واحد وبين إزالة عزل العملاء.
-
-## أين يُستخدم الـLLM؟
-
-المسار المشترك في [`src/webpent/shared/llm.py`](src/webpent/shared/llm.py) هو boundary لمزودي الـLLM. يمكن استخدام LLM في التخطيط، تلخيص target understanding، ترتيب الفرضيات، payload ideation، صياغة الأثر، executive summaries، ومراجعة devil's advocate.
-
-تظل الضوابط التالية حتمية أو policy-bounded:
-
-- scope وtarget authorization؛
-- URL normalization وredaction؛
-- feature-flag routing وحدود retry؛
-- evidence status وconfidence promotion؛
-- relational-edge status؛
-- destructive-PoC policy وhuman approval؛
-- أهلية التقرير النهائي.
-
-النص الذي يولده LLM ليس evidence. عند فشل الـprovider يجب استخدام fallback bounded وتسجيل المسار المتدهور بدل اختراع نتيجة. اختلاف ذكاء النموذج لا يغيّر هذه القاعدة: النموذج يشرح ويرتب ويقترح فقط، بينما promotion يحتاج behavior فعليًا و`causal_signal` و`negative_control`.
-
-### إعداد مزود مختلف أو model مختلف
-
-يستخدم task router قائمة fallback محدودة ومختبرة، ويتخطى أي provider لا يملك مفتاحًا صالحًا. يمكن ضبط OpenAI أو أي endpoint متوافق مع OpenAI عبر `OPENAI_API_KEY` و`OPENAI_BASE_URL`، مع override اختياري في `OPENAI_MODEL`. أما Ollama أو أي خادم محلي متوافق فيحتاج `LOCAL_LLM_ENABLED=true` صراحةً، ثم `LOCAL_LLM_URL` و`LOCAL_LLM_MODEL`؛ ويظل آخر fallback لتجنب latency أو اتصالات محلية غير مقصودة.
-
-قبل qualification شغّل `python scripts/doctor.py --json`. هذا الفحص يبني ويستدعي provider عند توفر المفتاح، ويُظهر `fallback_chains` بالـmodel الفعلي و`effective_endpoints` بدون كشف الأسرار. نجاح بناء client وحده لا يثبت صحة model أو endpoint؛ يجب أن ينجح invoke الحقيقي. استخدم مفاتيح provider محدودة الصلاحية، واضبط `LLM_REQUEST_TIMEOUT` و`LLM_MAX_TOKENS`، ولا تعتمد على اسم model من مزود آخر دون التحقق من catalog الخاص به.
-
-طبقة prompt safety تعزل بيانات الهدف ونتائج الأدوات داخل boundary غير موثوق وتتعامل مع model output كبيانات غير موثوقة. لا توجد آلية آمنة أو مقبولة لتجاوز guardrails الخاصة بالمزوّد؛ إذا رفض النموذج طلبًا، يعود المسار إلى fallback deterministic أو provider آخر، ولا يتم تحويل الرفض إلى finding.
-
-## ضوابط الأمان
-
-- افحص فقط أصولًا لديك تصريح كتابي لاختبارها.
-- state-changing BAC probes مقفولة افتراضيًا وتحتاج موافقة صريحة.
-- `enable_idor_enumeration` و`enable_autonomous_controller` مغلقان افتراضيًا.
-- adjacent-ID enumeration bounded ولا يتعامل مع UUID كأرقام مجاورة.
-- محتوى RAG والبيانات الخارجية يُغلف داخل `<untrusted_data>...</untrusted_data>` ولا يُعامل كتعليمات.
-- لا تتم ترقية Finding من keyword أو heuristic أو write-up فقط.
-- لا تستخدم production credentials في lab، ولا تحفظ cookies أو databases في archive.
-- لا تشغل unrestricted RCE أو SQL dumps أو credential attacks أو data exfiltration.
-- حالات `Not Scanned` و`Inconclusive` و`Needs Human Review` و`Tool Confirmed` مختلفة ولا يجوز خلطها.
-
-## التقارير
-
-يجب أن يحتوي التقرير المهني، بحسب نوع finding، على الهدف والنطاق، baseline، probe، behavior المرصود، causal signal، negative control، الأثر، confidence، replay steps المصرح بها، remediation، والقيود.
-
-تقارير JSON وHTML تُصدر عبر مسار reporter الموجود في المشروع. قبل استخدام أي أمر تصدير، راجع الخيارات الفعلية:
-
-```bash
-python main.py --help
-python main.py report --help
-```
-
-يجب أن تظل التقارير redacted؛ لا تضع access tokens أو passwords أو session cookies داخلها.
-
-## Doctor وDebugging runbook
-
-```bash
-make doctor
-python scripts/doctor.py --json
-python scripts/doctor.py --timeout 10
-```
-
-عند تعطيل LLM، لا يجب أن ينفذ doctor provider network probes؛ وضع offline deterministic يعد healthy إذا نجحت الفحوص المحلية. عند تفعيله، نتيجة `OK` الصريحة فقط تعد نجاحًا؛ أما `not ok` أو timeout أو model/base-url mismatch فتُسجّل كفشل في مسار LLM، مع بقاء scan قادرًا على استخدام deterministic fallbacks حيث يسمح الـnode بذلك.
-
-عند غياب Finding، لا تبدأ بتعديل reporter. افحص بالترتيب:
-
-1. هل دخل الهدف والنطاق بشكل صحيح؟
-2. هل crawler وصل إلى المسار المطلوب؟
-3. هل hypothesis قابلة للاختبار أم مجرد observation؟
-4. هل تم تنفيذ probe فعلًا أم حجبه policy أو approval؟
-5. هل يوجد tool result أو human-reviewed artifact؟
-6. هل causal signal وnegative control مكتملان؟
-7. هل validator أو devils-advocate أبقى النتيجة inconclusive؟
-8. هل المسار استخدم thread/engagement الصحيح؟
-
-Tool discovery lazy وidempotent. عدم وجود binary خارجي يجب أن يظهر كأداة غير متاحة، ولا يجوز أن يُسجل كأن التنفيذ تم.
-
-## الاختبارات والتحقق المحلي
-
-من جذر المشروع:
-
-```bash
-export PYTHONPATH="$PWD/src"
-
-.venv/bin/python -m compileall "$PWD/src" -q
-.venv/bin/pytest "$PWD/tests" -q --tb=short
-.venv/bin/ruff check "$PWD/src" "$PWD/tests" \
-  --line-length 100 \
-  --output-format concise
-```
-
-اختبارات RAG المركزة:
-
-```bash
-PYTHONPATH=src .venv/bin/pytest -q tests/test_rag_knowledge_pack.py
-PYTHONPATH=src .venv/bin/python scripts/verify_rag_knowledge_pack.py
-```
-
-الاختبارات يجب أن تثبت behavior وليس مجرد imports. من العقود المهمة: fallback الحتمي للـLLM، redaction، lazy discovery، عدم ترقية surface observation، عزل lessons، حدود PoC، state-changing gating، candidate expansion، confidence الديناميكي، وbounded graph loops.
-
-## الوضع الحالي والحدود المعروفة
-
-WebPent مشروع **research-grade autonomous pentesting framework** قوي، لكنه ليس بديلًا عن pentester بشري ولا يضمن عددًا ثابتًا من الثغرات في أي تطبيق. جودة النتائج تعتمد على scope، الحسابات المتاحة، استقرار الهدف، تغطية crawler، إعدادات LLM والembeddings، والـnegative controls.
-
-الـKnowledge Pack مضاف ومربوط ومسار retrieval مثبت، لكنه corpus صغير نسبيًا مقارنة بقاعدة معرفة إنتاجية واسعة. كذلك، رقم الاختبارات لا يساوي recall على WAPTLab أو Juice Shop. لقياس precision وrecall يجب إنشاء benchmark versioned يحدد known findings وexpected evidence ثم قياس coverage لكل agent.
-
-يجب أيضًا مراجعة dependency warnings وproduction hardening قبل النشر العام، خصوصًا إدارة الأسرار، Celery/Redis، Chroma persistence، rate limiting، logging redaction، وCI security scanning.
-
-## Change records وGit
-
-- [`DELIVERY_NOTES_V61.md`](DELIVERY_NOTES_V61.md) — سجل remediation v61 والبوابات والـGit history.
-- [`RAG_KNOWLEDGE_PACK_NOTES.md`](RAG_KNOWLEDGE_PACK_NOTES.md) — تنفيذ الحزمة والتحقق من retrieval.
-- [`knowledge_pack/README.md`](knowledge_pack/README.md) — بنية الحزمة وحدود الثقة والتشغيل.
-- [`audit/coverage_matrix_v55_plus.md`](audit/coverage_matrix_v55_plus.md) — نضج التغطية ومعايير الإغلاق.
-- [`audit/v56_coverage_report.md`](audit/v56_coverage_report.md) — تقرير تغطية سابق.
-
-المستودع البعيد المعلن في سجل التسليم هو [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)، branch `master`.
-
-لم يتم تعديل WAPTLab أو Juice Shop ضمن remediation v61 أو إضافة Knowledge Pack.
-
-## المراجع
-
-1. [OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
-2. [NIST SP 800-115](https://csrc.nist.gov/pubs/sp/800/115/final)
-3. [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
-4. [PortSwigger Web Security Academy](https://portswigger.net/web-security/all-materials)
-5. [OWASP WSTG repository](https://github.com/OWASP/wstg)
-6. [OWASP ASVS repository](https://github.com/OWASP/ASVS)
-7. [PayloadsAllTheThings](https://github.com/1N3/PayloadsAllTheThings)
-8. [SecLists](https://github.com/danielmiessler/SecLists)
-9. [ProjectDiscovery nuclei-templates](https://github.com/projectdiscovery/nuclei-templates)
-10. [OWASP Juice Shop](https://github.com/juice-shop/juice-shop)
-
-## License
-
-المشروع مرخص تحت MIT License. استخدمه فقط في الاختبارات الأمنية المصرح بها والبحث الدفاعي.
+> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، وسلسلة proof/report continuity قابلة للتدقيق. لكنه لا يملك بعد دليلًا صادقًا يسمح بإعلان VIP أو تغطية شاملة لكل نوع من الثغرات أو كل provider/target.
