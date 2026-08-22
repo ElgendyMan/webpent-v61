@@ -63,4 +63,4 @@
 
 ## Release identity
 
-تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `e91d111`، والتحديث التوثيقي النهائي محفوظ في commit `c86c839`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.
+تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `e91d111`، وتحديث مراجعة الخطة محفوظ في commit `82558c5`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.

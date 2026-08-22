@@ -73,9 +73,9 @@
 | العنصر | القيمة |
 |---|---|
 | Git commit التنفيذ | `e91d111` (`Enforce target-backed causal proof bundles`) |
-| Git commit التوثيق النهائي | `c86c839` |
+| Git commit مراجعة الخطة | `82558c5` |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
-| archive WebPent | `webpent_v61_c86c839_clean.zip` — يُسلّم منفصلًا عن مصدر bbscout المستخرج |
-| archive SHA256 | `webpent_v61_c86c839_clean.sha256` |
+| archive التكامل | `webpent_v61_82558c5_bbscout_integration.zip` |
+| archive SHA256 | `webpent_v61_82558c5_bbscout_integration.sha256` |
 | archive content count | يُتحقق منه بأمر `unzip -t` وبـSHA256 عند التسليم |
 | forbidden artifact scan | clean |
