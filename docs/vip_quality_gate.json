@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1315 passed, 235 warnings in 68.16s (0:01:08)"
+        "1315 passed, 235 warnings in 86.97s (0:01:26)"
       ]
     },
     {
@@ -222,17 +222,6 @@
       "requirement_source": "uv-exported-lock",
       "returncode": 0,
       "tail": [
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
-        "WARNING:cachecontrol.controller:Cache entry deserialization failed, entry ignored",
         "No known vulnerabilities found"
       ]
     },
@@ -282,7 +271,7 @@
       ]
     }
   ],
-  "generated_at": "2026-08-22T02:45:59.160862+00:00",
+  "generated_at": "2026-08-22T02:52:29.737775+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
