@@ -3,6 +3,7 @@
 **Scope:** `WEBPENT_G02_DYNAMIC_RESOLUTION_HARDENING_PLAN.md`
 **Repository:** `ElgendyMan/webpent-v61`
 **Pre-change HEAD:** `b4bc981a6ff774d3bc278f977d4c406d3163bb08`
+**Final release commit:** `8e3701e87c7780569716b9fb1b75f7e6206f3813`
 **Run date:** 2026-08-22
 
 ## Executive result
