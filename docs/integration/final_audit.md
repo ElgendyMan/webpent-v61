@@ -51,3 +51,7 @@
 ## سلامة النطاق
 
 لم يتم تعديل WAPTLab أو Juice Shop، ولم تُستخدم credentials أو cookies أو OTPs أو provider sessions. لم يحدث target/provider I/O في هذه الجولة. أي تشغيل لاحق يجب أن يبدأ فقط بعد confirmation صريحة، package موقعة، trusted key configuration، target scope مطابق، وبيئة transport معتمدة.
+
+## Release identity
+
+Commit التكامل الأولي المرفوع إلى `ElgendyMan/webpent-v61` هو `c72c20548af9aee951d3b4df514ab63c3314c9ed`. الأرشيف النظيف المرحلي هو `webpent_bbscout_integration_release.zip`، وSHA256 المرحلي قبل إضافة هذا التحديث التوثيقي هو `37ab4f108c3a1fc650e17ecd4366a87fca92b1cdeaa21b84f665296da08dd77d`. سيُعاد بناء الأرشيف النهائي بعد تثبيت metadata حتى يكون checksum النهائي هو المرجع الوحيد للتسليم.

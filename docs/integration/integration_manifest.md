@@ -57,3 +57,14 @@
 ## سياسة التسليم
 
 قبل أي تشغيل على target حقيقي يجب توفير package موقعة بمفتاح موثوق خارج المصدر، confirmation صريحة مرتبطة بالـdigest، scope صالح، capability manifest محلي، وبيئة transport سليمة. لا يتم auto-submit إلى provider؛ provider discovery، إن أضيف مستقبلًا، يجب أن يبقى read-only حتى يثبت عقده ويُختبر مستقلًا.
+
+## Release identity
+
+| العنصر | القيمة |
+|---|---|
+| Git commit | `c72c20548af9aee951d3b4df514ab63c3314c9ed` |
+| Git remote | `https://github.com/ElgendyMan/webpent-v61` |
+| archive | `webpent_bbscout_integration_release.zip` |
+| archive SHA256 قبل توثيق release metadata | `37ab4f108c3a1fc650e17ecd4366a87fca92b1cdeaa21b84f665296da08dd77d` |
+| archive content count | 829 files |
+| forbidden artifact scan | clean |
