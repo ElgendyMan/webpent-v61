@@ -212,3 +212,40 @@ def test_bac_initial_cooldown_is_optional_and_bounded(monkeypatch) -> None:
     monkeypatch.delenv("WEBPENT_BAC_INITIAL_COOLDOWN_SECONDS", raising=False)
     assert access_agent._wait_before_bac("http://127.0.0.1:8000/user_profile/1") == 0.0
     assert sleeps == []
+
+
+def test_auth_preserves_operator_request_headers_without_auth_material() -> None:
+    request_headers = {
+        "User-Agent": "Mozilla/5.0 qualification",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    result = auth_agent.auth_node(
+        {
+            "target": Target(url="http://lab.local"),
+            "session_headers": request_headers,
+        }
+    )
+
+    assert result["session_headers"] == request_headers
+    assert result["auth_state"] == {}
+    assert "Authentication: no credentials found." in result["messages"][0].content
+
+
+
+def test_auth_preserves_request_headers_after_playwright_login(monkeypatch) -> None:
+    request_headers = {"User-Agent": "Mozilla/5.0 qualification"}
+    monkeypatch.setattr(
+        auth_agent,
+        "_perform_login",
+        lambda url, username, password, **kwargs: {"session": "runtime-owner"},
+    )
+    result = auth_agent.auth_node(
+        {
+            "target": Target(url="http://lab.local"),
+            "credentials": {"username": "owner", "password": "owner-secret"},
+            "session_headers": request_headers,
+        }
+    )
+
+    assert result["session_headers"] == request_headers
+    assert result["session_cookies"] == {"session": "runtime-owner"}

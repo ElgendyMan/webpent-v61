@@ -30,6 +30,7 @@ def run_ffuf(
     threads: int = 10,
     stealth_mode: bool = False,
     session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Discover paths below ``target_url`` and return redacted result records.
 
@@ -86,6 +87,11 @@ def run_ffuf(
         cleaned_extensions = [e.strip().lstrip(".") for e in extensions if e and e.strip()]
         if cleaned_extensions:
             cmd.extend(["-e", ",".join(cleaned_extensions)])
+
+    from webpent.shared.http import sanitize_request_headers
+    for header_name, header_value in sanitize_request_headers(extra_headers).items():
+        if header_name.lower() != "user-agent":
+            cmd.extend(["-H", f"{header_name}: {header_value}"])
 
     if session_cookies:
         from webpent.shared.http import build_cookie_header

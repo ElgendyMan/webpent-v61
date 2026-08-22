@@ -106,6 +106,25 @@ class TestPayloadGeneratorClassGating:
             result = payload_gen_agent.payload_generator_node(state)
         return result, mock_generate
 
+    def test_no_llm_seeds_only_xss_with_deterministic_canary(self):
+        xss = _make_finding(VulnClass.XSS.value)
+        sqli = _make_finding(VulnClass.SQLI.value)
+        with patch("webpent.agents.payload_generator.agent.try_get_llm", return_value=None):
+            result = payload_gen_agent.payload_generator_node(
+                {"findings": [xss, sqli]}
+            )
+
+        updated_xss = next(f for f in result["findings"] if f.id == xss.id)
+        assert str(xss.id) in result["payloads_to_test"]
+        assert len(result["payloads_to_test"][str(xss.id)]) == 1
+        assert updated_xss.canary_token
+        assert updated_xss.canary_token in updated_xss.payload
+        assert updated_xss.payload.startswith("<svg/onload=alert(\"")
+        assert updated_xss.payload.endswith("\")>")
+        assert result["payloads_to_test"][str(sqli.id)] == [
+            "__SQLMAP_TOOL_DRIVEN__"
+        ]
+
     def test_xss_and_sqli_get_payloads_to_test_entry_csrf_does_not(self):
         xss = _make_finding(VulnClass.XSS.value)
         sqli = _make_finding(VulnClass.SQLI.value)

@@ -295,6 +295,7 @@ def discover_http_surface(
     base_url: str,
     *,
     session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
     max_pages: int = 50,
     max_depth: int = 3,
     max_links_per_page: int = 100,
@@ -306,7 +307,11 @@ def discover_http_surface(
     submitted.  Returned ``forms`` are metadata for later, separately gated
     validators and are not Findings.
     """
-    from webpent.shared.http import build_cookie_header, make_safe_httpx_client
+    from webpent.shared.http import (
+        build_cookie_header,
+        make_safe_httpx_client,
+        sanitize_request_headers,
+    )
 
     start = _normalise_url(base_url, base_url)
     if not start:
@@ -354,6 +359,7 @@ def discover_http_surface(
     cookie_header = build_cookie_header(session_cookies)
     if cookie_header:
         headers["Cookie"] = cookie_header
+    headers.update(sanitize_request_headers(extra_headers))
 
     try:
         client_context = make_safe_httpx_client(

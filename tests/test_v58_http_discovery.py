@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+import typer
+
 
 def test_http_surface_discovers_authenticated_links_get_forms_and_js(monkeypatch) -> None:
     from webpent.shared import http as http_module
@@ -365,7 +368,17 @@ def test_offline_payload_generation_is_deterministic_and_non_retryable() -> None
         vuln_class=VulnClass.XSS.value,
     )
 
-    assert _generate_payloads_for_finding(finding, None) == ([], None)
+    payloads, canary_token = _generate_payloads_for_finding(finding, None)
+    assert len(payloads) == 1
+    assert canary_token
+    assert canary_token in payloads[0]
+    assert payloads[0] == f'<svg/onload=alert("{canary_token}")>'
+    assert finding.confidence_level == "Pending"
+
+    non_xss = finding.model_copy(
+        update={"vuln_class": VulnClass.LFI.value}
+    )
+    assert _generate_payloads_for_finding(non_xss, None) == ([], None)
 
 
 
@@ -892,3 +905,82 @@ def test_http_surface_materializes_bounded_js_template_routes(monkeypatch) -> No
 
     assert "http://lab.test/rest/basket/1" in result["endpoints"]
     assert "http://lab.test/rest/basket/1" in result["discovery_metadata"]["js_route_candidates"]
+
+
+def test_request_headers_are_bounded_and_transport_safe() -> None:
+    from webpent.shared.http import sanitize_request_headers
+
+    result = sanitize_request_headers(
+        {
+            "X-Lab-Mode": "browser",
+            "Cookie": "should-not-enter",
+            "Host": "evil.invalid",
+            "X-Newline": "safe\r\nInjected: yes",
+            "X-Too-Long": "x" * 2050,
+        }
+    )
+
+    assert result == {"X-Lab-Mode": "browser"}
+
+
+def test_crawler_propagates_session_headers_to_katana_and_fallback(monkeypatch) -> None:
+    from webpent.agents.crawler import agent as crawler_agent
+    from webpent.models.targets import Target
+    from webpent.shared.exceptions import ToolNotFoundError
+
+    observed: dict[str, dict] = {}
+    fallback = {
+        "endpoints": ["http://lab.test/secure"],
+        "forms": [],
+        "pages_fetched": 1,
+        "surface_records": [],
+        "discovery_metadata": {},
+    }
+
+    def _katana(*_args, **kwargs):
+        observed["katana"] = kwargs
+        raise ToolNotFoundError("katana")
+
+    def _fallback(*_args, **kwargs):
+        observed["fallback"] = kwargs
+        return fallback
+
+    monkeypatch.setattr(crawler_agent, "run_katana", _katana)
+    monkeypatch.setattr(crawler_agent, "discover_http_surface", _fallback)
+    monkeypatch.setattr(crawler_agent, "get_llm", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(crawler_agent, "_fetch_and_analyze_js", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(crawler_agent, "_discover_html_forms", lambda *_args, **_kwargs: [])
+
+    result = crawler_agent.crawler_node(
+        {
+            "target": Target(url="http://lab.test/"),
+            "session_headers": {"X-Lab-Mode": "browser"},
+            "session_cookies": {},
+            "auth_state": {},
+        }
+    )
+
+    assert observed["katana"]["extra_headers"] == {"X-Lab-Mode": "browser"}
+    assert observed["fallback"]["extra_headers"] == {"X-Lab-Mode": "browser"}
+    assert result["crawled_data"]["endpoints"] == fallback["endpoints"]
+
+
+def test_initial_state_keeps_request_headers_checkpoint_safe() -> None:
+    from webpent.models.targets import Target
+    from webpent.state.initial_state import build_initial_state
+
+    state = build_initial_state(
+        Target(url="http://lab.test/"),
+        session_headers={"X-Lab-Mode": "browser"},
+    )
+
+    assert state["session_headers"] == {"X-Lab-Mode": "browser"}
+    assert all(not hasattr(value, "__enter__") for value in state["session_headers"].values())
+
+
+def test_cli_header_parser_rejects_cookie_and_accepts_browser_header() -> None:
+    from webpent.cli import _parse_request_headers
+
+    assert _parse_request_headers(["X-Lab-Mode: browser"]) == {"X-Lab-Mode": "browser"}
+    with pytest.raises(typer.Exit):
+        _parse_request_headers(["Cookie: session=opaque"])

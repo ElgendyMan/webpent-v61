@@ -69,6 +69,7 @@ def run_katana(
     depth: int = _DEFAULT_DEPTH,
     stealth_mode: bool = False,
     session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> list[str]:
     """Crawl ``url`` with katana and return a de-duplicated list of endpoints.
 
@@ -145,6 +146,11 @@ def run_katana(
         # are off-target for a scoped engagement).
         "-nc",
     ]
+
+    from webpent.shared.http import sanitize_request_headers
+    for header_name, header_value in sanitize_request_headers(extra_headers).items():
+        if header_name.lower() != "user-agent":
+            cmd.extend(["-H", f"{header_name}: {header_value}"])
 
     # V7 Phase 4.3: Inject session cookies.
     if session_cookies:

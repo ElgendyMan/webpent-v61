@@ -450,15 +450,29 @@ def _generate_payloads_for_finding(
 
     Returns:
         A tuple of (payloads, canary_token). payloads is a list of up
-        to 3 strings. canary_token is the UUID4 string embedded in
-        them. Returns ([], None) on LLM failure.
+        to 3 strings. When ``llm`` is unavailable, XSS receives one
+        bounded canary payload so the browser validator can attempt a
+        causal check; all other classes return ``([], None)`` because
+        their validators are tool/OOB driven. Provider failures after
+        an LLM is selected return ``([], None)`` and never synthesize
+        an exploit payload.
     """
-    # Offline mode is intentionally deterministic. There is no payload
-    # synthesis provider to invoke, so return an explicit empty result and
-    # let the evidence pipeline decide whether an installed validator can
-    # still confirm the finding. This is not an LLM failure and must not
-    # enter the retry loop.
+    # Offline mode remains deterministic. XSS is the one payload-string
+    # class consumed by the browser execution sandbox, so provide a bounded
+    # canary payload even when LLM is disabled. This only queues a candidate;
+    # confirmation still requires the sandbox causal dialog signal, a neutral
+    # negative control, and the strict ProofBundle verifier. Other classes
+    # retain the empty result because their validators are tool/OOB driven.
     if llm is None:
+        if str(finding.vuln_class) == VulnClass.XSS.value:
+            canary_token = generate_canary_token()
+            payload = f'<svg/onload=alert("{canary_token}")>'
+            logger.info(
+                "LLM disabled/unavailable for XSS finding=%s; using bounded "
+                "deterministic canary payload for browser validation",
+                finding.id,
+            )
+            return [payload], canary_token
         logger.info(
             "LLM disabled/unavailable for payload generation (finding=%s); "
             "returning deterministic empty payload set",

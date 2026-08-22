@@ -265,10 +265,26 @@ class RuntimeContext:
             raise RuntimeConfigurationError(reasons)
         return self
 
+    def current_capability_gaps(self) -> tuple[RuntimeCapabilityGap, ...]:
+        """Return capability gaps after all runtime DI registrations.
+
+        ``AdapterRegistry`` is intentionally mutable so nodes can register an
+        audited adapter at the point where its handler and proof contract are
+        available.  The original ``capability_gaps`` field remains a
+        checkpoint-safe creation snapshot for backward compatibility; runtime
+        decisions and diagnostics must use this live projection instead.
+        """
+        return RuntimeFactory._capability_gaps(
+            adapters=self.adapters,
+            identity_tenant_object_graph=self.identity_tenant_object_graph,
+            workflow_state_machine=self.workflow_state_machine,
+            replay_engine=self.replay_engine,
+        )
+
     def blocked_result(self, *, node: str, reason: str = "") -> dict[str, Any]:
         """Return the graph-safe result for an unavailable context."""
         detail = reason or ",".join(self.configuration_errors) or "runtime_context_invalid"
-        gap_payload = [gap.as_dict() for gap in self.capability_gaps]
+        gap_payload = [gap.as_dict() for gap in self.current_capability_gaps()]
         self.event_sink.emit(
             "runtime.blocked_by_configuration",
             engagement_id=self.engagement_id,
@@ -288,7 +304,7 @@ class RuntimeContext:
     def require_capability(self, component: str, *, node: str) -> dict[str, Any]:
         """Return a typed blocked result when a named dependency is unavailable."""
         normalized = str(component or "").strip()
-        gaps = [gap for gap in self.capability_gaps if gap.component == normalized]
+        gaps = [gap for gap in self.current_capability_gaps() if gap.component == normalized]
         if gaps:
             return self.blocked_result(
                 node=node,
@@ -310,7 +326,9 @@ class RuntimeContext:
             "target_origin": self.target_origin,
             "valid": self.valid,
             "configuration_errors": list(self.configuration_errors),
-            "capability_gaps": [gap.as_dict() for gap in self.capability_gaps],
+            "capability_gaps": [
+                gap.as_dict() for gap in self.current_capability_gaps()
+            ],
             "capabilities": self.capabilities.diagnostics(),
             "adapters": self.adapters.manifest(),
             "control_plane": (
@@ -560,7 +578,9 @@ class RuntimeFactory:
             "smart_action_budget": float(settings.smart_action_budget),
             "used_actions": int(context.action_authority.used_actions),
             "used_budget": float(context.action_authority.used_budget),
-            "capability_gaps": [gap.as_dict() for gap in context.capability_gaps],
+            "capability_gaps": [
+                gap.as_dict() for gap in context.current_capability_gaps()
+            ],
             "manifest": context.capabilities.ensure_discovered(),
             "control_plane_enabled": context.control_plane_runtime is not None,
             "safety_gate_enabled": context.safety_gate is not None,

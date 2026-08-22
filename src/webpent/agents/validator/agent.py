@@ -18,10 +18,12 @@ V3.5 Changes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from uuid import UUID
@@ -696,6 +698,33 @@ def _verify_csrf_structurally(url: str, html_content: str) -> tuple[bool, str]:
 
 
 def _fetch_html_via_playwright(
+    url: str, auth_cookies: list[dict[str, Any]] | None = None
+) -> str | None:
+    """Fetch rendered HTML without violating Playwright's sync API contract.
+
+    Validator nodes may run inside LangGraph's asyncio event loop, while the
+    existing browser implementation intentionally uses Playwright's sync API.
+    Playwright rejects that combination.  Keep the deterministic sync browser
+    implementation intact, but run it in a dedicated worker thread when a
+    running event loop is detected.  Any worker failure remains fail-closed and
+    returns ``None`` so callers retain their existing non-browser fallback.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _fetch_html_via_playwright_sync(url, auth_cookies)
+
+    try:
+        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="webpent-pw") as executor:
+            return executor.submit(
+                _fetch_html_via_playwright_sync, url, auth_cookies
+            ).result()
+    except Exception as exc:
+        logger.warning("Playwright worker execution failed for %s: %s", url, exc)
+        return None
+
+
+def _fetch_html_via_playwright_sync(
     url: str, auth_cookies: list[dict[str, Any]] | None = None
 ) -> str | None:
     """V5 Sprint 8: Fetch fully-rendered HTML via Playwright.

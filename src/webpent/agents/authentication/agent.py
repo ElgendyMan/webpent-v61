@@ -35,9 +35,11 @@ Security:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from langchain_core.messages import AIMessage
@@ -194,6 +196,41 @@ def _extract_bearer_headers(page: Any) -> dict[str, str]:
 
 
 def _perform_login(
+    url: str,
+    username: str,
+    password: str,
+    additional_target_origins: list[str] | None = None,
+) -> dict[str, str]:
+    """Perform login from sync or asyncio graph contexts.
+
+    The implementation uses Playwright's sync API for compatibility with the
+    existing login flow. LangGraph may invoke the auth node while an asyncio
+    loop is already running, where Playwright rejects the sync API. Run the
+    unchanged implementation in a dedicated worker thread in that case.
+    Any bridge failure returns an empty result, preserving fail-closed auth.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _perform_login_sync(
+            url, username, password, additional_target_origins
+        )
+
+    try:
+        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="webpent-auth") as executor:
+            return executor.submit(
+                _perform_login_sync,
+                url,
+                username,
+                password,
+                additional_target_origins,
+            ).result()
+    except Exception as exc:
+        logger.warning("Playwright authentication worker failed: %s", exc)
+        return {}
+
+
+def _perform_login_sync(
     url: str,
     username: str,
     password: str,
@@ -734,7 +771,18 @@ def auth_node(state: PentestState) -> dict:
     operator_cookies: dict[str, str] = dict(state.get("session_cookies") or {})
     if not operator_cookies and thread_id:
         operator_cookies = unseal_session_cookies(thread_id)
-    operator_headers: dict[str, str] = dict(state.get("session_headers") or {})
+    request_headers: dict[str, str] = dict(state.get("session_headers") or {})
+    _auth_header_names = {"authorization", "x-auth-token", "x-api-key"}
+    operator_headers: dict[str, str] = {
+        str(name): str(value)
+        for name, value in request_headers.items()
+        if str(name).lower() in _auth_header_names and str(value).strip()
+    }
+    request_non_auth_headers: dict[str, str] = {
+        str(name): str(value)
+        for name, value in request_headers.items()
+        if str(name).lower() not in _auth_header_names and str(value).strip()
+    }
     raw_identity_profiles: dict[str, Any] = dict(state.get("identity_profiles") or {})
     record_profiles = _profiles_from_identity_records(state)
     for identity_id, profile in record_profiles.items():
@@ -757,7 +805,7 @@ def auth_node(state: PentestState) -> dict:
                 operator_headers = {
                     str(name): str(value)
                     for name, value in candidate_headers.items()
-                    if str(name).lower() in {"authorization", "x-auth-token", "x-api-key"}
+                    if str(name).lower() in _auth_header_names
                     and str(value).strip()
                 }
                 if operator_headers:
@@ -868,7 +916,7 @@ def auth_node(state: PentestState) -> dict:
                 "session_cookies": operator_cookies,
                 "auth_state": auth_state,
                 "identity_profiles": runtime_profiles,
-                "session_headers": _invalidated_operator_headers,
+                "session_headers": {**request_non_auth_headers, **_invalidated_operator_headers},
                 "messages": [AIMessage(
                     content=f"Authentication: operator-supplied session "
                     f"cookies validated ({len(operator_cookies)} cookie(s)). "
@@ -912,7 +960,7 @@ def auth_node(state: PentestState) -> dict:
                 )
             return {
                 "session_cookies": _invalidated_operator_cookies,
-                "session_headers": operator_headers,
+                "session_headers": {**request_non_auth_headers, **operator_headers},
                 "auth_state": {
                     "cookies": [],
                     "source": "runtime_header_session",
@@ -943,7 +991,7 @@ def auth_node(state: PentestState) -> dict:
             # cookies instead of returning {} (see comment above —
             # {} is a no-op under the merge_dicts reducer).
             "session_cookies": _invalidated_operator_cookies,
-            "session_headers": _invalidated_operator_headers,
+            "session_headers": {**request_non_auth_headers, **_invalidated_operator_headers},
             "auth_state": {},
             "identity_profiles": secondary_profiles,
             "messages": [AIMessage(content="Authentication: no credentials found.")],
@@ -1077,7 +1125,11 @@ def auth_node(state: PentestState) -> dict:
         # operator_cookies was empty to begin with, this base is {}
         # and behaviour is unchanged from before.
         "session_cookies": {**_invalidated_operator_cookies, **cookies},
-        "session_headers": {**_invalidated_operator_headers, **auth_headers},
+        "session_headers": {
+            **request_non_auth_headers,
+            **_invalidated_operator_headers,
+            **auth_headers,
+        },
         "auth_state": auth_state,
         "identity_profiles": runtime_profiles,
         "credentials": scrubbed_credentials,

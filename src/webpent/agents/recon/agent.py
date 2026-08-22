@@ -524,7 +524,9 @@ def _run_subdomain_recon(target: Target) -> tuple[list[dict[str, Any]], str]:
 
 
 def _run_nuclei_scan(
-    target: Target, session_cookies: dict[str, str] | None = None
+    target: Target,
+    session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Execute the Nuclei scan via the tool registry."""
     try:
@@ -532,7 +534,11 @@ def _run_nuclei_scan(
         if not run_nuclei:
             logger.warning("nuclei tool not in registry — skipping scan")
             return []
-        return run_nuclei(target.url, session_cookies=session_cookies)
+        return run_nuclei(
+            target.url,
+            session_cookies=session_cookies,
+            extra_headers=extra_headers,
+        )
     except (ToolNotFoundError, ToolExecutionError) as exc:
         logger.warning("nuclei failed for %s: %s", target.url, exc)
         return []
@@ -541,6 +547,7 @@ def _run_nuclei_scan(
 def _run_ffuf_discovery(
     target: Target,
     session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Run opt-in ffuf content discovery with an explicit local wordlist."""
     from webpent.config.settings import get_settings
@@ -557,6 +564,7 @@ def _run_ffuf_discovery(
             target.url,
             settings.ffuf_wordlist_path,
             session_cookies=session_cookies,
+            extra_headers=extra_headers,
         )
     except (ToolNotFoundError, ToolExecutionError, ValueError) as exc:
         logger.warning("ffuf content discovery failed for %s: %s", target.url, exc)
@@ -780,7 +788,11 @@ def recon_node(state: PentestState) -> dict:
     )
 
     # 2. Nuclei vulnerability scan against the primary target URL.
-    nuclei_records = _run_nuclei_scan(target, session_cookies=state.get("session_cookies"))
+    nuclei_records = _run_nuclei_scan(
+        target,
+        session_cookies=state.get("session_cookies"),
+        extra_headers=state.get("session_headers"),
+    )
     logger.info(
         "Nuclei produced %d raw record(s) for %s",
         len(nuclei_records),
@@ -824,6 +836,7 @@ def recon_node(state: PentestState) -> dict:
         ffuf_results = _run_ffuf_discovery(
             target,
             session_cookies=state.get("session_cookies"),
+            extra_headers=state.get("session_headers"),
         )
         if ffuf_results:
             crawled_data["content_discovery"] = ffuf_results

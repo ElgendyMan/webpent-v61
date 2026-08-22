@@ -182,3 +182,47 @@ def test_capability_gap_projection_is_not_clean() -> None:
     assert blocked["clean"] is False
     assert blocked["status"] == "blocked_by_configuration"
     assert blocked["capability_gaps"]
+
+
+def test_runtime_live_gap_projection_refreshes_after_late_adapter_registration() -> None:
+    context = RuntimeFactory.create(
+        engagement_id="engagement-late-adapter",
+        campaign_id="campaign-late-adapter",
+        target_origin="http://example.test",
+        settings=_settings(),
+        use_default_ledger=False,
+    )
+
+    assert any(gap.component == "adapters" for gap in context.capability_gaps)
+    context.adapters.register(
+        RegisteredAdapter(
+            name="late-http",
+            capability="http_read",
+            transport="fixture",
+            handler=lambda **_kwargs: {"status": 200},
+            policy_checked=True,
+            canonical_wrapper="fixture.wrapper",
+            scope_policy="same-origin",
+            static_inventory_ref="inventory.fixture",
+            proof_contract="fixture.proof",
+            expires_at="2099-01-01",
+        )
+    )
+
+    assert all(gap.component != "adapters" for gap in context.current_capability_gaps())
+    assert all(
+        gap["component"] != "adapters"
+        for gap in context.diagnostics()["capability_gaps"]
+    )
+    assert all(
+        gap["component"] != "adapters"
+        for gap in RuntimeFactory.descriptor(context)["capability_gaps"]
+    )
+
+
+def test_runtime_capability_gap_reducer_clears_resolved_snapshot() -> None:
+    from webpent.state.reducers import replace_runtime_capability_gaps
+
+    previous = [{"component": "adapters", "status": "missing"}]
+    assert replace_runtime_capability_gaps(previous, []) == []
+    assert replace_runtime_capability_gaps(previous, None) == []

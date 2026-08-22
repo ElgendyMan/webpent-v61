@@ -185,6 +185,45 @@ def build_cookie_header(cookies: dict[str, str] | None) -> str:
     return "; ".join(parts)
 
 
+def sanitize_request_headers(headers: dict[str, str] | None) -> dict[str, str]:
+    """Return bounded, transport-safe operator/request headers.
+
+    Cookie is deliberately excluded because session cookies have a dedicated
+    validated channel. Host and hop-by-hop headers are excluded so callers
+    cannot redirect or corrupt the transport; values containing CR/LF are
+    rejected rather than silently transformed. Invalid entries fail closed by
+    returning an empty mapping only for that entry.
+    """
+    if not headers:
+        return {}
+    forbidden = {
+        "connection",
+        "content-length",
+        "cookie",
+        "host",
+        "proxy-connection",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+    }
+    result: dict[str, str] = {}
+    for raw_name, raw_value in list(headers.items())[:32]:
+        name, value = str(raw_name).strip(), str(raw_value).strip()
+        if (
+            not name
+            or len(name) > 128
+            or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name)
+            or name.lower() in forbidden
+            or len(value) > 2048
+            or _CRLF_PATTERN.search(name)
+            or _CRLF_PATTERN.search(value)
+        ):
+            continue
+        result[name] = value
+    return result
+
+
 # ===========================================================================
 # Blocklist of internal / reserved networks.
 # ===========================================================================

@@ -546,7 +546,7 @@ def autonomous_controller_node(state: Mapping[str, Any]) -> dict[str, Any]:
         ]
     result["runtime_diagnostics"] = runtime.diagnostics()
     result["runtime_capability_gaps"] = [
-        gap.as_dict() for gap in runtime.capability_gaps
+        gap.as_dict() for gap in runtime.current_capability_gaps()
     ]
     return result
 

@@ -54,6 +54,7 @@ from webpent.state.reducers import (
     merge_lists,
     merge_payloads,
     merge_retries,
+    replace_runtime_capability_gaps,
 )
 
 
@@ -453,5 +454,8 @@ class PentestState(TypedDict, total=False):
     # to a descriptor and rebuilt at resume boundaries.
     campaign_id: str
     runtime_context: Any
-    # Additive, report-safe runtime capability gaps; gaps are never clean.
-    runtime_capability_gaps: Annotated[list[dict[str, Any]], merge_lists]
+    # Current, report-safe runtime capability gaps. This is a projection, not
+    # an append-only history: a resolved gap must disappear from the snapshot.
+    runtime_capability_gaps: Annotated[
+        list[dict[str, Any]], replace_runtime_capability_gaps
+    ]

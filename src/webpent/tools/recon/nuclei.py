@@ -85,6 +85,7 @@ def run_nuclei(
     templates: list[str] | None = None,
     stealth_mode: bool = False,
     session_cookies: dict[str, str] | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Scan ``target_url`` with nuclei and return parsed JSON results.
 
@@ -164,6 +165,12 @@ def run_nuclei(
     user_agent = (settings.http_user_agent or "").replace("\r", " ").replace("\n", " ").strip()
     if user_agent:
         cmd.extend(["-H", f"User-Agent: {user_agent}"])
+
+    # Generic operator headers are bounded and sanitized before subprocess use.
+    from webpent.shared.http import sanitize_request_headers
+    for header_name, header_value in sanitize_request_headers(extra_headers).items():
+        if header_name.lower() != "user-agent":
+            cmd.extend(["-H", f"{header_name}: {header_value}"])
 
     # V7 Phase 4.4: Inject session cookies.
     if session_cookies:

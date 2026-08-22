@@ -14,6 +14,7 @@ from webpent.models.targets import Target
 from webpent.reporter.export import export_all_formats
 from webpent.shared import stealth
 from webpent.shared.preflight import _check_llm_providers
+from webpent.shared.target_workspace import TargetWorkspace
 from webpent.state.initial_state import build_initial_state
 
 
@@ -96,6 +97,31 @@ def test_initial_state_carries_per_run_ux_contract() -> None:
     assert state["payloads_to_test"] == {"custom": ["one", "two"]}
     assert state["report_formats"] == ["md", "json"]
     assert state["profile"] == "legacy"
+
+
+def test_cli_final_export_writes_report_into_target_workspace(tmp_path: Path) -> None:
+    from webpent.cli import _export_cli_reports
+
+    workspace = TargetWorkspace.for_target(
+        workspace_root=tmp_path,
+        target_origin="http://127.0.0.1:3000",
+        client_id="test-client",
+        engagement_id="test-engagement",
+    ).ensure()
+
+    paths = _export_cli_reports(
+        target_url="http://127.0.0.1:3000",
+        findings=[],
+        final_state={"executive_summary": "completed", "risk_score": "Low"},
+        workspace=workspace,
+        settings=SimpleNamespace(enable_report_quality_gate=False),
+        selected_formats=["json"],
+    )
+
+    report_path = workspace.reports_dir / "report.json"
+    assert paths == {"json": report_path}
+    assert report_path.is_file()
+    assert json.loads(report_path.read_text(encoding="utf-8"))["findings"] == []
 
 
 def test_report_selection_exports_only_requested_format(tmp_path: Path) -> None:

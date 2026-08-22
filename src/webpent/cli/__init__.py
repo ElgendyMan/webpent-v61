@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -144,6 +145,54 @@ def _parse_cookies(cookies: str | None) -> dict[str, str]:
     return result
 
 
+def _parse_request_headers(raw_headers: list[str]) -> dict[str, str]:
+    """Parse bounded operator headers without accepting transport-control headers.
+
+    Header values are runtime input and are never printed. Cookie handling stays
+    on the dedicated ``--cookies``/``--cookie-file`` channel to avoid duplicate
+    or contradictory session state.
+    """
+    if len(raw_headers) > 32:
+        err_console.print("[red]Error:[/red] at most 32 --header values are allowed")
+        raise typer.Exit(1)
+    forbidden = {
+        "connection",
+        "content-length",
+        "cookie",
+        "host",
+        "proxy-connection",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+    }
+    parsed: dict[str, str] = {}
+    for raw in raw_headers:
+        if ":" not in raw:
+            err_console.print(
+                f"[red]Error:[/red] malformed --header '{raw}' — expected 'Name: value'"
+            )
+            raise typer.Exit(1)
+        name, value = raw.split(":", 1)
+        name, value = name.strip(), value.strip()
+        lowered = name.lower()
+        if (
+            not name
+            or len(name) > 128
+            or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name)
+            or lowered in forbidden
+            or "\r" in raw
+            or "\n" in raw
+            or len(value) > 2048
+        ):
+            err_console.print(
+                f"[red]Error:[/red] invalid or forbidden --header name/value '{name}'"
+            )
+            raise typer.Exit(1)
+        parsed[name] = value
+    return parsed
+
+
 def _load_json_list(path: str | None, *, label: str, max_items: int) -> list[Any]:
     """Load a bounded JSON list from an operator-controlled local file.
 
@@ -180,6 +229,62 @@ def _parse_report_formats(value: str | None) -> list[str] | None:
     if "all" in selected:
         return ["all"]
     return list(dict.fromkeys(selected))
+
+
+def _export_cli_reports(
+    *,
+    target_url: str,
+    findings: list[Any],
+    final_state: dict[str, Any],
+    workspace: Any,
+    settings: Any,
+    selected_formats: list[str] | None,
+) -> dict[str, Path | None]:
+    """Export the final cumulative state into the active target workspace.
+
+    Reporter execution happens inside the graph, but it is intentionally not
+    the sole owner of the CLI artifact contract: a graph profile can finish
+    without the reporter node, and reporter failures are warning-level by
+    design. This helper is therefore a deterministic, target-scoped final
+    export using the same canonical exporter and the post-persistence findings.
+    """
+    from webpent.reporter.export import export_all_formats
+
+    report_output_dir = workspace.reports_dir
+    report_output_dir.mkdir(parents=True, exist_ok=True)
+    return export_all_formats(
+        target_url=target_url,
+        findings=findings,
+        output_dir=report_output_dir,
+        executive_summary=str(final_state.get("executive_summary", "") or ""),
+        risk_score=str(final_state.get("risk_score", "Low") or "Low"),
+        hypotheses=list(final_state.get("hypotheses") or []),
+        decision_log=list(final_state.get("decision_log") or []),
+        bac_observations=list(final_state.get("bac_observations") or []),
+        bac_coverage_gaps=list(final_state.get("bac_coverage_gaps") or []),
+        relational_evidence=list(final_state.get("relational_evidence") or []),
+        subdomain_takeover_observations=list(
+            final_state.get("subdomain_takeover_observations") or []
+        ),
+        subdomain_takeover_coverage_gaps=list(
+            final_state.get("subdomain_takeover_coverage_gaps") or []
+        ),
+        cloud_storage_observations=list(final_state.get("cloud_storage_observations") or []),
+        cloud_storage_coverage_gaps=list(final_state.get("cloud_storage_coverage_gaps") or []),
+        jwt_deep_observations=list(final_state.get("jwt_deep_observations") or []),
+        jwt_deep_coverage_gaps=list(final_state.get("jwt_deep_coverage_gaps") or []),
+        disclosed_report_advisories=list(final_state.get("disclosed_report_advisories") or []),
+        advisory_coverage_gaps=list(final_state.get("advisory_coverage_gaps") or []),
+        strict_quality_gate=bool(getattr(settings, "enable_report_quality_gate", False)),
+        require_proof_bundle=bool(final_state.get("require_proof_bundle", False)),
+        coverage_ledger=dict(final_state.get("coverage_ledger") or {}),
+        campaign_ledger=dict(final_state.get("campaign_ledger") or {}),
+        proof_observability=dict(final_state.get("proof_observability") or {}),
+        authorization_matrix=dict(final_state.get("authorization_matrix") or {}),
+        llm_usage_trace=list(final_state.get("llm_usage_trace") or []),
+        runtime_capability_gaps=list(final_state.get("runtime_capability_gaps") or []),
+        formats=list(selected_formats) if selected_formats else None,
+    )
 
 
 def _perform_preflight_check() -> bool:
@@ -358,6 +463,14 @@ def scan(
         "--cookie-file",
         help="JSON or Netscape cookie-jar file for authenticated scanning.",
     ),
+    headers: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--header",
+        help=(
+            "Additional bounded request header as 'Name: value'; repeat for multiple "
+            "headers. Cookie/Host and hop-by-hop headers are rejected."
+        ),
+    ),
 ) -> None:
     """Trigger a full pentest engagement against a target."""
 
@@ -412,6 +525,7 @@ def scan(
     # --- Parse credentials / session cookies / bounded identities ---
     credentials = _parse_credentials(creds)
     operator_cookies = _parse_cookies(cookies)
+    request_headers = _parse_request_headers(headers)
     custom_payloads: list[str] = []
     if payload_file is not None:
         try:
@@ -503,6 +617,10 @@ def scan(
         f"{', '.join(sorted(operator_cookies.keys()))} (values hidden)"
         if operator_cookies
         else "(none)",
+    )
+    header.add_row(
+        "Request Headers",
+        f"{len(request_headers)} (values hidden)" if request_headers else "(none)",
     )
     header.add_row("Playwright", "Available" if playwright_enabled else "Disabled")
     header.add_row("Stealth Mode", "ON (jitter + rate-limit)" if stealth else "Off")
@@ -618,6 +736,7 @@ def scan(
                     additional_target_origins=declared_additional_origins,
                     credentials=safe_credentials,
                     session_cookies={},
+                    session_headers=request_headers,
                     identity_profiles=identity_profiles,
                     jwt_weak_secret_candidates=jwt_candidates,
                     jwt_public_key_available=jwt_public_key_available,
@@ -728,6 +847,26 @@ def scan(
             # Reporting must not turn a completed scan into a failed scan. Keep
             # the graph result as a safe fallback if local persistence is degraded.
             console.print(f"[yellow]⚠ Cumulative findings unavailable: {exc}[/yellow]")
+
+        # --- CLI-side artifact export ---
+        # The reporter node may downgrade export failures to warnings, or a
+        # graph profile may complete without executing the reporter. Export
+        # again from the CLI after cumulative persistence so the user-visible
+        # report contract is backed by the final, target-scoped findings.
+        try:
+            _export_cli_reports(
+                target_url=url,
+                findings=findings,
+                final_state=final_state,
+                workspace=workspace,
+                settings=settings,
+                selected_formats=selected_report_formats,
+            )
+        except Exception as export_error:
+            # Reporting is best-effort and must not erase a completed scan, but
+            # the warning makes a missing artifact visible instead of claiming
+            # a report was produced silently.
+            console.print(f"[yellow]⚠ Report export warning: {export_error}[/yellow]")
 
         # --- Display results ---
         if stealth:

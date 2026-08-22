@@ -386,6 +386,7 @@ def export_to_json(
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
+    runtime_capability_gaps: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Export findings to a JSON report with audit trail.
 
@@ -417,6 +418,7 @@ def export_to_json(
         proof_observability=proof_observability,
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
+        runtime_capability_gaps=runtime_capability_gaps,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "report.json"
@@ -533,6 +535,8 @@ def export_to_html(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    llm_usage_trace: list[dict[str, Any]] | None = None,
+    runtime_capability_gaps: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Export findings to a professional HTML report via Jinja2.
 
@@ -569,6 +573,8 @@ def export_to_html(
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
         authorization_matrix=authorization_matrix,
+        llm_usage_trace=llm_usage_trace,
+        runtime_capability_gaps=runtime_capability_gaps,
     )
 
     template_dir = _TEMPLATE_PATH.parent
@@ -616,6 +622,8 @@ def export_to_pdf(
     campaign_ledger: dict[str, Any] | None = None,
     proof_observability: dict[str, Any] | None = None,
     authorization_matrix: dict[str, Any] | None = None,
+    llm_usage_trace: list[dict[str, Any]] | None = None,
+    runtime_capability_gaps: list[dict[str, Any]] | None = None,
 ) -> Path | None:
     """Export findings to a PDF report.
 
@@ -654,6 +662,8 @@ def export_to_pdf(
         campaign_ledger=campaign_ledger,
         proof_observability=proof_observability,
         authorization_matrix=authorization_matrix,
+        llm_usage_trace=llm_usage_trace,
+        runtime_capability_gaps=runtime_capability_gaps,
     )
     html_content = html_path.read_text(encoding="utf-8")
 

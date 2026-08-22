@@ -388,6 +388,7 @@ def crawler_node(state: PentestState) -> dict:
     # Name=<empty> — they are placeholders that explicitly mean
     # "known invalid," not real session state.
     _session_cookies = {k: v for k, v in (state.get("session_cookies") or {}).items() if v}
+    _session_headers = dict(state.get("session_headers") or {})
     _auth_state = state.get("auth_state") or {}
     _cookie_count = len(_session_cookies)
     _cookie_names = sorted(_session_cookies.keys()) if _session_cookies else []
@@ -411,7 +412,11 @@ def crawler_node(state: PentestState) -> dict:
 
     http_fallback_surface: dict[str, Any] = {}
     try:
-        raw_endpoints = run_katana(url, session_cookies=_session_cookies)
+        raw_endpoints = run_katana(
+            url,
+            session_cookies=_session_cookies,
+            extra_headers=_session_headers,
+        )
     except ToolNotFoundError as exc:
         logger.warning("katana not found — switching to bounded HTTP fallback: %s", exc)
         raw_endpoints = []
@@ -431,6 +436,7 @@ def crawler_node(state: PentestState) -> dict:
             http_fallback_surface = discover_http_surface(
                 url,
                 session_cookies=_session_cookies,
+                extra_headers=_session_headers,
             )
             raw_endpoints = list(http_fallback_surface.get("endpoints") or [])
             logger.info(
@@ -476,6 +482,7 @@ def crawler_node(state: PentestState) -> dict:
                 supplement_surface = discover_http_surface(
                     url,
                     session_cookies=_session_cookies,
+                    extra_headers=_session_headers,
                     max_pages=max(1, min(supplement_pages, 50)),
                 )
                 supplement_endpoints = list(supplement_surface.get("endpoints") or [])

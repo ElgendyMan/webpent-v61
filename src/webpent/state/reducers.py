@@ -154,6 +154,21 @@ def merge_lists(
     return base
 
 
+def replace_runtime_capability_gaps(
+    _existing: list[dict[str, Any]] | None,
+    new: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    """Project the current runtime gaps instead of accumulating old snapshots.
+
+    Capability gaps describe the current DI/runtime state, not historical
+    observations.  A later node may register a policy-checked adapter and
+    resolve a prior gap, including resolving to an empty list.  Keeping this
+    field append-only would report resolved gaps forever and could incorrectly
+    block qualification decisions.
+    """
+    return list(new or [])
+
+
 def merge_hypotheses(
     existing: list[Any] | None,
     new: list[Any] | None,

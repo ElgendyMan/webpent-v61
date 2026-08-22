@@ -1646,7 +1646,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "proof_required": True,
         },
         "runtime_capability_gaps": [
-            gap.as_dict() for gap in runtime.capability_gaps
+            gap.as_dict() for gap in runtime.current_capability_gaps()
         ],
         "current_phase": "smart_campaign_execution",
     }
