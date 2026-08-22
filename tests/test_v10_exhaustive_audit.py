@@ -576,9 +576,9 @@ class TestCeleryPayloadKeyEnvAlias:
     runtime insecure-default warning, AND docker-compose.yml all instructed
     operators to set WEBPENT_CELERY_PAYLOAD_KEY instead, which was silently
     never read. An operator following the docs to the letter in production
-    would still ship with the public, hardcoded default key. Fixed via
-    validation_alias=AliasChoices(...) accepting both names; this test
-    locks both down so neither can silently regress.
+    would still be misconfigured. Fixed via validation_alias=AliasChoices(...)
+    accepting both names; this test locks both down so neither can silently
+    regress.
     """
 
     def test_bare_name_sets_the_key(self, monkeypatch):
@@ -595,14 +595,22 @@ class TestCeleryPayloadKeyEnvAlias:
         monkeypatch.setenv("WEBPENT_CELERY_PAYLOAD_KEY", "y" * 40)
         assert Settings().celery_payload_key == "y" * 40
 
-    def test_neither_set_keeps_the_documented_insecure_dev_default(self, monkeypatch):
-        # Sanity check: absence of both still yields the known dev
-        # default (not some other silently-broken value), so the
-        # auth_enabled=True hard-stop in model_validator continues to
-        # catch a truly unconfigured production deployment.
+    def test_neither_set_is_blank_and_strict_profiles_fail_closed(self, monkeypatch):
+        # The current security contract intentionally has no usable default.
+        # Production-intent validation must reject the resulting blank value.
         from webpent.config.settings import Settings
 
         monkeypatch.delenv("CELERY_PAYLOAD_KEY", raising=False)
         monkeypatch.delenv("WEBPENT_CELERY_PAYLOAD_KEY", raising=False)
         s = Settings()
-        assert s.celery_payload_key == "webpent-dev-celery-payload-key-change-in-production"
+        assert s.celery_payload_key == ""
+        with pytest.raises(ValueError, match="celery_payload_key"):
+            Settings(
+                environment_profile="production",
+                auth_enabled=True,
+                jwt_secret_key="j" * 40,
+                audit_secret_key="a" * 40,
+                cors_origins=["https://app.example"],
+                rate_limit_redis_url="rediss://redis.example/0",
+                rate_limit_enabled=True,
+            )

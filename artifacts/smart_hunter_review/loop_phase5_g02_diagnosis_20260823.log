@@ -1,0 +1,84 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python
+cachedir: .pytest_cache
+rootdir: /tmp/bbscout_webpent_integration/webpent-git
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, langsmith-0.11.1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 18 items
+
+tests/test_g02_direct_io_inventory.py::test_g02_inventory_is_generated_from_current_source_without_drift FAILED [  5%]
+tests/test_g02_direct_io_inventory.py::test_g02_artifact_contracts_match_source_contracts PASSED [ 11%]
+tests/test_g02_direct_io_inventory.py::test_g02_all_raw_transport_sites_are_allowlisted PASSED [ 16%]
+tests/test_g02_direct_io_inventory.py::test_g02_required_logical_transports_have_explicit_boundary_authority_and_proof PASSED [ 22%]
+tests/test_g02_direct_io_inventory.py::test_g02_inventory_does_not_allow_unclassified_transport_sites PASSED [ 27%]
+tests/test_g02_precommit_enforcement.py::test_precommit_checker_accepts_current_deterministic_artifacts FAILED [ 33%]
+tests/test_g02_precommit_enforcement.py::test_precommit_checker_rejects_synthetic_unsafe_patch PASSED [ 38%]
+tests/test_g02_precommit_enforcement.py::test_precommit_checker_rejects_unapproved_new_transport PASSED [ 44%]
+tests/test_g02_precommit_enforcement.py::test_regenerated_markdown_is_stable PASSED [ 50%]
+tests/test_g02_scanner_expansion.py::test_g02_primary_inventory_has_no_unapproved_or_unclassified_records PASSED [ 55%]
+tests/test_g02_scanner_expansion.py::test_g02_secondary_scanner_has_zero_disagreements PASSED [ 61%]
+tests/test_g02_scanner_expansion.py::test_g02_structured_approval_policy_is_present_and_bounded PASSED [ 66%]
+tests/test_g02_scanner_expansion.py::test_g02_inventory_contract_helper_is_clean FAILED [ 72%]
+tests/test_g02_scanner_expansion.py::test_g02_new_transport_names_are_classifiable_without_wildcard_approval PASSED [ 77%]
+tests/test_g02_scanner_expansion.py::test_g02_synthetic_transport_families_and_dynamic_resolution_are_covered PASSED [ 83%]
+tests/test_g02_scanner_expansion.py::test_g02_inventory_has_no_duplicate_observations PASSED [ 88%]
+tests/test_g02_scanner_expansion.py::test_g02_mutating_a_record_fails_closed PASSED [ 94%]
+tests/test_g02_scanner_expansion.py::test_g02_mutating_dynamic_allowlist_fails_closed PASSED [100%]
+
+=================================== FAILURES ===================================
+______ test_g02_inventory_is_generated_from_current_source_without_drift _______
+
+    def test_g02_inventory_is_generated_from_current_source_without_drift():
+        inventory = _inventory()
+        assert inventory["schema"] == "webpent.direct_io_inventory.v1"
+        assert inventory["generated_from"] == "src/**/*.py"
+>       assert inventory["records"] == scan_direct_io(PROJECT_ROOT / "src")
+E       AssertionError: assert [{'approval_s...y', ...}, ...] == [{'file': 'sr...n', ...}, ...]
+E         
+E         At index 132 diff: {'approval_status': 'not_applicable', 'classification': 'dynamic_resolution', 'column': 27, 'file': 'src/webpent/cli/__init__.py', 'kind': 'dynamic_resolution', 'line': 982, 'normalized_symbol': 'getattr(f, ... )', 'reason': 'dynamic attribute access observed without a transport signal', 'symbol': 'getattr', 'transport': 'dynamic_resolution', 'transport_family': 'non_transport'} != {'file': 'src/webpent/cli/__init__.py', 'line': 988, 'column': 27, 'kind': 'dynamic_resolution', 'symbol': 'getattr', 'normalized_symbol': 'getattr(f, ... )', 'transport': ...
+E         
+E         ...Full output truncated (7292 lines hidden), use '-vv' to show
+
+tests/test_g02_direct_io_inventory.py:26: AssertionError
+________ test_precommit_checker_accepts_current_deterministic_artifacts ________
+
+    def test_precommit_checker_accepts_current_deterministic_artifacts() -> None:
+>       assert check_repository(project_root=ROOT) == []
+E       AssertionError: assert ['JSON artifa... source scan'] == []
+E         
+E         Left contains 3 more items, first extra item: 'JSON artifact is not the deterministic scanner output'
+E         
+E         Full diff:
+E         - []
+E         + [
+E         +     'JSON artifact is not the deterministic scanner output',...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_g02_precommit_enforcement.py:84: AssertionError
+_________________ test_g02_inventory_contract_helper_is_clean __________________
+
+    def test_g02_inventory_contract_helper_is_clean():
+        from json import loads
+    
+        artifact = loads(
+            (PROJECT_ROOT / "docs" / "direct_io_inventory.json").read_text(encoding="utf-8")
+        )
+>       assert inventory_contract_errors(artifact, SOURCE_ROOT) == []
+E       AssertionError: assert ['artifact re... source scan'] == []
+E         
+E         Left contains one more item: 'artifact records drift from current source scan'
+E         
+E         Full diff:
+E         - []
+E         + [
+E         +     'artifact records drift from current source scan',
+E         + ]
+
+tests/test_g02_scanner_expansion.py:59: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g02_direct_io_inventory.py::test_g02_inventory_is_generated_from_current_source_without_drift
+FAILED tests/test_g02_precommit_enforcement.py::test_precommit_checker_accepts_current_deterministic_artifacts
+FAILED tests/test_g02_scanner_expansion.py::test_g02_inventory_contract_helper_is_clean
+========================= 3 failed, 15 passed in 7.71s =========================

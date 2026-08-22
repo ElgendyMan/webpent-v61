@@ -91,17 +91,118 @@ _LLM_USAGE_LOCK = threading.Lock()
 _LLM_USAGE_CONTEXT: ContextVar[list[dict[str, object]] | None] = ContextVar(
     "webpent_llm_usage_context", default=None
 )
+_LLM_BUDGET_CONTEXT: ContextVar[dict[str, object] | None] = ContextVar(
+    "webpent_llm_budget_context", default=None
+)
+_LLM_BUDGET_LOCK = threading.Lock()
+
+
+class LLMBudgetExhaustedError(RuntimeError):
+    """Raised before provider I/O when one managed run reaches its call cap."""
+
+
+def _budget_state_value(state: dict[str, object], key: str, default: int = 0) -> int:
+    value = state.get(key, default)
+    return value if isinstance(value, int) and value >= 0 else default
 
 
 @contextmanager
-def llm_usage_scope() -> Iterator[list[dict[str, object]]]:
-    """Collect actual LLM usage for one graph execution context."""
+def llm_usage_scope(settings: Settings | None = None) -> Iterator[list[dict[str, object]]]:
+    """Collect usage and enforce bounded LLM attempts for one graph context.
+
+    The call cap is deliberately independent of provider pricing: fallback
+    attempts count as calls, and once exhausted no wrapped provider receives
+    an invocation. Token warnings are advisory only and are emitted only when
+    a provider reports token usage; unknown pricing is never estimated.
+    """
+    settings = settings or get_settings()
     bucket: list[dict[str, object]] = []
-    token = _LLM_USAGE_CONTEXT.set(bucket)
+    budget: dict[str, object] = {
+        "calls": 0,
+        "reported_tokens": 0,
+        "max_calls": int(settings.llm_max_calls_per_run),
+        "warning_tokens": int(settings.llm_warning_tokens_per_run),
+        "warning_emitted": False,
+        "blocked": False,
+    }
+    usage_token = _LLM_USAGE_CONTEXT.set(bucket)
+    budget_token = _LLM_BUDGET_CONTEXT.set(budget)
     try:
         yield bucket
     finally:
-        _LLM_USAGE_CONTEXT.reset(token)
+        _LLM_BUDGET_CONTEXT.reset(budget_token)
+        _LLM_USAGE_CONTEXT.reset(usage_token)
+
+
+def _consume_llm_call_budget() -> None:
+    """Reserve one provider attempt or fail closed before provider I/O."""
+    state = _LLM_BUDGET_CONTEXT.get()
+    if state is None:
+        # Direct library use outside a managed graph remains backwards
+        # compatible; CLI/worker execution always opens the scope above.
+        return
+    with _LLM_BUDGET_LOCK:
+        calls = _budget_state_value(state, "calls")
+        maximum = _budget_state_value(state, "max_calls")
+        if calls >= maximum:
+            state["blocked"] = True
+            if not state.get("exhaustion_logged"):
+                state["exhaustion_logged"] = True
+                logger.warning(
+                    "LLM call budget exhausted before provider I/O: calls=%d max=%d",
+                    calls,
+                    maximum,
+                )
+            raise LLMBudgetExhaustedError(
+                f"LLM call budget exhausted ({calls}/{maximum}); "
+                "caller must use deterministic fallback."
+            )
+        state["calls"] = calls + 1
+
+
+def _record_llm_budget_tokens(total_tokens: int | None) -> None:
+    """Account reported tokens and emit one redaction-safe advisory warning."""
+    if total_tokens is None:
+        return
+    state = _LLM_BUDGET_CONTEXT.get()
+    if state is None:
+        return
+    with _LLM_BUDGET_LOCK:
+        reported = _budget_state_value(state, "reported_tokens") + total_tokens
+        state["reported_tokens"] = reported
+        threshold = _budget_state_value(state, "warning_tokens")
+        if threshold and reported >= threshold and not state.get("warning_emitted"):
+            state["warning_emitted"] = True
+            logger.warning(
+                "LLM reported-token warning threshold reached: tokens=%d threshold=%d",
+                reported,
+                threshold,
+            )
+
+
+def get_llm_budget_summary() -> dict[str, object]:
+    """Return the current run's bounded, redaction-safe LLM budget summary."""
+    state = _LLM_BUDGET_CONTEXT.get()
+    if state is None:
+        return {
+            "active": False,
+            "calls": 0,
+            "reported_tokens": 0,
+            "max_calls": None,
+            "warning_tokens": None,
+            "warning_emitted": False,
+            "blocked": False,
+        }
+    with _LLM_BUDGET_LOCK:
+        return {
+            "active": True,
+            "calls": _budget_state_value(state, "calls"),
+            "reported_tokens": _budget_state_value(state, "reported_tokens"),
+            "max_calls": _budget_state_value(state, "max_calls"),
+            "warning_tokens": _budget_state_value(state, "warning_tokens"),
+            "warning_emitted": bool(state.get("warning_emitted")),
+            "blocked": bool(state.get("blocked")),
+        }
 
 
 def clear_llm_usage_trace() -> None:
@@ -197,6 +298,7 @@ def _record_llm_usage(
     """Append one redaction-safe usage record; telemetry failures are fail-open."""
     try:
         input_tokens, output_tokens, total_tokens = _extract_usage(response)
+        _record_llm_budget_tokens(total_tokens)
         entry: dict[str, object] = {
             "provider": str(provider)[:80],
             "model": str(model)[:160],
@@ -790,6 +892,7 @@ class _ProviderGuardedRunnable(Runnable):
             _mark_provider_dead(self.provider, str(exc)[:100])
 
     def invoke(self, input: object, config: object | None = None, **kwargs: object) -> object:
+        _consume_llm_call_budget()
         try:
             response = self.inner.invoke(input, config=config, **kwargs)
             _record_llm_usage(
@@ -817,6 +920,7 @@ class _ProviderGuardedRunnable(Runnable):
         config: object | None = None,
         **kwargs: object,
     ) -> object:
+        _consume_llm_call_budget()
         try:
             response = await self.inner.ainvoke(input, config=config, **kwargs)
             _record_llm_usage(

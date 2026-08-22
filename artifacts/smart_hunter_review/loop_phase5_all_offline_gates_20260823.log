@@ -1,0 +1,333 @@
+=== RUFF ===
+[1;32mAll checks passed![0m
+=== COMPILEALL ===
+=== DIRECT IO ===
+wrote /tmp/bbscout_webpent_integration/webpent-git/docs/direct_io_inventory.json and /tmp/bbscout_webpent_integration/webpent-git/docs/DIRECT_IO_INVENTORY.md (280 records)
+=== G02 RUNTIME ===
+{"errors": [], "external_target_contacted": false, "passed": true, "primary_records": 280}
+=== G02 PRECOMMIT ===
+{"errors": [], "external_target_contacted": false, "passed": true}
+=== TRACKED SECRETS ===
+secret scan passed: no high-confidence secrets in tracked source/config
+=== FULL REGRESSION + COVERAGE ===
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+........................................................................ [ 25%]
+........................................................................ [ 30%]
+........................................................................ [ 35%]
+........................................................................ [ 40%]
+........................................................................ [ 45%]
+........................................................................ [ 50%]
+........................................................................ [ 55%]
+........................................................................ [ 60%]
+........................................................................ [ 65%]
+........................................................................ [ 70%]
+........................................................................ [ 75%]
+........................................................................ [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 90%]
+........................................................................ [ 95%]
+..........................................................               [100%]
+=============================== warnings summary ===============================
+tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter
+  /tmp/bbscout_webpent_integration/webpent-git/src/webpent/memory/embeddings.py:97: DeprecationWarning: `langchain-community` is being sunset and is no longer actively maintained. See https://github.com/langchain-ai/langchain-community/issues/674 for details and migration guidance toward standalone integration packages.
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+
+tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter
+  /tmp/bbscout_webpent_integration/webpent-git/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.
+    embeddings = HuggingFaceEmbeddings(**kwargs)
+
+tests/test_v58_post_form_hypotheses.py: 20 warnings
+tests/test_v72_json_request_context.py: 24 warnings
+tests/test_v72_request_context_and_primary_identity.py: 10 warnings
+  /usr/local/lib/python3.12/dist-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.
+    return self.model_fields  # pydantic 2.x
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                                     Stmts   Miss  Cover
+----------------------------------------------------------------------------
+src/webpent/__init__.py                                      0      0   100%
+src/webpent/agents/__init__.py                               0      0   100%
+src/webpent/agents/access_control/__init__.py                0      0   100%
+src/webpent/agents/access_control/agent.py                 514    150    71%
+src/webpent/agents/api_testing/__init__.py                   0      0   100%
+src/webpent/agents/api_testing/agent.py                    179     93    48%
+src/webpent/agents/attack_graph/__init__.py                  2      0   100%
+src/webpent/agents/attack_graph/agent.py                    19     11    42%
+src/webpent/agents/authentication/__init__.py                0      0   100%
+src/webpent/agents/authentication/agent.py                 386    140    64%
+src/webpent/agents/business_impact/__init__.py               0      0   100%
+src/webpent/agents/business_impact/agent.py                 57     44    23%
+src/webpent/agents/business_logic_fuzzer/__init__.py         0      0   100%
+src/webpent/agents/business_logic_fuzzer/agent.py          163    111    32%
+src/webpent/agents/cloud_storage/__init__.py                 0      0   100%
+src/webpent/agents/cloud_storage/agent.py                   91     39    57%
+src/webpent/agents/crawler/__init__.py                       0      0   100%
+src/webpent/agents/crawler/agent.py                        316     90    72%
+src/webpent/agents/cross_reasoning/__init__.py               0      0   100%
+src/webpent/agents/cross_reasoning/agent.py                 90     66    27%
+src/webpent/agents/cvss_engine/__init__.py                   0      0   100%
+src/webpent/agents/cvss_engine/agent.py                     86     30    65%
+src/webpent/agents/devils_advocate/__init__.py               0      0   100%
+src/webpent/agents/devils_advocate/agent.py                106     53    50%
+src/webpent/agents/disclosed_report_intel/agent.py          43     19    56%
+src/webpent/agents/execution_sandbox/__init__.py             0      0   100%
+src/webpent/agents/execution_sandbox/agent.py              398    246    38%
+src/webpent/agents/executive_summary/__init__.py             0      0   100%
+src/webpent/agents/executive_summary/agent.py               62     36    42%
+src/webpent/agents/exploit_chainer/__init__.py               0      0   100%
+src/webpent/agents/exploit_chainer/agent.py                117     55    53%
+src/webpent/agents/hypothesis_analyzer/__init__.py           0      0   100%
+src/webpent/agents/hypothesis_analyzer/agent.py            407     69    83%
+src/webpent/agents/javascript_intelligence/__init__.py       2      0   100%
+src/webpent/agents/javascript_intelligence/agent.py        117     22    81%
+src/webpent/agents/payload_generator/__init__.py             0      0   100%
+src/webpent/agents/payload_generator/agent.py              210    105    50%
+src/webpent/agents/payload_optimizer/__init__.py             0      0   100%
+src/webpent/agents/payload_optimizer/agent.py              108     44    59%
+src/webpent/agents/planner/__init__.py                       0      0   100%
+src/webpent/agents/planner/agent.py                         87     13    85%
+src/webpent/agents/post_exploit/__init__.py                  0      0   100%
+src/webpent/agents/post_exploit/agent.py                   176    154    12%
+src/webpent/agents/rabbit_hole/__init__.py                   0      0   100%
+src/webpent/agents/rabbit_hole/agent.py                    215    163    24%
+src/webpent/agents/recon/__init__.py                         0      0   100%
+src/webpent/agents/recon/agent.py                          316    234    26%
+src/webpent/agents/reflection/__init__.py                    0      0   100%
+src/webpent/agents/reflection/agent.py                     143    122    15%
+src/webpent/agents/reporter/__init__.py                      0      0   100%
+src/webpent/agents/reporter/agent.py                       291    116    60%
+src/webpent/agents/request_smuggling/__init__.py             0      0   100%
+src/webpent/agents/request_smuggling/agent.py              180    106    41%
+src/webpent/agents/scope_enforcer/__init__.py                0      0   100%
+src/webpent/agents/scope_enforcer/agent.py                 100     87    13%
+src/webpent/agents/smart_campaigns/__init__.py               2      0   100%
+src/webpent/agents/smart_campaigns/agent.py                800    130    84%
+src/webpent/agents/strategist/__init__.py                    0      0   100%
+src/webpent/agents/strategist/agent.py                     186     78    58%
+src/webpent/agents/subdomain_takeover/__init__.py            0      0   100%
+src/webpent/agents/subdomain_takeover/agent.py             127     26    80%
+src/webpent/agents/target_understanding/__init__.py          2      0   100%
+src/webpent/agents/target_understanding/agent.py           189     35    81%
+src/webpent/agents/team.py                                  23      1    96%
+src/webpent/agents/validator/__init__.py                     0      0   100%
+src/webpent/agents/validator/active_checks.py              213     49    77%
+src/webpent/agents/validator/agent.py                     1019    541    47%
+src/webpent/agents/validator/registry.py                    29      3    90%
+src/webpent/agents/validator/structural_checks.py          383    198    48%
+src/webpent/agents/waf_detector/__init__.py                  0      0   100%
+src/webpent/agents/waf_detector/agent.py                    59     45    24%
+src/webpent/api/__init__.py                                  0      0   100%
+src/webpent/api/app.py                                     593    254    57%
+src/webpent/api/auth.py                                    233    101    57%
+src/webpent/api/rate_limit.py                               95     23    76%
+src/webpent/api/scan_registry.py                           191     91    52%
+src/webpent/attack_graph/__init__.py                         4      0   100%
+src/webpent/attack_graph/builder.py                          8      0   100%
+src/webpent/attack_graph/path_ranker.py                     11      0   100%
+src/webpent/attack_graph/reasoner.py                        14      7    50%
+src/webpent/auth/__init__.py                                 2      0   100%
+src/webpent/auth/reauth_vault.py                           250     56    78%
+src/webpent/benchmark/__init__.py                            3      0   100%
+src/webpent/benchmark/metrics.py                            32      0   100%
+src/webpent/benchmark/qualification.py                     172     16    91%
+src/webpent/cli/__init__.py                                722    413    43%
+src/webpent/cli/git_source.py                               42     11    74%
+src/webpent/cli/ingest.py                                  141    108    23%
+src/webpent/cli/loaders.py                                 105     29    72%
+src/webpent/cli/manifest.py                                114     27    76%
+src/webpent/config/__init__.py                               0      0   100%
+src/webpent/config/policies.py                              67     30    55%
+src/webpent/config/settings.py                             273     12    96%
+src/webpent/copilot/__init__.py                              4      0   100%
+src/webpent/copilot/critic.py                               18      6    67%
+src/webpent/copilot/explainer.py                            10      0   100%
+src/webpent/copilot/planner.py                              18      1    94%
+src/webpent/coverage/__init__.py                             3      3     0%
+src/webpent/coverage/coverage_map.py                        15     15     0%
+src/webpent/coverage/gap_detector.py                        12     12     0%
+src/webpent/experience/__init__.py                           2      0   100%
+src/webpent/experience/store.py                             45      9    80%
+src/webpent/graph/__init__.py                                0      0   100%
+src/webpent/graph/builder.py                               513     99    81%
+src/webpent/graph/checkpoints.py                           198     32    84%
+src/webpent/integrations/__init__.py                         0      0   100%
+src/webpent/integrations/webhook.py                        114     48    58%
+src/webpent/knowledge/__init__.py                            8      0   100%
+src/webpent/knowledge/auth_model.py                         19      3    84%
+src/webpent/knowledge/builder.py                           104     25    76%
+src/webpent/knowledge/data_flow_model.py                    15      2    87%
+src/webpent/knowledge/entity_graph.py                       36      3    92%
+src/webpent/knowledge/target_knowledge.py                   90      1    99%
+src/webpent/knowledge/target_model.py                        8      1    88%
+src/webpent/knowledge/workflow_model.py                     16      3    81%
+src/webpent/memory/__init__.py                               0      0   100%
+src/webpent/memory/db.py                                   412    110    73%
+src/webpent/memory/decision_log.py                         125     46    63%
+src/webpent/memory/embeddings.py                            34      9    74%
+src/webpent/memory/lessons.py                              238     60    75%
+src/webpent/memory/vectorstore.py                          246     77    69%
+src/webpent/models/__init__.py                               0      0   100%
+src/webpent/models/adaptive_hunt.py                         97      1    99%
+src/webpent/models/application_intent.py                    69      0   100%
+src/webpent/models/attack_graph.py                          41      0   100%
+src/webpent/models/authorization_matrix.py                  56      1    98%
+src/webpent/models/campaigns.py                             71      0   100%
+src/webpent/models/decision_log.py                          35      3    91%
+src/webpent/models/evidence.py                             207     10    95%
+src/webpent/models/evidence_ledger.py                       37      0   100%
+src/webpent/models/findings.py                             128      5    96%
+src/webpent/models/goal_tree.py                            149     58    61%
+src/webpent/models/hypothesis.py                            84      7    92%
+src/webpent/models/javascript_intelligence.py               70      0   100%
+src/webpent/models/memory.py                                83      1    99%
+src/webpent/models/mental_model.py                         417    118    72%
+src/webpent/models/planner.py                               72      3    96%
+src/webpent/models/proof_bundle.py                         140      5    96%
+src/webpent/models/proof_engine.py                         125      2    98%
+src/webpent/models/research.py                             160      2    99%
+src/webpent/models/surface_graph.py                         61      1    98%
+src/webpent/models/surface_security.py                      71      0   100%
+src/webpent/models/targets.py                               60      8    87%
+src/webpent/models/workflow_replay.py                       83      0   100%
+src/webpent/models/workflows.py                             58      0   100%
+src/webpent/persistence/__init__.py                          2      0   100%
+src/webpent/persistence/backend_capability.py               19      2    89%
+src/webpent/reporter/__init__.py                             0      0   100%
+src/webpent/reporter/export.py                             170     40    76%
+src/webpent/research/__init__.py                             4      0   100%
+src/webpent/research/experiment_manager.py                  17      1    94%
+src/webpent/research/hypothesis_engine.py                   63     10    84%
+src/webpent/research/hypothesis_ranker.py                   15      0   100%
+src/webpent/shared/__init__.py                               0      0   100%
+src/webpent/shared/action_authority.py                     181     12    93%
+src/webpent/shared/action_ledger.py                         80     13    84%
+src/webpent/shared/adaptive_hunt.py                        251     47    81%
+src/webpent/shared/application_intent.py                    56     13    77%
+src/webpent/shared/application_intent_graph.py             156     11    93%
+src/webpent/shared/attack_graph.py                         261     47    82%
+src/webpent/shared/authorization_matrix.py                 125     20    84%
+src/webpent/shared/autonomous_controller.py                335     58    83%
+src/webpent/shared/autonomy_contracts.py                   101     11    89%
+src/webpent/shared/autopentestx_adapter.py                 127     13    90%
+src/webpent/shared/bac_identity_tester.py                  137     19    86%
+src/webpent/shared/campaign_executor.py                    225     15    93%
+src/webpent/shared/campaign_planner.py                      95      3    97%
+src/webpent/shared/campaigns.py                             37      1    97%
+src/webpent/shared/capability_manifest.py                   86      7    92%
+src/webpent/shared/causal_research.py                      132     25    81%
+src/webpent/shared/cognitive_components.py                  79     24    70%
+src/webpent/shared/confidence.py                           102     16    84%
+src/webpent/shared/console.py                               76     76     0%
+src/webpent/shared/control_plane.py                        405     33    92%
+src/webpent/shared/control_plane_runtime.py                340     51    85%
+src/webpent/shared/control_plane_spine.py                   98      9    91%
+src/webpent/shared/copilot_boundary.py                      33      1    97%
+src/webpent/shared/coverage_ledger.py                      108      7    94%
+src/webpent/shared/deserialization.py                       73      8    89%
+src/webpent/shared/differential_workflow.py                133     18    86%
+src/webpent/shared/direct_io_inventory.py                  282     20    93%
+src/webpent/shared/disclosed_report_intel.py                61      5    92%
+src/webpent/shared/engagement_factory.py                   118     19    84%
+src/webpent/shared/engagement_scope.py                     161     28    83%
+src/webpent/shared/ensemble.py                              64      9    86%
+src/webpent/shared/evidence_contract.py                    116     34    71%
+src/webpent/shared/evidence_ledger.py                       26      0   100%
+src/webpent/shared/evidence_quality.py                     102      5    95%
+src/webpent/shared/exceptions.py                            21      0   100%
+src/webpent/shared/finding_aggregation.py                   47      6    87%
+src/webpent/shared/g02_contract.py                          16      0   100%
+src/webpent/shared/grounding.py                            145     37    74%
+src/webpent/shared/http.py                                 314     85    73%
+src/webpent/shared/http_discovery.py                       387     64    83%
+src/webpent/shared/identity_provisioning.py                228     22    90%
+src/webpent/shared/javascript_intelligence.py              188     36    81%
+src/webpent/shared/jwt_deep_testing.py                     112     20    82%
+src/webpent/shared/kev.py                                   23      1    96%
+src/webpent/shared/knowledge_retrieval.py                   76     16    79%
+src/webpent/shared/llm.py                                  492     92    81%
+src/webpent/shared/llm_reliability.py                      141     13    91%
+src/webpent/shared/memory_boundary.py                       95     12    87%
+src/webpent/shared/nettacker_adapter.py                    156     20    87%
+src/webpent/shared/novel_behavior.py                        46     13    72%
+src/webpent/shared/offline_validator_fixtures.py            77      7    91%
+src/webpent/shared/package_capabilities.py                  90     18    80%
+src/webpent/shared/package_execution_intake.py             159     50    69%
+src/webpent/shared/package_preflight.py                     36      5    86%
+src/webpent/shared/package_scope.py                        172     40    77%
+src/webpent/shared/persistent_finding_ledger.py            120     22    82%
+src/webpent/shared/planner_decisions.py                    169     21    88%
+src/webpent/shared/poc_policy.py                            52      2    96%
+src/webpent/shared/preflight.py                            212     35    83%
+src/webpent/shared/prioritization.py                       239     71    70%
+src/webpent/shared/proof_bundle_store.py                    54      5    91%
+src/webpent/shared/proof_engine.py                         161     17    89%
+src/webpent/shared/proof_oracles.py                        110     17    85%
+src/webpent/shared/rate_governor.py                         95     33    65%
+src/webpent/shared/recon_triage.py                         114      5    96%
+src/webpent/shared/redaction.py                             20      0   100%
+src/webpent/shared/reference_lookup.py                      84     47    44%
+src/webpent/shared/report_quality.py                       145     16    89%
+src/webpent/shared/research_contracts.py                   181     22    88%
+src/webpent/shared/research_intelligence.py                431     39    91%
+src/webpent/shared/research_nodes.py                        66     27    59%
+src/webpent/shared/resume_capability.py                     62      8    87%
+src/webpent/shared/runtime.py                              296     15    95%
+src/webpent/shared/safety_gate.py                          133     14    89%
+src/webpent/shared/scope_drift.py                           16      1    94%
+src/webpent/shared/secondary_io_scanner.py                 104      5    95%
+src/webpent/shared/secret_vault.py                          95     16    83%
+src/webpent/shared/self_critique.py                        207    102    51%
+src/webpent/shared/skill_selector.py                        34     34     0%
+src/webpent/shared/stealth.py                              114     49    57%
+src/webpent/shared/surface_evidence_graph.py               126     13    90%
+src/webpent/shared/surface_security.py                     181     19    90%
+src/webpent/shared/target_package_context.py               130     19    85%
+src/webpent/shared/target_workspace.py                      83      1    99%
+src/webpent/shared/target_workspace_context.py              18      1    94%
+src/webpent/shared/tool_adapters.py                         95     15    84%
+src/webpent/shared/trust_matrix.py                          55      6    89%
+src/webpent/shared/validator_plugins.py                     46      1    98%
+src/webpent/shared/verifier.py                              67     10    85%
+src/webpent/shared/wildcard_scope.py                       122     16    87%
+src/webpent/shared/workflow_replay.py                       16      0   100%
+src/webpent/shared/workflow_understanding.py               231     28    88%
+src/webpent/state/__init__.py                                0      0   100%
+src/webpent/state/initial_state.py                          69      7    90%
+src/webpent/state/reducers.py                              137     74    46%
+src/webpent/state/state.py                                 161      0   100%
+src/webpent/tools/__init__.py                                2      0   100%
+src/webpent/tools/exploitation/__init__.py                   0      0   100%
+src/webpent/tools/exploitation/dalfox.py                    76     23    70%
+src/webpent/tools/exploitation/phpggc.py                    55     15    73%
+src/webpent/tools/exploitation/sqlmap.py                   142     56    61%
+src/webpent/tools/exploitation/ysoserial.py                 57     16    72%
+src/webpent/tools/recon/__init__.py                          0      0   100%
+src/webpent/tools/recon/ffuf.py                            103     33    68%
+src/webpent/tools/recon/httpx.py                            60     49    18%
+src/webpent/tools/recon/katana.py                           87     74    15%
+src/webpent/tools/recon/nuclei.py                          110     29    74%
+src/webpent/tools/recon/subfinder.py                        34     25    26%
+src/webpent/tools/registry.py                               69      7    90%
+src/webpent/tools/utils/__init__.py                          0      0   100%
+src/webpent/tools/utils/subprocess.py                       71     13    82%
+src/webpent/utils/__init__.py                                0      0   100%
+src/webpent/utils/compliance.py                             24      7    71%
+src/webpent/utils/crypto.py                                 48      9    81%
+src/webpent/utils/task_crypto.py                           161     22    86%
+src/webpent/validators/__init__.py                           4      0   100%
+src/webpent/validators/causal_validator.py                   9      0   100%
+src/webpent/validators/proof_validator.py                    5      0   100%
+src/webpent/validators/replay_validator.py                   9      0   100%
+src/webpent/workers/__init__.py                              0      0   100%
+src/webpent/workers/observability.py                        63      1    98%
+src/webpent/workers/pentest_worker.py                      397    230    42%
+----------------------------------------------------------------------------
+TOTAL                                                    30272   8222    73%
+Coverage JSON written to file /tmp/webpent_cov_loop_phase5_final.json
+1426 passed, 56 warnings in 92.81s (0:01:32)

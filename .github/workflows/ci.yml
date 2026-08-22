@@ -74,7 +74,7 @@ jobs:
           --cov=webpent
           --cov-report=term-missing
           --cov-report=xml:coverage.xml
-          --cov-fail-under=66
+          --cov-fail-under=70
 
       - name: Lint source, tests, and scripts
         run: uv run ruff check src tests scripts --output-format concise

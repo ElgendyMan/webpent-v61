@@ -117,3 +117,56 @@ def test_smart_campaigns_emits_typed_research_projection_without_execution():
     assert result["campaign_task_outcomes"] == [] or all(
         item["status"] != "executed" for item in result["campaign_task_outcomes"]
     )
+
+
+def test_negative_evidence_reorders_same_gap_without_suppressing_alternate_control():
+    state = {
+        "smart_mode": True,
+        "engagement_id": "engagement:negative-reorder",
+        "client_id": "client:negative-reorder",
+        "target": {"url": "https://target.test"},
+        "crawled_data": {
+            "surface_records": [
+                {"record_id": "surface:object:1", "url": "https://target.test/object/1"}
+            ]
+        },
+        "relational_evidence": [],
+        "authorization_matrix": {},
+        "capability_manifest": {
+            "capabilities": {"http_read": {"available": True, "status": "available"}}
+        },
+        "smart_governance": {"profile": "safe-smart"},
+        "action_budget": {"used_actions": 0, "used_cost": 0.0},
+        "campaign_ledger": {"entries": []},
+    }
+
+    baseline = smart_campaigns_node(state)
+    owner = next(
+        item
+        for item in baseline["research_candidate_actions"]
+        if item["action_class"] == "identity_acquisition"
+    )
+    negative_state = {
+        **state,
+        "negative_evidence_ledger": [
+            {
+                "evidence_id": "negative:owner-path",
+                "hypothesis_id": "hypothesis:ownership",
+                "action_fingerprint": owner["fingerprint"],
+                "client_id": state["client_id"],
+                "engagement_id": state["engagement_id"],
+                "reason": "owner path returned an inconclusive baseline",
+            }
+        ],
+    }
+
+    reordered = smart_campaigns_node(negative_state)
+    ranked = reordered["research_unified_decision_trace"]
+    assert ranked[0]["candidate"]["action_class"] == "negative_control"
+    assert ranked[0]["candidate"]["action_id"].endswith(":denial")
+    owner_decision = next(
+        item for item in ranked if item["candidate"]["fingerprint"] == owner["fingerprint"]
+    )
+    assert owner_decision["status"] == "ranked"
+    assert "failed_path_revisit_penalty" in owner_decision["reasons"]
+    assert len(ranked) == 2

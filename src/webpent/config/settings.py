@@ -191,6 +191,30 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=4096, gt=0)
     llm_request_timeout: int = Field(default=60, gt=0)
+    llm_max_calls_per_run: int = Field(
+        default=32,
+        ge=1,
+        le=10000,
+        validation_alias=AliasChoices(
+            "LLM_MAX_CALLS_PER_RUN", "WEBPENT_LLM_MAX_CALLS_PER_RUN"
+        ),
+        description=(
+            "Hard upper bound on provider attempts in one managed graph run. "
+            "Fallback attempts count; no provider request is made after exhaustion."
+        ),
+    )
+    llm_warning_tokens_per_run: int = Field(
+        default=100000,
+        ge=0,
+        le=100000000,
+        validation_alias=AliasChoices(
+            "LLM_WARNING_TOKENS_PER_RUN", "WEBPENT_LLM_WARNING_TOKENS_PER_RUN"
+        ),
+        description=(
+            "Redaction-safe advisory warning threshold for reported tokens in one run. "
+            "It is not a price estimate and never guesses provider pricing."
+        ),
+    )
     llm_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("LLM_ENABLED", "WEBPENT_LLM_ENABLED"),
@@ -969,8 +993,8 @@ class Settings(BaseSettings):
     )
 
     # -- API Security (V5 Sprint 13 / V6 Develop-First) -------------------
-    # V6: auth_enabled defaults to False for frictionless development.
-    # Set AUTH_ENABLED=true in production to enforce JWT + RBAC.
+    # Local development/lab may keep auth disabled explicitly; strict profiles
+    # hard-stop unless authentication and real secrets are configured.
     auth_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices("auth_enabled", "AUTH_ENABLED", "WEBPENT_AUTH_ENABLED"),
@@ -981,23 +1005,22 @@ class Settings(BaseSettings):
     )
     # JWT authentication + RBAC for all /api/v1/* endpoints.
     jwt_secret_key: str = Field(
-        default="webpent-dev-secret-key-change-in-production",
+        default="",
         validation_alias=AliasChoices("jwt_secret_key", "JWT_SECRET_KEY", "WEBPENT_JWT_SECRET_KEY"),
         description=(
-            "V5 Sprint 13: Secret key used to sign JWTs. MUST be "
-            "overridden in production via JWT_SECRET_KEY. "
-            "The default is intentionally insecure for dev only."
+            "Secret key used to sign JWTs. It is intentionally empty by default; "
+            "strict profiles require an operator-supplied JWT_SECRET_KEY."
         ),
     )
     audit_secret_key: str = Field(
-        default="webpent-dev-audit-key-change-in-production",
+        default="",
         validation_alias=AliasChoices(
             "audit_secret_key", "AUDIT_SECRET_KEY", "WEBPENT_AUDIT_SECRET_KEY"
         ),
         description=(
-            "V5 Sprint 14: HMAC-SHA256 key used to sign evidence bundles "
-            "and the master report hash. MUST be overridden in production "
-            "via AUDIT_SECRET_KEY."
+            "HMAC-SHA256 key used to sign evidence bundles and the master "
+            "report hash. It is intentionally empty by default; strict "
+            "profiles require an operator-supplied AUDIT_SECRET_KEY."
         ),
     )
     # V10 HOSTILE-AUDIT FIX (CH-2): key used to encrypt operator-supplied
@@ -1012,7 +1035,7 @@ class Settings(BaseSettings):
     # jwt_secret_key / audit_secret_key above, rather than being required
     # to hand-generate a raw Fernet key.
     celery_payload_key: str = Field(
-        default="webpent-dev-celery-payload-key-change-in-production",
+        default="",
         # V10 EXHAUSTIVE AUDIT (reviewer follow-up): this Settings class
         # has no env_prefix, so pydantic-settings only ever read the
         # BARE env var name here -- confirmed empirically. The
@@ -1027,9 +1050,10 @@ class Settings(BaseSettings):
             "CELERY_PAYLOAD_KEY", "WEBPENT_CELERY_PAYLOAD_KEY", "celery_payload_key"
         ),
         description=(
-            "V10: Passphrase used to derive the Fernet key that encrypts "
+            "Passphrase used to derive the Fernet key that encrypts "
             "operator-supplied credentials before they are placed on the "
-            "Celery/Redis broker. MUST be overridden in production via "
+            "Celery/Redis broker. It is intentionally empty by default; "
+            "strict profiles require an operator-supplied key via "
             "CELERY_PAYLOAD_KEY (WEBPENT_CELERY_PAYLOAD_KEY is also "
             "accepted for back-compat). Does not replace TLS on the "
             "Redis connection itself (WEBPENT_REDIS_URL should still use "
@@ -1239,6 +1263,7 @@ class Settings(BaseSettings):
     _INSECURE_CELERY_PAYLOAD_DEFAULTS = frozenset(
         {
             "webpent-dev-celery-payload-key-change-in-production",
+            "",
         }
     )
 
@@ -1342,7 +1367,11 @@ class Settings(BaseSettings):
         # loud WARNING if the insecure default is used — the operator
         # should know evidence hashes are forgeable. Previously the
         # insecure default was used SILENTLY in dev mode.
-        if self.auth_enabled is False and self.audit_secret_key in _all_insecure_audit:
+        if (
+            self.auth_enabled is False
+            and self.audit_secret_key
+            and self.audit_secret_key in _all_insecure_audit
+        ):
             import warnings as _warnings
 
             _warnings.warn(
@@ -1386,6 +1415,7 @@ class Settings(BaseSettings):
         # decryptable by anyone with Redis access.
         if (
             self.auth_enabled is False
+            and self.celery_payload_key
             and self.celery_payload_key in self._INSECURE_CELERY_PAYLOAD_DEFAULTS
         ):
             import warnings as _warnings2

@@ -237,7 +237,7 @@ test-unit:
 	@PYTHONPATH=src python3 -m pytest
 
 coverage:
-	@PYTHONPATH=src python3 -m pytest --cov=webpent --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=35
+	@PYTHONPATH=src python3 -m pytest --cov=webpent --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70
 
 lint:
 	@ruff check src/webpent/config/settings.py src/webpent/integrations/webhook.py src/webpent/shared/preflight.py src/webpent/tools/recon/ffuf.py src/webpent/tools/registry.py src/webpent/agents/validator/active_checks.py scripts/verify_test_count.py tests/test_p0_ffuf_preflight.py tests/test_p0_p1_active_validators.py tests/test_p0_secondary_identity_entrypoint.py tests/test_p0_websocket_webhook.py tests/test_p1_task_crypto_fail_closed.py --select E,F,I,RUF --ignore BLE001 --output-format concise
