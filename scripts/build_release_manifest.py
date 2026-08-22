@@ -29,7 +29,16 @@ EXCLUDED_NAMES = {
     "decision_log.db",
     "lessons.db",
 }
-EXCLUDED_SUFFIXES = {".pyc", ".db", ".sqlite", ".sqlite3", ".log"}
+EXCLUDED_SUFFIXES = {
+    ".pyc",
+    ".db",
+    ".db-shm",
+    ".db-wal",
+    ".db-journal",
+    ".sqlite",
+    ".sqlite3",
+    ".log",
+}
 EXCLUDED_RELATIVE_PREFIXES = (
     "docs/live_waptlab_output_",
 )

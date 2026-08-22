@@ -177,3 +177,38 @@ def test_export_erp_fixture_wins_over_generic_get_form() -> None:
     assert hypotheses[0].target_param == "xslt"
     assert hypotheses[0].request_data["rows"] == [{"name": "baseline"}]
     assert hypotheses[0].request_data["__webpent_content_type"] == "application/json"
+
+
+
+def test_hypothesis_node_normalizes_structured_endpoint_records_fail_closed() -> None:
+    state = {
+        "target": Target(url="http://target.test"),
+        "crawled_data": {
+            "endpoints": [
+                {"url": "http://target.test/search?q=one", "method": "GET"},
+                {"target_url": "http://target.test/account", "status": 200},
+                {"href": "https://outside.test/should-be-scope-filtered"},
+                {"url": "http://user:pass@target.test/secret"},
+                {"url": "http://target.test/fragment#secret"},
+                {"url": "not-a-url"},
+                {"url": "http://target.test/search?q=one"},
+            ]
+        },
+        "application_intent": {},
+        "additional_target_origins": [],
+        "policy_assumptions": [],
+        "profile": "authorized-active",
+        "client_id": "test-client",
+        "engagement_id": "test-engagement",
+        "thread_id": "test-thread",
+    }
+
+    result = hypothesis_node(state)
+    generated_urls = {item.target_url for item in result["hypotheses"]}
+
+    assert "http://target.test/search?q=one" in generated_urls
+    assert "http://target.test/account" in generated_urls
+    assert all("{'url'" not in url for url in generated_urls)
+    assert all("user:pass@" not in url for url in generated_urls)
+    assert all("#secret" not in url for url in generated_urls)
+    assert len([url for url in generated_urls if url == "http://target.test/search?q=one"]) == 1

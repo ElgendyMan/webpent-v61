@@ -4,6 +4,7 @@ import json
 import zipfile
 from pathlib import Path
 
+from scripts.build_release_manifest import _included
 from scripts.verify_release_artifacts import (
     verify_archive,
     verify_manifest,
@@ -40,6 +41,16 @@ def test_archive_rejects_runtime_and_secret_members(tmp_path: Path) -> None:
     errors = verify_archive(archive)
     assert any(".venv" in error for error in errors)
     assert any("secret-like" in error or "private.pem" in error for error in errors)
+
+
+def test_manifest_excludes_sqlite_sidecars(tmp_path: Path, monkeypatch) -> None:
+    import scripts.build_release_manifest as manifest_builder
+
+    monkeypatch.setattr(manifest_builder, "PROJECT_ROOT", tmp_path)
+    for name in ("target.db", "target.db-shm", "target.db-wal", "target.db-journal"):
+        path = tmp_path / name
+        path.write_text("runtime state\n", encoding="utf-8")
+        assert _included(path) is False
 
 
 def test_signature_requirement_is_fail_closed(tmp_path: Path) -> None:

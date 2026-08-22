@@ -699,7 +699,58 @@ def hypothesis_node(state: PentestState) -> dict:
     """
     target = state["target"]
     crawled_data = state.get("crawled_data") or {}
-    endpoints = crawled_data.get("endpoints", [])
+    raw_endpoints = crawled_data.get("endpoints", []) or []
+
+    def _endpoint_url(raw_endpoint: Any) -> str:
+        """Return a safe URL from a crawler endpoint record, or empty.
+
+        Recon/scope stages may retain structured endpoint records while the
+        hypothesis model requires a URL string.  Never stringify a mapping:
+        doing so creates a Python-dict pseudo-URL that later crosses the
+        Finding boundary and is rejected by Pydantic.  Invalid or secret-
+        bearing records are discarded fail-closed and remain coverage gaps.
+        """
+        if isinstance(raw_endpoint, str):
+            candidate = raw_endpoint.strip()
+        elif isinstance(raw_endpoint, dict):
+            candidate = ""
+            for key in ("url", "target_url", "href"):
+                value = raw_endpoint.get(key)
+                if isinstance(value, str) and value.strip():
+                    candidate = value.strip()
+                    break
+        else:
+            candidate = ""
+        if not candidate:
+            return ""
+        parsed = urlparse(candidate)
+        if (
+            parsed.scheme.lower() not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.username
+            or parsed.password
+            or parsed.fragment
+        ):
+            return ""
+        return candidate[:2048]
+
+    endpoints: list[str] = []
+    seen_endpoint_urls: set[str] = set()
+    skipped_endpoint_records = 0
+    for raw_endpoint in raw_endpoints:
+        endpoint_url = _endpoint_url(raw_endpoint)
+        if not endpoint_url:
+            skipped_endpoint_records += 1
+            continue
+        if endpoint_url in seen_endpoint_urls:
+            continue
+        seen_endpoint_urls.add(endpoint_url)
+        endpoints.append(endpoint_url)
+    if skipped_endpoint_records:
+        logger.warning(
+            "Hypothesis analyzer skipped %d invalid endpoint record(s) fail-closed",
+            skipped_endpoint_records,
+        )
     forms = crawled_data.get("forms", []) or []
     application_intent = state.get("application_intent") or {}
     declared_origins = [target.url]
