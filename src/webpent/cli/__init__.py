@@ -271,7 +271,10 @@ def scan(
     campaign_inventory: str = typer.Option(
         "auto",
         "--campaign-inventory",
-        help="Campaign inventory: auto, waptlab, or generic. Auto selects by target profile.",
+        help=(
+            "Campaign inventory: auto, generic, or explicit waptlab compatibility. "
+            "Auto uses the target-neutral inventory; it never guesses by URL."
+        ),
     ),
     client_id: str | None = typer.Option(
         None,

@@ -4,7 +4,10 @@ from webpent.shared.campaign_planner import build_campaign_plan
 
 
 def test_planner_materializes_all_campaign_contracts_without_claiming_tested() -> None:
-    plan = build_campaign_plan(target_url="http://fixture.local")
+    plan = build_campaign_plan(
+        target_url="http://fixture.local",
+        campaign_inventory="waptlab",
+    )
 
     assert len(plan["entries"]) == 20
     assert plan["summary"]["not_observed"] == 13
@@ -22,6 +25,7 @@ def test_planner_materializes_all_campaign_contracts_without_claiming_tested() -
 def test_planner_links_surface_workflow_and_explicit_gaps_in_dag() -> None:
     plan = build_campaign_plan(
         target_url="http://fixture.local",
+        campaign_inventory="waptlab",
         observed_campaigns={"header_sqli"},
         blocked_by={"tenant_context_switching": "blocked-by-auth"},
         surface_observations=[
@@ -104,10 +108,10 @@ def test_planner_supports_generic_surface_inventory_without_waptlab_entries() ->
     assert all(entry["status"] != "tested" for entry in plan["entries"])
 
 
-def test_auto_inventory_keeps_waptlab_port_8000_legacy_matrix() -> None:
+def test_explicit_waptlab_inventory_keeps_legacy_matrix() -> None:
     plan = build_campaign_plan(
         target_url="http://127.0.0.1:8000",
-        campaign_inventory="auto",
+        campaign_inventory="waptlab",
     )
 
     assert len(plan["entries"]) == 20
@@ -115,7 +119,20 @@ def test_auto_inventory_keeps_waptlab_port_8000_legacy_matrix() -> None:
     assert plan["summary"]["missing-validator"] == 7
 
 
-def test_auto_inventory_selects_generic_for_non_waptlab_target() -> None:
+def test_auto_inventory_never_guesses_waptlab_from_url() -> None:
+    for target_url in (
+        "http://127.0.0.1:8000",
+        "http://waptlab.local",
+        "https://arbitrary-target.example:8000",
+    ):
+        plan = build_campaign_plan(target_url=target_url, campaign_inventory="auto")
+
+        assert len(plan["entries"]) == 10
+        assert plan["entries"][0]["key"] == "xss_reflected"
+        assert plan["summary"].get("missing-validator", 0) == 0
+
+
+def test_auto_inventory_selects_generic_for_any_non_explicit_target() -> None:
     plan = build_campaign_plan(
         target_url="http://127.0.0.1:3000",
         campaign_inventory="auto",

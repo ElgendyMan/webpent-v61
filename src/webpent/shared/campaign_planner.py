@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 from typing import Any
-from urllib.parse import urlsplit
 
 from webpent.models.campaigns import (
     CampaignExecutionContract,
@@ -328,22 +327,26 @@ def _contract(
 
 
 def _resolve_campaign_inventory(target_url: str, campaign_inventory: str) -> str:
-    inventory = str(campaign_inventory or "waptlab").strip().lower()
+    """Resolve the campaign catalog without guessing the target application.
+
+    ``waptlab`` remains available as an explicit compatibility profile, but a
+    hostname, port, or URL shape must never promote an arbitrary target into a
+    vertical lab matrix.  ``auto`` and omitted/blank values therefore use the
+    target-neutral, observation-driven inventory.
+    """
+    del target_url  # Resolution is intentionally independent of URL heuristics.
+    inventory = str(campaign_inventory or "generic").strip().lower()
+    if inventory == "auto":
+        return "generic"
     if inventory in {"waptlab", "generic"}:
         return inventory
-    if inventory != "auto":
-        raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
-    parsed = urlsplit(str(target_url))
-    hostname = (parsed.hostname or "").lower()
-    if parsed.port == 8000 or hostname in {"waptlab", "waptlab.local"}:
-        return "waptlab"
-    return "generic"
+    raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
 
 
 def build_campaign_plan(
     *,
     target_url: str,
-    campaign_inventory: str = "waptlab",
+    campaign_inventory: str = "generic",
     observed_campaigns: set[str] | None = None,
     blocked_by: dict[str, str] | None = None,
     surface_observations: Iterable[Any] = (),
