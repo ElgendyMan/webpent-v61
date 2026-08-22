@@ -63,7 +63,7 @@
 
 | العنصر | القيمة |
 |---|---|
-| Git commit | يحدّث بعد commit التحقق النهائي |
+| Git commit التنفيذ | `52fc62537d94972b6155868a0fecd413690f5ffb` |
 | Git remote | `https://github.com/ElgendyMan/webpent-v61` |
 | archive | `webpent_bbscout_integration_release.zip` |
 | archive SHA256 | مرفق في `webpent_bbscout_integration_release.sha256` |
