@@ -188,6 +188,7 @@ def _restore_runtime_secrets(checkpoint_tuple: Any) -> Any:
 
     try:
         from webpent.auth.reauth_vault import (
+            identity_vault_key,
             unseal_identity_profiles,
             unseal_reauth_secret,
             unseal_session_cookies,
@@ -197,6 +198,18 @@ def _restore_runtime_secrets(checkpoint_tuple: Any) -> Any:
         thread_id = str(channels.get("thread_id") or configurable.get("thread_id") or "")
         if not thread_id:
             return checkpoint_tuple
+        client_id = str(channels.get("client_id") or "").strip()
+        engagement_id = str(channels.get("engagement_id") or "").strip()
+        runtime_descriptor = channels.get("runtime_context")
+        if isinstance(runtime_descriptor, dict):
+            engagement_id = engagement_id or str(
+                runtime_descriptor.get("engagement_id") or ""
+            ).strip()
+        identity_key = (
+            identity_vault_key(client_id, engagement_id)
+            if client_id and engagement_id
+            else thread_id
+        )
         password = unseal_reauth_secret(thread_id)
         if password:
             credentials = dict(channels.get("credentials") or {})
@@ -205,7 +218,9 @@ def _restore_runtime_secrets(checkpoint_tuple: Any) -> Any:
         cookies = unseal_session_cookies(thread_id)
         if cookies:
             channels["session_cookies"] = cookies
-        profiles = unseal_identity_profiles(thread_id)
+        profiles = unseal_identity_profiles(identity_key) if identity_key else {}
+        if not profiles and identity_key and identity_key != thread_id:
+            profiles = unseal_identity_profiles(thread_id)
         if profiles:
             channels["identity_profiles"] = profiles
             primary_headers = next(

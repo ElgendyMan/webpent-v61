@@ -164,6 +164,43 @@ def test_checkpoint_runtime_restore_uses_worker_vault_only(tmp_path):
         reauth_vault.clear_reauth_secret(thread_id)
 
 
+def test_checkpoint_runtime_restore_prefers_composite_identity_vault(tmp_path):
+    thread_id = "thread-composite-restore"
+    client_id = "client-composite"
+    engagement_id = "eng-composite"
+    db_path = str(tmp_path / "composite-checkpoints.sqlite")
+    config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    checkpoint = _checkpoint()
+    checkpoint["channel_values"] = dict(checkpoint["channel_values"])
+    checkpoint["channel_values"].update(
+        {
+            "thread_id": thread_id,
+            "client_id": client_id,
+            "engagement_id": engagement_id,
+        }
+    )
+    composite_key = reauth_vault.identity_vault_key(client_id, engagement_id)
+    reauth_vault.seal_identity_profiles(
+        composite_key,
+        {"primary": {"cookies": {"sid": "composite-cookie"}}},
+    )
+    reauth_vault.seal_identity_profiles(
+        thread_id,
+        {"legacy": {"cookies": {"sid": "legacy-cookie"}}},
+    )
+    try:
+        with get_checkpointer(db_path) as saver:
+            saver.put(config, checkpoint, {"source": "input", "step": 1}, {})
+            loaded = saver.get_tuple(config)
+            assert loaded is not None
+            profiles = loaded.checkpoint["channel_values"]["identity_profiles"]
+            assert profiles["primary"]["cookies"]["sid"] == "composite-cookie"
+            assert "legacy" not in profiles
+    finally:
+        reauth_vault.clear_reauth_secret(composite_key)
+        reauth_vault.clear_reauth_secret(thread_id)
+
+
 def test_legacy_sqlite_checkpoint_remains_readable(tmp_path):
     db_path = tmp_path / "legacy.sqlite"
     conn = sqlite3.connect(db_path)
