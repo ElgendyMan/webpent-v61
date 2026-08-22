@@ -135,7 +135,7 @@
     "docs/g02_baseline_20260821/DIRECT_IO_INVENTORY.md": "6b9b053d2fb30a1a2eae80a4febfd093834dc15d5cf7057ba6b121dc7061f0a1",
     "docs/g02_baseline_20260821/direct_io_inventory.json": "8608fdfa849f3fb0a5deae1e3ebebf940a1dfcb24f9f71a849068d57ff0ccc1e",
     "docs/g02_baseline_20260821/hashes.sha256": "4767426db93de88e1c9c75c5c0bcc55dde505ed3d93404105ea15465419e0588",
-    "docs/g02_dynamic_resolution_hardening_report.md": "2c5f5689577245ba3e58629369775a2b4602a6351b34612eeb9dff11aef4814a",
+    "docs/g02_dynamic_resolution_hardening_report.md": "3db716b4b4583ed34fa089ace07b0c1e6a25bc51f6d87a6308552263eb24e685",
     "docs/integration_decision_matrix.md": "53286abc9676678126eca7ba60916bf695384e8d78846337c6efd2d0869a3eba",
     "docs/lab_comparison_20260822.md": "d444978ad1799fb076cbb939ea1ab22d18ccbdcdb3199a8169ba47e297250fd3",
     "docs/last20_governing_requirements.md": "ed1f4a230b28e653ec18d68e7d77a8c783f7f3adb37827688d90def879542143",
@@ -760,8 +760,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T13:10:21.944349+00:00",
-  "git_commit": "7aec23a1c7911405bce3ed0a5bd28ff072d486b5",
+  "generated_at": "2026-08-22T13:11:41.700998+00:00",
+  "git_commit": "9199711b03aad9089095281fa1baf1242ad7cf88",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
