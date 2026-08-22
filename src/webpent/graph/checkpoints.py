@@ -63,8 +63,22 @@ def _is_sensitive_key(key: str) -> bool:
     )
 
 
+def _runtime_context_descriptor(value: Any) -> dict[str, Any] | None:
+    """Project a live RuntimeContext before generic deepcopy/redaction."""
+    try:
+        from webpent.shared.runtime import RuntimeContext, RuntimeFactory
+    except (ImportError, AttributeError):
+        return None
+    if isinstance(value, RuntimeContext):
+        return RuntimeFactory.descriptor(value)
+    return None
+
+
 def _redact_value(value: Any, key: str | None = None) -> Any:
     """Recursively remove secret-shaped values from persisted structures."""
+    runtime_descriptor = _runtime_context_descriptor(value)
+    if runtime_descriptor is not None:
+        return runtime_descriptor
     normalized_key = key.lower().replace("-", "_") if key else ""
     if normalized_key and _is_sensitive_key(normalized_key):
         if isinstance(value, dict):
@@ -162,7 +176,7 @@ def _redact_channel(channel: str, value: Any) -> Any:
 def _redact_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
     """Copy a checkpoint and remove operator secrets before serialization."""
     safe_checkpoint = {
-        key: copy.deepcopy(value)
+        key: _redact_value(value, key)
         for key, value in checkpoint.items()
         if key != "channel_values"
     }
