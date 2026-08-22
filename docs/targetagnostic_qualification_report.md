@@ -27,9 +27,9 @@ The release manifest builder was also corrected to exclude SQLite sidecars (`.db
 | G-02 runtime | PASS | `external_target_contacted=false`, `primary_records=63` |
 | G-02 precommit/direct-I/O | PASS | no reported errors |
 | Diff whitespace | PASS | `git diff --check` |
-| Test-count contract | BLOCKED | AST count remains below the inherited minimum; this was not changed by padding or arbitrary threshold edits |
-| pip-audit | BLOCKED/REVIEW | Baseline reported 17 CVEs across 9 packages; requires dependency-by-dependency remediation/classification |
-| Bandit | BLOCKED/REVIEW | Baseline command exited non-zero; raw findings require triage and are not suppressed |
+| Internal quality-gate test-count | PASS | Current `run_vip_quality_gate.py` enforces minimum 818; AST count is 1286 |
+| pip-audit | PASS (current rerun) | `pip-audit --strict` and CycloneDX SBOM completed from current HEAD; artifacts regenerated at 2026-08-22T11:29:58Z |
+| Bandit | PASS (high-severity gate) | Current Bandit `-lll` gate exited 0; raw JSON artifact regenerated and retained |
 | Docker full stack | BLOCKED | kernel bridge/iptables raw-table restriction and prior disk/cache constraints; host API/worker checks are not equivalent to full stack qualification |
 
 ## Live qualification attempts
@@ -66,7 +66,7 @@ The authorized local WAPTLab container was running on localhost:8000, but unauth
 
 The next qualification cycle must first provide a stable, resettable local lab runtime and a legitimate registered adapter path with G-02 metadata. It must then run three independent clean engagements per target, preserving workspace isolation and collecting causal signal, neutral negative control, and sealed/replayable ProofBundle hashes. Any missing validator, adapter, target identity, reset, or proof must remain `Needs Human Review`, `Not Scanned`, `Blocked`, or `Inconclusive` rather than being promoted.
 
-The security gate also needs explicit dependency and Bandit triage, followed by a final manifest rebuild and offline artifact verification. The inherited AST test-count mismatch must be resolved as a documented contract decision, not by changing the threshold arbitrarily.
+The current quality gate rerun passed compileall, Ruff, pytest, G-02, Bandit, pip-audit/SBOM, secret scan, and manifest generation; its overall result remains false only because live WAPTLab and distributed/Docker qualification are explicit blockers. The strict AST preservation check (`--minimum 1300`) independently reports 1286 and remains a review blocker; the internal quality gate uses 818. Neither threshold may be changed or padded arbitrarily.
 
 ## Safety and artifact hygiene
 

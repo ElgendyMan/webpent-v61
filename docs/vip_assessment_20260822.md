@@ -1,8 +1,9 @@
 # WebPent — VIP Smart Autonomous Bug Hunter Assessment
 
 **Date:** 2026-08-22  
-**Assessment mode:** Local, target-free, evidence-based  
-**Targets:** WAPTLab وJuice Shop لم يتم تشغيلهما أو الاتصال بهما أو تعديلهما.
+**Assessment mode:** Historical local, target-free, evidence-based snapshot
+
+**Snapshot boundary:** كُتب هذا الملف قبل Phase 9 live attempts؛ لذلك عبارة عدم تشغيل WAPTLab وJuice Shop تخص هذه اللقطة فقط، وليست حالة HEAD الحالية. آخر حالة live موثقة موجودة في `docs/targetagnostic_qualification_report.md`.
 
 ## Executive judgment
 
@@ -27,7 +28,7 @@
 | Bandit high-severity gate | Pass | لا توجد High findings في gate |
 | Tracked secret scan | Pass | لا توجد high-confidence secrets في source/config المتتبع |
 | Capability catalog | Partial by design | 25 tested، 7 offline-fixture، 2 missing-validator: `race_condition` و`unknown` |
-| WAPTLab/Juice Shop | Not executed | ممنوعان في هذه الدورة |
+| WAPTLab/Juice Shop | Not executed at snapshot time | هذه اللقطة سبقت Phase 9؛ راجع التقرير TargetAgnostic للحالة اللاحقة |
 
 ## Loop execution record
 
@@ -67,6 +68,10 @@
 ## Files changed in this cycle
 
 تم تغيير `verify_all.py` لإصلاح U1d semantic false negative، وإضافة اختبار `test_unified_verifier_accepts_arg_based_base_image` داخل `tests/test_production_deployment_contract.py`. تمت إعادة توليد artifacts الخاصة بالـquality gate وsecurity checks وcapability/release reports. أضيفت أيضًا خطة الترقية التنفيذية في `docs/vip_upgrade_plan_20260822.md`.
+
+## Historical snapshot disclaimer
+
+هذا assessment ليس release-current بعد Phase 9، ولا يجب استخدامه لإثبات أن اللابات لم تُشغّل في كل الدورات اللاحقة أو لإثبات live qualification.
 
 ## Final decision
 

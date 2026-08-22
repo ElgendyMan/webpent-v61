@@ -2,7 +2,7 @@
   "checks": [
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "-m",
         "compileall",
         "-q",
@@ -16,7 +16,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/ruff",
+        "/usr/local/bin/ruff",
         "check",
         "src",
         "tests",
@@ -31,7 +31,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "-m",
         "pytest",
         "-q"
@@ -41,22 +41,22 @@
       "returncode": 0,
       "tail": [
         "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
-        "  /tmp/webpent_v72_git_recovered/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
+        "  /tmp/webpent_v72_qualification/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
         "    embeddings = HuggingFaceEmbeddings(**kwargs)",
         "",
-        "tests/test_v58_post_form_hypotheses.py: 20 warnings",
-        "tests/test_v72_json_request_context.py: 21 warnings",
-        "tests/test_v72_request_context_and_primary_identity.py: 10 warnings",
-        "  /tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
+        "tests/test_v58_post_form_hypotheses.py: 40 warnings",
+        "tests/test_v72_json_request_context.py: 44 warnings",
+        "tests/test_v72_request_context_and_primary_identity.py: 20 warnings",
+        "  /usr/local/lib/python3.12/dist-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1315 passed, 235 warnings in 86.97s (0:01:26)"
+        "1340 passed, 290 warnings in 126.22s (0:02:06)"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/verify_test_count.py",
         "--minimum",
         "818"
@@ -65,35 +65,35 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "    \"tests/test_vip_waptlab_regression.py\": 2,",
         "    \"tests/test_vip_workflow_replay.py\": 3,",
         "    \"tests/test_waptlab_catalog_manifest.py\": 6,",
         "    \"tests/test_waptlab_detector_improvements.py\": 51,",
         "    \"tests/test_waptlab_live_improvements.py\": 3,",
+        "    \"tests/test_webpent_diagnostics.py\": 4,",
         "    \"tests/test_wildcard_scope.py\": 15,",
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1261",
+        "  \"total_test_functions\": 1286",
         "}",
-        "OK: preserved test-function count 1261 >= minimum 818"
+        "OK: preserved test-function count 1286 >= minimum 818"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/scan_direct_io.py"
       ],
       "name": "g02-artifact-regeneration",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/webpent_v72_git_recovered/docs/direct_io_inventory.json and /tmp/webpent_v72_git_recovered/docs/DIRECT_IO_INVENTORY.md (63 records)"
+        "wrote /tmp/webpent_v72_qualification/docs/direct_io_inventory.json and /tmp/webpent_v72_qualification/docs/DIRECT_IO_INVENTORY.md (63 records)"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/check_g02_runtime.py"
       ],
       "name": "g02-static-runtime-contract",
@@ -105,7 +105,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/check_g02_precommit.py"
       ],
       "name": "g02-precommit-contract",
@@ -117,7 +117,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/build_preflight_report.py",
         "--host",
         "127.0.0.1"
@@ -126,40 +126,40 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"output\": \"/tmp/webpent_v72_git_recovered/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
-        "/tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
+        "{\"output\": \"/tmp/webpent_v72_qualification/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
+        "/usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
         "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)",
-        "/tmp/webpent_v72_git_recovered/.venv/lib/python3.12/site-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
+        "/usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
         "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/build_capability_report.py"
       ],
       "name": "capability-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v72_git_recovered/docs/capability_report.json\"}"
+        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v72_qualification/docs/capability_report.json\"}"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/build_mock_qualification_report.py"
       ],
       "name": "mock-qualification-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v72_git_recovered/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
+        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v72_qualification/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/docs/preflight_report.json"
+        "/tmp/webpent_v72_qualification/docs/preflight_report.json"
       ],
       "name": "preflight-report-contract",
       "passed": true,
@@ -168,7 +168,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/docs/capability_report.json"
+        "/tmp/webpent_v72_qualification/docs/capability_report.json"
       ],
       "name": "capability-report-contract",
       "passed": true,
@@ -177,7 +177,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/docs/waptlab_qualification_report.json"
+        "/tmp/webpent_v72_qualification/docs/waptlab_qualification_report.json"
       ],
       "name": "mock-qualification-contract",
       "passed": true,
@@ -186,7 +186,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/bandit",
+        "/usr/local/bin/bandit",
         "-q",
         "-r",
         "src/webpent",
@@ -196,7 +196,7 @@
         "-f",
         "json",
         "-o",
-        "/tmp/webpent_v72_git_recovered/docs/bandit_release.json"
+        "/tmp/webpent_v72_qualification/docs/bandit_release.json"
       ],
       "name": "bandit-high-severity",
       "passed": true,
@@ -206,16 +206,16 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/pip-audit",
+        "/usr/local/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_git_recovered/docs/requirements-audit-release.txt",
+        "/tmp/webpent_v72_qualification/docs/requirements-audit-release.txt",
         "--format",
         "cyclonedx-json",
         "--output",
-        "/tmp/webpent_v72_git_recovered/docs/sbom.cdx.json"
+        "/tmp/webpent_v72_qualification/docs/sbom.cdx.json"
       ],
       "name": "pip-audit-sbom",
       "passed": true,
@@ -227,16 +227,16 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/pip-audit",
+        "/usr/local/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_git_recovered/docs/requirements-audit-release.txt",
+        "/tmp/webpent_v72_qualification/docs/requirements-audit-release.txt",
         "--format",
         "json",
         "--output",
-        "/tmp/webpent_v72_git_recovered/docs/pip_audit_release.json"
+        "/tmp/webpent_v72_qualification/docs/pip_audit_release.json"
       ],
       "name": "pip-audit-strict",
       "passed": true,
@@ -248,7 +248,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/check_tracked_secrets.py"
       ],
       "name": "tracked-secret-scan",
@@ -260,18 +260,18 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_git_recovered/.venv/bin/python",
+        "/usr/bin/python",
         "scripts/build_release_manifest.py"
       ],
       "name": "release-manifest",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 752, \"output\": \"/tmp/webpent_v72_git_recovered/docs/release_manifest.json\"}"
+        "{\"file_count\": 747, \"output\": \"/tmp/webpent_v72_qualification/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T02:52:29.737775+00:00",
+  "generated_at": "2026-08-22T11:29:58.173119+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

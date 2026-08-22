@@ -1,6 +1,6 @@
 {
   "errors": [],
-  "generated_at": "2026-08-22T02:51:39Z",
+  "generated_at": "2026-08-22T11:27:50Z",
   "metrics": {
     "_totals": {
       "CONFIDENCE.HIGH": 56,
@@ -11,7 +11,7 @@
       "SEVERITY.LOW": 73,
       "SEVERITY.MEDIUM": 4,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 65883,
+      "loc": 66270,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -141,7 +141,7 @@
       "SEVERITY.LOW": 5,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 867,
+      "loc": 915,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -245,7 +245,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 670,
+      "loc": 677,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -440,7 +440,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 1149,
+      "loc": 1197,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -492,7 +492,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 560,
+      "loc": 573,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -622,7 +622,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 681,
+      "loc": 694,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -882,7 +882,7 @@
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 2806,
+      "loc": 2831,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1129,7 +1129,7 @@
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 1330,
+      "loc": 1456,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1532,7 +1532,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 928,
+      "loc": 931,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1948,7 +1948,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 677,
+      "loc": 687,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2169,7 +2169,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 465,
+      "loc": 467,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2494,7 +2494,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 1085,
+      "loc": 1121,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2507,7 +2507,7 @@
       "SEVERITY.LOW": 2,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 579,
+      "loc": 585,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2884,7 +2884,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 590,
+      "loc": 608,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3144,7 +3144,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 328,
+      "loc": 330,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3157,7 +3157,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 277,
+      "loc": 289,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3170,7 +3170,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 196,
+      "loc": 199,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3274,7 +3274,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 155,
+      "loc": 160,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3300,7 +3300,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 175,
+      "loc": 180,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3313,7 +3313,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 196,
+      "loc": 201,
       "nosec": 0,
       "skipped_tests": 0
     },
