@@ -1,0 +1,111 @@
+== WEB GIT ==
+ [31mM[m tests/test_target_package_v2_hardening.py
+[31m??[m artifacts/smart_hunter_review/phase4_handoff_proof_validation.log
+[31m??[m artifacts/smart_hunter_review/phase5_target_validator_autonomy.log
+[31m??[m artifacts/smart_hunter_review/phase6_final_gates_20260822.log
+[31m??[m artifacts/smart_hunter_review/phase6_recheck_20260822.log
+[31m??[m artifacts/smart_hunter_review/phase_loop_status_20260822.log
+[31m??[m artifacts/smart_hunter_review/plan_baseline_20260822.log
+[31m??[m artifacts/smart_hunter_review/plan_gap_inventory_20260822.log
+[31m??[m webpent.db-shm
+[31m??[m webpent.db-wal
+[33me82d6e5[m docs: align plan review release identity
+[33m82558c5[m test: close plan compliance and bbscout offline e2e
+[33mc86c839[m docs: clarify offline qualification naming
+== BB FILES ==
+__init__.py
+base.py
+bugcrowd_fixture.py
+catalog.py
+fixture.py
+hackerone.py
+hackerone_fixture.py
+intigriti_fixture.py
+yeswehack_fixture.py
+== RECENT LOGS ==
+2026-08-22 20:43 /tmp/phase3_provider_tests_final.log
+2026-08-22 20:43 /tmp/phase3_provider_smoke_final.log
+2026-08-22 20:43 /tmp/phase3_provider_ruff_final.log
+2026-08-22 20:42 /tmp/phase3_provider_registry.log
+2026-08-22 20:42 /tmp/phase3_bbscout_full_ruff.log
+2026-08-22 20:42 /tmp/phase3_bbscout_full.log
+2026-08-22 20:41 /tmp/phase3_auth_status.log
+2026-08-22 20:38 /tmp/phase3_webpent_tests.log
+2026-08-22 20:38 /tmp/phase3_bbscout_tests.log
+2026-08-22 20:38 /tmp/phase3_bbscout_ruff.log
+2026-08-22 20:37 /tmp/provider_yeswehack.json
+2026-08-22 20:37 /tmp/provider_intigriti.json
+2026-08-22 20:37 /tmp/provider_hackerone.json
+2026-08-22 20:37 /tmp/provider_bugcrowd.json
+2026-08-22 19:40 /tmp/webpent_phase6.log
+2026-08-22 19:40 /tmp/ruff_phase6.log
+2026-08-22 19:40 /tmp/bbscout_phase6.log
+== PLAN GAP SUMMARY ==
+1:## provider references
+133:src/webpent/agents/validator/__init__.py
+134:src/webpent/agents/validator/__pycache__/__init__.cpython-312.pyc
+135:src/webpent/agents/validator/__pycache__/active_checks.cpython-312.pyc
+136:src/webpent/agents/validator/__pycache__/agent.cpython-312.pyc
+137:src/webpent/agents/validator/__pycache__/registry.cpython-312.pyc
+138:src/webpent/agents/validator/__pycache__/structural_checks.cpython-312.pyc
+139:src/webpent/agents/validator/active_checks.py
+140:src/webpent/agents/validator/agent.py
+141:src/webpent/agents/validator/registry.py
+142:src/webpent/agents/validator/structural_checks.py
+194:src/webpent/shared/__pycache__/offline_validator_fixtures.cpython-312.pyc
+197:src/webpent/shared/__pycache__/validator_plugins.cpython-312.pyc
+203:src/webpent/shared/offline_validator_fixtures.py
+206:src/webpent/shared/validator_plugins.py
+207:src/webpent/validators/__init__.py
+208:src/webpent/validators/__pycache__/__init__.cpython-312.pyc
+209:src/webpent/validators/__pycache__/causal_validator.cpython-312.pyc
+210:src/webpent/validators/__pycache__/proof_validator.cpython-312.pyc
+211:src/webpent/validators/__pycache__/replay_validator.cpython-312.pyc
+212:src/webpent/validators/causal_validator.py
+213:src/webpent/validators/proof_validator.py
+214:src/webpent/validators/replay_validator.py
+215:src/webpent/workers/__init__.py
+216:src/webpent/workers/__pycache__/__init__.cpython-312.pyc
+217:src/webpent/workers/__pycache__/observability.cpython-312.pyc
+218:src/webpent/workers/__pycache__/pentest_worker.cpython-312.pyc
+219:src/webpent/workers/observability.py
+220:src/webpent/workers/pentest_worker.py
+275:tests/__pycache__/test_autonomy_contracts.cpython-312-pytest-9.1.1.pyc
+276:tests/__pycache__/test_autonomy_contracts.cpython-312.pyc
+281:tests/__pycache__/test_llm_provider_compatibility.cpython-312-pytest-9.1.1.pyc
+282:tests/__pycache__/test_llm_provider_compatibility.cpython-312.pyc
+283:tests/__pycache__/test_p0_p1_active_validators.cpython-312-pytest-9.1.1.pyc
+284:tests/__pycache__/test_p0_p1_active_validators.cpython-312.pyc
+313:tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312-pytest-9.1.1.pyc
+314:tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312.pyc
+319:tests/__pycache__/test_v58_validator_idempotency.cpython-312-pytest-9.1.1.pyc
+320:tests/__pycache__/test_v58_validator_idempotency.cpython-312.pyc
+325:tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312-pytest-9.1.1.pyc
+326:tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312.pyc
+329:tests/__pycache__/test_v72_idor_validator_replay.cpython-312-pytest-9.1.1.pyc
+330:tests/__pycache__/test_v72_idor_validator_replay.cpython-312.pyc
+331:tests/__pycache__/test_v72_jwt_differential_validator.cpython-312-pytest-9.1.1.pyc
+332:tests/__pycache__/test_v72_jwt_differential_validator.cpython-312.pyc
+345:tests/__pycache__/test_v94_autonomous_controller.cpython-312-pytest-9.1.1.pyc
+346:tests/__pycache__/test_v94_autonomous_controller.cpython-312.pyc
+351:tests/__pycache__/test_validator_merge_back.cpython-312-pytest-9.1.1.pyc
+352:tests/__pycache__/test_validator_merge_back.cpython-312.pyc
+357:tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312-pytest-9.1.1.pyc
+358:tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312.pyc
+359:tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312-pytest-9.1.1.pyc
+360:tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312.pyc
+367:tests/__pycache__/test_vip_validator_plugins.cpython-312-pytest-9.1.1.pyc
+368:tests/__pycache__/test_vip_validator_plugins.cpython-312.pyc
+374:tests/test_autonomy_contracts.py
+377:tests/test_llm_provider_compatibility.py
+378:tests/test_p0_p1_active_validators.py
+393:tests/test_v3_autonomous_graph_loop.py
+396:tests/test_v58_validator_idempotency.py
+399:tests/test_v64_multi_agent_proof_validators.py
+401:tests/test_v72_idor_validator_replay.py
+402:tests/test_v72_jwt_differential_validator.py
+409:tests/test_v94_autonomous_controller.py
+412:tests/test_validator_merge_back.py
+415:tests/test_vip_jwt_validator_revalidation.py
+416:tests/test_vip_offline_validator_fixtures.py
+420:tests/test_vip_validator_plugins.py

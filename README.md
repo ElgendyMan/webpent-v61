@@ -12,10 +12,10 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 | البوابة | النتيجة |
 |---|---|
-| bbscout full pytest | 7 passed |
-| WebPent full pytest | 1379 passed، 294 warnings |
-| Package/entrypoint/hardening focused suite | 35 passed، 2 warnings |
-| G-02 focused suite | 22 passed |
+| bbscout full pytest | 28 passed |
+| WebPent full pytest | 1410 passed، 244 warnings |
+| Package/entrypoint/hardening focused suite | 41 passed، 20 warnings |
+| G-02 inventory/runtime/precommit gate | Passed؛ 280 primary records |
 | Ruff | Passed |
 | compileall | Passed |
 | G-02 runtime invariant | Passed؛ 280 primary records؛ لا اتصال خارجي بالهدف |
@@ -281,7 +281,7 @@ PYTHONPATH=../bbscout/src:src python -m pytest \
 |---|---|
 | Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
-| Bugcrowd/Intigriti/YesWeHack adapters | **MISSING**؛ لا توجد fake adapters |
+| Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
 | WAPTLab وJuice Shop live qualification في هذه الجولة | **لم تُنفذ** |
 | Docker/Celery distributed qualification | **غير مثبتة** |
 | Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة** |

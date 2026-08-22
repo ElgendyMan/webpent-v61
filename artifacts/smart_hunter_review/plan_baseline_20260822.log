@@ -1,0 +1,562 @@
+## git
+## [32mmaster[m...[31morigin/master[m
+[31m??[m artifacts/smart_hunter_review/plan_baseline_20260822.log
+[33me82d6e5[m docs: align plan review release identity
+[33m82558c5[m test: close plan compliance and bbscout offline e2e
+[33mc86c839[m docs: clarify offline qualification naming
+[33me91d111[m feat: close autonomous proof and coverage loop
+[33m9ceb4ee[m Refresh release manifest for roadmap commit
+[33me482709[m Add bounded autonomous research qualification spine
+[33ma261da5[m Document target-backed proof verification
+[33md278653[m Enforce target-backed causal proof bundles
+## package imports
+src/webpent/__init__.py
+src/webpent/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/__init__.py
+src/webpent/agents/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/__pycache__/team.cpython-312.pyc
+src/webpent/agents/access_control/__init__.py
+src/webpent/agents/access_control/agent.py
+src/webpent/agents/api_testing/__init__.py
+src/webpent/agents/api_testing/agent.py
+src/webpent/agents/attack_graph/__init__.py
+src/webpent/agents/attack_graph/agent.py
+src/webpent/agents/authentication/__init__.py
+src/webpent/agents/authentication/agent.py
+src/webpent/agents/business_impact/__init__.py
+src/webpent/agents/business_impact/agent.py
+src/webpent/agents/business_logic_fuzzer/__init__.py
+src/webpent/agents/business_logic_fuzzer/agent.py
+src/webpent/agents/cloud_storage/__init__.py
+src/webpent/agents/cloud_storage/agent.py
+src/webpent/agents/crawler/__init__.py
+src/webpent/agents/crawler/agent.py
+src/webpent/agents/cross_reasoning/__init__.py
+src/webpent/agents/cross_reasoning/agent.py
+src/webpent/agents/cvss_engine/__init__.py
+src/webpent/agents/cvss_engine/agent.py
+src/webpent/agents/devils_advocate/__init__.py
+src/webpent/agents/devils_advocate/agent.py
+src/webpent/agents/disclosed_report_intel/agent.py
+src/webpent/agents/execution_sandbox/__init__.py
+src/webpent/agents/execution_sandbox/agent.py
+src/webpent/agents/executive_summary/__init__.py
+src/webpent/agents/executive_summary/agent.py
+src/webpent/agents/exploit_chainer/__init__.py
+src/webpent/agents/exploit_chainer/agent.py
+src/webpent/agents/hypothesis_analyzer/__init__.py
+src/webpent/agents/hypothesis_analyzer/agent.py
+src/webpent/agents/javascript_intelligence/__init__.py
+src/webpent/agents/javascript_intelligence/agent.py
+src/webpent/agents/payload_generator/__init__.py
+src/webpent/agents/payload_generator/agent.py
+src/webpent/agents/payload_optimizer/__init__.py
+src/webpent/agents/payload_optimizer/agent.py
+src/webpent/agents/planner/__init__.py
+src/webpent/agents/planner/agent.py
+src/webpent/agents/post_exploit/__init__.py
+src/webpent/agents/post_exploit/agent.py
+src/webpent/agents/rabbit_hole/__init__.py
+src/webpent/agents/rabbit_hole/agent.py
+src/webpent/agents/recon/__init__.py
+src/webpent/agents/recon/agent.py
+src/webpent/agents/reflection/__init__.py
+src/webpent/agents/reflection/agent.py
+src/webpent/agents/reporter/__init__.py
+src/webpent/agents/reporter/agent.py
+src/webpent/agents/request_smuggling/__init__.py
+src/webpent/agents/request_smuggling/agent.py
+src/webpent/agents/scope_enforcer/__init__.py
+src/webpent/agents/scope_enforcer/agent.py
+src/webpent/agents/smart_campaigns/__init__.py
+src/webpent/agents/smart_campaigns/agent.py
+src/webpent/agents/strategist/__init__.py
+src/webpent/agents/strategist/agent.py
+src/webpent/agents/subdomain_takeover/__init__.py
+src/webpent/agents/subdomain_takeover/agent.py
+src/webpent/agents/target_understanding/__init__.py
+src/webpent/agents/target_understanding/agent.py
+src/webpent/agents/team.py
+src/webpent/agents/validator/__init__.py
+src/webpent/agents/validator/active_checks.py
+src/webpent/agents/validator/agent.py
+src/webpent/agents/validator/registry.py
+src/webpent/agents/validator/structural_checks.py
+src/webpent/agents/waf_detector/__init__.py
+src/webpent/agents/waf_detector/agent.py
+src/webpent/api/__init__.py
+src/webpent/api/__pycache__/__init__.cpython-312.pyc
+src/webpent/api/__pycache__/app.cpython-312.pyc
+src/webpent/api/__pycache__/auth.cpython-312.pyc
+src/webpent/api/__pycache__/rate_limit.cpython-312.pyc
+src/webpent/api/__pycache__/scan_registry.cpython-312.pyc
+src/webpent/api/app.py
+src/webpent/api/auth.py
+src/webpent/api/rate_limit.py
+src/webpent/api/scan_registry.py
+src/webpent/attack_graph/__init__.py
+src/webpent/attack_graph/__pycache__/__init__.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/builder.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/path_ranker.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/reasoner.cpython-312.pyc
+src/webpent/attack_graph/builder.py
+src/webpent/attack_graph/path_ranker.py
+src/webpent/attack_graph/reasoner.py
+src/webpent/auth/__init__.py
+src/webpent/auth/__pycache__/__init__.cpython-312.pyc
+src/webpent/auth/__pycache__/reauth_vault.cpython-312.pyc
+src/webpent/auth/reauth_vault.py
+src/webpent/benchmark/__init__.py
+src/webpent/benchmark/__pycache__/__init__.cpython-312.pyc
+src/webpent/benchmark/__pycache__/metrics.cpython-312.pyc
+src/webpent/benchmark/__pycache__/qualification.cpython-312.pyc
+src/webpent/benchmark/metrics.py
+src/webpent/benchmark/qualification.py
+src/webpent/cli/__init__.py
+src/webpent/cli/__pycache__/__init__.cpython-312.pyc
+src/webpent/cli/__pycache__/git_source.cpython-312.pyc
+src/webpent/cli/__pycache__/ingest.cpython-312.pyc
+src/webpent/cli/__pycache__/loaders.cpython-312.pyc
+src/webpent/cli/__pycache__/manifest.cpython-312.pyc
+src/webpent/cli/git_source.py
+src/webpent/cli/ingest.py
+src/webpent/cli/loaders.py
+src/webpent/cli/manifest.py
+src/webpent/config/__init__.py
+src/webpent/config/__pycache__/__init__.cpython-312.pyc
+src/webpent/config/__pycache__/policies.cpython-312.pyc
+src/webpent/config/__pycache__/settings.cpython-312.pyc
+src/webpent/config/policies.py
+src/webpent/config/settings.py
+src/webpent/copilot/__init__.py
+src/webpent/copilot/__pycache__/__init__.cpython-312.pyc
+src/webpent/copilot/__pycache__/critic.cpython-312.pyc
+src/webpent/copilot/__pycache__/explainer.cpython-312.pyc
+src/webpent/copilot/__pycache__/planner.cpython-312.pyc
+src/webpent/copilot/critic.py
+src/webpent/copilot/explainer.py
+src/webpent/copilot/planner.py
+src/webpent/coverage/__init__.py
+src/webpent/coverage/__pycache__/__init__.cpython-312.pyc
+src/webpent/coverage/__pycache__/coverage_map.cpython-312.pyc
+src/webpent/coverage/__pycache__/gap_detector.cpython-312.pyc
+src/webpent/coverage/coverage_map.py
+src/webpent/coverage/gap_detector.py
+src/webpent/experience/__init__.py
+src/webpent/experience/__pycache__/__init__.cpython-312.pyc
+src/webpent/experience/__pycache__/store.cpython-312.pyc
+src/webpent/experience/store.py
+src/webpent/graph/__init__.py
+src/webpent/graph/__pycache__/__init__.cpython-312.pyc
+src/webpent/graph/__pycache__/builder.cpython-312.pyc
+src/webpent/graph/__pycache__/checkpoints.cpython-312.pyc
+src/webpent/graph/builder.py
+src/webpent/graph/checkpoints.py
+src/webpent/integrations/__init__.py
+src/webpent/integrations/__pycache__/__init__.cpython-312.pyc
+src/webpent/integrations/__pycache__/webhook.cpython-312.pyc
+src/webpent/integrations/webhook.py
+src/webpent/knowledge/__init__.py
+src/webpent/knowledge/__pycache__/__init__.cpython-312.pyc
+src/webpent/knowledge/__pycache__/auth_model.cpython-312.pyc
+src/webpent/knowledge/__pycache__/builder.cpython-312.pyc
+src/webpent/knowledge/__pycache__/data_flow_model.cpython-312.pyc
+src/webpent/knowledge/__pycache__/entity_graph.cpython-312.pyc
+src/webpent/knowledge/__pycache__/target_knowledge.cpython-312.pyc
+src/webpent/knowledge/__pycache__/target_model.cpython-312.pyc
+src/webpent/knowledge/__pycache__/workflow_model.cpython-312.pyc
+src/webpent/knowledge/auth_model.py
+src/webpent/knowledge/builder.py
+src/webpent/knowledge/data_flow_model.py
+src/webpent/knowledge/entity_graph.py
+src/webpent/knowledge/target_knowledge.py
+src/webpent/knowledge/target_model.py
+src/webpent/knowledge/workflow_model.py
+src/webpent/memory/__init__.py
+src/webpent/memory/__pycache__/__init__.cpython-312.pyc
+src/webpent/memory/__pycache__/db.cpython-312.pyc
+src/webpent/memory/__pycache__/decision_log.cpython-312.pyc
+src/webpent/memory/__pycache__/embeddings.cpython-312.pyc
+src/webpent/memory/__pycache__/lessons.cpython-312.pyc
+src/webpent/memory/__pycache__/vectorstore.cpython-312.pyc
+src/webpent/memory/db.py
+src/webpent/memory/decision_log.py
+src/webpent/memory/embeddings.py
+src/webpent/memory/lessons.py
+src/webpent/memory/vectorstore.py
+src/webpent/models/__init__.py
+src/webpent/models/__pycache__/__init__.cpython-312.pyc
+src/webpent/models/__pycache__/adaptive_hunt.cpython-312.pyc
+src/webpent/models/__pycache__/application_intent.cpython-312.pyc
+src/webpent/models/__pycache__/attack_graph.cpython-312.pyc
+src/webpent/models/__pycache__/authorization_matrix.cpython-312.pyc
+src/webpent/models/__pycache__/campaigns.cpython-312.pyc
+src/webpent/models/__pycache__/decision_log.cpython-312.pyc
+src/webpent/models/__pycache__/evidence.cpython-312.pyc
+src/webpent/models/__pycache__/evidence_ledger.cpython-312.pyc
+src/webpent/models/__pycache__/findings.cpython-312.pyc
+src/webpent/models/__pycache__/goal_tree.cpython-312.pyc
+src/webpent/models/__pycache__/hypothesis.cpython-312.pyc
+src/webpent/models/__pycache__/javascript_intelligence.cpython-312.pyc
+src/webpent/models/__pycache__/memory.cpython-312.pyc
+src/webpent/models/__pycache__/mental_model.cpython-312.pyc
+src/webpent/models/__pycache__/planner.cpython-312.pyc
+src/webpent/models/__pycache__/proof_bundle.cpython-312.pyc
+src/webpent/models/__pycache__/proof_engine.cpython-312.pyc
+src/webpent/models/__pycache__/research.cpython-312.pyc
+src/webpent/models/__pycache__/surface_graph.cpython-312.pyc
+src/webpent/models/__pycache__/surface_security.cpython-312.pyc
+src/webpent/models/__pycache__/targets.cpython-312.pyc
+src/webpent/models/__pycache__/workflow_replay.cpython-312.pyc
+src/webpent/models/__pycache__/workflows.cpython-312.pyc
+src/webpent/models/adaptive_hunt.py
+src/webpent/models/application_intent.py
+src/webpent/models/attack_graph.py
+src/webpent/models/authorization_matrix.py
+src/webpent/models/campaigns.py
+src/webpent/models/decision_log.py
+src/webpent/models/evidence.py
+src/webpent/models/evidence_ledger.py
+src/webpent/models/findings.py
+src/webpent/models/goal_tree.py
+src/webpent/models/hypothesis.py
+src/webpent/models/javascript_intelligence.py
+src/webpent/models/memory.py
+src/webpent/models/mental_model.py
+src/webpent/models/planner.py
+src/webpent/models/proof_bundle.py
+src/webpent/models/proof_engine.py
+src/webpent/models/research.py
+src/webpent/models/surface_graph.py
+src/webpent/models/surface_security.py
+src/webpent/models/targets.py
+src/webpent/models/workflow_replay.py
+src/webpent/models/workflows.py
+src/webpent/persistence/__init__.py
+src/webpent/persistence/__pycache__/__init__.cpython-312.pyc
+src/webpent/persistence/__pycache__/backend_capability.cpython-312.pyc
+src/webpent/persistence/backend_capability.py
+src/webpent/reporter/__init__.py
+src/webpent/reporter/__pycache__/__init__.cpython-312.pyc
+src/webpent/reporter/__pycache__/export.cpython-312.pyc
+src/webpent/reporter/export.py
+src/webpent/research/__init__.py
+src/webpent/research/__pycache__/__init__.cpython-312.pyc
+src/webpent/research/__pycache__/experiment_manager.cpython-312.pyc
+src/webpent/research/__pycache__/hypothesis_engine.cpython-312.pyc
+src/webpent/research/__pycache__/hypothesis_ranker.cpython-312.pyc
+src/webpent/research/experiment_manager.py
+src/webpent/research/hypothesis_engine.py
+src/webpent/research/hypothesis_ranker.py
+src/webpent/shared/__init__.py
+src/webpent/shared/__pycache__/__init__.cpython-312.pyc
+src/webpent/shared/__pycache__/action_authority.cpython-312.pyc
+src/webpent/shared/__pycache__/action_ledger.cpython-312.pyc
+src/webpent/shared/__pycache__/adaptive_hunt.cpython-312.pyc
+src/webpent/shared/__pycache__/application_intent.cpython-312.pyc
+src/webpent/shared/__pycache__/application_intent_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/attack_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/authorization_matrix.cpython-312.pyc
+src/webpent/shared/__pycache__/autonomous_controller.cpython-312.pyc
+src/webpent/shared/__pycache__/autonomy_contracts.cpython-312.pyc
+src/webpent/shared/__pycache__/autopentestx_adapter.cpython-312.pyc
+src/webpent/shared/__pycache__/bac_identity_tester.cpython-312.pyc
+src/webpent/shared/__pycache__/campaign_executor.cpython-312.pyc
+src/webpent/shared/__pycache__/campaign_planner.cpython-312.pyc
+src/webpent/shared/__pycache__/campaigns.cpython-312.pyc
+src/webpent/shared/__pycache__/capability_manifest.cpython-312.pyc
+src/webpent/shared/__pycache__/causal_research.cpython-312.pyc
+src/webpent/shared/__pycache__/cognitive_components.cpython-312.pyc
+src/webpent/shared/__pycache__/confidence.cpython-312.pyc
+src/webpent/shared/__pycache__/console.cpython-312.pyc
+src/webpent/shared/__pycache__/control_plane.cpython-312.pyc
+src/webpent/shared/__pycache__/control_plane_runtime.cpython-312.pyc
+src/webpent/shared/__pycache__/control_plane_spine.cpython-312.pyc
+src/webpent/shared/__pycache__/copilot_boundary.cpython-312.pyc
+src/webpent/shared/__pycache__/coverage_ledger.cpython-312.pyc
+src/webpent/shared/__pycache__/deserialization.cpython-312.pyc
+src/webpent/shared/__pycache__/differential_workflow.cpython-312.pyc
+src/webpent/shared/__pycache__/direct_io_inventory.cpython-312.pyc
+src/webpent/shared/__pycache__/disclosed_report_intel.cpython-312.pyc
+src/webpent/shared/__pycache__/engagement_factory.cpython-312.pyc
+src/webpent/shared/__pycache__/engagement_scope.cpython-312.pyc
+src/webpent/shared/__pycache__/ensemble.cpython-312.pyc
+src/webpent/shared/__pycache__/evidence_contract.cpython-312.pyc
+src/webpent/shared/__pycache__/evidence_ledger.cpython-312.pyc
+src/webpent/shared/__pycache__/evidence_quality.cpython-312.pyc
+src/webpent/shared/__pycache__/exceptions.cpython-312.pyc
+src/webpent/shared/__pycache__/finding_aggregation.cpython-312.pyc
+src/webpent/shared/__pycache__/g02_contract.cpython-312.pyc
+src/webpent/shared/__pycache__/grounding.cpython-312.pyc
+src/webpent/shared/__pycache__/http.cpython-312.pyc
+src/webpent/shared/__pycache__/http_discovery.cpython-312.pyc
+src/webpent/shared/__pycache__/identity_provisioning.cpython-312.pyc
+src/webpent/shared/__pycache__/javascript_intelligence.cpython-312.pyc
+src/webpent/shared/__pycache__/jwt_deep_testing.cpython-312.pyc
+src/webpent/shared/__pycache__/kev.cpython-312.pyc
+src/webpent/shared/__pycache__/knowledge_retrieval.cpython-312.pyc
+src/webpent/shared/__pycache__/llm.cpython-312.pyc
+src/webpent/shared/__pycache__/llm_reliability.cpython-312.pyc
+src/webpent/shared/__pycache__/memory_boundary.cpython-312.pyc
+src/webpent/shared/__pycache__/nettacker_adapter.cpython-312.pyc
+src/webpent/shared/__pycache__/novel_behavior.cpython-312.pyc
+src/webpent/shared/__pycache__/offline_validator_fixtures.cpython-312.pyc
+src/webpent/shared/__pycache__/package_capabilities.cpython-312.pyc
+src/webpent/shared/__pycache__/package_execution_intake.cpython-312.pyc
+src/webpent/shared/__pycache__/package_preflight.cpython-312.pyc
+src/webpent/shared/__pycache__/package_scope.cpython-312.pyc
+src/webpent/shared/__pycache__/persistent_finding_ledger.cpython-312.pyc
+src/webpent/shared/__pycache__/planner_decisions.cpython-312.pyc
+src/webpent/shared/__pycache__/poc_policy.cpython-312.pyc
+src/webpent/shared/__pycache__/preflight.cpython-312.pyc
+src/webpent/shared/__pycache__/prioritization.cpython-312.pyc
+src/webpent/shared/__pycache__/proof_bundle_store.cpython-312.pyc
+src/webpent/shared/__pycache__/proof_engine.cpython-312.pyc
+src/webpent/shared/__pycache__/proof_oracles.cpython-312.pyc
+src/webpent/shared/__pycache__/rate_governor.cpython-312.pyc
+src/webpent/shared/__pycache__/recon_triage.cpython-312.pyc
+src/webpent/shared/__pycache__/redaction.cpython-312.pyc
+src/webpent/shared/__pycache__/reference_lookup.cpython-312.pyc
+src/webpent/shared/__pycache__/report_quality.cpython-312.pyc
+src/webpent/shared/__pycache__/research_contracts.cpython-312.pyc
+src/webpent/shared/__pycache__/research_intelligence.cpython-312.pyc
+src/webpent/shared/__pycache__/research_nodes.cpython-312.pyc
+src/webpent/shared/__pycache__/resume_capability.cpython-312.pyc
+src/webpent/shared/__pycache__/runtime.cpython-312.pyc
+src/webpent/shared/__pycache__/safety_gate.cpython-312.pyc
+src/webpent/shared/__pycache__/scope_drift.cpython-312.pyc
+src/webpent/shared/__pycache__/secondary_io_scanner.cpython-312.pyc
+src/webpent/shared/__pycache__/secret_vault.cpython-312.pyc
+src/webpent/shared/__pycache__/self_critique.cpython-312.pyc
+src/webpent/shared/__pycache__/skill_selector.cpython-312.pyc
+src/webpent/shared/__pycache__/stealth.cpython-312.pyc
+src/webpent/shared/__pycache__/surface_evidence_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/surface_security.cpython-312.pyc
+src/webpent/shared/__pycache__/target_package_context.cpython-312.pyc
+src/webpent/shared/__pycache__/target_workspace.cpython-312.pyc
+src/webpent/shared/__pycache__/target_workspace_context.cpython-312.pyc
+src/webpent/shared/__pycache__/tool_adapters.cpython-312.pyc
+src/webpent/shared/__pycache__/trust_matrix.cpython-312.pyc
+src/webpent/shared/__pycache__/validator_plugins.cpython-312.pyc
+src/webpent/shared/__pycache__/verifier.cpython-312.pyc
+src/webpent/shared/__pycache__/wildcard_scope.cpython-312.pyc
+src/webpent/shared/__pycache__/workflow_replay.cpython-312.pyc
+src/webpent/shared/__pycache__/workflow_understanding.cpython-312.pyc
+src/webpent/shared/action_authority.py
+src/webpent/shared/action_ledger.py
+src/webpent/shared/adaptive_hunt.py
+src/webpent/shared/application_intent.py
+src/webpent/shared/application_intent_graph.py
+src/webpent/shared/attack_graph.py
+src/webpent/shared/authorization_matrix.py
+src/webpent/shared/autonomous_controller.py
+src/webpent/shared/autonomy_contracts.py
+src/webpent/shared/autopentestx_adapter.py
+src/webpent/shared/bac_identity_tester.py
+src/webpent/shared/campaign_executor.py
+src/webpent/shared/campaign_planner.py
+src/webpent/shared/campaigns.py
+src/webpent/shared/capability_manifest.py
+src/webpent/shared/causal_research.py
+src/webpent/shared/cognitive_components.py
+src/webpent/shared/confidence.py
+src/webpent/shared/console.py
+src/webpent/shared/control_plane.py
+src/webpent/shared/control_plane_runtime.py
+src/webpent/shared/control_plane_spine.py
+src/webpent/shared/copilot_boundary.py
+src/webpent/shared/coverage_ledger.py
+src/webpent/shared/deserialization.py
+src/webpent/shared/differential_workflow.py
+src/webpent/shared/direct_io_inventory.py
+src/webpent/shared/disclosed_report_intel.py
+src/webpent/shared/engagement_factory.py
+src/webpent/shared/engagement_scope.py
+src/webpent/shared/ensemble.py
+src/webpent/shared/evidence_contract.py
+src/webpent/shared/evidence_ledger.py
+src/webpent/shared/evidence_quality.py
+src/webpent/shared/exceptions.py
+src/webpent/shared/finding_aggregation.py
+src/webpent/shared/g02_contract.py
+src/webpent/shared/grounding.py
+src/webpent/shared/http.py
+src/webpent/shared/http_discovery.py
+src/webpent/shared/identity_provisioning.py
+src/webpent/shared/javascript_intelligence.py
+src/webpent/shared/jwt_deep_testing.py
+src/webpent/shared/kev.py
+src/webpent/shared/knowledge_retrieval.py
+src/webpent/shared/llm.py
+src/webpent/shared/llm_reliability.py
+src/webpent/shared/memory_boundary.py
+src/webpent/shared/nettacker_adapter.py
+src/webpent/shared/novel_behavior.py
+src/webpent/shared/offline_validator_fixtures.py
+src/webpent/shared/package_capabilities.py
+src/webpent/shared/package_execution_intake.py
+src/webpent/shared/package_preflight.py
+src/webpent/shared/package_scope.py
+src/webpent/shared/persistent_finding_ledger.py
+src/webpent/shared/planner_decisions.py
+src/webpent/shared/poc_policy.py
+src/webpent/shared/preflight.py
+src/webpent/shared/prioritization.py
+src/webpent/shared/proof_bundle_store.py
+src/webpent/shared/proof_engine.py
+src/webpent/shared/proof_oracles.py
+src/webpent/shared/rate_governor.py
+src/webpent/shared/recon_triage.py
+src/webpent/shared/redaction.py
+src/webpent/shared/reference_lookup.py
+src/webpent/shared/report_quality.py
+src/webpent/shared/research_contracts.py
+src/webpent/shared/research_intelligence.py
+src/webpent/shared/research_nodes.py
+src/webpent/shared/resume_capability.py
+src/webpent/shared/runtime.py
+src/webpent/shared/safety_gate.py
+src/webpent/shared/scope_drift.py
+src/webpent/shared/secondary_io_scanner.py
+src/webpent/shared/secret_vault.py
+src/webpent/shared/self_critique.py
+src/webpent/shared/skill_selector.py
+src/webpent/shared/stealth.py
+src/webpent/shared/surface_evidence_graph.py
+src/webpent/shared/surface_security.py
+src/webpent/shared/target_package_context.py
+src/webpent/shared/target_workspace.py
+src/webpent/shared/target_workspace_context.py
+src/webpent/shared/tool_adapters.py
+src/webpent/shared/trust_matrix.py
+src/webpent/shared/validator_plugins.py
+src/webpent/shared/verifier.py
+src/webpent/shared/wildcard_scope.py
+src/webpent/shared/workflow_replay.py
+src/webpent/shared/workflow_understanding.py
+src/webpent/state/__init__.py
+src/webpent/state/__pycache__/__init__.cpython-312.pyc
+src/webpent/state/__pycache__/initial_state.cpython-312.pyc
+src/webpent/state/__pycache__/reducers.cpython-312.pyc
+src/webpent/state/__pycache__/state.cpython-312.pyc
+src/webpent/state/initial_state.py
+src/webpent/state/reducers.py
+src/webpent/state/state.py
+src/webpent/templates/reports/html.j2
+src/webpent/templates/reports/report.html.j2
+src/webpent/tools/__init__.py
+src/webpent/tools/__pycache__/__init__.cpython-312.pyc
+src/webpent/tools/__pycache__/registry.cpython-312.pyc
+src/webpent/tools/exploitation/__init__.py
+src/webpent/tools/exploitation/dalfox.py
+src/webpent/tools/exploitation/phpggc.py
+src/webpent/tools/exploitation/sqlmap.py
+src/webpent/tools/exploitation/ysoserial.py
+src/webpent/tools/recon/__init__.py
+src/webpent/tools/recon/ffuf.py
+src/webpent/tools/recon/httpx.py
+src/webpent/tools/recon/katana.py
+src/webpent/tools/recon/nuclei.py
+src/webpent/tools/recon/subfinder.py
+src/webpent/tools/registry.py
+src/webpent/tools/utils/__init__.py
+src/webpent/tools/utils/subprocess.py
+src/webpent/utils/__init__.py
+src/webpent/utils/__pycache__/__init__.cpython-312.pyc
+src/webpent/utils/__pycache__/compliance.cpython-312.pyc
+src/webpent/utils/__pycache__/crypto.cpython-312.pyc
+src/webpent/utils/__pycache__/task_crypto.cpython-312.pyc
+src/webpent/utils/compliance.py
+src/webpent/utils/crypto.py
+src/webpent/utils/task_crypto.py
+src/webpent/validators/__init__.py
+src/webpent/validators/__pycache__/__init__.cpython-312.pyc
+src/webpent/validators/__pycache__/causal_validator.cpython-312.pyc
+src/webpent/validators/__pycache__/proof_validator.cpython-312.pyc
+src/webpent/validators/__pycache__/replay_validator.cpython-312.pyc
+src/webpent/validators/causal_validator.py
+src/webpent/validators/proof_validator.py
+src/webpent/validators/replay_validator.py
+src/webpent/workers/__init__.py
+src/webpent/workers/__pycache__/__init__.cpython-312.pyc
+src/webpent/workers/__pycache__/observability.cpython-312.pyc
+src/webpent/workers/__pycache__/pentest_worker.cpython-312.pyc
+src/webpent/workers/observability.py
+src/webpent/workers/pentest_worker.py
+## tracked build metadata
+Dockerfile
+Dockerfile.base
+docker-compose.dev.yml
+docker-compose.test.yml
+docker-compose.yml
+docs/release_manifest.json
+docs/requirements-audit-release.txt
+docs/sbom.cdx.json
+pyproject.toml
+requirements-audit-v63.txt
+tests/ground_truth/Dockerfile
+tests/ground_truth/requirements.txt
+uv.lock
+## current release docs
+docs/integration/docker_celery_resume_report.md:5:**الحالة: غير مؤهل للتوزيع الإنتاجي أو VIP qualification في هذا الإصدار.** لم يتم تشغيل target حي، ولم يتم إثبات Redis/Celery multi-worker أو Docker bridge/kernel qualification في هذه الجولة. لذلك لا يصح تحويل نجاح اختبارات Python المحلية إلى claim عن distributed execution.
+docs/integration/final_audit.md:5:**الوضع:** release candidate offline؛ ليس اعتمادًا إنتاجيًا موزعًا.
+docs/integration/final_audit.md:9:تكامل Target Package v2 أصبح **موصولًا وقابلًا للتدقيق محليًا** في admission وCLI وFastAPI/Celery first-run وresume/redelivery، إضافة إلى engagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقرير. لا توجد نتيجة صادقة تسمح بوصف المشروع حاليًا بأنه **VIP Smart Autonomous Bug Hunter**؛ قرار promotion الرسمي هو **NO** لأن قياسات WAPTLab المطلوبة، التكرار المستقل، precision/reproducibility، والqualification الموزعة لم تُنفذ في هذه الجولة.
+docs/integration/final_audit.md:15:تم أيضًا إكمال continuity من action metadata إلى verifier وProofBundle والتقرير، مع redaction-safe top-level `target_package_continuity` يدخل في audit/master hash. في البداية ينشئ worker lease بعد إعادة التحقق الفعلي من الحزمة والتوقيع، بينما redelivery/resume يتحقق من binding والـlease الموجودين دون consume ثانٍ. تمت إضافة capability intersection وحالات knowledge gaps وblocked tasks دون تحويلها إلى clean.
+docs/integration/final_audit.md:21:تم تنفيذ phase 2–6 من roadmap بصورة additive: `ActionBudgetState` و`StopDecision` و`AutonomousCycle` مع resume-safe legacy aliases؛ research-loop projection موحد يربط gaps/actions/session/target-knowledge/attack-graph؛ memory/RAG وLLM telemetry redaction-safe advisory-only؛ causal attack-graph edges لا تُنشأ إلا من ProofBundle مختوم target-backed؛ low-coverage priority يغيّر ترتيب next action داخل scorer؛ وoffline multi-run qualification harness يحسب canonical outcomes وproof/replay agreement وcandidate FP/FN وunauthorized/out-of-scope وbudget/stop metrics دون target I/O. كل ذلك لا يمنح LLM أو التخطيط صلاحية تنفيذ أو confirmation.
+docs/integration/final_audit.md:28:| WebPent full pytest | 1410 passed، 244 warnings |
+docs/integration/final_audit.md:37:| offline autonomy/research/qualification focused additions | مغطاة داخل full suite الأخضر؛ Gate 3 proof/replay fixture وoffline three-run simulation موثقان في artifacts، مع bbscout مستقل 7 passed |
+docs/integration/final_audit.md:49:| live WAPTLab/Juice Shop qualification | غير منفذ عمدًا في هذه الجولة |
+docs/integration/final_audit.md:52:| precision >=90% وreproducibility >=95% | NOT MEASURED؛ harness موجود offline فقط ولا يثبت live precision/recall |
+docs/integration/final_audit.md:53:| 100% sealed proofs وzero false-clean/duplicate/scope/signature failures | العقد الداخلي target-backed/sealed/replayable مجتاز offline؛ نسبة qualification الحية NOT MEASURED |
+docs/integration/final_audit.md:54:| VIP promotion | NO |
+docs/integration/final_audit.md:66:تغييرات ProofBundle والـvalidator محفوظة في commit التنفيذ `e91d111`، وتحديث مراجعة الخطة محفوظ في commit `82558c5`. Gate 3 أثبت offline sealed/replayable proof مع causal/negative-control contract، ومحاكاة qualification offline أثبتت ثلاثة runs متطابقة (coverage وproof/replay agreement = 100% على fixture واحد)؛ لا يُعد ذلك إثباتًا لتأهيل Docker/Celery/Redis الموزع أو scan حي، ولا formal VIP qualification.
+docs/integration/integration_manifest.md:4:**النطاق:** تكامل offline ومحكوم بالسياسة بين bbscout وWebPent؛ لا يتضمن هذا العمل أي scan حي أو provider I/O أو استخدام credentials.
+docs/integration/integration_manifest.md:21:| one-time consumption | `webpent/shared/engagement_factory.py` وSQLite atomic lease | منفذ offline | lease/conflict tests |
+docs/integration/integration_manifest.md:25:| entrypoint wiring | CLI flags، `ScanRequest`، API dispatch، worker first-run، redelivery/resume continuity | منفذ offline | entrypoint/hardening tests؛ لا broker/multi-worker qualification |
+docs/integration/integration_manifest.md:33:| bounded autonomy contracts | `autonomy_contracts.py`؛ budget/stop/cycle contracts مع legacy resume aliases | منفذ offline | autonomy adversarial tests + full suite |
+docs/integration/integration_manifest.md:34:| unified research loop | smart campaigns تربط session/gaps/actions/target knowledge/attack graph | منفذ offline | research-loop contract tests؛ لا I/O جديد |
+docs/integration/integration_manifest.md:35:| memory/RAG + LLM boundary | redaction-safe bounded telemetry؛ advisory-only؛ لا snippets/claims كدليل | منفذ offline | memory/LLM adversarial tests |
+docs/integration/integration_manifest.md:36:| qualification harness | canonical multi-run outcomes وproof/replay وFP/FN وscope/budget/stop metrics | منفذ offline | `qualification.py` و`run_offline_three_run_qualification.py`؛ offline simulation: 3 runs deterministic، reproducible=true، proof/replay agreement=1.0؛ لا live precision/recall |
+docs/integration/integration_manifest.md:38:| live qualification | WAPTLab/Juice Shop live scan | **غير منفذ عمدًا** | لا target I/O في هذه المرحلة |
+docs/integration/integration_manifest.md:40:| causal graph feedback | causal edges مختومة target-backed تغيّر ranking وlow-coverage paths تدخل scorer؛ لا edges من flags/LLM | منفذ offline | Gate 1/2 regression tests؛ لا target I/O |
+docs/integration/integration_manifest.md:41:| Gate 3 proof artifact | ProofBundle target-backed مختوم مع baseline/candidate/independent negative control وreplay | منفذ offline | `artifacts/smart_hunter_review/gate3/`؛ evaluator يطابق expected proof |
+docs/integration/integration_manifest.md:42:| VIP promotion | thresholds الرسمية | **NO** | النتائج الثلاثية offline فقط؛ live qualification وdistributed evidence غير متاحة |
+docs/integration/integration_manifest.md:46:أضيفت طبقات package إلى `webpent/src/webpent/shared/`، واختبارات التكامل إلى `webpent/tests/test_target_package_integration.py` و`webpent/tests/test_target_package_v2_hardening.py`. كما تم تحديث مسارات runtime، graph، state، campaign executor، validator، proof، reporter، وG-02 inventory renderer. أضيف generator قابل لإعادة التشغيل لـGate 3، وأداة منفصلة لمحاكاة qualification offline من ثلاث جولات داخل `scripts/` وartifacts redacted تحت `artifacts/smart_hunter_review/`. المصدر الأصلي لـbbscout يُسلّم كجزء من integration archive مع checksum منفصل، وليس كcommit مستقل.
+docs/integration/integration_manifest.md:53:| WebPent full pytest | **1410 passed, 244 warnings** |
+docs/integration/integration_manifest.md:55:| causal/coverage/proof/qualification additions | **مغطاة داخل 1410 اختبارًا ناجحًا؛ Gate 3 وoffline three-run artifact مولدة آليًا** |
+docs/integration/integration_manifest.md:65:هذا الإصدار لا يثبت قدرة اكتشاف أو تأكيد عدد معين من الثغرات، ولا يثبت VIP أو autonomous qualification. أضيف harness متعدد التشغيلات لكنه offline deterministic ولا يمثل precision/recall حيًا. confirmation تظل مشروطة بـtarget-backed causal signal مشتق من baseline/candidate، وindependent neutral negative control، وProofBundle sealed قابل لإعادة التشغيل والتحقق من التلاعب. flags أو metadata وحدها لا تكفي. 403 و429 وtimeouts وmissing capabilities والأعطال تُصنف blocked/inconclusive/knowledge gap، ولا تتحول إلى clean.
+docs/integration/verification_matrix.md:35:| worker resume/redelivery | binding وlease موجودان | continuity check دون lease consume ثانٍ | PASS |
+docs/integration/verification_matrix.md:40:التغطية موجودة في `tests/test_target_package_integration.py` و`tests/test_target_package_v2_hardening.py` و`tests/test_v96_strict_verifier.py` و`tests/test_p0_p1_active_validators.py` وentrypoint/checkpoint tests المرتبطة. كل الاختبارات تعمل offline ولا ترسل HTTP أو browser أو provider requests؛ اختبار worker يستخدم graph/storage mocks لإثبات ترتيب البوابة فقط. نتيجة package/entrypoint/hardening focused gate: **35 passed، 2 warnings**. نتيجة proof-focused verifier/active gate: **30 passed، 8 warnings**. نتيجة WebPent الكاملة: **1382 passed، 294 warnings**.
+docs/integration/verification_matrix.md:44:هذه المصفوفة تثبت contracts وgates الداخلية، ولا تثبت فعالية اكتشاف ثغرات على WAPTLab أو Juice Shop، ولا تثبت distributed/Celery qualification أو VIP promotion.
+docs/integration/vip_gap_analysis_20260822.md:1:# WebPent VIP Smart Autonomous Bug Hunter — Implementation Gap Analysis
+docs/integration/vip_gap_analysis_20260822.md:4:**النطاق:** مراجعة static/offline للكود الحالي في WebPent، بدون target/provider I/O وبدون credentials أو أسرار.
+docs/integration/vip_gap_analysis_20260822.md:13:**الحكم الحالي:** architecture foundation قوية، لكن **VIP qualification غير مثبتة**. لا يجوز إعلان VIP قبل multi-run benchmark يقيس precision وrecall وfalse positives وreproducibility وzero unauthorized/out-of-scope actions وbounded stopping.
+docs/integration/vip_gap_analysis_20260822.md:64:1. اختبار end-to-end offline للـloop كاملًا: target model → gap → hypothesis → rank → plan → ActionAuthority → observation → validator → ProofBundle → state update → replanning.
+docs/integration/vip_gap_analysis_20260822.md:66:3. اختبار budget exhaustion، repeated weak hypothesis، timeout، missing capability، rate-limit، وworker redelivery مع stop-state persistence.
+docs/integration/vip_gap_analysis_20260822.md:73:10. اختبار أنه لا يتم إنشاء target/provider I/O في كل الاختبارات الجديدة؛ all live qualification تبقى منفصلة ومعلّمة صراحة.
+docs/integration/vip_gap_analysis_20260822.md:77:`QualificationMatrix` يصف ground truth وruns، لكنه لا يثبت بمفرده أن WebPent VIP. المطلوب benchmark versioned يحتوي cases معروفة، expected class، authorized fixture، deterministic adapter، وnegative cases. لكل run يجب تسجيل:
+docs/integration/vip_gap_analysis_20260822.md:85:معايير VIP المقترحة يجب أن تكون **مقاسة لا وصفية**: precision وrecall وfalse-positive rate وreplay agreement وzero unauthorized/out-of-scope actions وbounded-loop compliance. لا يتم وضع أرقام نجاح اعتباطية قبل تعريف ground truth وتشغيل harness.
+docs/integration/vip_gap_analysis_20260822.md:91:Docker/Redis/Celery distributed qualification لم تثبت بهذه المراجعة. لذلك يتم تنفيذ offline deterministic harness أولًا، ثم qualification موزعة منفصلة إذا توفرت بيئة مصرح بها وقابلة للإعادة. لا يتم استخدام WAPTLab أو Juice Shop في هذه المرحلة بدون طلب وتشغيل مصرح به.
+docs/integration/vip_gap_analysis_20260822.md:103:9. إضافة global budget/stop persistence وredelivery/resume tests.
+docs/integration/vip_gap_analysis_20260822.md:104:10. بناء offline multi-run qualification harness، ثم تشغيله على deterministic fixtures واستخراج metrics.
+docs/integration/vip_gap_analysis_20260822.md:109:لن يُعلن النظام VIP إلا إذا أثبت harness قابل للإعادة أن كل confirmed finding يملك causal evidence وprovenance وvalidator result وnegative control عند اللزوم وsealed replayable proof واستمرارية تقريرية، وأن unknown/missing capability/timeout/LLM failure لا تتحول إلى clean. كما يجب إثبات zero unauthorized/out-of-scope actions، budget-bounded autonomous behavior، tenant isolation، ونجاح multi-run reproducibility على ground truth معلنة.
+docs/integration/vip_gap_analysis_20260822.md:111:حتى استيفاء هذه البنود، الصياغة الصحيحة هي: **VIP-oriented architecture with strong bounded/evidence-driven components; formal VIP qualification pending benchmark evidence.**
+docs/integration/vip_gap_analysis_20260822.md:114:## 9. Phase 2–3 acceptance report — offline implementation
+docs/integration/vip_gap_analysis_20260822.md:120:بوابات التحقق offline الحالية: `12 passed` في اختبارات autonomy/research-loop المركزة، وRuff وcompileall نجحا للملفات المعدلة. التغطية تشمل نفاد الميزانية قبل handler، استهلاك تكلفة الفشل، استنفاد replan، negative-control contradiction كـevidence stop، resume budget، stable knowledge fingerprint، projection graph، وsecret redaction.
+docs/integration/vip_gap_analysis_20260822.md:122:الحدود المتبقية: لم يُبنَ بعد end-to-end offline harness يمر كاملًا من target model إلى validator وProofBundle ثم replan، ولم تُنفذ بعد توحيدات Rabbithole وmemory/RAG وLLM boundary وmulti-run qualification. لذلك لا يوجد أي ادعاء VIP أو live qualification في هذه المرحلة.
+docs/integration/vip_gap_analysis_20260822.md:125:## Phase 4 acceptance — memory/RAG/LLM boundary (offline)
+docs/integration/vip_gap_analysis_20260822.md:129:بوابة phase 4: **PASS offline**. الاختبارات المركزة للـresearch loop وLLM reliability وmemory isolation وRAG وautonomy نجحت، مع إبقاء تحذيرات dev-only الخاصة بالمفاتيح الضعيفة في الاختبار كما هي. لا تُعد هذه النتيجة qualification حيًا.
+docs/integration/vip_gap_analysis_20260822.md:131:## Phase 5 acceptance — reproducible qualification harness (offline)
+docs/integration/vip_gap_analysis_20260822.md:133:تم توسيع `benchmark/qualification.py` بعقد `QualificationFixture` و`OfflineQualificationResult` ودالة `run_offline_qualification`. الـharness يشغل injected deterministic runner بتكرارات bounded، ويقارن canonical digests، ويفصل discovery عن confirmation، ويحسب candidate false positives/false negatives، proof/replay agreement، unauthorized/out-of-scope attempts، budget/stop records، وسلامة عدم تعديل الهدف. أضيف recursive redaction للـfixture scenario وrun metadata.
+docs/integration/vip_gap_analysis_20260822.md:135:بوابة phase 5: **PASS offline**، بعد نجاح 35 اختبارًا مركّزًا وRuff وcompileall. الـharness لا ينفذ شبكة أو browser أو provider I/O، ولا ينتج live precision/recall؛ أي qualification رسمي ما زال **NOT QUALIFIED** حتى تُجمع fixtures/evidence معتمدة وتشغّل البوابة وفق سياسة مستقلة.
+docs/integration/vip_gap_analysis_20260822.md:139:النتائج السابقة تثبت contracts وtelemetry وreproducibility harness فقط. لم يتم تشغيل WAPTLab أو Juice Shop في هذه الجولة، ولم يتم ادعاء VIP أو live qualification أو precision/recall. يلزم في المرحلة الأخيرة تشغيل full WebPent tests، فحص G-02، secret scan، مراجعة docs/audit، ثم commit/push فقط إذا بقيت الشجرة نظيفة وكل البوابات خضراء.
+docs/integration/vip_gap_analysis_20260822.md:144:تم إغلاق Gate 1 وGate 2 وGate 3 بصورة offline قابلة لإعادة التوليد، كما تم تشغيل تكامل bbscout المستقل offline. الـcausal edge لا يُنشأ إلا من ProofBundle مختوم target-backed يحمل baseline/candidate وnegative-control مستقلًا وprovenance؛ والـedge يدخل attack graph serialized ويؤثر في ترتيب next-best-action عبر causal relevance bounded. كما يستهلك controller coverage ledger أثناء loop ويعيده في state النهائي، فتظل أولوية المسارات منخفضة التغطية قابلة للحفظ والاستئناف والتدقيق.
+docs/integration/vip_gap_analysis_20260822.md:146:تم إنشاء `scripts/build_gate3_proof_artifact.py` لتوليد أول ProofBundle اصطناعي مختوم وقابل لإعادة التشغيل، و`scripts/run_offline_three_run_qualification.py` لتشغيل ثلاث جولات deterministic من نفس fixture. هذه artifacts تثبت صحة العقد والـreplay agreement وقابلية التكرار offline فقط؛ لا تمثل نتائج WAPTLab أو Juice Shop ولا يجوز عرضها كـlive qualification.
+docs/integration/vip_gap_analysis_20260822.md:150:**الحكم النهائي:** تنفيذ الخطة البرمجية والاختبارية تم حتى آخر بوابات offline، لكن **formal VIP qualification = NO / NOT QUALIFIED**. السبب ليس فشلًا مخفيًا في الاختبارات، بل غياب benchmark حي معتمد وground truth مستقل وقياس live precision/recall وzero unauthorized/out-of-scope عبر بيئة قابلة للإعادة، إضافة إلى عدم إثبات distributed Docker/Celery qualification. الصياغة الدقيقة هي: **VIP-oriented, bounded, evidence-driven architecture with offline qualification harness; formal VIP qualification pending live benchmark evidence.**
+docs/integration/vip_gap_analysis_20260822.md:154:أي أرقام في Gate 3 وoffline three-run simulation تخص fixtures اصطناعية redacted ومولدة من الكود. تم تحديث manifest وaudit ليمنعا الخلط بين هذه الأرقام وبين اكتشافات حقيقية على targets. لا توجد credentials أو cookies أو tokens أو raw target responses أو private keys داخل source أو state أو report أو archive.
+docs/integration/vip_gap_analysis_20260822.md:158:المتبقي ليس rewrite: تشغيل benchmark حي مصرح به بصورة مستقلة، توثيق ground truth، إثبات end-to-end على adapters حقيقية ضمن نفس ActionAuthority، ثم إعادة تشغيل multi-run qualification مع قياس precision/recall وfalse-positive/false-negative وreplay agreement وunauthorized/out-of-scope counts. إلى أن يتم ذلك يظل قرار VIP مرفوضًا بصورة fail-closed.
+artifacts/smart_hunter_review/final_validation_summary.md:5:**Mode:** offline/local validation only; no WAPTLab, Juice Shop, provider, browser, credential, or target I/O.
+artifacts/smart_hunter_review/final_validation_summary.md:15:| WebPent full pytest with bbscout source on `PYTHONPATH` | **1410 passed, 244 warnings** |
+artifacts/smart_hunter_review/final_validation_summary.md:27:The controller now validates promotion-ready proof material before creating causal edges, consumes and returns the coverage ledger, includes causal and coverage state in convergence fingerprints, preserves the planner's smart action order, and rebuilds the serialized attack graph after real findings are merged. The tests include the exact causal-ranking and low-coverage-priority paths through controller orchestration, the post-finding attack-graph projection, and a complete bbscout build-to-ingestor-to-engagement offline dry-run path; they are not only isolated scorer tests.
+artifacts/smart_hunter_review/final_validation_summary.md:29:Gate 3 has a deterministic synthetic sealed/replayable ProofBundle artifact. The three-run qualification artifact is intentionally named and reported as an **offline qualification simulation**, not as Gate 5 and not as live qualification. Its generated evidence reports three reproducible runs, 100% proof/replay agreement on the synthetic fixture, zero unauthorized/out-of-scope attempts, and `live_qualification_proven=false`.
+artifacts/smart_hunter_review/final_validation_summary.md:33:These results do **not** prove live WAPTLab or Juice Shop coverage, 15+/20 findings, live precision, live recall, distributed Docker/Celery/Redis qualification, or formal VIP promotion. Formal VIP status remains **NOT QUALIFIED** until an authorized, target-backed benchmark with independent ground truth and the required independent clean runs is executed and recorded.

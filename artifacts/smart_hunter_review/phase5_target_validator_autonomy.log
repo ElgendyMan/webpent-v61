@@ -1,0 +1,12 @@
+......................................                                   [100%]
+=============================== warnings summary ===============================
+tests/test_v17_target_understanding.py::test_target_understanding_is_redacted_and_scope_safe
+  /usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/test_v17_target_understanding.py::test_target_understanding_is_redacted_and_scope_safe
+  /usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+38 passed, 2 warnings in 4.06s

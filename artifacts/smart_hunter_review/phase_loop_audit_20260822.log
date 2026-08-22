@@ -1,0 +1,108 @@
+== WEB STATUS ==
+ [31mM[m tests/test_target_package_v2_hardening.py
+[31m??[m artifacts/smart_hunter_review/phase4_handoff_proof_validation.log
+[31m??[m artifacts/smart_hunter_review/phase5_target_validator_autonomy.log
+[31m??[m artifacts/smart_hunter_review/phase6_final_gates_20260822.log
+[31m??[m artifacts/smart_hunter_review/phase6_recheck_20260822.log
+[31m??[m artifacts/smart_hunter_review/phase_loop_audit_20260822.log
+[31m??[m artifacts/smart_hunter_review/phase_loop_status_20260822.log
+[31m??[m artifacts/smart_hunter_review/plan_baseline_20260822.log
+[31m??[m artifacts/smart_hunter_review/plan_gap_inventory_20260822.log
+[31m??[m webpent.db-shm
+[31m??[m webpent.db-wal
+[33me82d6e5[m docs: align plan review release identity
+[33m82558c5[m test: close plan compliance and bbscout offline e2e
+[33mc86c839[m docs: clarify offline qualification naming
+[33me91d111[m feat: close autonomous proof and coverage loop
+== BB STATUS (not repo maybe) ==
+== LATEST SUMMARIES ==
+--- /tmp/phase3_provider_tests_final.log
+27 passed in 0.06s
+--- /tmp/phase3_provider_ruff_final.log
+[1;32mAll checks passed![0m
+== GAP HEADINGS ==
+1:## provider references
+8:## signing references
+72:## proof profile enforcement
+120:## entrypoints
+133:src/webpent/agents/validator/__init__.py
+134:src/webpent/agents/validator/__pycache__/__init__.cpython-312.pyc
+135:src/webpent/agents/validator/__pycache__/active_checks.cpython-312.pyc
+136:src/webpent/agents/validator/__pycache__/agent.cpython-312.pyc
+137:src/webpent/agents/validator/__pycache__/registry.cpython-312.pyc
+138:src/webpent/agents/validator/__pycache__/structural_checks.cpython-312.pyc
+139:src/webpent/agents/validator/active_checks.py
+140:src/webpent/agents/validator/agent.py
+141:src/webpent/agents/validator/registry.py
+142:src/webpent/agents/validator/structural_checks.py
+194:src/webpent/shared/__pycache__/offline_validator_fixtures.cpython-312.pyc
+197:src/webpent/shared/__pycache__/validator_plugins.cpython-312.pyc
+203:src/webpent/shared/offline_validator_fixtures.py
+206:src/webpent/shared/validator_plugins.py
+207:src/webpent/validators/__init__.py
+208:src/webpent/validators/__pycache__/__init__.cpython-312.pyc
+209:src/webpent/validators/__pycache__/causal_validator.cpython-312.pyc
+210:src/webpent/validators/__pycache__/proof_validator.cpython-312.pyc
+211:src/webpent/validators/__pycache__/replay_validator.cpython-312.pyc
+212:src/webpent/validators/causal_validator.py
+213:src/webpent/validators/proof_validator.py
+214:src/webpent/validators/replay_validator.py
+215:src/webpent/workers/__init__.py
+216:src/webpent/workers/__pycache__/__init__.cpython-312.pyc
+217:src/webpent/workers/__pycache__/observability.cpython-312.pyc
+218:src/webpent/workers/__pycache__/pentest_worker.cpython-312.pyc
+219:src/webpent/workers/observability.py
+220:src/webpent/workers/pentest_worker.py
+221:## release/security artifacts
+230:./docs/bandit_release.json
+234:./docs/pasted3_release_manifest.log
+235:./docs/pip_audit_release.json
+236:./docs/release_manifest.json
+239:./scripts/__pycache__/build_release_manifest.cpython-312.pyc
+241:./scripts/build_release_manifest.py
+270:## test counts by areas
+275:tests/__pycache__/test_autonomy_contracts.cpython-312-pytest-9.1.1.pyc
+276:tests/__pycache__/test_autonomy_contracts.cpython-312.pyc
+281:tests/__pycache__/test_llm_provider_compatibility.cpython-312-pytest-9.1.1.pyc
+282:tests/__pycache__/test_llm_provider_compatibility.cpython-312.pyc
+283:tests/__pycache__/test_p0_p1_active_validators.cpython-312-pytest-9.1.1.pyc
+284:tests/__pycache__/test_p0_p1_active_validators.cpython-312.pyc
+291:tests/__pycache__/test_release_artifact_audit.cpython-312-pytest-9.1.1.pyc
+292:tests/__pycache__/test_release_artifact_audit.cpython-312.pyc
+313:tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312-pytest-9.1.1.pyc
+314:tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312.pyc
+319:tests/__pycache__/test_v58_validator_idempotency.cpython-312-pytest-9.1.1.pyc
+320:tests/__pycache__/test_v58_validator_idempotency.cpython-312.pyc
+325:tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312-pytest-9.1.1.pyc
+326:tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312.pyc
+327:tests/__pycache__/test_v70_release_contracts.cpython-312-pytest-9.1.1.pyc
+328:tests/__pycache__/test_v70_release_contracts.cpython-312.pyc
+329:tests/__pycache__/test_v72_idor_validator_replay.cpython-312-pytest-9.1.1.pyc
+330:tests/__pycache__/test_v72_idor_validator_replay.cpython-312.pyc
+331:tests/__pycache__/test_v72_jwt_differential_validator.cpython-312-pytest-9.1.1.pyc
+332:tests/__pycache__/test_v72_jwt_differential_validator.cpython-312.pyc
+345:tests/__pycache__/test_v94_autonomous_controller.cpython-312-pytest-9.1.1.pyc
+346:tests/__pycache__/test_v94_autonomous_controller.cpython-312.pyc
+351:tests/__pycache__/test_validator_merge_back.cpython-312-pytest-9.1.1.pyc
+352:tests/__pycache__/test_validator_merge_back.cpython-312.pyc
+357:tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312-pytest-9.1.1.pyc
+358:tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312.pyc
+359:tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312-pytest-9.1.1.pyc
+360:tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312.pyc
+367:tests/__pycache__/test_vip_validator_plugins.cpython-312-pytest-9.1.1.pyc
+368:tests/__pycache__/test_vip_validator_plugins.cpython-312.pyc
+374:tests/test_autonomy_contracts.py
+377:tests/test_llm_provider_compatibility.py
+378:tests/test_p0_p1_active_validators.py
+382:tests/test_release_artifact_audit.py
+393:tests/test_v3_autonomous_graph_loop.py
+396:tests/test_v58_validator_idempotency.py
+399:tests/test_v64_multi_agent_proof_validators.py
+400:tests/test_v70_release_contracts.py
+401:tests/test_v72_idor_validator_replay.py
+402:tests/test_v72_jwt_differential_validator.py
+409:tests/test_v94_autonomous_controller.py
+412:tests/test_validator_merge_back.py
+415:tests/test_vip_jwt_validator_revalidation.py
+416:tests/test_vip_offline_validator_fixtures.py
+420:tests/test_vip_validator_plugins.py

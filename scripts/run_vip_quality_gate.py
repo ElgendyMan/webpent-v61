@@ -34,10 +34,14 @@ RUFF_PATHS = ["src", "tests", "scripts"]
 def _run(name: str, command: list[str], *, timeout: int = 300) -> dict[str, Any]:
     """Run one gate and retain bounded output for machine-readable review."""
     try:
+        inherited_pythonpath = os.environ.get("PYTHONPATH", "")
+        pythonpath = os.pathsep.join(
+            part for part in ("src", inherited_pythonpath) if part
+        )
         completed = subprocess.run(
             command,
             cwd=PROJECT_ROOT,
-            env={**os.environ, "PYTHONPATH": "src"},
+            env={**os.environ, "PYTHONPATH": pythonpath},
             capture_output=True,
             text=True,
             timeout=timeout,

@@ -41,17 +41,17 @@
       "returncode": 0,
       "tail": [
         "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
-        "  /tmp/webpent_v72_qualification/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
+        "  /tmp/bbscout_webpent_integration/webpent-git/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
         "    embeddings = HuggingFaceEmbeddings(**kwargs)",
         "",
-        "tests/test_v58_post_form_hypotheses.py: 40 warnings",
-        "tests/test_v72_json_request_context.py: 44 warnings",
-        "tests/test_v72_request_context_and_primary_identity.py: 20 warnings",
+        "tests/test_v58_post_form_hypotheses.py: 20 warnings",
+        "tests/test_v72_json_request_context.py: 24 warnings",
+        "tests/test_v72_request_context_and_primary_identity.py: 10 warnings",
         "  /usr/local/lib/python3.12/dist-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1360 passed, 294 warnings in 117.27s (0:01:57)"
+        "1410 passed, 244 warnings in 53.37s"
       ]
     },
     {
@@ -74,9 +74,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1306",
+        "  \"total_test_functions\": 1356",
         "}",
-        "OK: preserved test-function count 1306 >= minimum 818"
+        "OK: preserved test-function count 1356 >= minimum 818"
       ]
     },
     {
@@ -88,7 +88,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/webpent_v72_qualification/docs/direct_io_inventory.json and /tmp/webpent_v72_qualification/docs/DIRECT_IO_INVENTORY.md (279 records)"
+        "wrote /tmp/bbscout_webpent_integration/webpent-git/docs/direct_io_inventory.json and /tmp/bbscout_webpent_integration/webpent-git/docs/DIRECT_IO_INVENTORY.md (280 records)"
       ]
     },
     {
@@ -100,7 +100,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 279}"
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 280}"
       ]
     },
     {
@@ -126,7 +126,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"output\": \"/tmp/webpent_v72_qualification/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
+        "{\"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}",
         "/usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.",
         "  validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)",
         "/usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.",
@@ -142,7 +142,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent_v72_qualification/docs/capability_report.json\"}"
+        "{\"catalog_count\": 20, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/capability_report.json\"}"
       ]
     },
     {
@@ -154,12 +154,12 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent_v72_qualification/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
+        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
       ]
     },
     {
       "command": [
-        "/tmp/webpent_v72_qualification/docs/preflight_report.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/preflight_report.json"
       ],
       "name": "preflight-report-contract",
       "passed": true,
@@ -168,7 +168,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_qualification/docs/capability_report.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/capability_report.json"
       ],
       "name": "capability-report-contract",
       "passed": true,
@@ -177,7 +177,7 @@
     },
     {
       "command": [
-        "/tmp/webpent_v72_qualification/docs/waptlab_qualification_report.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/waptlab_qualification_report.json"
       ],
       "name": "mock-qualification-contract",
       "passed": true,
@@ -196,7 +196,7 @@
         "-f",
         "json",
         "-o",
-        "/tmp/webpent_v72_qualification/docs/bandit_release.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/bandit_release.json"
       ],
       "name": "bandit-high-severity",
       "passed": true,
@@ -211,11 +211,11 @@
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_qualification/docs/requirements-audit-release.txt",
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/requirements-audit-release.txt",
         "--format",
         "cyclonedx-json",
         "--output",
-        "/tmp/webpent_v72_qualification/docs/sbom.cdx.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/sbom.cdx.json"
       ],
       "name": "pip-audit-sbom",
       "passed": true,
@@ -232,11 +232,11 @@
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/webpent_v72_qualification/docs/requirements-audit-release.txt",
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/requirements-audit-release.txt",
         "--format",
         "json",
         "--output",
-        "/tmp/webpent_v72_qualification/docs/pip_audit_release.json"
+        "/tmp/bbscout_webpent_integration/webpent-git/docs/pip_audit_release.json"
       ],
       "name": "pip-audit-strict",
       "passed": true,
@@ -267,11 +267,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 752, \"output\": \"/tmp/webpent_v72_qualification/docs/release_manifest.json\"}"
+        "{\"file_count\": 782, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T14:46:30.481806+00:00",
+  "generated_at": "2026-08-22T21:05:04.879166+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

@@ -1,0 +1,24 @@
+...........................................................              [100%]
+=============================== warnings summary ===============================
+tests/test_target_package_v2_hardening.py::test_real_bbscout_package_admits_into_initial_state_without_source_hash_confusion
+tests/test_vip_action_authority_contract.py::test_read_only_action_is_authorized_in_safe_smart
+tests/test_vip_action_authority_contract.py::test_scope_mismatch_is_fail_closed
+tests/test_vip_action_authority_contract.py::test_destructive_action_is_denied_even_when_auto_approved
+tests/test_vip_action_authority_contract.py::test_active_action_requires_authorized_active_and_approval
+tests/test_vip_action_authority_contract.py::test_handler_failure_is_typed_and_called_once
+tests/test_vip_action_authority_contract.py::test_ledger_rejects_duplicate_idempotency_key
+  /usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE audit_secret_key in dev mode — evidence hashes are HMAC'd with a publicly-known key and can be forged. Set AUDIT_SECRET_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/test_target_package_v2_hardening.py::test_real_bbscout_package_admits_into_initial_state_without_source_hash_confusion
+tests/test_vip_action_authority_contract.py::test_read_only_action_is_authorized_in_safe_smart
+tests/test_vip_action_authority_contract.py::test_scope_mismatch_is_fail_closed
+tests/test_vip_action_authority_contract.py::test_destructive_action_is_denied_even_when_auto_approved
+tests/test_vip_action_authority_contract.py::test_active_action_requires_authorized_active_and_approval
+tests/test_vip_action_authority_contract.py::test_handler_failure_is_typed_and_called_once
+tests/test_vip_action_authority_contract.py::test_ledger_rejects_duplicate_idempotency_key
+  /usr/local/lib/python3.12/dist-packages/pydantic/main.py:263: UserWarning: INSECURE celery_payload_key in dev mode — task passwords are encrypted with a publicly-known key and can be decrypted by anyone with Redis access. Set CELERY_PAYLOAD_KEY to a strong random value for any non-local deployment.
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+59 passed, 14 warnings in 4.61s

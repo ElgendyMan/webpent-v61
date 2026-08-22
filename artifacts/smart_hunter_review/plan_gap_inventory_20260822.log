@@ -1,0 +1,421 @@
+## provider references
+src/webpent.egg-info/PKG-INFO
+src/webpent/agents/reporter/__pycache__/agent.cpython-312.pyc
+src/webpent/agents/reporter/agent.py
+src/webpent/api/app.py
+src/webpent/shared/__pycache__/disclosed_report_intel.cpython-312.pyc
+src/webpent/shared/disclosed_report_intel.py
+## signing references
+src/webpent/agents/reporter/agent.py:686:            "signature_state": package_projection.get("signature_state"),
+src/webpent/api/app.py:498:        description="Runtime-supplied key_id to Ed25519 public-key material mapping.",
+src/webpent/graph/checkpoints.py:50:    "private_key",
+src/webpent/reporter/export.py:245:            "signature_state": str(target_package.get("signature_state") or "")[:64],
+src/webpent/shared/javascript_intelligence.py:72:    ("private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
+src/webpent/shared/javascript_intelligence.py:301:                    confidence="medium" if kind in {"aws_access_key", "private_key"} else "low",
+src/webpent/shared/jwt_deep_testing.py:270:                    "private_key",
+src/webpent/shared/package_execution_intake.py:73:def _reject_private_key_material(value: Any) -> None:
+src/webpent/shared/package_execution_intake.py:77:        raise PackageExecutionIntakeError("private_key_material_is_not_accepted")
+src/webpent/shared/package_execution_intake.py:82:    _reject_private_key_material(value)
+src/webpent/shared/package_execution_intake.py:130:    """Build a real Ed25519 verifier from caller-supplied public trust roots."""
+src/webpent/shared/package_execution_intake.py:133:        from bbscout.signatures import verify_detached_signature
+src/webpent/shared/package_execution_intake.py:138:        verify_detached_signature(package, trusted_public_keys=normalized)
+src/webpent/shared/package_preflight.py:55:    if str(projection.get("signature_state") or "") != "verified":
+src/webpent/shared/target_package_context.py:28:    "private_key",
+src/webpent/shared/target_package_context.py:85:    signature_state: str
+src/webpent/shared/target_package_context.py:110:            "signature_state": self.signature_state,
+src/webpent/shared/target_package_context.py:183:    signature_state = str(integrity.get("signature_state") or "missing")
+src/webpent/shared/target_package_context.py:184:    if signature_state not in {"verified", "unsigned-local-mvp"}:
+src/webpent/shared/target_package_context.py:186:    if require_signature and signature_state != "verified":
+src/webpent/shared/target_package_context.py:211:        signature_state=signature_state,
+src/webpent.egg-info/PKG-INFO:97:    digest --> signature[Detached Ed25519 verification]
+src/webpent.egg-info/PKG-INFO:111:التنفيذ package-backed يتطلب detached Ed25519 signature بحالة `verified`، ومفتاحًا عامًا موثوقًا يمرره المستدعي وقت التشغيل. الحالة `unsigned-local-mvp` صالحة للمراجعة المحلية فقط، وليست صالحة لإنشاء engagement تنفيذي.
+src/webpent.egg-info/PKG-INFO:117:في CLI يمكن تشغيل الحزمة الموقعة باستخدام `--target-package` و`--target-package-confirmation` و`--target-package-trust-map`. يقرأ CLI الملفات transiently، ويتحقق من Ed25519 عبر public-key map يقدمه المشغّل وقت التشغيل، ثم ينشئ lease قبل دخول graph؛ لا يُحفظ raw package أو trust material في checkpoint.
+src/webpent.egg-info/PKG-INFO:119:في API تُرسل الحقول نفسها داخل `ScanRequest` بحدود حجم ونوع، وتُجرى validation أولية قبل dispatch. العامل يعيد التحقق من التوقيع والـscope والـconfirmation قبل أول graph node، ولا يعتمد على `signature_state` المرسل أو على تحقق API وحده. عند redelivery/resume يستعيد binding redacted ويتحقق من lease continuity دون استهلاك lease ثانية. الطلبات القديمة بلا Target Package تستمر في legacy flow وفق سياساتها الحالية.
+src/webpent.egg-info/PKG-INFO:198:- `cryptography` مطلوب لمسار Ed25519 في bbscout.
+src/webpent.egg-info/PKG-INFO:265:from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+src/webpent.egg-info/PKG-INFO:266:from bbscout.signatures import sign_target_package, verify_detached_signature
+src/webpent.egg-info/PKG-INFO:269:private_key = Ed25519PrivateKey.generate()  # مثال offline فقط؛ لا تخزن المفتاح
+src/webpent.egg-info/PKG-INFO:270:public_key = private_key.public_key()
+src/webpent.egg-info/PKG-INFO:271:signed_package = sign_target_package(
+src/webpent.egg-info/PKG-INFO:273:    private_key=private_key,
+src/webpent.egg-info/PKG-INFO:279:    signature_verifier=lambda value: verify_detached_signature(
+src/webpent.egg-info/PKG-INFO:296:في بيئة حقيقية يجب أن يأتي trusted public-key map من configuration آمنة ومراجعة. لا يكفي تغيير `signature_state` يدويًا إلى `verified`؛ WebPent يعيد حساب digest ويتحقق من التوقيع فعليًا.
+tests/test_target_package_integration.py:50:            "signature_state": "unsigned-local-mvp",
+tests/test_target_package_v2_hardening.py:14:from bbscout.signatures import sign_target_package, verify_detached_signature
+tests/test_target_package_v2_hardening.py:16:from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+tests/test_target_package_v2_hardening.py:102:def signed_package() -> tuple[dict, Ed25519PrivateKey]:
+tests/test_target_package_v2_hardening.py:104:    private_key = Ed25519PrivateKey.generate()
+tests/test_target_package_v2_hardening.py:106:        sign_target_package(
+tests/test_target_package_v2_hardening.py:108:            private_key=private_key,
+tests/test_target_package_v2_hardening.py:111:        private_key,
+tests/test_target_package_v2_hardening.py:134:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:135:    public_key = private_key.public_key()
+tests/test_target_package_v2_hardening.py:142:    assert result.signature_state == "verified"
+tests/test_target_package_v2_hardening.py:143:    verify_detached_signature(
+tests/test_target_package_v2_hardening.py:158:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:161:        signature_verifier=lambda value: verify_detached_signature(
+tests/test_target_package_v2_hardening.py:163:            trusted_public_keys={"fixture-runtime-key": private_key.public_key()},
+tests/test_target_package_v2_hardening.py:290:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:368:    assert continuity["signature_state"] == "verified"
+tests/test_target_package_v2_hardening.py:383:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:384:    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw()}
+tests/test_target_package_v2_hardening.py:431:    assert "private_key" not in repr(state).lower()
+tests/test_target_package_v2_hardening.py:440:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:453:                "fixture-runtime-key": private_key.public_key().public_bytes_raw()
+tests/test_target_package_v2_hardening.py:498:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:499:    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw().hex()}
+tests/test_target_package_v2_hardening.py:556:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:557:    trust_map = {"fixture-runtime-key": private_key.public_key().public_bytes_raw().hex()}
+tests/test_target_package_v2_hardening.py:641:    package, private_key = signed_package()
+tests/test_target_package_v2_hardening.py:651:        signature_verifier=lambda value: verify_detached_signature(
+tests/test_target_package_v2_hardening.py:653:            trusted_public_keys={"fixture-runtime-key": private_key.public_key()},
+## proof profile enforcement
+src/webpent/agents/reporter/agent.py:22:from webpent.config.settings import get_settings, profile_requires_proof_bundle
+src/webpent/agents/reporter/agent.py:52:        getattr(settings, "smart_require_proof_bundle", False)
+src/webpent/agents/reporter/agent.py:54:        or profile_requires_proof_bundle(profile)
+src/webpent/cli/__init__.py:1100:        "required" if settings.smart_require_proof_bundle else "candidate downgrade allowed",
+src/webpent/config/policies.py:194:    APPARENT_PRODUCTION_DATASTORE = "apparent_production_datastore"
+src/webpent/config/settings.py:58:    VIP_QUALIFICATION = "vip-qualification"
+src/webpent/config/settings.py:66:    ScanProfile.VIP_QUALIFICATION: ScanMode.AUTHORIZED_ACTIVE,
+src/webpent/config/settings.py:86:def profile_requires_proof_bundle(value: str | ScanProfile | None) -> bool:
+src/webpent/config/settings.py:91:    return profile is ScanProfile.VIP_QUALIFICATION
+src/webpent/config/settings.py:94:def deployment_requires_proof_bundle(value: str | EnvironmentProfile | None) -> bool:
+src/webpent/config/settings.py:107:        EnvironmentProfile.QUALIFICATION,
+src/webpent/config/settings.py:108:        EnvironmentProfile.STAGING,
+src/webpent/config/settings.py:109:        EnvironmentProfile.PRODUCTION,
+src/webpent/config/settings.py:118:    QUALIFICATION = "qualification"
+src/webpent/config/settings.py:119:    STAGING = "staging"
+src/webpent/config/settings.py:120:    PRODUCTION = "production"
+src/webpent/config/settings.py:315:    smart_require_proof_bundle: bool = Field(
+src/webpent/config/settings.py:318:            "smart_require_proof_bundle",
+src/webpent/config/settings.py:1275:            EnvironmentProfile.QUALIFICATION,
+src/webpent/config/settings.py:1276:            EnvironmentProfile.STAGING,
+src/webpent/config/settings.py:1277:            EnvironmentProfile.PRODUCTION,
+src/webpent/shared/cognitive_components.py:230:        "apparent_production_datastore",  # ForcedHITLCategory.APPARENT_PRODUCTION_DATASTORE
+src/webpent/shared/cognitive_components.py:479:    APPARENT_PRODUCTION_DATASTORE = "apparent_production_datastore"
+src/webpent/state/initial_state.py:22:    deployment_requires_proof_bundle,
+src/webpent/state/initial_state.py:24:    profile_requires_proof_bundle,
+src/webpent/state/initial_state.py:165:    vip_proof_required = profile_requires_proof_bundle(resolved_profile)
+src/webpent/state/initial_state.py:166:    deployment_proof_required = deployment_requires_proof_bundle(
+src/webpent/state/initial_state.py:354:                settings.smart_require_proof_bundle or proof_required
+tests/test_p0_production_secrets_fail_closed.py:9:    deployment_requires_proof_bundle,
+tests/test_p0_production_secrets_fail_closed.py:60:    assert deployment_requires_proof_bundle(EnvironmentProfile.DEV) is False
+tests/test_p0_production_secrets_fail_closed.py:61:    assert deployment_requires_proof_bundle(EnvironmentProfile.LAB) is False
+tests/test_p0_production_secrets_fail_closed.py:62:    assert deployment_requires_proof_bundle(EnvironmentProfile.QUALIFICATION) is True
+tests/test_p0_production_secrets_fail_closed.py:63:    assert deployment_requires_proof_bundle(EnvironmentProfile.STAGING) is True
+tests/test_p0_production_secrets_fail_closed.py:64:    assert deployment_requires_proof_bundle(EnvironmentProfile.PRODUCTION) is True
+tests/test_p0_production_secrets_fail_closed.py:65:    assert deployment_requires_proof_bundle("future-profile") is True
+tests/test_p0_production_secrets_fail_closed.py:77:        Settings(environment_profile=EnvironmentProfile.QUALIFICATION, auth_enabled=False)
+tests/test_production_deployment_contract.py:6:PRODUCTION_COMPOSE = PROJECT_ROOT / "docker-compose.yml"
+tests/test_production_deployment_contract.py:14:    content = PRODUCTION_COMPOSE.read_text(encoding="utf-8")
+tests/test_production_deployment_contract.py:56:    content = PRODUCTION_COMPOSE.read_text(encoding="utf-8")
+tests/test_v10_hostile_fixes.py:543:        assert "NOT FOR PRODUCTION" in source or "NOT FOR PROD" in source.upper(), (
+tests/test_v3_phase_a_characterization.py:40:            environment_profile=EnvironmentProfile.STAGING,
+tests/test_v3_phase_a_characterization.py:55:            environment_profile=EnvironmentProfile.PRODUCTION,
+tests/test_v61_remaining_plan_artifacts.py:321:        "environment_profile": EnvironmentProfile.STAGING,
+tests/test_v61_remaining_plan_artifacts.py:330:    assert Settings(**secure).environment_profile is EnvironmentProfile.STAGING
+tests/test_v92_reporter_strict_proof.py:13:            smart_require_proof_bundle=True,
+tests/test_v92_reporter_strict_proof.py:33:def test_vip_profile_requires_proof_bundle_even_when_setting_is_false(monkeypatch):
+tests/test_v92_reporter_strict_proof.py:40:            smart_require_proof_bundle=False,
+## entrypoints
+src/webpent/agents/api_testing/__init__.py
+src/webpent/agents/api_testing/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/api_testing/__pycache__/agent.cpython-312.pyc
+src/webpent/agents/api_testing/agent.py
+src/webpent/agents/attack_graph/__init__.py
+src/webpent/agents/attack_graph/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/attack_graph/__pycache__/agent.cpython-312.pyc
+src/webpent/agents/attack_graph/agent.py
+src/webpent/agents/reporter/__init__.py
+src/webpent/agents/reporter/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/reporter/__pycache__/agent.cpython-312.pyc
+src/webpent/agents/reporter/agent.py
+src/webpent/agents/validator/__init__.py
+src/webpent/agents/validator/__pycache__/__init__.cpython-312.pyc
+src/webpent/agents/validator/__pycache__/active_checks.cpython-312.pyc
+src/webpent/agents/validator/__pycache__/agent.cpython-312.pyc
+src/webpent/agents/validator/__pycache__/registry.cpython-312.pyc
+src/webpent/agents/validator/__pycache__/structural_checks.cpython-312.pyc
+src/webpent/agents/validator/active_checks.py
+src/webpent/agents/validator/agent.py
+src/webpent/agents/validator/registry.py
+src/webpent/agents/validator/structural_checks.py
+src/webpent/api/__init__.py
+src/webpent/api/__pycache__/__init__.cpython-312.pyc
+src/webpent/api/__pycache__/app.cpython-312.pyc
+src/webpent/api/__pycache__/auth.cpython-312.pyc
+src/webpent/api/__pycache__/rate_limit.cpython-312.pyc
+src/webpent/api/__pycache__/scan_registry.cpython-312.pyc
+src/webpent/api/app.py
+src/webpent/api/auth.py
+src/webpent/api/rate_limit.py
+src/webpent/api/scan_registry.py
+src/webpent/attack_graph/__init__.py
+src/webpent/attack_graph/__pycache__/__init__.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/builder.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/path_ranker.cpython-312.pyc
+src/webpent/attack_graph/__pycache__/reasoner.cpython-312.pyc
+src/webpent/attack_graph/builder.py
+src/webpent/attack_graph/path_ranker.py
+src/webpent/attack_graph/reasoner.py
+src/webpent/cli/__init__.py
+src/webpent/cli/__pycache__/__init__.cpython-312.pyc
+src/webpent/cli/__pycache__/git_source.cpython-312.pyc
+src/webpent/cli/__pycache__/ingest.cpython-312.pyc
+src/webpent/cli/__pycache__/loaders.cpython-312.pyc
+src/webpent/cli/__pycache__/manifest.cpython-312.pyc
+src/webpent/cli/git_source.py
+src/webpent/cli/ingest.py
+src/webpent/cli/loaders.py
+src/webpent/cli/manifest.py
+src/webpent/graph/__init__.py
+src/webpent/graph/__pycache__/__init__.cpython-312.pyc
+src/webpent/graph/__pycache__/builder.cpython-312.pyc
+src/webpent/graph/__pycache__/checkpoints.cpython-312.pyc
+src/webpent/graph/builder.py
+src/webpent/graph/checkpoints.py
+src/webpent/knowledge/__pycache__/entity_graph.cpython-312.pyc
+src/webpent/knowledge/__pycache__/target_model.cpython-312.pyc
+src/webpent/knowledge/entity_graph.py
+src/webpent/knowledge/target_model.py
+src/webpent/models/__pycache__/attack_graph.cpython-312.pyc
+src/webpent/models/__pycache__/surface_graph.cpython-312.pyc
+src/webpent/models/attack_graph.py
+src/webpent/models/surface_graph.py
+src/webpent/reporter/__init__.py
+src/webpent/reporter/__pycache__/__init__.cpython-312.pyc
+src/webpent/reporter/__pycache__/export.cpython-312.pyc
+src/webpent/reporter/export.py
+src/webpent/shared/__pycache__/action_authority.cpython-312.pyc
+src/webpent/shared/__pycache__/application_intent_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/attack_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/engagement_factory.cpython-312.pyc
+src/webpent/shared/__pycache__/engagement_scope.cpython-312.pyc
+src/webpent/shared/__pycache__/offline_validator_fixtures.cpython-312.pyc
+src/webpent/shared/__pycache__/package_execution_intake.cpython-312.pyc
+src/webpent/shared/__pycache__/surface_evidence_graph.cpython-312.pyc
+src/webpent/shared/__pycache__/validator_plugins.cpython-312.pyc
+src/webpent/shared/action_authority.py
+src/webpent/shared/application_intent_graph.py
+src/webpent/shared/attack_graph.py
+src/webpent/shared/engagement_factory.py
+src/webpent/shared/engagement_scope.py
+src/webpent/shared/offline_validator_fixtures.py
+src/webpent/shared/package_execution_intake.py
+src/webpent/shared/surface_evidence_graph.py
+src/webpent/shared/validator_plugins.py
+src/webpent/validators/__init__.py
+src/webpent/validators/__pycache__/__init__.cpython-312.pyc
+src/webpent/validators/__pycache__/causal_validator.cpython-312.pyc
+src/webpent/validators/__pycache__/proof_validator.cpython-312.pyc
+src/webpent/validators/__pycache__/replay_validator.cpython-312.pyc
+src/webpent/validators/causal_validator.py
+src/webpent/validators/proof_validator.py
+src/webpent/validators/replay_validator.py
+src/webpent/workers/__init__.py
+src/webpent/workers/__pycache__/__init__.cpython-312.pyc
+src/webpent/workers/__pycache__/observability.cpython-312.pyc
+src/webpent/workers/__pycache__/pentest_worker.cpython-312.pyc
+src/webpent/workers/observability.py
+src/webpent/workers/pentest_worker.py
+## release/security artifacts
+./.dockerignore
+./baseline/phase0_bandit.exit
+./baseline/phase0_bandit.txt
+./baseline/phase0_pip_audit.exit
+./baseline/phase0_pip_audit.txt
+./docker-compose.dev.yml
+./docker-compose.test.yml
+./docker-compose.yml
+./docs/bandit_release.json
+./docs/bandit_triage_vip.md
+./docs/full_project_checkpoint_wiring.txt
+./docs/integration/docker_celery_resume_report.md
+./docs/pasted3_release_manifest.log
+./docs/pip_audit_release.json
+./docs/release_manifest.json
+./docs/sbom.cdx.json
+./docs/vip_pip_audit_20260820.json
+./scripts/__pycache__/build_release_manifest.cpython-312.pyc
+./scripts/__pycache__/summarize_pip_audit.cpython-312.pyc
+./scripts/build_release_manifest.py
+./scripts/summarize_pip_audit.py
+./tests/__pycache__/test_application_intent_smart_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_application_intent_smart_wiring.cpython-312.pyc
+./tests/__pycache__/test_research_nodes_runtime_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_research_nodes_runtime_wiring.cpython-312.pyc
+./tests/__pycache__/test_v14_entrypoint_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_v14_entrypoint_wiring.cpython-312.pyc
+./tests/__pycache__/test_v20_attack_graph_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_v20_attack_graph_wiring.cpython-312.pyc
+./tests/__pycache__/test_v57_readability_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_v57_readability_wiring.cpython-312.pyc
+./tests/__pycache__/test_v90_llm_cache_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_v90_llm_cache_wiring.cpython-312.pyc
+./tests/__pycache__/test_v9_round2_wiring_fixes.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_v9_round2_wiring_fixes.cpython-312.pyc
+./tests/__pycache__/test_verify_all_docker_contract.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_verify_all_docker_contract.cpython-312.pyc
+./tests/__pycache__/test_workflow_surface_wiring.cpython-312-pytest-9.1.1.pyc
+./tests/__pycache__/test_workflow_surface_wiring.cpython-312.pyc
+./tests/test_application_intent_smart_wiring.py
+./tests/test_research_nodes_runtime_wiring.py
+./tests/test_v14_entrypoint_wiring.py
+./tests/test_v20_attack_graph_wiring.py
+./tests/test_v57_readability_wiring.py
+./tests/test_v90_llm_cache_wiring.py
+./tests/test_v9_round2_wiring_fixes.py
+./tests/test_verify_all_docker_contract.py
+./tests/test_workflow_surface_wiring.py
+## test counts by areas
+tests/__pycache__/test_action_ledger.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_action_ledger.cpython-312.pyc
+tests/__pycache__/test_application_intent_smart_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_application_intent_smart_wiring.cpython-312.pyc
+tests/__pycache__/test_autonomy_contracts.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_autonomy_contracts.cpython-312.pyc
+tests/__pycache__/test_checkpoint_redaction.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_checkpoint_redaction.cpython-312.pyc
+tests/__pycache__/test_exception_redaction.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_exception_redaction.cpython-312.pyc
+tests/__pycache__/test_llm_provider_compatibility.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_llm_provider_compatibility.cpython-312.pyc
+tests/__pycache__/test_p0_p1_active_validators.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_p0_p1_active_validators.cpython-312.pyc
+tests/__pycache__/test_phase5_target_understanding.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_phase5_target_understanding.cpython-312.pyc
+tests/__pycache__/test_proof_bundle.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_proof_bundle.cpython-312.pyc
+tests/__pycache__/test_proof_oracles.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_proof_oracles.cpython-312.pyc
+tests/__pycache__/test_release_artifact_audit.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_release_artifact_audit.cpython-312.pyc
+tests/__pycache__/test_report_hash_integrity.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_report_hash_integrity.cpython-312.pyc
+tests/__pycache__/test_research_nodes_runtime_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_research_nodes_runtime_wiring.cpython-312.pyc
+tests/__pycache__/test_smart_action_authority.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_smart_action_authority.cpython-312.pyc
+tests/__pycache__/test_target_isolation.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_target_isolation.cpython-312.pyc
+tests/__pycache__/test_target_package_integration.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_target_package_integration.cpython-312.pyc
+tests/__pycache__/test_target_package_v2_hardening.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_target_package_v2_hardening.cpython-312.pyc
+tests/__pycache__/test_v14_entrypoint_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v14_entrypoint_wiring.cpython-312.pyc
+tests/__pycache__/test_v17_target_understanding.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v17_target_understanding.cpython-312.pyc
+tests/__pycache__/test_v20_attack_graph_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v20_attack_graph_wiring.cpython-312.pyc
+tests/__pycache__/test_v26_report_quality.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v26_report_quality.cpython-312.pyc
+tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v3_autonomous_graph_loop.cpython-312.pyc
+tests/__pycache__/test_v3_strict_proof_bundle.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v3_strict_proof_bundle.cpython-312.pyc
+tests/__pycache__/test_v57_readability_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v57_readability_wiring.cpython-312.pyc
+tests/__pycache__/test_v58_validator_idempotency.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v58_validator_idempotency.cpython-312.pyc
+tests/__pycache__/test_v62_attack_graph_target_knowledge.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v62_attack_graph_target_knowledge.cpython-312.pyc
+tests/__pycache__/test_v62_target_knowledge.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v62_target_knowledge.cpython-312.pyc
+tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v64_multi_agent_proof_validators.cpython-312.pyc
+tests/__pycache__/test_v70_release_contracts.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v70_release_contracts.cpython-312.pyc
+tests/__pycache__/test_v72_idor_validator_replay.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v72_idor_validator_replay.cpython-312.pyc
+tests/__pycache__/test_v72_jwt_differential_validator.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v72_jwt_differential_validator.cpython-312.pyc
+tests/__pycache__/test_v72_request_context_persistence_and_reporting.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v72_request_context_persistence_and_reporting.cpython-312.pyc
+tests/__pycache__/test_v72_structural_idor_proof_bundle.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v72_structural_idor_proof_bundle.cpython-312.pyc
+tests/__pycache__/test_v90_llm_cache_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v90_llm_cache_wiring.cpython-312.pyc
+tests/__pycache__/test_v92_action_executor_proof_bundle.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v92_action_executor_proof_bundle.cpython-312.pyc
+tests/__pycache__/test_v92_proof_quality_gate.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v92_proof_quality_gate.cpython-312.pyc
+tests/__pycache__/test_v92_reporter_strict_proof.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v92_reporter_strict_proof.cpython-312.pyc
+tests/__pycache__/test_v94_autonomous_controller.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v94_autonomous_controller.cpython-312.pyc
+tests/__pycache__/test_v95_report_budget_trace.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v95_report_budget_trace.cpython-312.pyc
+tests/__pycache__/test_v9_round2_wiring_fixes.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_v9_round2_wiring_fixes.cpython-312.pyc
+tests/__pycache__/test_validator_merge_back.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_validator_merge_back.cpython-312.pyc
+tests/__pycache__/test_verify_all_docker_contract.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_verify_all_docker_contract.cpython-312.pyc
+tests/__pycache__/test_vip_action_authority_contract.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_action_authority_contract.cpython-312.pyc
+tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_jwt_validator_revalidation.cpython-312.pyc
+tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_offline_validator_fixtures.cpython-312.pyc
+tests/__pycache__/test_vip_proof_bundle_contract.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_proof_bundle_contract.cpython-312.pyc
+tests/__pycache__/test_vip_proof_bundle_store.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_proof_bundle_store.cpython-312.pyc
+tests/__pycache__/test_vip_proof_engine.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_proof_engine.cpython-312.pyc
+tests/__pycache__/test_vip_validator_plugins.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_vip_validator_plugins.cpython-312.pyc
+tests/__pycache__/test_workflow_surface_wiring.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_workflow_surface_wiring.cpython-312.pyc
+tests/fixtures/v95_benchmark_report.json
+tests/test_action_ledger.py
+tests/test_application_intent_smart_wiring.py
+tests/test_autonomy_contracts.py
+tests/test_checkpoint_redaction.py
+tests/test_exception_redaction.py
+tests/test_llm_provider_compatibility.py
+tests/test_p0_p1_active_validators.py
+tests/test_phase5_target_understanding.py
+tests/test_proof_bundle.py
+tests/test_proof_oracles.py
+tests/test_release_artifact_audit.py
+tests/test_report_hash_integrity.py
+tests/test_research_nodes_runtime_wiring.py
+tests/test_smart_action_authority.py
+tests/test_target_isolation.py
+tests/test_target_package_integration.py
+tests/test_target_package_v2_hardening.py
+tests/test_v14_entrypoint_wiring.py
+tests/test_v17_target_understanding.py
+tests/test_v20_attack_graph_wiring.py
+tests/test_v26_report_quality.py
+tests/test_v3_autonomous_graph_loop.py
+tests/test_v3_strict_proof_bundle.py
+tests/test_v57_readability_wiring.py
+tests/test_v58_validator_idempotency.py
+tests/test_v62_attack_graph_target_knowledge.py
+tests/test_v62_target_knowledge.py
+tests/test_v64_multi_agent_proof_validators.py
+tests/test_v70_release_contracts.py
+tests/test_v72_idor_validator_replay.py
+tests/test_v72_jwt_differential_validator.py
+tests/test_v72_request_context_persistence_and_reporting.py
+tests/test_v72_structural_idor_proof_bundle.py
+tests/test_v90_llm_cache_wiring.py
+tests/test_v92_action_executor_proof_bundle.py
+tests/test_v92_proof_quality_gate.py
+tests/test_v92_reporter_strict_proof.py
+tests/test_v94_autonomous_controller.py
+tests/test_v95_report_budget_trace.py
+tests/test_v9_round2_wiring_fixes.py
+tests/test_validator_merge_back.py
+tests/test_verify_all_docker_contract.py
+tests/test_vip_action_authority_contract.py
+tests/test_vip_jwt_validator_revalidation.py
+tests/test_vip_offline_validator_fixtures.py
+tests/test_vip_proof_bundle_contract.py
+tests/test_vip_proof_bundle_store.py
+tests/test_vip_proof_engine.py
+tests/test_vip_validator_plugins.py
+tests/test_workflow_surface_wiring.py

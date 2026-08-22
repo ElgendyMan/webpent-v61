@@ -643,7 +643,10 @@ def test_bbscout_build_ingest_engagement_dry_run_e2e(tmp_path):
     package_path.write_text(json.dumps(package), encoding="utf-8")
 
     ingestor = TargetPackageIngestor()
-    context = ingestor.ingest(package_path)
+    context = ingestor.ingest(
+        package_path,
+        trusted_public_keys={"fixture-runtime-key": private_key.public_key()},
+    )
     ingestor.authorize_url(context, "http://example.test:80/app")
 
     factory = EngagementFactory(
