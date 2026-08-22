@@ -1,0 +1,11 @@
+=== bbscout ruff ===
+[1;32mAll checks passed![0m
+=== bbscout pytest ===
+....................................                                     [100%]
+36 passed in 0.13s
+=== provider registry smoke ===
+hackerone 3
+bugcrowd 3
+intigriti 3
+yeswehack 3
+=== webpent diff check ===

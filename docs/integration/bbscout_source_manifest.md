@@ -6,7 +6,7 @@ This manifest describes the external bbscout source tree included in the combine
 |---|---|
 | Source tree | `webpent_bbscout_integration/bbscout` |
 | Tree file count | 39 |
-| Deterministic tree SHA-256 | `93422c48afc8443fa6d32b765c2eb3f38b0b317fefbd462fd84cedb7e4f15c3f` |
+| Deterministic tree SHA-256 | `cabb9e0591cb48a42d9113975c6852eee176a5b4aa84ed41d2e08f2f69d6aa17` |
 | Network behavior | Provider fixtures are offline-only; no live provider smoke was run |
 | Secret policy | No private keys, provider credentials, cookies, `.env`, database, cache, or runtime state included |
 | Verification | `ruff check src tests scripts`; `PYTHONPATH=src pytest -q`; offline provider registry smoke |

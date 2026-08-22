@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1410 passed, 244 warnings in 52.53s"
+        "1410 passed, 244 warnings in 55.72s"
       ]
     },
     {
@@ -267,11 +267,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 783, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/release_manifest.json\"}"
+        "{\"file_count\": 779, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T21:10:51.189309+00:00",
+  "generated_at": "2026-08-22T21:32:36.247671+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

@@ -1,0 +1,34 @@
+{
+  "schema_version": "plan4-loop-qualification-status-v1",
+  "status": "NOT_QUALIFIED",
+  "live_provider_smoke": "NOT_RUN",
+  "target_contacted": false,
+  "waptlab_runtime": "NOT_AVAILABLE_OR_AUTHORIZED",
+  "authorization": {
+    "target_owner_authorization": false,
+    "provider_authorization": false,
+    "signed_target_package": false,
+    "credentials_or_cookies": false
+  },
+  "required_qualification": {
+    "independent_runs": 3,
+    "confirmed_findings_per_run_minimum": 15,
+    "precision_minimum_percent": 90,
+    "reproducibility_minimum_percent": 95,
+    "proof_coverage_percent": 100,
+    "scope_violations": 0,
+    "duplicates": 0,
+    "false_clean": 0
+  },
+  "observed_offline_mock": {
+    "runs": 3,
+    "tool_confirmed_counts": [5, 5, 5],
+    "final_confirmed_counts": [0, 0, 0],
+    "precision": "not_measured",
+    "reproducibility": "mock_only",
+    "proof_coverage": "not_qualification_evidence"
+  },
+  "decision": "Do not claim VIP qualification. Keep live provider and target I/O fail-closed until separately authorized controlled lab inputs are supplied.",
+  "generated_by": "offline execution loop",
+  "generated_at": "2026-08-23"
+}

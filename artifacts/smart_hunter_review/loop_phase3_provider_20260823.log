@@ -1,0 +1,10 @@
+=== phase3 provider gate ===
+[1mtests/test_core.py[0m[36m:[0m1[36m:[0m1[36m:[0m [1m[31mI001[0m [[36m*[0m] Import block is un-sorted or un-formatted
+Found 1 error.
+[[36m*[0m] 1 fixable with the `--fix` option.
+....................................                                     [100%]
+36 passed in 0.11s
+hackerone 3
+bugcrowd 3
+intigriti 3
+yeswehack 3

@@ -12,9 +12,9 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 | البوابة | النتيجة |
 |---|---|
-| bbscout full pytest | 28 passed |
+| bbscout full pytest | 36 passed |
 | WebPent full pytest | 1410 passed، 244 warnings |
-| Package/entrypoint/hardening focused suite | 41 passed، 20 warnings |
+| Package/entrypoint/hardening/proof focused suite | 236 passed، 54 warnings |
 | G-02 inventory/runtime/precommit gate | Passed؛ 280 primary records |
 | Ruff | Passed |
 | compileall | Passed |
@@ -22,7 +22,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
 | Bandit على الملفات المعدلة | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
 
-هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا.
+هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Adapters الـproviders الأربعة في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
 
 ## ما هو Target Package v2؟
 

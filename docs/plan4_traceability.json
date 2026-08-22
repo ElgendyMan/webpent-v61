@@ -1,5 +1,5 @@
 {
-  "git_head": "8367ca2bc82c6ed22314c0f74a98a652d4c51bb1",
+  "git_head": "6196503ef402c592fa28e06b62447b7c5d0196be",
   "global_safety": {
     "automatic_disclosure_or_submission": "DISABLED",
     "live_provider_io": "NOT RUN",
@@ -23,10 +23,10 @@
           "sha256": "38fc69c473c556fa465a6aadf8a8578ca0d26efc376f145057eac656206e3e12"
         },
         {
-          "bytes": 89835,
+          "bytes": 90130,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "b7799b337a66ab1c92e7b904893c82d474354bd7954502c7490af67be70e6e43"
+          "sha256": "5ef4f6a39f5c38fe67dcd8d66406287c96ea9440537c4a8d2e6c133734673e35"
         }
       ],
       "missing_evidence": [],
@@ -97,10 +97,10 @@
           "sha256": "1fdcbb395b30f0f6836826d2fa38dd0d8d4e25e2f8066244762ea2d03812ca54"
         },
         {
-          "bytes": 7052,
+          "bytes": 7565,
           "path": "../../phase6_bbscout_extract/webpent_bbscout_integration/bbscout/src/bbscout/providers/fixture.py",
           "present": true,
-          "sha256": "df82279e517a4be367d25bd96ccb17208a4634847d4eff0597a10f6287311596"
+          "sha256": "c534ea9b361283d110eb4ec773d41dacdb60b1cf6fe6d08807d15de5d12af832"
         }
       ],
       "status": "PASS",
@@ -647,7 +647,7 @@
           "bytes": 2347,
           "path": "docs/waptlab_qualification_report.json",
           "present": true,
-          "sha256": "b8ee1db2ae1a55265f034e44b3a5fc7576315ad2d032aa8b979cd0e4f776e97b"
+          "sha256": "3a1571635a3cf60c22c0f3461dab26bcd55f1459bb73d03d54bcf6655b9bc3cb"
         }
       ],
       "missing_evidence": [],
@@ -685,13 +685,13 @@
           "bytes": 9588,
           "path": "docs/vip_quality_gate.json",
           "present": true,
-          "sha256": "33e6e519276c431baabe4d15be96768c0082c1fb6a53584bdd14b94606b240b4"
+          "sha256": "7812afb57a5224fd04d84df2e524e304b09329f42cc788ef26760facba4cd66d"
         },
         {
-          "bytes": 89835,
+          "bytes": 90130,
           "path": "docs/release_manifest.json",
           "present": true,
-          "sha256": "b7799b337a66ab1c92e7b904893c82d474354bd7954502c7490af67be70e6e43"
+          "sha256": "5ef4f6a39f5c38fe67dcd8d66406287c96ea9440537c4a8d2e6c133734673e35"
         }
       ],
       "missing_evidence": [],
