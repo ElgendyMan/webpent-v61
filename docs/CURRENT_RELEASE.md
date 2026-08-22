@@ -8,18 +8,19 @@ This document is the source of truth for the current WebPent release candidate. 
 |---|---|
 | Package version | `0.3.0` |
 | Tested Python runtime | `3.12.3` |
-| Declared Python compatibility | `>=3.10` |
+| Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `f51c8bcd61f1923473fd6f5660049425121bf680` (`harden offline autonomy and llm budget controls`) |
-| Manifest generation revision | `eab14e0641198c0acb62af15df3dce9a2a06d547` (the manifest records this pre-metadata commit) |
+| Implementation source revision | `267dcf9cfba39439ea1c3878666630dc9e8e34ec` (`Execute roadmap hardening and offline release gates`) |
+| Manifest generation revision | `267dcf9cfba39439ea1c3878666630dc9e8e34ec` (regenerated from the source commit before the metadata-only commit) |
+| Final metadata commit | recorded after manifest regeneration; it must not be confused with the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
 ## What is validated offline
 
 The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
 
-The lock file records resolved dependency versions for reproducibility. The project intentionally keeps the declared Python range at `>=3.10`; the release evidence identifies Python `3.12.3` as the runtime used for this validation rather than silently changing the project's compatibility policy.
+The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
 
 ## LLM cost and fallback boundary
 
@@ -33,7 +34,7 @@ No provider or target live I/O is part of this release validation. WAPTLab quali
 
 ## Release identity procedure
 
-After the final source and documentation commit, the release process must record the exact commit SHA in the generated release manifest and in this document. Any subsequent documentation-only commit must either update the recorded parent/source revision explicitly or regenerate the manifest; self-referential hashes must not be claimed.
+The release process records the implementation source revision in this document and regenerates the manifest from that source tree before the final metadata-only commit. The manifest therefore identifies the parent/source revision, while the final metadata commit is recorded separately. Self-referential hashes must not be claimed.
 
 ## Operator safety
 

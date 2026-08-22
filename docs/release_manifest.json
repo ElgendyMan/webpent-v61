@@ -8,7 +8,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "8d33a2a7d87be494dc0d1fd55e46003e544fc4cea100ae680b155a189e80c119"
   },
-  "file_count": 791,
+  "file_count": 792,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "065285ab30aa9abae86a207762f5725bfc661ee832332a41bc8cab01957e7d24",
@@ -55,7 +55,7 @@
     "artifacts/smart_hunter_review/negative_evidence_ledger.json": "16568dca9086f8f69d34e8825a884ef922383d13f0b0f9046918ad2086963137",
     "artifacts/smart_hunter_review/offline_three_run_qualification.json": "50b30691e2759a225d6ff5c03b957701998cb397bf42f2a06a1d64d29dec4207",
     "artifacts/smart_hunter_review/phase1_metadata_inventory_20260823.txt": "5321fb7371321247fa024d2e2d04b30d4c80ec54c630655d22991c3194d87e5f",
-    "artifacts/smart_hunter_review/phase1_version_inventory_20260823.txt": "0ee4031d8b9b34b32e7447ac976897da22ea58d33c4599e8ddf4de14cce0fd26",
+    "artifacts/smart_hunter_review/phase1_version_inventory_20260823.txt": "a08d52c0d5ffa5366504dcf643302cffa82e512f154d39fb513f93c774424653",
     "artifacts/smart_hunter_review/phase2_autonomy_inventory_20260823.txt": "8fe0e81c89b8065fc15fe19ac83c5dbef622de87e0ff00c627cf66b631e53b65",
     "artifacts/smart_hunter_review/plan_compliance_review_20260822.md": "ead453ed49eda040e207fe6ddca8077190a84fca6067623db7538bd8610bcc57",
     "artifacts/smart_hunter_review/positive_evidence_ledger.json": "8dfa3bfeb473048c66b1a6f44dad157ebfb15202ab3a14c9a095c0668ba6e2c1",
@@ -67,6 +67,7 @@
     "artifacts/smart_hunter_review/three_run_waptlab_qualification_report.md": "b202a8527cd71f5286a943fd8289f9fa996db1a0f8dfe999cdeabb47afe71498",
     "artifacts/smart_hunter_review/webpent_cov_final_20260823.json": "2565939c553c9295bdd7c7ec8017281d3d1c74ecd62dde29be6f87f8e96c52b5",
     "artifacts/smart_hunter_review/webpent_cov_loop_current.json": "e89df4e35f22a10f777ad222937ca504b3ef50d05ac7847630c15c56bc36a776",
+    "artifacts/smart_hunter_review/webpent_cov_release_20260823.json": "e38fdf85685f0ad4c03201bc334158b67a5973b292f0d9dceab27f51a22d877a",
     "audit-key-sections.txt": "5c69f1de4bf952a506b49c4a1ceab0d063361de3d0be980179c6f372aa8565c2",
     "audit/autonomous_controller_gap_analysis.md": "4ea7946b9f2b8e7695e76bb4b6f299a940cd14d96117328f8a28b64b4679effb",
     "audit/autonomous_controller_symbol_map.txt": "f4895ae7f35d5b6e7f78393fff713431a9719605cafad75f8f4abade702d505c",
@@ -111,7 +112,7 @@
     "docker-compose.dev.yml": "55eda98b447ac77237e637679ca7fcaee66d5c8b25d7d08632bd6e8e49a4517f",
     "docker-compose.test.yml": "a5067f5fe67ec57e981adfa3e4eb930a0976a9bbd3bf3637b6839b7cfb70986f",
     "docker-compose.yml": "ae1f1b6f230d2a80cc91f6f8a253bc48489b346923fc4478811f7c0fdb5e9168",
-    "docs/CURRENT_RELEASE.md": "998dfd383445c675b909fefe0a3cceb33c3ca91d80e3992fc5b7f6b46559bbd8",
+    "docs/CURRENT_RELEASE.md": "ae1c5f1b24f17d720df3561cfa0d30129267d6f50607942a4c43f86d05a5cb6a",
     "docs/DIRECT_IO_INVENTORY.md": "dceaee1ac1c0693f7e405f5b3ab166b9a0e52f5fb5cfaf19bc0c4cf9f1efc656",
     "docs/PLAN4_TRACEABILITY.md": "4126c87a30a412403e1baa57543c61f8eef08ea420b0ed52468f3d1ce55d925d",
     "docs/V3_DIRECT_IO_INVENTORY_20260821.md": "f75817e657987f9561e116596e3dba1115b28fb1fd72fd233f7e092c0c44bf1e",
@@ -802,8 +803,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-22T22:40:21.949020+00:00",
-  "git_commit": "8113a4d178d4dbd481db9cccc545fe2fe41eaca7",
+  "generated_at": "2026-08-22T22:44:02.012243+00:00",
+  "git_commit": "267dcf9cfba39439ea1c3878666630dc9e8e34ec",
   "project": "WebPent",
   "qualification": {
     "campaign_count": 20,
