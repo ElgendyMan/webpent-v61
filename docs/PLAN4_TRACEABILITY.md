@@ -2,7 +2,7 @@
 
 > This report is generated from repository paths and saved evidence. Missing evidence is never promoted to PASS.
 
-**WebPent Git HEAD:** `2d4a21e7f2ec2e4553577fbf7a3f377f55fe2a95`
+**WebPent Git HEAD:** `8367ca2bc82c6ed22314c0f74a98a652d4c51bb1`
 **Python:** `3.12.3`
 
 | Phase | Status | Code files | Test files | Evidence files | Missing |
