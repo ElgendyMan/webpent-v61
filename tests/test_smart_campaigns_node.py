@@ -912,3 +912,93 @@ def test_controller_entry_is_reached_for_smart_profile_without_caller_flag(
         "max_replan_rounds": 3,
     }
     assert route_after_smart_campaigns_execution(legacy) != NODE_AUTONOMOUS_CONTROLLER
+
+
+
+def test_campaign_manager_stops_weak_paths_and_deepens_causal_paths() -> None:
+    from webpent.shared.campaign_manager import CampaignManager
+
+    tasks = [
+        {
+            "task_id": "task:weak",
+            "campaign_key": "weak_path",
+            "vulnerability_class": "idor",
+            "budget": 2.0,
+        },
+        {
+            "task_id": "task:strong",
+            "campaign_key": "strong_path",
+            "vulnerability_class": "authorization",
+            "budget": 2.0,
+        },
+    ]
+    state = {
+        "engagement_id": "engagement:test",
+        "action_budget": {"remaining_cost": 4.0},
+        "campaign_task_outcomes": [
+            {
+                "campaign_key": "weak_path",
+                "status": "candidate",
+                "attempt_id": "attempt:weak",
+                "evidence_complete": False,
+            },
+            {
+                "campaign_key": "weak_path",
+                "status": "inconclusive",
+                "attempt_id": "attempt:weak-2",
+                "evidence_complete": False,
+            },
+            {
+                "campaign_key": "strong_path",
+                "status": "candidate",
+                "attempt_id": "attempt:strong",
+                "causal_signal": True,
+                "negative_control": {"passed": True},
+                "proof_bundle": {"sealed": True, "replayable": True},
+                "evidence_complete": True,
+            },
+        ],
+    }
+
+    result = CampaignManager().plan(tasks, state)
+
+    assert result["status"] == "planned"
+    assert result["decisions"]["weak_path"]["action"] == "stop"
+    assert result["decisions"]["weak_path"]["reason"] == "diminishing_returns"
+    assert result["decisions"]["strong_path"]["action"] == "deepen"
+    assert result["decisions"]["strong_path"]["causal_signal"] is True
+    assert result["decisions"]["strong_path"]["budget_multiplier"] > 1.0
+    assert result["decisions"]["strong_path"]["proof_confirmed"] is False
+    assert result["decisions"]["weak_path"]["proof_confirmed"] is False
+
+
+def test_campaign_manager_fails_closed_without_engagement_scope() -> None:
+    from webpent.shared.campaign_manager import CampaignManager
+
+    result = CampaignManager().plan(
+        [{"task_id": "task:1", "campaign_key": "path", "budget": 1.0}],
+        {"campaign_task_outcomes": []},
+    )
+
+    assert result["status"] == "blocked"
+    assert result["reason"] == "missing_engagement_scope"
+    assert result["decisions"] == {}
+
+
+def test_campaign_manager_does_not_treat_candidate_as_causal_signal() -> None:
+    from webpent.shared.campaign_manager import CampaignManager
+
+    result = CampaignManager().plan(
+        [{"task_id": "task:1", "campaign_key": "path", "budget": 1.0}],
+        {
+            "engagement_id": "engagement:test",
+            "campaign_task_outcomes": [
+                {"campaign_key": "path", "status": "candidate"}
+            ],
+        },
+    )
+
+    decision = result["decisions"]["path"]
+    assert decision["causal_signal"] is False
+    assert decision["proof_confirmed"] is False
+    assert decision["action"] == "continue"

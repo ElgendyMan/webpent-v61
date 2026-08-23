@@ -32,6 +32,7 @@ from webpent.shared.campaign_executor import (
     NextBestActionEngine,
     resolve_preconditions,
 )
+from webpent.shared.campaign_manager import CampaignManager
 from webpent.shared.campaign_planner import build_campaign_plan
 from webpent.shared.coverage_ledger import project_coverage_ledger
 from webpent.shared.engagement_scope import (
@@ -1044,6 +1045,8 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         task_state,
         max_tasks=_smart_task_cap(state, settings),
     )
+    campaign_allocation = CampaignManager().plan(tasks, state)
+    allocation_decisions = campaign_allocation.get("decisions", {})
     runtime_for_planning = state.get("runtime_context")
     if not isinstance(runtime_for_planning, RuntimeContext) or not runtime_for_planning.valid:
         runtime_for_planning = None
@@ -1150,6 +1153,30 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     planned: list[dict[str, Any]] = []
     decision_trace: list[dict[str, Any]] = []
     for task in tasks:
+        path_key = task.vulnerability_class.strip().lower()[:160]
+        allocation = allocation_decisions.get(path_key, {})
+        if isinstance(allocation, Mapping) and allocation.get("action") == "stop":
+            outcomes.append(
+                {
+                    "task_id": task.task_id,
+                    "vulnerability_class": task.vulnerability_class,
+                    "status": CampaignTaskStatus.STOPPED.value,
+                    "reason": str(allocation.get("reason") or "campaign_manager_stop")[:160],
+                    "idempotency_key": task.normalized_idempotency_key(),
+                    "source": "campaign_manager",
+                }
+            )
+            decision_trace.append(
+                {
+                    "decision_id": f"campaign:{task.task_id}",
+                    "task_id": task.task_id,
+                    "vulnerability_class": task.vulnerability_class,
+                    "status": "stopped",
+                    "campaign_allocation": dict(allocation),
+                    "authority": "campaign_executor_action_authority",
+                }
+            )
+            continue
         action = engine.score(
             task,
             observed_evidence=task.source_evidence_ids,
@@ -1161,6 +1188,8 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             ),
         )
         action_record = action.as_dict()
+        if isinstance(allocation, Mapping) and allocation:
+            action_record["campaign_allocation"] = dict(allocation)
         decision_trace.append(
             {
                 "decision_id": f"nba:{task.task_id}",
@@ -1173,6 +1202,8 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 "coverage_attempts": coverage_attempts.get(
                     task.vulnerability_class.strip().lower()[:120], 0
                 ),
+                "campaign_allocation": dict(allocation) if isinstance(allocation, Mapping) else {},
+                "authority": "campaign_executor_action_authority",
             }
         )
         if action.score >= 0:
@@ -1213,6 +1244,7 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
         "campaign_task_outcomes": outcomes,
         **research_projections,
         "decision_trace": decision_trace,
+        "campaign_allocation": campaign_allocation,
         "knowledge_gaps": [gap.as_dict() for gap in knowledge_gaps],
         "research_session": research_session.as_dict(),
         "positive_evidence_ledger": list(research_session.positive_evidence_ledger),
@@ -1230,6 +1262,7 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "max_tasks": len(planned),
             "execution_required": True,
             "proof_required": True,
+            "campaign_allocation": campaign_allocation,
         },
         "current_phase": "smart_campaign_planning",
     }
