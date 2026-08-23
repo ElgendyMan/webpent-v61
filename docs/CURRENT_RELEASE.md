@@ -11,9 +11,9 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `85b4202` (`integrate reviewed bbscout bridge and guarded runtime`; source baseline `8b47b04`) |
+| Implementation source revision | `f6a4435` (`fix production bbscout parity and release verifier`; source baseline `85b4202`) |
 | Benchmark contract revision | `e4f8c74` (`add proof-gated VIP benchmark efficiency metrics`) |
-| Manifest generation revision | generated from the stable release tree containing implementation source revision `85b4202`; the manifest records the final metadata commit that created it |
+| Manifest generation revision | generated from the stable release tree containing implementation source revision `f6a4435`; the manifest records the final metadata commit that created it |
 | Final metadata commit | the Git commit that adds the verified `docs/release_manifest.json`; it is recorded in the delivery report and is distinct from the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
@@ -21,7 +21,7 @@ This document is the source of truth for the current WebPent release candidate. 
 
 The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. The checkout-only environment passed **1,589 tests**, skipped 6 optional external-source tests, and emitted 56 warnings. With the explicitly configured external reviewed bbscout source, the complete regression passed **1,613 tests** with 56 warnings. The reviewed bbscout source is available only as an explicitly configured external tree; it is not vendored into this checkout. Production Compose passes the same safe bbscout policy/reference variables and read-only package mount to API and worker, while the release verifier rejects SQLite sidecars and logs. The hard checks pass, while live Docker/worker and target qualification remain blocked; no optional skip is treated as a live qualification pass. The offline proof/replay simulation contacts no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
 
-The final regression after the bbscout bridge, external-source gate, production Compose parity, and release-verifier hardening completed with **1,613 passed** and 56 warnings when the external reviewed bbscout source was explicitly configured. The checkout-only run completed with 1,589 passed and 6 skipped optional external-source tests. These are offline/source regression results; it does not prove live target contact, distributed worker readiness, or qualification. The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
+The final regression after the bbscout bridge, external-source gate, production Compose parity, and release-verifier hardening completed with **1,613 passed** and 56 warnings when the external reviewed bbscout source was explicitly configured. The checkout-only run completed with 1,589 passed and 6 skipped optional external-source tests. These are offline/source regression results; they do not prove live target contact, distributed worker readiness, or qualification. The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
 
 ## LLM cost and fallback boundary
 
@@ -35,7 +35,7 @@ No provider or target live I/O was performed in the current bbscout/WebPent inte
 
 ## Release identity procedure
 
-The release process records the implementation source revision in this document and regenerates the manifest from that source tree in a final metadata-only commit. The manifest identifies the source tree and its parent revision; the delivery report records the metadata commit separately. Self-referential hashes are not claimed.
+The release process records the implementation source revision (`f6a4435`) in this document and regenerates the manifest from that source tree in a final metadata-only commit. The manifest identifies the source tree and its parent revision; the delivery report records the metadata commit separately. Self-referential hashes are not claimed.
 
 ## Operator safety
 

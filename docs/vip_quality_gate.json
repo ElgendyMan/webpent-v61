@@ -51,7 +51,7 @@
         "    return self.model_fields  # pydantic 2.x",
         "",
         "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1611 passed, 56 warnings in 74.48s (0:01:14)"
+        "1613 passed, 56 warnings in 178.40s (0:02:58)"
       ]
     },
     {

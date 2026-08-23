@@ -196,7 +196,7 @@ docker compose -f docker-compose.dev.yml ps
 docker compose -f docker-compose.dev.yml logs -f api worker
 ```
 
-الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. إعدادات API والworker متطابقة في bbscout، والـpackage source mounted read-only فقط. في production يتلقى كل من API والworker نفس إعدادات bbscout الآمنة ونفس package mount بصلاحية read-only، مع بقاء bbscout default-off. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
+الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. إعدادات API والworker متطابقة في bbscout، والـpackage source mounted read-only فقط، مع بقاء bbscout default-off. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
 
 ## تشغيل WebPent
 
