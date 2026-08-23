@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 884,
+  "file_count": 886,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "065285ab30aa9abae86a207762f5725bfc661ee832332a41bc8cab01957e7d24",
@@ -337,6 +337,7 @@
     "scripts/build_preflight_report.py": "d4067d930977db7c9ba21976d8b56b61345d501ed5a157a8c8e9a8e1c76d8444",
     "scripts/build_python_environment_inventory.py": "3115e56d626bec64bbafdb7f2b6a1b196b87488f50825363eacb88d070650b84",
     "scripts/build_release_manifest.py": "ef49ec63a1efb1c211f5e0fd1a2cdf64c64319f3ebb38d537014ec8b70786be5",
+    "scripts/build_source_archive.py": "e8b809097f733f9c609ba65ad4de43ea457647191c7b5841320d1fc12fd2f2da",
     "scripts/build_waptlab_coverage_ledger.py": "5c0fbdc6f5adde850f5a4544e51697ea59ee3ac04c8e2d69a8b76496f3c7a592",
     "scripts/capture_vip_baseline.py": "a42e4b5d5d32078bb0987a250d1ef9ba75c2c0e76fa0aa043cdee10d047c7b8b",
     "scripts/check_g02_precommit.py": "a4fe2788c5bcc3e8008b83a2a0fb12ba1c269eeb712d69e6b48d31ab894b56c2",
@@ -750,6 +751,7 @@
     "tests/test_skill_selector.py": "68895b6782280121d842430a66528968fba1c22cd95d78702582b65bcd7b3336",
     "tests/test_smart_action_authority.py": "ab28b9c350f265e9c3b78c54be450c962415b565d8b367882139f730a1093c16",
     "tests/test_smart_campaigns_node.py": "4f90bca18e7fd4f9c5db7db38923619c09c5aebb60e09ccaf882b9b62bddf71d",
+    "tests/test_source_archive_contract.py": "decf1f860a0343c232cbb1800550b438878861c7629dc42a5f30b0955c6806fa",
     "tests/test_structural_rate_limit_retry.py": "32778ccd32aa5abf3a1cad7eab883745ae9d73253697df642f280bd981bed28f",
     "tests/test_subprocess_lifecycle.py": "f9363a061ae879183090464512e5009f9f91a28aab648e07f6879d8d5d0fdfe4",
     "tests/test_target_backed_differential.py": "f6e79233e679c0ec6817e5ca07a515aa0d58d3a1ad9b1a4b0717c5bfe62f4dc5",
@@ -896,8 +898,8 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-23T14:59:16.311805+00:00",
-  "git_commit": "8ba5b42d28057e330f06c3099e751799143d46a5",
+  "generated_at": "2026-08-23T15:04:40.102744+00:00",
+  "git_commit": "4dae2861bb80a7419b37a237690b917a8d16bf59",
   "project": "WebPent",
   "qualification": {
     "artifact": "waptlab_live_smoke_2cb9024.json",
