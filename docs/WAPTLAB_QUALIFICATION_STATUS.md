@@ -21,6 +21,19 @@ The generated qualification artifact is `docs/waptlab_qualification_report.json`
 
 The official gate reports `hard_checks_passed: true` but `passed: false`. Its known blockers are that WAPTLab regression is contract-only and that worker critical-path/live Docker qualification remains environment-blocked. Therefore, hard offline checks must not be confused with VIP qualification.
 
+## Phase 11 offline proof/replay simulation
+
+The deterministic `run_offline_three_run_qualification.py` check completed three fixture-only runs. It observed replay agreement of `1.0`, zero unauthorized or out-of-scope attempts, and unchanged targets, but every run used `offline://controlled-proof-fixture` and `target_contacted=false`. The resulting status was `offline_pass_live_not_qualified`; the simulation is regression evidence for fail-closed proof/replay handling, not a WAPTLab finding count or VIP qualification.
+
+| Offline simulation field | Result |
+|---|---:|
+| Runs observed / required | 3 / 3 |
+| Proof/replay agreement | 100% |
+| Fixture cases | 1 |
+| Target contacted | No |
+| Live qualification proven | No |
+| Unauthorized/out-of-scope attempts | 0 / 0 |
+
 ## Required authorized qualification inputs
 
 A future qualification run requires an owner-controlled, locally reachable WAPTLab environment, written authorization that explicitly covers the target and test actions, a signed package accepted by the runtime trust map, and reproducible runtime metadata including the image digest, seed hash, and execution events. Provider credentials are not required for the offline path and must not be introduced merely to bypass this gate.

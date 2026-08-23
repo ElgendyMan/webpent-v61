@@ -2,9 +2,9 @@
 
 ## الحكم التنفيذي
 
-تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية حتى مرحلة release preparation، مع الحفاظ على الفصل الصارم بين **engineering maturity** و**VIP qualification**. الحكم الحالي يظل **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
+تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية حتى Phase 11، مع الحفاظ على الفصل الصارم بين **engineering maturity** و**VIP qualification**. الحكم الحالي يظل **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
-آخر commit مدفوع إلى `origin/master` هو `8571c67` (`refresh reproducible release manifest`). المستودع النشط نظيف بعد كل بوابات الجودة، وruntime artifacts والـcredentials والـcookies تظل خارج Git.
+آخر commit مدفوع إلى `origin/master` قبل commit التوثيق النهائي هو `5f491ca` (`exclude sqlite migration locks from release manifest`). runtime artifacts والـcredentials والـcookies تظل خارج Git، وسيُعاد توليد release manifest بعد اكتمال metadata reconciliation.
 
 ## ما تم تنفيذه
 
@@ -18,18 +18,19 @@
 | Bounded Autonomy | semantic progress يعتمد knowledge/evidence/results/causal edges فقط؛ bookkeeping لا يموّه no-progress | autonomy contracts وRabbit Hole-related suites | `233105e` |
 | Memory/RAG Boundary | curated `doc_type` retrieval داخل hypothesis analyzer بدل corpus واسع غير محدد، مع بقاء الذاكرة غير دليل مباشر | memory boundary وRAG isolation suites | `95a4718` |
 | VIP Reporting | lifecycle لا يصبح `Confirmed` من label أو confidence وحدهما؛ يلزم evidence assessment وreproduction | report quality/ProofBundle/export suites | `6d6831b` |
-| Benchmark Metrics | `confirmed` وrepeatability gated على `causal_signal` و`negative_control_complete` و`proof_bundle_sealed`؛ status غير المدعوم يظهر في `confirmed_unverified` | benchmark/qualification suites وfull regression | `7d2ab3d` |
+| Benchmark Metrics | `confirmed` وrepeatability gated على `causal_signal` و`negative_control_complete` و`proof_bundle_sealed`؛ أضيف human agreement من reviewer data صريح وcost efficiency على unique strict confirmations، مع unavailable عند zero denominator | benchmark/qualification suites وfull regression | `e4f8c74` |
+| Production Architecture | assessment موثق يفصل single-node controlled pilot عن horizontal/multi-tenant qualification، ويحافظ على PostgreSQL fail-closed | assessment review وdiff check | `347a3b9` |
+| Offline Qualification | three-run proof/replay simulation deterministic؛ target contact false؛ لا تُحسب كـlive VIP qualification | qualification harness suites وoffline simulation | working validation before final docs commit |
 
 ## بوابات الجودة
 
-تم اجتياز **full regression: `1512 passed, 56 warnings`** خلال `101.05s`. كما تم اجتياز **33 اختبار G-02**، ونجح direct-I/O inventory بعدد **283 سجلًا**، ونجحت Ruff وcompileall و`git diff --check`. واختبارات Phase 11 المركزة، التي شملت qualification harness وsecurity invariants وtarget/graph/research/autonomy/benchmark contracts، اجتازت **140 اختبارًا**.
+تم اجتياز **full regression: `1530 passed, 56 warnings`** خلال `103.97s` في بوابة Phase 9. كما تم اجتياز **33 اختبار G-02**، ونجح direct-I/O inventory بعدد **284 سجلًا** (بينها record ديناميكي legitimate من Campaign Manager)، ونجحت Ruff وcompileall و`git diff --check`. واختبارات qualification/benchmark/proof المركزة في Phase 11 اجتازت **80 اختبارًا**، كما اجتازت offline simulation ثلاث جولات fixture-only مع replay agreement `1.0` دون target contact.
 
 التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. لا توجد تغييرات على WAPTLab source.
 
 ## حدود qualification الحي
 
-لم تُعاد جولة WAPTLab في Phase 11/12 لأن آخر تغييرات هذه الدورة كانت في طبقة benchmark metrics والتوثيق/release manifest، وليست في live proof generation أو target coverage.
- إعادة تشغيل live target بلا أثر وظيفي جديد كانت ستضيف runtime noise ولا تبرر تغيير الحكم. آخر qualification smoke حي موثق من commit `1882b42` سجّل `target_reachable=true` و`live_target_executed=true` و4 candidate rows، لكن `strict_confirmed=0` و`promoted ProofBundles=0`؛ لذلك يظل verdict `NOT_QUALIFIED`.
+لم تُعاد جولة WAPTLab أو Juice Shop في Phase 11/12 لأن تغييرات هذه الدورة كانت في benchmark metrics والتوثيق، وليست في live proof generation أو target coverage. تشغيل live target بلا أثر وظيفي جديد كان سيضيف runtime noise ولا يبرر تغيير الحكم. آخر qualification smoke حي موثق من commit `1882b42` سجّل `target_reachable=true` و`live_target_executed=true` و4 candidate rows، لكن `strict_confirmed=0` و`promoted ProofBundles=0`؛ لذلك يظل verdict `NOT_QUALIFIED`.
 
 أي تأهل مستقبلي يحتاج، في تشغيل محلي مصرح ومضبوط، target-backed causal signal مستقلًا عن candidate materialization، negative control مستقلًا، sealed/replayable ProofBundle، وreplay ناجحًا عبر الجولات المطلوبة. لا يرفع benchmark أو report lifecycle أو scorecard هذه الشروط.
 

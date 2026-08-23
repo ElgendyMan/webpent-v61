@@ -293,7 +293,7 @@ python scripts/verify_release_artifacts.py \
 | Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
 | Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
-| WAPTLab وJuice Shop live qualification في Phase 11/12 | **لم تُعاد في هذه الجولة**؛ آخر WAPTLab smoke تاريخي ظل `NOT_QUALIFIED` |
+| WAPTLab وJuice Shop live qualification | **لم تُعاد في هذه الجولة**؛ offline three-run simulation لا تثبت live qualification، وآخر WAPTLab smoke تاريخي ظل `NOT_QUALIFIED` |
 | Docker/Celery distributed qualification | **غير مثبتة** |
 | Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة** |
 | Auto-submit provider reports | غير مسموح به في هذا المسار |
@@ -306,7 +306,9 @@ python scripts/verify_release_artifacts.py \
 - [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md) — مراجعة آخر ثلاثة طلبات والتحقق من عدم حذف ملفات tracked.
 - [`docs/release_manifest.json`](docs/release_manifest.json) — manifest وبصمات source-only release.
 - [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) و[`docs/v75_maturity_scorecard.json`](docs/v75_maturity_scorecard.json) — scorecard هندسي لا يساوي VIP qualification.
-- [`docs/PHASE10_QUALIFICATION_RESULT.md`](docs/PHASE10_QUALIFICATION_RESULT.md) — نتيجة WAPTLab التاريخية وحدودها.
+- [`benchmarks/vip_v1/manifest.json`](benchmarks/vip_v1/manifest.json) — metric contract، proof gates، human-review input، وcost denominator.
+- [`docs/WAPTLAB_QUALIFICATION_STATUS.md`](docs/WAPTLAB_QUALIFICATION_STATUS.md) — الحالة الحالية ونتيجة offline proof/replay simulation وحدود live qualification.
+- [`docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md`](docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md) — assessment صادق لحدود single-node والإنتاج الموزع.
 - [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
 - [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — final audit وحدود الادعاء.
 

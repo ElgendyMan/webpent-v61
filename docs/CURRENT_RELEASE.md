@@ -11,14 +11,15 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `267dcf9cfba39439ea1c3878666630dc9e8e34ec` (`Execute roadmap hardening and offline release gates`) |
-| Manifest generation revision | `267dcf9cfba39439ea1c3878666630dc9e8e34ec` (regenerated from the source commit before the metadata-only commit) |
-| Final metadata commit | recorded after manifest regeneration; it must not be confused with the implementation source revision |
+| Implementation source revision | `5f491ca` (`exclude sqlite migration locks from release manifest`) |
+| Benchmark contract revision | `e4f8c74` (`add proof-gated VIP benchmark efficiency metrics`) |
+| Manifest generation revision | generated from `5f491ca`, the clean source/documentation parent before the final metadata commit |
+| Final metadata commit | recorded in git history after manifest regeneration; it must not be confused with the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
 ## What is validated offline
 
-The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
+The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. Phase 11 also passed the offline three-run proof/replay simulation, but that simulation contacted no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
 
 The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
 
@@ -30,7 +31,7 @@ The router continues to use deterministic fallback behavior when LLM use is disa
 
 ## Qualification boundary
 
-No provider or target live I/O is part of this release validation. WAPTLab qualification is therefore fail-closed and remains pending. VIP qualification requires three independent authorized local WAPTLab runs, each meeting all of the following: at least 15 confirmed findings out of 20, precision of at least 90%, reproducibility of at least 95%, complete proof coverage, zero scope violations, and zero duplicates. A cumulative result or fixture-only result cannot satisfy that gate.
+No provider or target live I/O is part of this release validation. WAPTLab and Juice Shop qualification are therefore fail-closed and remain pending. The offline proof/replay simulation observed three reproducible fixture runs with replay agreement, but `live_qualification_proven=false` and `target_contacted=false`. VIP qualification requires three independent authorized local WAPTLab runs, each meeting all of the following: at least 15 confirmed findings out of 20, precision of at least 90%, reproducibility of at least 95%, complete proof coverage, zero scope violations, and zero duplicates. A cumulative result or fixture-only result cannot satisfy that gate.
 
 ## Release identity procedure
 
@@ -40,4 +41,4 @@ The release process records the implementation source revision in this document 
 
 Required secrets are intentionally blank in `.env.example`. Operators must inject secrets at runtime through their deployment secret store. Placeholder strings must not be promoted to staging or production. The production profile continues to require authentication, strong signing/audit/payload secrets, explicit non-wildcard CORS, secure Redis transport where applicable, and trusted-proxy configuration.
 
-**Status:** production-hardened release candidate for offline validation; not production-qualified and not a VIP Smart Autonomous Bug Hunter until the independent authorized qualification gate passes.
+**Status:** production-hardened release candidate for offline validation; conditionally usable only for controlled single-node authorized operation. It is not production-qualified for horizontal/multi-tenant deployment and is not a VIP Smart Autonomous Bug Hunter until the independent authorized qualification gate passes.
