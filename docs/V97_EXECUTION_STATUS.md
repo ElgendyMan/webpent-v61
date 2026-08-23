@@ -3,7 +3,8 @@
 **تاريخ التقييم:** 2026-08-23  
 **المصدر:** `/tmp/webpent-fixes-git`  
 **الفرع:** `master`  
-**آخر commit:** `2fa0c48`  
+**آخر commit للتقرير التاريخي:** `2fa0c48`
+**Current source commit بعد دورة V75:** `42f1003`
 **النطاق الحي:** WAPTLab محلي ومصرّح به على `127.0.0.1` فقط. لم تُستخدم أهداف خارجية أو provider live أو credentials خارجية.
 
 ## الحكم التنفيذي
@@ -24,7 +25,8 @@
 | bbscout | offline fixture/provider suite وعقود trust/intake، مع static review لـHackerOne read-only adapter | `docs/integration/bbscout_source_manifest.md`، commit `5b93912` | مكتمل offline؛ live provider I/O غير مفعّل لغياب authorization صريح |
 | Campaign mapping | vertical campaigns التي لها deterministic validator تدخل planner/registry؛ `elasticsearch_snapshot_traversal` و`xslt_injection` تظلان human-review | commit `4b7a7a1`، `docs/waptlab_regression.json` | مكتمل على مستوى policy والـcontracts، دون ترقية findings |
 | WAPTLab qualification | ثلاث جولات مستقلة، كل جولة target reachable وscan completed وexit code 0 | artifacts خارج Git تحت `/home/ubuntu/upload/webpent_v97_qualif_4b7a7a1_q1`, `_q2`, `_q3` | مكتمل تشغيليًا؛ VIP gate فاشل بالأرقام الفعلية |
-| Release verification | full regression وRuff وcompileall وdiff-check، ثم commit/push | `1468 passed, 56 warnings` في full regression؛ آخر commit `2fa0c48` | مكتمل |
+| Release verification التاريخي | full regression وRuff وcompileall وdiff-check، ثم commit/push | `1468 passed, 56 warnings` في full regression؛ commit التقرير `2fa0c48` | مكتمل تاريخيًا |
+| V75 post-fix verification | lifecycle safeguard، scorecard، full regression، ثم commit/push | `1471 passed, 56 warnings`؛ current commit `42f1003` | مكتمل؛ smoke الجديد منفصل عن نتائج v97 |
 
 ## نتائج WAPTLab الحية
 
@@ -56,12 +58,16 @@ target_contacted=false في contract-only regression artifact
 
 تم تشغيل full suite من checkout الحالي مع `PYTHONPATH=src:/tmp/webpent-release-run/bbscout/src`:
 
+القياسات التالية تخص تقرير V97 التاريخي:
+
 ```text
 1468 passed, 56 warnings in 113.09s
 Ruff: passed
 compileall: passed
 git diff --check: passed
 ```
+
+أما post-fix في دورة V75، فقد نجحت `1471 passed, 56 warnings`، مع Ruff وcompileall و`git diff --check`، وسُجلت في commit `42f1003`.
 
 التحذيرات المتبقية informational/deprecation warnings ولم تُعامل كنجاح أمني. كما أن وجود validator في registry أو اتساع campaign inventory لا يُثبت قابلية تشغيله على surface غير observed.
 
@@ -77,6 +83,7 @@ git diff --check: passed
 
 ## Git وrelease
 
-آخر commit مدفوع إلى `origin/master` هو `2fa0c48`، والـcheckout نظيف. الأرشيف النهائي يجب أن يكون source-only؛ لا ينبغي تضمين ملفات WAPTLab runtime أو credentials أو cookies أو SQLite أو scan logs الخام. نتيجة qualification الكاملة محفوظة خارج Git كـevidence تشغيلية، والتقرير الحالي يحتوي projection آمنًا فقط.
+الـcommit المدفوع الذي كان يصف تقرير V97 هو `2fa0c48`، بينما current source بعد دورة V75 هو `42f1003`، والـcheckout نظيف. الأرشيف النهائي يجب أن يكون source-only؛
+ لا ينبغي تضمين ملفات WAPTLab runtime أو credentials أو cookies أو SQLite أو scan logs الخام. نتيجة qualification الكاملة محفوظة خارج Git كـevidence تشغيلية، والتقرير الحالي يحتوي projection آمنًا فقط.
 
 **الخلاصة:** تم تنفيذ الإصلاحات والاختبارات والتوثيق المطلوبة، لكن acceptance criterion الخاص بـ15/20 strict confirmed في كل جولة وثلاث جولات مستقلة لم يتحقق، ولذلك النتيجة الصادقة هي **NOT QUALIFIED** وليست VIP.
