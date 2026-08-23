@@ -61,6 +61,7 @@ V6 Absolute-Flawless P0 FIX (CISO + Red Team audit — Command Injection):
 
 from __future__ import annotations
 
+import ctypes
 import os
 import shlex
 import shutil
@@ -166,6 +167,31 @@ def _validate_cmd(cmd: list[str]) -> None:
             )
 
 
+def _set_parent_death_signal() -> None:
+    """Terminate a tool child if its WebPent parent exits unexpectedly.
+
+    The subprocess already runs in its own session so timeout handling can
+    kill descendants. Linux ``PR_SET_PDEATHSIG`` covers the complementary
+    failure mode: the orchestrator or qualification harness is terminated
+    before it can perform that cleanup. The no-op fallback keeps the wrapper
+    portable on non-Linux POSIX platforms.
+    """
+    if sys.platform != "linux":
+        return
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        # PR_SET_PDEATHSIG is Linux ABI constant 1.
+        if libc.prctl(1, signal.SIGKILL) != 0:
+            return
+        # Close the small race where the parent exits before prctl runs.
+        if os.getppid() == 1:
+            os.kill(os.getpid(), signal.SIGKILL)
+    except (OSError, AttributeError, TypeError):
+        # Failure to install the optional safeguard must not change the
+        # established command/timeout error contract.
+        return
+
+
 def run_command(
     cmd: list[str],
     timeout: int | None = None,
@@ -248,6 +274,7 @@ def run_command(
                 text=False,
                 shell=False,
                 start_new_session=True,
+                preexec_fn=_set_parent_death_signal,
             )
             stdout, stderr = process.communicate(
                 input=input_data.encode("utf-8") if input_data else None,
@@ -264,6 +291,7 @@ def run_command(
                 encoding="utf-8",
                 errors="replace",
                 start_new_session=True,
+                preexec_fn=_set_parent_death_signal,
             )
             stdout, stderr = process.communicate(
                 input=input_data,

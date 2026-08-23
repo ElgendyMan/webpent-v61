@@ -296,9 +296,9 @@ Total records: **283**.
 | `src/webpent/tools/recon/subfinder.py` | 64 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/tools/registry.py` | 215 | `dynamic_import` | `importlib.reload` | `dynamic_import` | `approved_with_expiry` |
 | `src/webpent/tools/registry.py` | 217 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
-| `src/webpent/tools/utils/subprocess.py` | 68 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
-| `src/webpent/tools/utils/subprocess.py` | 243 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
-| `src/webpent/tools/utils/subprocess.py` | 257 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
+| `src/webpent/tools/utils/subprocess.py` | 69 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
+| `src/webpent/tools/utils/subprocess.py` | 269 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
+| `src/webpent/tools/utils/subprocess.py` | 284 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
 | `src/webpent/utils/compliance.py` | 154 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/utils/task_crypto.py` | 134 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/workers/pentest_worker.py` | 102 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
