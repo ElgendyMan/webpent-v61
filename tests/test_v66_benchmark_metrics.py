@@ -22,7 +22,8 @@ def test_benchmark_metrics_are_explicit_and_reproducible() -> None:
     assert report.missed_count == 1
     assert report.precision == 2 / 3
     assert report.recall == 2 / 3
-    assert report.false_positive_rate == 1 / 3
+    assert report.false_discovery_rate == 1 / 3
+    assert report.false_positive_rate == 0.0
     assert report.evidence_quality == pytest.approx(2 / 3, abs=1e-6)
     assert report.coverage == 0.8
     assert report.reproducibility == 1.0

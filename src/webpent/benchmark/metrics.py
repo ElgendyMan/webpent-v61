@@ -15,8 +15,10 @@ class BenchmarkReport:
     missed_count: int
     predicted_count: int
     expected_count: int
+    negative_case_count: int
     precision: float
     recall: float
+    false_discovery_rate: float
     false_positive_rate: float
     evidence_quality: float
     coverage: float
@@ -29,8 +31,10 @@ class BenchmarkReport:
             "missed_count": self.missed_count,
             "predicted_count": self.predicted_count,
             "expected_count": self.expected_count,
+            "negative_case_count": self.negative_case_count,
             "precision": self.precision,
             "recall": self.recall,
+            "false_discovery_rate": self.false_discovery_rate,
             "false_positive_rate": self.false_positive_rate,
             "evidence_quality": self.evidence_quality,
             "coverage": self.coverage,
@@ -46,10 +50,20 @@ def evaluate(
     tested_surface_count: int = 0,
     total_surface_count: int = 0,
     independent_runs: Iterable[Iterable[str]] = (),
+    negative_case_ids: Iterable[str] = (),
 ) -> BenchmarkReport:
-    """Evaluate exact finding keys; empty denominators resolve to zero."""
+    """Evaluate exact finding keys without inferring unknown negatives.
+
+    ``false_discovery_rate`` is the fraction of predictions not present in the
+    declared positive ground truth.  ``false_positive_rate`` is only computed
+    against an explicit negative-case universe; when that universe is absent it
+    is zero because the denominator is unknown, not because the run is perfect.
+    """
     predicted_set = {str(item).strip() for item in predicted if str(item).strip()}
     expected_set = {str(item).strip() for item in expected if str(item).strip()}
+    negative_set = {
+        str(item).strip() for item in negative_case_ids if str(item).strip()
+    }
     true_positive = predicted_set & expected_set
     false_positive = predicted_set - expected_set
     missed = expected_set - predicted_set
@@ -66,15 +80,22 @@ def evaluate(
     reproducibility = 0.0
     if runs and predicted_set:
         reproducibility = sum(1 for run in runs if run == predicted_set) / len(runs)
+    negative_hits = predicted_set & negative_set
     return BenchmarkReport(
         true_positive_count=len(true_positive),
         false_positive_count=len(false_positive),
         missed_count=len(missed),
         predicted_count=len(predicted_set),
         expected_count=len(expected_set),
+        negative_case_count=len(negative_set),
         precision=len(true_positive) / len(predicted_set) if predicted_set else 0.0,
         recall=len(true_positive) / len(expected_set) if expected_set else 0.0,
-        false_positive_rate=len(false_positive) / len(predicted_set) if predicted_set else 0.0,
+        false_discovery_rate=(
+            len(false_positive) / len(predicted_set) if predicted_set else 0.0
+        ),
+        false_positive_rate=(
+            len(negative_hits) / len(negative_set) if negative_set else 0.0
+        ),
         evidence_quality=round(evidence_quality, 6),
         coverage=(
             max(0, min(tested_surface_count, total_surface_count)) / total_surface_count
