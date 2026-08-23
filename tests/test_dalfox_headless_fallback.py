@@ -10,7 +10,7 @@ def _settings() -> SimpleNamespace:
     return SimpleNamespace(dalfox_path="dalfox", dalfox_timeout=5)
 
 
-def test_empty_dalfox_output_retries_without_headless_and_fails_closed(monkeypatch):
+def test_empty_dalfox_output_fails_closed_without_unsupported_retry(monkeypatch):
     calls: list[list[str]] = []
 
     def fake_run_command(cmd: list[str], timeout: int) -> str:
@@ -23,30 +23,28 @@ def test_empty_dalfox_output_retries_without_headless_and_fails_closed(monkeypat
     result = dalfox.run_dalfox("http://127.0.0.1:3000")
 
     assert result == "TOOL_INFRA_FAILURE: dalfox produced no output."
-    assert len(calls) == 2
-    assert "--skip-headless" in calls[1]
-    assert "--deep-domxss" not in calls[1]
-    assert "--context-aware" not in calls[1]
+    assert len(calls) == 1
+    assert "--skip-headless" not in calls[0]
+    assert "--deep-domxss" not in calls[0]
+    assert "--context-aware" not in calls[0]
 
 
-def test_known_headless_crash_uses_fallback_output(monkeypatch):
+def test_known_headless_crash_fails_closed_without_unsupported_retry(monkeypatch):
     calls: list[list[str]] = []
 
     def fake_run_command(cmd: list[str], timeout: int) -> str:
         calls.append(cmd)
-        if len(calls) == 1:
-            raise ToolExecutionError(
-                cmd,
-                1,
-                stderr="unhandled node event *dom.EventTopLayerElementsUpdated",
-            )
-        return "fallback scan output"
+        raise ToolExecutionError(
+            cmd,
+            1,
+            stderr="unhandled node event *dom.EventTopLayerElementsUpdated",
+        )
 
     monkeypatch.setattr(dalfox, "get_settings", _settings)
     monkeypatch.setattr(dalfox, "run_command", fake_run_command)
 
     result = dalfox.run_dalfox("http://127.0.0.1:3000/graphql")
 
-    assert result == "fallback scan output"
-    assert len(calls) == 2
-    assert "--skip-headless" in calls[1]
+    assert result == "TOOL_INFRA_FAILURE: dalfox produced no output."
+    assert len(calls) == 1
+    assert "--skip-headless" not in calls[0]

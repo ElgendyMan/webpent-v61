@@ -15,6 +15,8 @@ def test_dalfox_keeps_clean_scan_summary(monkeypatch):
 
     def fake_run_command(cmd, timeout=None):
         calls.append((cmd, timeout))
+        assert "--url" in cmd
+        assert cmd[cmd.index("--url") + 1].startswith("http://")
         assert "--no-color" in cmd
         assert "--format" in cmd
         assert cmd[cmd.index("--format") + 1] == "json"
@@ -43,13 +45,10 @@ def test_dalfox_empty_output_remains_infrastructure_failure(monkeypatch):
 
     def fake_run_command(cmd, timeout=None):
         calls.append((cmd, timeout))
-        if len(calls) == 1:
-            assert "--deep-domxss" in cmd
-            assert "--context-aware" in cmd
-        else:
-            assert "--skip-headless" in cmd
-            assert "--deep-domxss" not in cmd
-            assert "--context-aware" not in cmd
+        assert "--url" in cmd
+        assert "--deep-domxss" not in cmd
+        assert "--context-aware" not in cmd
+        assert "--skip-headless" not in cmd
         return ""
 
     monkeypatch.setattr(module, "get_settings", _settings)
@@ -62,4 +61,4 @@ def test_dalfox_empty_output_remains_infrastructure_failure(monkeypatch):
     result = module.run_dalfox("http://127.0.0.1:3000")
 
     assert result == "TOOL_INFRA_FAILURE: dalfox produced no output."
-    assert len(calls) == 2
+    assert len(calls) == 1

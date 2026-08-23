@@ -60,7 +60,10 @@ from webpent.agents.exploit_chainer.agent import exploit_chainer_node
 from webpent.agents.hypothesis_analyzer.agent import hypothesis_node
 from webpent.agents.javascript_intelligence.agent import javascript_intelligence_node
 from webpent.agents.payload_generator.agent import payload_generator_node
-from webpent.agents.payload_optimizer.agent import payload_optimizer_node
+from webpent.agents.payload_optimizer.agent import (
+    optimization_attempt_fingerprint,
+    payload_optimizer_node,
+)
 from webpent.agents.planner.agent import planner_node
 from webpent.agents.post_exploit.agent import post_exploitation_node
 from webpent.agents.rabbit_hole.agent import rabbit_hole_node
@@ -894,6 +897,9 @@ def route_after_validator(state: PentestState) -> str:
     findings: list[Finding] = list(state.get("findings") or [])
     payloads_to_test: dict[str, list[str]] = dict(state.get("payloads_to_test") or {})
     retries: dict[str, int] = dict(state.get("optimization_retries") or {})
+    attempt_fingerprints: dict[str, str] = dict(
+        state.get("optimization_attempt_fingerprints") or {}
+    )
 
     # V10 EXHAUSTIVE AUDIT (P0-1): use model_get for dict-safety so
     # findings loaded from a checkpoint (plain dicts after SqliteSaver
@@ -940,8 +946,19 @@ def route_after_validator(state: PentestState) -> str:
         ):
             continue
         current_retry = retries.get(fid, 0)
-        if current_retry < _MAX_OPTIMIZATION_RETRIES:
-            return NODE_PAYLOAD_OPTIMIZER
+        if current_retry >= _MAX_OPTIMIZATION_RETRIES:
+            continue
+        current_fingerprint = optimization_attempt_fingerprint(
+            finding, _queued_payloads
+        )
+        if attempt_fingerprints.get(fid) == current_fingerprint:
+            logger.info(
+                "Validator -> Devil's Advocate for %s: optimizer state made "
+                "no progress; identical attempt fingerprint",
+                fid,
+            )
+            continue
+        return NODE_PAYLOAD_OPTIMIZER
     # V5 Sprint 10: changed from NODE_CVSS_ENGINE to NODE_DEVILS_ADVOCATE
     return NODE_DEVILS_ADVOCATE
 

@@ -13,8 +13,11 @@ Phase 2 introduces a self-healing loop:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from typing import Any
+from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -125,6 +128,75 @@ _FAILURE_STRATEGY_PROMPTS: dict[str, str] = {
 }
 
 _MAX_RETRIES = 3
+
+
+def optimization_attempt_fingerprint(
+    finding: Finding | dict[str, Any], payloads: list[str] | None,
+) -> str:
+    """Return a stable, redaction-safe fingerprint for one optimizer state.
+
+    The material is hashed and never returned or logged. Query values, payload
+    bodies, request data, cookies, and evidence bodies are not persisted; only
+    query parameter names and a small allow-list of validation status fields
+    participate in the digest. This lets the graph distinguish real progress
+    from a retry that repeats the same finding/payload/evidence state.
+    """
+    def _get(key: str, default: Any = None) -> Any:
+        if isinstance(finding, dict):
+            return finding.get(key, default)
+        return getattr(finding, key, default)
+
+    raw_url = str(_get("url", ""))
+    parsed = urlsplit(raw_url)
+    query_names = sorted(
+        {key for key, _ in parse_qsl(parsed.query, keep_blank_values=True)}
+    )
+    try:
+        hostname = parsed.hostname or ""
+        if ":" in hostname and not hostname.startswith("["):
+            hostname = f"[{hostname}]"
+        safe_netloc = hostname.lower()
+        if parsed.port is not None:
+            safe_netloc = f"{safe_netloc}:{parsed.port}"
+    except ValueError:
+        # Malformed port/userinfo must not leak through the fallback shape.
+        safe_netloc = parsed.netloc.rsplit("@", 1)[-1].lower()
+    target_shape = urlunsplit((
+        parsed.scheme.lower(), safe_netloc, parsed.path or "/", "", ""
+    ))
+    evidence = _get("evidence") or {}
+    if not isinstance(evidence, dict):
+        evidence = {}
+    status = {
+        key: evidence.get(key)
+        for key in (
+            "validation_failure_reason",
+            "validation_unavailable",
+            "tool_infra_failure",
+            "causal_signal",
+            "negative_control_complete",
+            "promotion_guard",
+        )
+        if key in evidence
+    }
+    promotion_guard = status.get("promotion_guard")
+    if isinstance(promotion_guard, dict):
+        status["promotion_guard"] = promotion_guard.get("status")
+    material = {
+        "finding_id": str(_get("id", "")),
+        "vuln_class": str(_get("vuln_class", "")),
+        "target_shape": target_shape,
+        "query_names": query_names,
+        "target_param": str(_get("target_param", "") or ""),
+        "request_method": str(_get("request_method", "GET") or "GET").upper(),
+        "payloads": sorted({str(item) for item in (payloads or [])}),
+        "confidence": str(_get("confidence", "")),
+        "confidence_level": str(_get("confidence_level", "")),
+        "validation_status": status,
+    }
+    encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
 
 # V3.5 Obsidian Master: Import from central location (models/findings.py).
 _EXPLOITABLE_CLASSES = EXPLOITABLE_CLASSES
@@ -265,13 +337,13 @@ def payload_optimizer_node(state: PentestState) -> dict:
     findings: list[Finding] = list(state.get("findings") or [])
     payloads_to_test: dict[str, list[str]] = dict(state.get("payloads_to_test") or {})
     retries: dict[str, int] = dict(state.get("optimization_retries") or {})
-
     logger.info("Payload optimizer starting: %d total finding(s)", len(findings))
 
     llm = try_get_llm(TaskType.CODE)
 
     new_payloads: dict[str, list[str]] = {}
     updated_retries: dict[str, int] = {}
+    updated_attempt_fingerprints: dict[str, str] = {}
     requeued_findings: list[Finding] = []
     optimized_count = 0
     skipped_count = 0
@@ -325,6 +397,8 @@ def payload_optimizer_node(state: PentestState) -> dict:
             )
             continue
 
+        current_fingerprint = optimization_attempt_fingerprint(finding, failed)
+        updated_attempt_fingerprints[fid] = current_fingerprint
         new_pl = _generate_optimized_payloads(finding, failed, llm)
 
         # V3.5 Fix: Always increment the retry counter, even if the LLM
@@ -367,6 +441,7 @@ def payload_optimizer_node(state: PentestState) -> dict:
     result: dict[str, Any] = {
         "payloads_to_test": new_payloads,
         "optimization_retries": updated_retries,
+        "optimization_attempt_fingerprints": updated_attempt_fingerprints,
         "messages": [AIMessage(content=summary)],
         "current_phase": "payload_optimization",
     }

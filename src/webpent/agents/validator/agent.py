@@ -2220,6 +2220,7 @@ def _validate_with_tool(
             diff = baseline_differential_test(
                 target_url=baseline_url,
                 payload_url=payload_url,
+                request_cookies=session_cookies,
             )
             if not diff.is_false_positive:
                 differential_observation = {
@@ -2227,6 +2228,10 @@ def _validate_with_tool(
                         "url_shape": baseline_url,
                         "status_code": diff.baseline_status,
                         "body_length": diff.baseline_length,
+                        "observation_role": "baseline",
+                        "target_fingerprint": diff.target_fingerprint,
+                        "request_digest": diff.baseline_request_digest,
+                        "response_digest": diff.baseline_response_digest,
                     },
                     "candidate": {
                         "url_shape": payload_url,
@@ -2234,12 +2239,20 @@ def _validate_with_tool(
                         "body_length": diff.payload_length,
                         "body_delta": diff.body_delta,
                         "status_delta": diff.status_delta,
+                        "observation_role": "candidate",
+                        "target_fingerprint": diff.target_fingerprint,
+                        "request_digest": diff.payload_request_digest,
+                        "response_digest": diff.payload_response_digest,
                     },
                     "negative_control": {
                         "url_shape": baseline_url,
-                        "status_code": diff.baseline_status,
-                        "body_length": diff.baseline_length,
-                        "control": "clean_baseline_request",
+                        "status_code": diff.negative_control_status,
+                        "body_length": diff.negative_control_length,
+                        "control": "independent_clean_baseline_request",
+                        "observation_role": "negative_control",
+                        "target_fingerprint": diff.target_fingerprint,
+                        "request_digest": diff.negative_control_request_digest,
+                        "response_digest": diff.negative_control_response_digest,
                     },
                 }
             if diff.is_false_positive:
@@ -2809,7 +2822,13 @@ def _validate_with_tool(
         candidate=replay_candidate,
         negative_control=replay_negative_control,
         causal_signal=bool(differential_observation and det_confirmed and llm_confirmed),
-        negative_control_complete=bool(differential_observation),
+        negative_control_complete=bool(
+            differential_observation
+            and replay_negative_control
+            and replay_negative_control.get("request_digest")
+            and replay_negative_control.get("response_digest")
+        ),
+        require_target_backed=bool(target_url and engagement_id),
         validator_id=f"validator.{tool_name}",
         validator_version="strict-tool-replay.v1",
         causal_basis=(

@@ -26,10 +26,12 @@ consumed by the validator agent and the Devil's Advocate node:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 from uuid import uuid4
 
@@ -372,6 +374,36 @@ class BaselineDifferential:
     payload_length: int | None = None
     body_delta: int | None = None
     status_delta: int | None = None
+    baseline_request_digest: str | None = None
+    payload_request_digest: str | None = None
+    baseline_response_digest: str | None = None
+    payload_response_digest: str | None = None
+    negative_control_status: int | None = None
+    negative_control_length: int | None = None
+    negative_control_request_digest: str | None = None
+    negative_control_response_digest: str | None = None
+    target_fingerprint: str | None = None
+
+
+def _exchange_digest(
+    *, method: str, url: str, headers: dict[str, str] | None, body: str | None = None
+) -> str:
+    # Digest only: never persist cookies, authorization values, or bodies.
+    safe_headers = sorted(str(k).lower() for k in (headers or {}))
+    payload = json.dumps({
+        "method": method.upper(),
+        "url": str(url),
+        "header_names": safe_headers,
+        "body_present": bool(body),
+    }, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _target_fingerprint(url: str) -> str:
+    from urllib.parse import urlparse
+    parsed = urlparse(str(url))
+    shape = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{parsed.path or '/'}"
+    return hashlib.sha256(shape.encode("utf-8")).hexdigest()
 
 
 def _normalize_body(body: str | None) -> str:
@@ -545,6 +577,7 @@ def baseline_differential_test(
     *,
     payload_url: str | None = None,
     request_headers: dict[str, str] | None = None,
+    request_cookies: dict[str, str] | None = None,
     timeout: float = 10.0,
 ) -> BaselineDifferential:
     """Send a clean baseline request + a payload request, compare them.
@@ -561,8 +594,8 @@ def baseline_differential_test(
             ``https://example.com/page?id=1' OR '1'='1``). If None,
             only the baseline is fetched and the result is always
             ``is_false_positive=False`` (nothing to compare).
-        request_headers: Optional headers to send with both requests
-            (e.g. auth cookies).
+        request_headers: Optional headers to send with all requests.
+        request_cookies: Optional cookies to send with all requests.
         timeout: httpx timeout in seconds.
 
     Returns:
@@ -590,7 +623,9 @@ def baseline_differential_test(
         with make_safe_httpx_client(
             timeout=timeout, follow_redirects=True, verify=True
         ) as client:
-            resp = client.get(target_url, headers=request_headers)
+            resp = client.get(
+                target_url, headers=request_headers, cookies=request_cookies
+            )
             baseline_status = resp.status_code
             baseline_body = resp.text
             baseline_headers = dict(resp.headers)
@@ -612,7 +647,9 @@ def baseline_differential_test(
         with make_safe_httpx_client(
             timeout=timeout, follow_redirects=True, verify=True
         ) as client:
-            resp = client.get(payload_url, headers=request_headers)
+            resp = client.get(
+                payload_url, headers=request_headers, cookies=request_cookies
+            )
             payload_status = resp.status_code
             payload_body = resp.text
             payload_headers = dict(resp.headers)
@@ -626,11 +663,66 @@ def baseline_differential_test(
             reason=f"Payload fetch failed: {exc}. Cannot determine false positive.",
         )
 
-    return compare_responses(
+    negative_control_status: int | None = None
+    negative_control_body: str | None = None
+    try:
+        with make_safe_httpx_client(
+            timeout=timeout, follow_redirects=True, verify=True
+        ) as client:
+            control_headers = dict(request_headers or {})
+            control_headers["Cache-Control"] = "no-cache"
+            control_headers["X-WebPent-Negative-Control"] = "1"
+            resp = client.get(
+                target_url, headers=control_headers, cookies=request_cookies
+            )
+            negative_control_status = resp.status_code
+            negative_control_body = resp.text
+    except Exception as exc:
+        logger.warning(
+            "baseline_differential_test: negative control fetch failed for %s: %s",
+            target_url,
+            exc,
+        )
+        return BaselineDifferential(
+            is_false_positive=False,
+            reason=f"Negative control fetch failed: {exc}. Cannot determine false positive.",
+        )
+
+    diff = compare_responses(
         baseline_status=baseline_status,
         baseline_body=baseline_body,
         baseline_headers=baseline_headers,
         payload_status=payload_status,
         payload_body=payload_body,
         payload_headers=payload_headers,
+    )
+    return replace(
+        diff,
+        baseline_request_digest=_exchange_digest(
+            method="GET", url=target_url, headers=request_headers
+        ),
+        payload_request_digest=_exchange_digest(
+            method="GET", url=payload_url, headers=request_headers
+        ),
+        baseline_response_digest=hashlib.sha256(
+            (baseline_body or "").encode("utf-8", errors="replace")
+        ).hexdigest(),
+        payload_response_digest=hashlib.sha256(
+            (payload_body or "").encode("utf-8", errors="replace")
+        ).hexdigest(),
+        negative_control_status=negative_control_status,
+        negative_control_length=len(negative_control_body or ""),
+        negative_control_request_digest=_exchange_digest(
+            method="GET",
+            url=target_url,
+            headers={
+                **(request_headers or {}),
+                "Cache-Control": "no-cache",
+                "X-WebPent-Negative-Control": "1",
+            },
+        ),
+        negative_control_response_digest=hashlib.sha256(
+            (negative_control_body or "").encode("utf-8", errors="replace")
+        ).hexdigest(),
+        target_fingerprint=_target_fingerprint(target_url),
     )

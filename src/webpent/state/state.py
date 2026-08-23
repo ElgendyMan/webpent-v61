@@ -116,6 +116,9 @@ class PentestState(TypedDict, total=False):
     # reauth fix).
     auth_state: Annotated[dict[str, Any], merge_auth_state]
     optimization_retries: Annotated[dict[str, int], merge_retries]
+    # Last optimizer input fingerprint per finding. Digests only; no payload,
+    # body, cookie, authorization, or other secret values are stored.
+    optimization_attempt_fingerprints: Annotated[dict[str, str], merge_dicts]
 
     # V3.5 Phase 3 additions
     errors: Annotated[list[str], merge_lists]
