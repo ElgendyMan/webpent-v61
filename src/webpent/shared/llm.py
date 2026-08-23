@@ -1808,6 +1808,8 @@ def deep_sanitize(data: object) -> object:
         return {str(k): deep_sanitize(v) for k, v in data.items()}
     if isinstance(data, list):
         return [deep_sanitize(item) for item in data]
+    if isinstance(data, tuple):
+        return tuple(deep_sanitize(item) for item in data)
     return data
 
 
@@ -1833,8 +1835,11 @@ def safe_prompt_format(template: str, **kwargs: object) -> str:
         if isinstance(value, str):
             sanitized_val = _sanitize_untrusted(value)
             safe_kwargs[key] = _UNTRUSTED_WRAPPER.format(content=sanitized_val)
-        elif isinstance(value, (list, dict)):
+        elif isinstance(value, (list, dict, tuple)):
             # Deep-sanitize all nested strings before JSON serialization.
+            # Tuples must be treated as structured untrusted data too; otherwise
+            # str.format() would insert their repr directly and bypass the XML
+            # trust-boundary wrapper.
             sanitized_data = deep_sanitize(value)
             joined = json.dumps(sanitized_data, default=str)
             safe_kwargs[key] = _UNTRUSTED_WRAPPER.format(content=joined)
