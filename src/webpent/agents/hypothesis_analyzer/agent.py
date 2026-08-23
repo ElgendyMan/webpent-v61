@@ -182,8 +182,31 @@ def _retrieve_with_memory_boundary(
 
     def _retriever(query: str, limit: int, kind: MemoryKind) -> list[dict[str, Any]]:
         if kind is MemoryKind.SECURITY_KNOWLEDGE:
-            values = manager.search_knowledge(query, k=limit)
-            source = "vectorstore:knowledge"
+            # Keep the memory-boundary path aligned with the curated RAG
+            # contract. A broad corpus search can mix payloads, repositories,
+            # or unrelated material into hypothesis context. The target does
+            # not provide a verified stack here, so no stack filter is guessed.
+            doc_types = ("writeup", "report", "scenario", "methodology", "repository")
+            per_type_limit = max(1, min(limit, 2))
+            values: list[str] = []
+            for doc_type in doc_types:
+                try:
+                    values.extend(
+                        manager.search_knowledge(
+                            query,
+                            k=per_type_limit,
+                            doc_type=doc_type,
+                            stack=None,
+                        )
+                    )
+                except Exception as exc:
+                    logger.debug(
+                        "Curated knowledge retrieval failed for type %s: %s",
+                        doc_type,
+                        exc,
+                    )
+            values = list(dict.fromkeys(values))
+            source = "vectorstore:curated-knowledge"
             prefix = "Knowledge"
         elif kind is MemoryKind.EXPERIENCE_LESSON:
             if not client_id:

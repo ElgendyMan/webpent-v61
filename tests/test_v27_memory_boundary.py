@@ -72,14 +72,27 @@ def test_hypothesis_node_boundary_is_advisory_and_redacted(monkeypatch: pytest.M
     )
 
     class FakeVectorStore:
-        def search_knowledge(self, query: str, k: int = 3):
+        def __init__(self) -> None:
+            self.knowledge_calls: list[dict[str, object]] = []
+
+        def search_knowledge(
+            self,
+            query: str,
+            k: int = 3,
+            doc_type: str | None = None,
+            stack: str | None = None,
+        ):
+            self.knowledge_calls.append(
+                {"query": query, "k": k, "doc_type": doc_type, "stack": stack}
+            )
             return ["Authorization: Bearer super-secret-value"]
 
         def search_lessons(self, query: str, k: int = 5):
             return ["Past lesson: inspect ownership and method changes"]
 
     monkeypatch.setattr(hypothesis_agent, "get_settings", lambda: settings)
-    monkeypatch.setattr(hypothesis_agent, "get_vector_store_manager", lambda: FakeVectorStore())
+    vector_store = FakeVectorStore()
+    monkeypatch.setattr(hypothesis_agent, "get_vector_store_manager", lambda: vector_store)
 
     result = hypothesis_agent.hypothesis_node(
         {
@@ -91,6 +104,15 @@ def test_hypothesis_node_boundary_is_advisory_and_redacted(monkeypatch: pytest.M
 
     assert result["memory_summary"]["retrieval_items"] >= 1
     assert result["memory_summary"]["by_kind"][MemoryKind.TARGET_FACT.value] == 1
+    assert vector_store.knowledge_calls
+    assert {call["doc_type"] for call in vector_store.knowledge_calls} == {
+        "writeup",
+        "report",
+        "scenario",
+        "methodology",
+        "repository",
+    }
+    assert all(call["stack"] is None for call in vector_store.knowledge_calls)
     assert result["memory_feedback"] == []
     assert result["hypotheses"]
     assert all(h.origin != HypothesisOrigin.RAG_INFORMED.value for h in result["hypotheses"])
