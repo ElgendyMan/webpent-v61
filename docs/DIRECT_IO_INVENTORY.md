@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **282**.
+Total records: **283**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -104,18 +104,19 @@ Total records: **282**.
 | `src/webpent/agents/smart_campaigns/agent.py` | 120 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/smart_campaigns/agent.py` | 139 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/smart_campaigns/agent.py` | 268 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1015 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1219 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1221 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1222 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1225 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1339 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1432 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1434 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1456 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1628 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 2012 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 2060 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 370 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1030 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1234 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1236 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1237 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1240 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1354 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1447 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1449 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1471 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1643 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 2027 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 2075 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 103 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 504 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 544 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
