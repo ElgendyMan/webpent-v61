@@ -35,7 +35,7 @@ def test_behavior_evaluation_is_offline_and_counts_unsafe_events() -> None:
 def test_observability_is_bounded_and_redacted() -> None:
     recorder = ObservabilityRecorder(max_events=1)
     recorder.emit(
-        "decision", run_id="r1", engagement_id="e1", password="fixture-password-value-123"
+        "decision", run_id="r1", engagement_id="e1", password="fixture"
     )
     recorder.emit("second", token="fixture-token-value-456")
     snapshot = recorder.snapshot()
