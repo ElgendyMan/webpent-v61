@@ -19,6 +19,7 @@ V3.5 Changes:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import re
@@ -79,6 +80,27 @@ logger = logging.getLogger(__name__)
 # temporarily changes the validator logger level cannot hide safety-relevant
 # decisions such as a skipped differential stage.
 audit_logger = logging.getLogger("webpent.audit.validator")
+
+
+def _browser_render_metadata(
+    *,
+    used_playwright: bool,
+    html_content: str | None,
+    auth_cookies: list[dict[str, Any]] | None,
+    samesite_detected: bool,
+) -> dict[str, Any]:
+    """Return reviewable browser facts without retaining DOM or cookie secrets."""
+    content = html_content if isinstance(html_content, str) else ""
+    return {
+        "engine": "playwright-chromium" if used_playwright else "httpx-static",
+        "js_executed": bool(used_playwright),
+        "content_length": len(content),
+        "content_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()
+        if content
+        else None,
+        "auth_cookie_count": len(auth_cookies or []),
+        "samesite_detected": bool(samesite_detected),
+    }
 
 
 def _safe_log_target(url: str) -> str:
@@ -943,6 +965,15 @@ def _validate_csrf(
                         "Manual review required to determine whether the "
                         "endpoint is vulnerable to CSRF."
                     ),
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        "browser_render": _browser_render_metadata(
+                            used_playwright=False,
+                            html_content=None,
+                            auth_cookies=auth_cookies,
+                            samesite_detected=False,
+                        ),
+                    },
                 }
             )
 
@@ -1050,6 +1081,12 @@ def _validate_csrf(
             "abuse."
         )
         full_reasoning = f"{reasoning}\n\n{disclaimer}"
+        browser_metadata = _browser_render_metadata(
+            used_playwright=used_playwright,
+            html_content=html_content,
+            auth_cookies=auth_cookies,
+            samesite_detected=samesite_detected,
+        )
         logger.info(
             "CSRF finding %s (%s) marked Needs Human Review — "
             "structural check positive but environmental limitations "
@@ -1061,6 +1098,10 @@ def _validate_csrf(
             update={
                 "confidence_level": "Needs Human Review",
                 "reasoning": full_reasoning,
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "browser_render": browser_metadata,
+                },
             }
         )
         # V9 P0 Fix-Persist: don't discard the persistence result — a
@@ -1081,7 +1122,20 @@ def _validate_csrf(
             finding.id,
             reasoning,
         )
-        return finding.model_copy(update={"reasoning": reasoning})
+        return finding.model_copy(
+            update={
+                "reasoning": reasoning,
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "browser_render": _browser_render_metadata(
+                        used_playwright=used_playwright,
+                        html_content=html_content,
+                        auth_cookies=auth_cookies,
+                        samesite_detected=samesite_detected,
+                    ),
+                },
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
