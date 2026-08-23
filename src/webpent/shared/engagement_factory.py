@@ -255,6 +255,9 @@ class EngagementFactory:
             "policy_digest",
             "lease_id",
         )
+        projected_status = binding_projection.get("target_package_status")
+        if projected_status is not None and str(projected_status) != "consumed":
+            raise EngagementAdmissionError("package_binding_status_mismatch")
         values = {key: str(binding_projection.get(key) or "") for key in required}
         if any(not value for value in values.values()):
             raise EngagementAdmissionError("package_binding_incomplete")
