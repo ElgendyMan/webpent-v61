@@ -38,6 +38,8 @@ def test_default_report_is_read_only_and_schema_complete():
     assert report["network_checks_enabled"] is False
     assert report["findings"]
     assert all(set(item) >= REQUIRED_FINDING_FIELDS for item in report["findings"])
+    assert report["runtime_qualification"]["qualified"] is False
+    assert report["runtime_qualification"]["evidence_basis"] == "host_runtime_checks_only"
     assert all(item["network_access"] is False for item in report["findings"])
 
 
@@ -57,6 +59,32 @@ def test_network_checks_are_explicitly_marked_when_disabled():
     assert len(port_items) == 2
     assert all(item["status"] == "SKIPPED" for item in port_items)
     assert all(item["network_access"] is False for item in port_items)
+
+
+def test_oob_diagnostics_keep_local_default_and_fail_closed_for_interactsh(monkeypatch):
+    monkeypatch.delenv("WEBPENT_OOB_PROVIDER", raising=False)
+    local = diagnostics.check_oob()
+    assert local[0].status == "PASS"
+    assert local[0].evidence["provider"] == "local"
+
+    monkeypatch.setenv("WEBPENT_OOB_PROVIDER", "interactsh")
+    monkeypatch.delenv("WEBPENT_INTERACTSH_SERVER", raising=False)
+    monkeypatch.setattr(diagnostics.shutil, "which", lambda name: None)
+    blocked = diagnostics.check_oob()
+    assert blocked[0].status == "BLOCKED"
+    assert blocked[0].evidence["server_configured"] is False
+    assert blocked[0].evidence["binary_available"] is False
+
+
+def test_oob_diagnostics_do_not_claim_external_smoke_from_configuration(monkeypatch):
+    monkeypatch.setenv("WEBPENT_OOB_PROVIDER", "interactsh")
+    monkeypatch.setenv("WEBPENT_INTERACTSH_SERVER", "https://oob.example.test")
+    monkeypatch.setattr(
+        diagnostics.shutil, "which", lambda name: "/usr/local/bin/interactsh-client"
+    )
+    item = diagnostics.check_oob()[0]
+    assert item.status == "WARN"
+    assert item.evidence["external_contacted"] is False
 
 
 def test_toolchain_contract_reports_pinned_versions_and_template_manifest(
@@ -99,6 +127,27 @@ def test_toolchain_template_manifest_is_fail_closed_when_missing(monkeypatch):
     assert template.status == "BLOCKED"
     assert template.severity == "error"
     assert template.evidence["manifest_present"] is False
+
+
+def test_runtime_qualification_distinguishes_sandbox_and_container(monkeypatch):
+    monkeypatch.setenv("WEBPENT_RUNTIME_CONTEXT", "developer_sandbox")
+    sandbox = diagnostics.build_runtime_qualification(
+        [
+            {"check_id": "dependency.import.langgraph", "status": "BLOCKED"},
+            {"check_id": "docker.engine", "status": "BLOCKED"},
+        ]
+    )
+    assert sandbox["classification"] == "developer_sandbox_missing_dependencies"
+    assert sandbox["qualified"] is False
+    assert sandbox["evidence_basis"] == "host_runtime_checks_only"
+
+    monkeypatch.setenv("WEBPENT_RUNTIME_CONTEXT", "approved_container")
+    container = diagnostics.build_runtime_qualification(
+        [{"check_id": "python.version", "status": "PASS"}]
+    )
+    assert container["classification"] == "approved_container_image_not_yet_qualified"
+    assert container["qualified"] is False
+    assert container["evidence_basis"] == "container_runtime_checks_only"
 
 
 def test_human_renderer_surfaces_remediation_without_secret_values():

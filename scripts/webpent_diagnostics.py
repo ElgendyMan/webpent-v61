@@ -409,6 +409,107 @@ def check_binaries() -> list[Finding]:
     return results
 
 
+def check_oob() -> list[Finding]:
+    """Check OOB provider configuration without contacting any provider."""
+    provider = os.getenv("WEBPENT_OOB_PROVIDER", "local").strip().lower() or "local"
+    if provider == "local":
+        return [
+            finding(
+                "oob.provider",
+                "OOB callback provider",
+                "PASS",
+                "info",
+                "local authenticated callback selected",
+                "local callback/DB path remains the default offline-safe provider",
+                "no external OOB provider is selected",
+                "configure an explicit self-hosted provider only when its runtime is authorized",
+                evidence={
+                    "provider": "local",
+                    "server_configured": False,
+                    "binary_available": False,
+                    "external_contacted": False,
+                    "token_present": False,
+                },
+            )
+        ]
+    if provider != "interactsh":
+        return [
+            finding(
+                "oob.provider",
+                "OOB callback provider",
+                "BLOCKED",
+                "error",
+                f"unsupported provider={provider}",
+                "OOB_PROVIDER is local or explicit interactsh",
+                "an unsupported provider name would bypass a known safety contract",
+                "set WEBPENT_OOB_PROVIDER=local or interactsh; do not add implicit providers",
+                retryability="after_configuration_fix",
+                evidence={"provider": provider, "external_contacted": False},
+            )
+        ]
+
+    binary = os.getenv("WEBPENT_INTERACTSH_BINARY", "interactsh-client").strip()
+    server = os.getenv("WEBPENT_INTERACTSH_SERVER", "").strip()
+    token_present = bool(os.getenv("WEBPENT_INTERACTSH_TOKEN", ""))
+    binary_available = bool(binary and shutil.which(binary))
+    server_configured = bool(server and urlparse(server).scheme in {"http", "https"})
+    if not server_configured or not binary_available:
+        return [
+            finding(
+                "oob.provider",
+                "Interactsh OOB provider",
+                "BLOCKED",
+                "error",
+                (
+                    f"provider=interactsh, server_configured={server_configured}, "
+                    f"binary_available={binary_available}"
+                ),
+                "explicit self-hosted server and interactsh-client binary are configured",
+                "external OOB is enabled without all required local configuration",
+                (
+                    "set an operator-approved self-hosted INTERACTSH_SERVER and install "
+                    "the reviewed binary"
+                ),
+                retryability="after_configuration_fix_or_install",
+                evidence={
+                    "provider": "interactsh",
+                    "server_configured": server_configured,
+                    "binary_available": binary_available,
+                    "binary_name_redacted": bool(binary),
+                    "external_contacted": False,
+                    "token_present": token_present,
+                },
+            )
+        ]
+    return [
+        finding(
+            "oob.provider",
+            "Interactsh OOB provider",
+            "WARN",
+            "warning",
+            "explicit server and binary configured; no provider smoke test performed",
+            "configuration is present before an operator-authorized self-hosted smoke test",
+            (
+                "configuration alone does not prove server reachability, payload correlation, "
+                "or finding confirmation"
+            ),
+            (
+                "run a bounded self-hosted smoke test with independent correlation and "
+                "negative control; never promote from configuration alone"
+            ),
+            retryability="after_authorized_smoke_test",
+            evidence={
+                "provider": "interactsh",
+                "server_configured": True,
+                "binary_available": True,
+                "binary_name_redacted": bool(binary),
+                "external_contacted": False,
+                "token_present": token_present,
+            },
+        )
+    ]
+
+
 def check_docker(run_config: bool) -> list[Finding]:
     results: list[Finding] = []
     docker = shutil.which("docker")
@@ -808,10 +909,75 @@ def check_redis(url: str | None, enabled: bool) -> list[Finding]:
     ]
 
 
+def build_runtime_qualification(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """Classify the execution context without treating diagnostics as qualification.
+
+    ``WEBPENT_RUNTIME_CONTEXT`` is an operator-supplied label, not an attestation.
+    Runtime checks can identify blockers, but they cannot prove a deployable image,
+    target-backed causal findings, negative controls, or replayable ProofBundles.
+    """
+    context = os.getenv("WEBPENT_RUNTIME_CONTEXT", "developer_sandbox").strip().lower()
+    valid_contexts = {"developer_sandbox", "approved_container"}
+    blocked_ids = [
+        item["check_id"]
+        for item in findings
+        if item.get("status") == "BLOCKED"
+    ]
+    runtime_prefixes = (
+        "dependency.",
+        "binary.",
+        "docker.",
+        "toolchain.",
+        "browser.",
+        "workspace.",
+    )
+    runtime_blockers = [
+        check_id for check_id in blocked_ids if check_id.startswith(runtime_prefixes)
+    ]
+
+    if context not in valid_contexts:
+        classification = "unknown_runtime_context"
+        evidence_basis = "unrecognized_operator_label"
+    elif context == "developer_sandbox":
+        classification = (
+            "developer_sandbox_missing_dependencies"
+            if runtime_blockers
+            else "developer_sandbox_checks_only"
+        )
+        evidence_basis = "host_runtime_checks_only"
+    elif runtime_blockers:
+        classification = "approved_container_runtime_blocked"
+        evidence_basis = "container_runtime_checks_only"
+    else:
+        classification = "approved_container_image_not_yet_qualified"
+        evidence_basis = "container_runtime_checks_only"
+
+    return {
+        "context": context or "developer_sandbox",
+        "classification": classification,
+        "qualified": False,
+        "evidence_basis": evidence_basis,
+        "runtime_blockers": runtime_blockers,
+        "qualification_note": (
+            "runtime diagnostics are necessary preflight evidence only; independent "
+            "authorized target-backed runs, negative controls, sealed ProofBundles, "
+            "and successful replay are still required"
+        ),
+    }
+
+
 def render_human(report: dict[str, Any]) -> str:
     lines = ["WEBPENT DIAGNOSTICS", "=" * 96]
     lines.append(f"timestamp={report['timestamp']}  project={report['project_root']}")
     lines.append(f"summary={report['summary']}")
+    runtime = report.get("runtime_qualification", {})
+    if runtime:
+        lines.append(
+            "runtime_qualification="
+            f"{runtime.get('classification', 'unknown')} "
+            f"qualified={runtime.get('qualified', False)} "
+            f"evidence_basis={runtime.get('evidence_basis', 'unknown')}"
+        )
     lines.append("-" * 96)
     lines.append(f"{'Check':<32} {'Status':<10} {'Severity':<9} {'Observed'}")
     lines.append("-" * 96)
@@ -835,6 +1001,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     findings.extend(check_pip())
     findings.extend(check_binaries())
     findings.extend(check_toolchain())
+    findings.extend(check_oob())
     findings.extend(check_docker(args.docker_config))
     findings.extend(check_sqlite())
     findings.extend(check_rag())
@@ -846,6 +1013,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         check_redis(os.getenv("REDIS_URL") or os.getenv("WEBPENT_REDIS_URL"), args.network_checks)
     )
     result = [asdict(item) for item in findings]
+    runtime_qualification = build_runtime_qualification(result)
     counts = {
         status: sum(1 for item in result if item["status"] == status)
         for status in ("PASS", "WARN", "BLOCKED", "SKIPPED")
@@ -859,6 +1027,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         "llm_probe_performed": False,
         "destructive_actions_performed": False,
         "summary": counts,
+        "runtime_qualification": runtime_qualification,
         "findings": result,
     }
 
