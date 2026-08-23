@@ -20,7 +20,7 @@ The implementation preserves the existing `ActionAuthority` and central `ActionE
 | Phase 8 — provider, target package, and proof boundaries | Complete at source-contract level | `provider_boundary.py`, provider boundary tests, package identity checks | Provider results remain advisory-only; raw credentials are never retained; no live provider qualification was performed |
 | Phase 9 — evaluation, observability, and scorecard | Complete offline | `evaluation.py`, `build_superagentic_scorecard.py`, `audit_superagentic_wiring.py`, scorecard and wiring artifacts | Integrity seal is SHA-256 integrity metadata, not an operator cryptographic signature |
 | Phase 10 — regression and release gates | Complete for available environment | Full pytest: **1571 passed, 6 skipped, 56 warnings**; Ruff, compileall, diff check, G-02, Bandit, SBOM, secret scan, and manifest checks passed | bbscout source check is explicitly `blocked`; Docker and live qualification are unavailable |
-| Phase 11 — documentation and delivery | In progress until final commit/archive | This status document, updated release artifacts, final manifest/archive to be generated after commit | Final delivery must retain all blockers and the `NOT QUALIFIED` statement |
+| Phase 11 — documentation and delivery | Complete for this source release; final archive/manifest verification pending after docs update | This status document, scorecard, wiring audit, release manifest, source-only archive, and final verification report | Final delivery retains all blockers and the `NOT QUALIFIED` statement |
 
 ## Implemented integration surfaces
 
@@ -36,7 +36,7 @@ Provider boundaries support disabled/error fallback and redacted metadata withou
 
 ## Current scorecard
 
-The regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
+At revision `5705f57`, the regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
 
 The scorecard blockers are:
 
@@ -66,4 +66,4 @@ The current repository therefore represents an improved and auditable offline re
 
 ## Delivery checklist
 
-Before final delivery, regenerate the release manifest after the final commit, verify all manifest hashes, build a source-only archive, verify that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output, and attach the final verification report together with the archive and the relevant scorecard/gate artifacts.
+The remaining mechanical delivery step is to regenerate the release manifest after this documentation commit, verify all manifest hashes, build a source-only archive, verify that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output, and attach the final verification report together with the archive and the relevant scorecard/gate artifacts.

@@ -11,15 +11,15 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `cc4b619` (`refresh generated inventory and capability gate contracts`) |
+| Implementation source revision | `5705f57` (`integrate governed superagentic execution patterns`) |
 | Benchmark contract revision | `e4f8c74` (`add proof-gated VIP benchmark efficiency metrics`) |
-| Manifest generation revision | generated from `cc4b619`, before this final metadata reconciliation commit |
+| Manifest generation revision | will be regenerated from `5705f57` after the final documentation commit |
 | Final metadata commit | recorded in Git history after manifest regeneration; it must not be confused with the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
 ## What is validated offline
 
-The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. The current locked environment passed 1,544 tests with 6 explicit optional bbscout skips and 56 warnings. The official gate remains failed/blocked because the reviewed bbscout source tree is absent from this checkout; the skipped integration tests are not treated as passes. The offline proof/replay simulation contacts no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
+The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. The current locked environment passed 1,571 tests with 6 explicit optional bbscout skips and 56 warnings. The official gate remains failed/blocked because the reviewed bbscout source tree is absent from this checkout; the skipped integration tests are not treated as passes. The offline proof/replay simulation contacts no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
 
 The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
 
@@ -31,7 +31,7 @@ The router continues to use deterministic fallback behavior when LLM use is disa
 
 ## Qualification boundary
 
-No provider or target live I/O was performed in the current Phase 7 validation. WAPTLab and Juice Shop qualification are therefore fail-closed and remain pending. The repository retains a redacted historical live-smoke artifact, and the release manifest labels it `historical_live_artifact`; its `target_contacted=true` value must not be interpreted as contact made during the current validation. The offline proof/replay simulation observed three reproducible fixture runs with replay agreement, but `live_qualification_proven=false` for that simulation. VIP qualification requires three independent authorized local WAPTLab runs, each meeting all of the following: at least 15 confirmed findings out of 20, precision of at least 90%, reproducibility of at least 95%, complete proof coverage, zero scope violations, and zero duplicates. A cumulative result or fixture-only result cannot satisfy that gate.
+No provider or target live I/O was performed in the current Superagentic integration validation. WAPTLab and Juice Shop qualification are therefore fail-closed and remain pending. The repository retains a redacted historical live-smoke artifact, and the release manifest labels it `historical_live_artifact`; its `target_contacted=true` value must not be interpreted as contact made during the current validation. The offline proof/replay simulation observed three reproducible fixture runs with replay agreement, but `live_qualification_proven=false` for that simulation. VIP qualification requires three independent authorized local WAPTLab runs, each meeting all of the following: at least 15 confirmed findings out of 20, precision of at least 90%, reproducibility of at least 95%, complete proof coverage, zero scope violations, and zero duplicates. A cumulative result or fixture-only result cannot satisfy that gate.
 
 ## Release identity procedure
 
