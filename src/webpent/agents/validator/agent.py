@@ -2210,6 +2210,14 @@ def _validate_with_tool(
             thread_id=thread_id,
             session_cookies=session_cookies,
         )
+    elif vuln_class == "race_condition":
+        from webpent.agents.validator.active_checks import validate_race_condition
+
+        return validate_race_condition(
+            finding,
+            cookies=session_cookies,
+            verification_context=verification_context,
+        )
     elif vuln_class == "open_redirect":
         return _validate_open_redirect(
             finding,

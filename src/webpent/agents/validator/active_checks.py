@@ -460,6 +460,150 @@ def _inband_marker_check(
     )
 
 
+def _normalise_race_observation(
+    value: Any,
+    *,
+    role: str,
+) -> dict[str, Any] | None:
+    """Keep only redacted transport metadata for a race replay observation."""
+    if not isinstance(value, dict):
+        return None
+    allowed = {
+        "target_backed",
+        "observation_role",
+        "target_fingerprint",
+        "request_digest",
+        "response_digest",
+        "method",
+        "url",
+        "status_code",
+        "body_length",
+        "body_sha256",
+        "headers",
+        "elapsed_ms",
+    }
+    observation = {key: value[key] for key in allowed if key in value}
+    observation["observation_role"] = role
+    if isinstance(observation.get("url"), str):
+        observation["url"] = _redact_query_url(observation["url"])
+    if isinstance(observation.get("headers"), dict):
+        observation["headers"] = _safe_headers(observation["headers"])
+    return observation
+
+
+def validate_race_condition(
+    finding: Finding,
+    cookies: dict[str, str] | None = None,
+    verification_context: dict[str, Any] | None = None,
+) -> Finding:
+    """Validate a bounded race replay without issuing requests in this stage.
+
+    The business-logic fuzzer may produce a candidate burst summary, but only a
+    separate authorized replay producer can populate ``race_replay`` with
+    baseline, candidate, and independent negative-control observations. This
+    function therefore never treats a burst count alone as confirmation.
+    """
+    del cookies
+    evidence = dict(finding.evidence or {})
+    replay = evidence.get("race_replay")
+    if not isinstance(replay, dict):
+        return _ambiguous(
+            finding,
+            {
+                "validator": "race_condition",
+                "validation_unavailable": True,
+                "validation_failure_reason": "race_replay_required",
+            },
+            "Race-condition candidate has no bounded baseline/candidate/negative-control "
+            "replay. A burst count alone is not confirmation.",
+        )
+
+    baseline = _normalise_race_observation(replay.get("baseline"), role="baseline")
+    candidate = _normalise_race_observation(replay.get("candidate"), role="candidate")
+    negative_control = _normalise_race_observation(
+        replay.get("negative_control"), role="negative_control"
+    )
+    try:
+        baseline_successes = int(replay["baseline_successes"])
+        candidate_successes = int(replay["candidate_successes"])
+        negative_successes = int(replay["negative_control_successes"])
+        burst_size = int(replay["burst_size"])
+    except (KeyError, TypeError, ValueError):
+        return _ambiguous(
+            finding,
+            {
+                "validator": "race_condition",
+                "validation_unavailable": True,
+                "validation_failure_reason": "race_metrics_incomplete",
+            },
+            "Race-condition replay metrics are incomplete or non-numeric; "
+            "no automated confirmation is claimed.",
+        )
+
+    metrics_valid = (
+        0 <= baseline_successes <= burst_size
+        and 0 <= candidate_successes <= burst_size
+        and 0 <= negative_successes <= burst_size
+        and burst_size > 1
+    )
+    independent_control = replay.get("independent_control") is True
+    causal_signal = bool(metrics_valid and candidate_successes > baseline_successes)
+    negative_control_complete = bool(
+        metrics_valid
+        and independent_control
+        and negative_successes <= baseline_successes
+    )
+    replay_evidence = {
+        "validator": "race_condition",
+        "baseline": baseline,
+        "candidate": candidate,
+        "negative_control": negative_control,
+        "race_metrics": {
+            "baseline_successes": baseline_successes,
+            "candidate_successes": candidate_successes,
+            "negative_control_successes": negative_successes,
+            "burst_size": burst_size,
+        },
+        "causal_signal": causal_signal,
+        "negative_control_complete": negative_control_complete,
+        "negative_control_independent": independent_control,
+    }
+    if baseline is None or candidate is None or negative_control is None:
+        replay_evidence.update(
+            {
+                "validation_unavailable": True,
+                "validation_failure_reason": "race_observations_incomplete",
+            }
+        )
+        return _ambiguous(
+            finding,
+            replay_evidence,
+            "Race-condition replay is missing one or more redacted target observations; "
+            "no automated confirmation is claimed.",
+            not_scanned=True,
+        )
+
+    if causal_signal and negative_control_complete:
+        return _confirmed(
+            finding,
+            replay_evidence,
+            "Bounded race replay produced more successful candidate operations than the "
+            "baseline while the independent negative control did not reproduce the signal.",
+            "bounded_concurrent_replay",
+            verification_context=verification_context,
+        )
+    replay_evidence["promotion_guard"] = {
+        "status": "blocked",
+        "reason": "causal_signal_and_negative_control_required",
+    }
+    return _ambiguous(
+        finding,
+        replay_evidence,
+        "Race replay completed without both a causal success differential and an "
+        "independent negative control. No automated confirmation is claimed.",
+    )
+
+
 def validate_lfi(
     finding: Finding,
     cookies: dict[str, str] | None = None,
@@ -617,5 +761,6 @@ __all__ = [
     "validate_lfi",
     "validate_nosql_injection",
     "validate_path_traversal",
+    "validate_race_condition",
     "validate_ssti",
 ]

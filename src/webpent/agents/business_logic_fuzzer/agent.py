@@ -412,6 +412,10 @@ def business_logic_fuzzer_node(state: PentestState) -> dict:
             # business_logic_fuzzer_node entirely (which would lose all
             # subsequent race-condition findings and abort the graph
             # node). Mirrors access_control / request_smuggling pattern.
+            status_histogram: dict[str, int] = {}
+            for status_code in status_codes:
+                key = str(status_code)
+                status_histogram[key] = status_histogram.get(key, 0) + 1
             try:
                 finding = Finding(
                     title=f"Race condition: {method} {urlparse(url).path}",
@@ -439,6 +443,19 @@ def business_logic_fuzzer_node(state: PentestState) -> dict:
                         f"indicates the server does not atomically serialize "
                         f"state-changing operations."
                     ),
+                    evidence={
+                        "race_probe": {
+                            "observation_type": "candidate_burst_summary",
+                            "target_backed": True,
+                            "proof_ready": False,
+                            "method": method,
+                            "path": urlparse(url).path,
+                            "burst_size": len(status_codes),
+                            "candidate_successes": success_count,
+                            "status_code_histogram": status_histogram,
+                            "requires_baseline_negative_control_replay": True,
+                        }
+                    },
                 )
             except Exception as exc:
                 logger.error(

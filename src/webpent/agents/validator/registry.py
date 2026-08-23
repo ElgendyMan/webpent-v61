@@ -50,6 +50,7 @@ _IMPLEMENTED_VALIDATORS: Final[dict[str, str]] = {
     # Offline weak-secret verification emits a sealed ProofBundle and a
     # wrong-secret negative control; the central validator revalidates it.
     "jwt_weakness": "jwt_weakness",
+    "race_condition": "race_condition",
 }
 
 _OFFLINE_FIXTURE_VALIDATORS: Final[dict[str, str]] = {
