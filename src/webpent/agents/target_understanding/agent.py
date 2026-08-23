@@ -190,13 +190,14 @@ def _workflow_records(
     forms: list[dict[str, Any]],
     endpoint_details: list[dict[str, Any]],
     identities: list[dict[str, Any]],
+    target: Target | None = None,
 ) -> list[dict[str, Any]]:
     required_role = next((item.get("role") for item in identities if item.get("role")), None)
     workflows: list[dict[str, Any]] = []
     seen: set[str] = set()
     for form in forms[:_MAX_FORMS]:
         action = _as_url(form.get("action") or form.get("url") or form.get("source_url"))
-        if not action:
+        if not action or (target is not None and not target.is_in_scope(action)):
             continue
         path = urlparse(action).path.strip("/") or "root"
         name = f"form:{path}"[:160]
@@ -205,6 +206,7 @@ def _workflow_records(
         seen.add(name)
         workflows.append(
             {
+                "workflow_id": name,
                 "name": name,
                 "required_role": required_role,
                 "steps": [
@@ -263,7 +265,7 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
     objects = _object_records(crawled_data)
     auth_signals = _auth_signals(state)
     details = _endpoint_details(endpoints, forms, auth_signals)
-    workflows = _workflow_records(forms, details, identities)
+    workflows = _workflow_records(forms, details, identities, target)
     relations = _relations(workflows, details)
     intent = infer_application_intent(
         target_url=target_url,
