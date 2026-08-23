@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 from langchain_core.messages import AIMessage
 
 from webpent.intelligence.contracts import EndpointIntelligence
+from webpent.intelligence.hypothesis_bridge import build_kernel_hypotheses
 from webpent.intelligence.target_brain import TargetBrainSnapshot, build_target_brain
 from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.knowledge.target_knowledge import TargetKnowledgeModel
@@ -433,6 +434,7 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
         target_knowledge_dict = {}
 
     reasoning_proposals: list[dict[str, Any]] = []
+    kernel_hypotheses = []
     target_brain: TargetBrainSnapshot | None = None
     try:
         knowledge_model = TargetKnowledgeModel.model_validate(target_knowledge_dict)
@@ -447,6 +449,14 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
             engagement_id=knowledge_model.engagement_id,
             knowledge=knowledge_model,
             endpoints=endpoint_intelligence,
+        )
+        existing_hypotheses = state.get("hypotheses")
+        if not isinstance(existing_hypotheses, (list, tuple)):
+            existing_hypotheses = []
+        kernel_hypotheses = build_kernel_hypotheses(
+            engagement_id=knowledge_model.engagement_id,
+            endpoints=endpoint_intelligence,
+            existing=existing_hypotheses,
         )
         auth_state = state.get("auth_state") or {}
         auth_observations: dict[str, Any] = {}
@@ -468,6 +478,7 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
         "target_understanding": summary,
         "target_knowledge": target_knowledge_dict,
         "target_brain": target_brain.as_dict() if target_brain is not None else {},
+        "hypotheses": kernel_hypotheses,
         "security_reasoning_proposals": reasoning_proposals,
         "application_intent": intent,
         "policy_assumptions": intent.get("policy_assumptions", []),

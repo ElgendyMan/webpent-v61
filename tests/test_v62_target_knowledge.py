@@ -44,7 +44,16 @@ def test_target_understanding_returns_target_knowledge_projection() -> None:
         {
             "target": _target(),
             "engagement_id": "waptlab-main",
-            "crawled_data": {"endpoints": ["http://lab.local/login"]},
+            "crawled_data": {
+                "endpoints": ["http://lab.local/login"],
+                "forms": [
+                    {
+                        "action": "http://lab.local/account/update",
+                        "method": "POST",
+                        "parameter_names": ["email"],
+                    }
+                ],
+            },
         }  # type: ignore[arg-type]
     )
 
@@ -55,13 +64,15 @@ def test_target_understanding_returns_target_knowledge_projection() -> None:
 
     brain = result["target_brain"]
     assert brain["engagement_id"] == "waptlab-main"
-    assert brain["endpoint_count"] == 1
+    assert brain["endpoint_count"] == 2
     assert brain["coverage_gaps"] == [
         "no_authorization_profiles",
-        "no_workflow_observations",
         "no_data_flow_observations",
     ]
     assert brain["knowledge"]["engagement_id"] == "waptlab-main"
+    assert len(result["hypotheses"]) == 1
+    assert result["hypotheses"][0].status == "unexplored"
+    assert result["hypotheses"][0].evidence_contract["evidence_needed"]
     assert "finding" not in repr(brain)
 
 
@@ -79,5 +90,6 @@ def test_target_understanding_target_brain_fails_closed_for_malformed_state() ->
     assert brain["engagement_id"] == "malformed-state"
     assert brain["endpoint_count"] == 0
     assert brain["knowledge"]["nodes"] == {}
+    assert result["hypotheses"] == []
     assert "secret-cookie" not in repr(brain)
 
