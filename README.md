@@ -1,6 +1,6 @@
 # WebPent
 
-**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). The latest metadata/audit revision is recorded by the final release manifest; historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
+**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The implementation revision for the completed `pasted_content_3.txt` plan is `e3d4717`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md), and the phase-by-phase delivery matrix is in [`docs/PASTED_CONTENT_3_EXECUTION_STATUS.md`](docs/PASTED_CONTENT_3_EXECUTION_STATUS.md).
 
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
@@ -17,19 +17,19 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | البوابة | النتيجة |
 |---|---|
 | bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent full regression with external reviewed bbscout source | 1613 passed، 56 warnings |
-| WebPent checkout-only regression | 1589 passed، 6 skipped، 56 warnings |
+| WebPent clean checkout regression | 1622 passed، 6 skipped، 56 warnings |
+| Docker Compose dev smoke | Passed؛ API health، Redis PONG، Celery worker، Playwright 1.48.0، Nuclei 3.9.0، Chromium headless |
 | bbscout/WebPent bridge + settings contracts | Passed |
 | Release/plan-artifact audit suite | Passed |
-| G-02 inventory/runtime/precommit gate | Passed؛ 297 direct-I/O records |
+| G-02 inventory/runtime/precommit gate | Passed؛ direct-I/O inventory محفوظ في بوابة Phase 12 |
 | Ruff | Passed |
 | compileall | Passed |
 | `git diff --check` | Passed |
 | tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
 | Offline release verifier | Passed؛ يرفض DB/WAL/SHM/journal/log artifacts؛ لا target contact |
-| Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount |
+| Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount؛ لا تعني distributed qualification |
 
-هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Adapters الـproviders الأربعة في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
+هذه النتائج تثبت العقود والـregressions وruntime smoke التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Target Intelligence وAttack Graph وhypothesis bridge وspecialist routing وValidationStatus وHITL levels تعمل كطبقات advisory فوق الـKernel. Adapters الـproviders والـbenchmark profiles في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
 
 ## ما هو Target Package v2؟
 
