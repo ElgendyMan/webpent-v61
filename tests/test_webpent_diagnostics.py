@@ -59,6 +59,48 @@ def test_network_checks_are_explicitly_marked_when_disabled():
     assert all(item["network_access"] is False for item in port_items)
 
 
+def test_toolchain_contract_reports_pinned_versions_and_template_manifest(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        diagnostics,
+        "_toolchain_command",
+        lambda name: ([0, f"{diagnostics.TOOLCHAIN_CONTRACT[name]['expected_version']}\n", ""]),
+    )
+    monkeypatch.setattr(diagnostics.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(
+        diagnostics,
+        "_read_nuclei_template_manifest",
+        lambda: {
+            "schema_version": "nuclei-template-manifest-v1",
+            "version": "v3.9.0",
+            "digest": "a" * 64,
+            "file_count": 1,
+        },
+    )
+
+    items = diagnostics.check_toolchain()
+
+    assert {item.check_id for item in items} >= {
+        "toolchain.nuclei",
+        "toolchain.templates",
+    }
+    assert all(item.status == "PASS" for item in items)
+    template = next(item for item in items if item.check_id == "toolchain.templates")
+    assert template.evidence["digest"] == "a" * 64
+
+
+def test_toolchain_template_manifest_is_fail_closed_when_missing(monkeypatch):
+    monkeypatch.setattr(diagnostics, "_read_nuclei_template_manifest", lambda: None)
+
+    items = diagnostics.check_toolchain()
+
+    template = next(item for item in items if item.check_id == "toolchain.templates")
+    assert template.status == "BLOCKED"
+    assert template.severity == "error"
+    assert template.evidence["manifest_present"] is False
+
+
 def test_human_renderer_surfaces_remediation_without_secret_values():
     report = {
         "timestamp": "2026-08-22T00:00:00Z",

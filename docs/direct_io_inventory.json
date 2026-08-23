@@ -3952,7 +3952,7 @@
       "column": 22,
       "file": "src/webpent/tools/recon/nuclei.py",
       "kind": "safe_boundary_call",
-      "line": 201,
+      "line": 241,
       "normalized_symbol": "webpent.tools.utils.subprocess.run_command",
       "reason": "central hardened wrapper call",
       "symbol": "run_command",

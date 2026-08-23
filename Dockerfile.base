@@ -145,7 +145,18 @@ COPY --from=gobuilder /go/bin/dalfox /usr/local/bin/dalfox
 # `go install github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest`
 # line to the gobuilder stage AND real integration code in src/webpent/tools/.
 
-RUN nuclei -update-templates 2>/dev/null || true
+# Keep templates in a stable, readable location and fail the image build if
+# the approved template set cannot be installed. Scans must never silently run
+# with an empty or stale template directory.
+ENV WEBPENT_NUCLEI_TEMPLATE_DIR=/opt/webpent/nuclei-templates
+COPY scripts/build_nuclei_template_manifest.py /usr/local/bin/build_nuclei_template_manifest.py
+RUN mkdir -p "$WEBPENT_NUCLEI_TEMPLATE_DIR" && \
+    nuclei -update-templates -update-directory "$WEBPENT_NUCLEI_TEMPLATE_DIR" && \
+    python3 /usr/local/bin/build_nuclei_template_manifest.py \
+        --root "$WEBPENT_NUCLEI_TEMPLATE_DIR" \
+        --version "nuclei-v3.9.0" \
+        --output "$WEBPENT_NUCLEI_TEMPLATE_DIR/manifest.json" && \
+    chmod -R a+rX "$WEBPENT_NUCLEI_TEMPLATE_DIR"
 
 # ---------------------------------------------------------------------------
 # Stage 2b: Heavy Python ML libraries (torch, sentence-transformers, chromadb)

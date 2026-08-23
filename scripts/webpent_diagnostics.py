@@ -59,6 +59,44 @@ OPTIONAL_BINARIES = (
     "dalfox",
     "sqlmap",
 )
+TOOLCHAIN_CONTRACT = {
+    "nuclei": {
+        "binary": "nuclei",
+        "version_args": ["-version"],
+        "expected_version": "v3.9.0",
+    },
+    "subfinder": {
+        "binary": "subfinder",
+        "version_args": ["-version"],
+        "expected_version": "v2.9.0",
+    },
+    "httpx": {
+        "binary": "httpx-pd",
+        "version_args": ["-version"],
+        "expected_version": "v1.9.0",
+    },
+    "katana": {
+        "binary": "katana",
+        "version_args": ["-version"],
+        "expected_version": "v1.7.0",
+    },
+    "dalfox": {
+        "binary": "dalfox",
+        "version_args": ["version"],
+        "expected_version": "v2.12.0",
+    },
+    "ffuf": {
+        "binary": "ffuf",
+        "version_args": ["-V"],
+        "expected_version": "2.1.0",
+    },
+    "sqlmap": {
+        "binary": "sqlmap",
+        "version_args": ["--version"],
+        "expected_version": "1.8",
+    },
+}
+TEMPLATE_MANIFEST_SCHEMA = "nuclei-template-manifest-v1"
 
 
 @dataclass(frozen=True)
@@ -121,6 +159,131 @@ def _run_command(args: list[str], timeout: float = 8.0) -> tuple[int, str, str]:
     stdout = " ".join(completed.stdout.split())[:500]
     stderr = " ".join(completed.stderr.split())[:500]
     return completed.returncode, stdout, stderr
+
+
+def _toolchain_command(name: str) -> tuple[int, str, str]:
+    contract = TOOLCHAIN_CONTRACT[name]
+    binary = contract["binary"]
+    path = shutil.which(binary)
+    if not path:
+        return 127, "", "command not found"
+    return _run_command([path, *contract["version_args"]], timeout=5.0)
+
+
+def _template_manifest_path() -> Path:
+    configured = os.getenv("WEBPENT_NUCLEI_TEMPLATE_MANIFEST", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    configured_root = os.getenv("WEBPENT_NUCLEI_TEMPLATE_DIR", "").strip()
+    if configured_root:
+        return Path(configured_root).expanduser() / "manifest.json"
+    return PROJECT_ROOT / ".nuclei-template-manifest.json"
+
+
+def _read_nuclei_template_manifest() -> dict[str, Any] | None:
+    path = _template_manifest_path()
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(manifest, dict):
+        return None
+    digest = manifest.get("digest")
+    file_count = manifest.get("file_count")
+    if (
+        manifest.get("schema_version") != TEMPLATE_MANIFEST_SCHEMA
+        or not isinstance(manifest.get("version"), str)
+        or not manifest["version"].strip()
+        or not isinstance(digest, str)
+        or len(digest) != 64
+        or any(character not in "0123456789abcdef" for character in digest.lower())
+        or not isinstance(file_count, int)
+        or file_count < 1
+    ):
+        return None
+    return {
+        "schema_version": manifest["schema_version"],
+        "version": manifest["version"].strip(),
+        "digest": digest.lower(),
+        "file_count": file_count,
+        "total_bytes": manifest.get("total_bytes", 0),
+    }
+
+
+def check_toolchain() -> list[Finding]:
+    results: list[Finding] = []
+    for name, contract in TOOLCHAIN_CONTRACT.items():
+        code, stdout, stderr = _toolchain_command(name)
+        output = stdout or stderr or f"exit={code}"
+        expected = contract["expected_version"]
+        version_match = code == 0 and expected in output
+        status = "PASS" if version_match else "WARN"
+        results.append(
+            finding(
+                f"toolchain.{name}",
+                f"{name} security tool",
+                status,
+                "info" if version_match else "warning",
+                output[:180],
+                f"{contract['binary']} reports pinned version containing {expected}",
+                (
+                    "binary is missing, version output is unavailable, or the installed "
+                    "version differs from the release contract"
+                ),
+                (
+                    f"install the pinned {contract['binary']} binary in the approved image "
+                    "and rerun diagnostics"
+                ),
+                retryability="after_install_or_image_rebuild",
+                evidence={
+                    "binary": contract["binary"],
+                    "expected_version": expected,
+                    "exit_code": code,
+                    "version_output_redacted": True,
+                },
+            )
+        )
+
+    manifest = _read_nuclei_template_manifest()
+    expected_tool_version = TOOLCHAIN_CONTRACT["nuclei"]["expected_version"]
+    manifest_valid = bool(
+        manifest and expected_tool_version in str(manifest.get("version", ""))
+    )
+    results.append(
+        finding(
+            "toolchain.templates",
+            "Nuclei template set",
+            "PASS" if manifest_valid else "BLOCKED",
+            "info" if manifest_valid else "error",
+            (
+                f"version={manifest.get('version')}, files={manifest.get('file_count', 0)}"
+                if manifest
+                else "template manifest missing or invalid"
+            ),
+            (
+                "a valid nuclei-template-manifest-v1 with a non-empty file set and "
+                f"provenance for {expected_tool_version}"
+            ),
+            (
+                "template content is absent, malformed, empty, or not tied to the "
+                "pinned Nuclei version"
+            ),
+            (
+                "rebuild the approved image with Nuclei template update enabled; never "
+                "run a coverage claim with an untracked template set"
+            ),
+            retryability="after_image_rebuild",
+            evidence={
+                "manifest_present": manifest is not None,
+                "schema_version": manifest.get("schema_version") if manifest else None,
+                "version": manifest.get("version") if manifest else None,
+                "digest": manifest.get("digest") if manifest else None,
+                "file_count": manifest.get("file_count") if manifest else 0,
+                "manifest_path_redacted": True,
+            },
+        )
+    )
+    return results
 
 
 def check_project() -> list[Finding]:
@@ -671,6 +834,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     findings.extend(check_imports())
     findings.extend(check_pip())
     findings.extend(check_binaries())
+    findings.extend(check_toolchain())
     findings.extend(check_docker(args.docker_config))
     findings.extend(check_sqlite())
     findings.extend(check_rag())

@@ -57,6 +57,41 @@ def _private_tool_cache_dir() -> Path:
     return cache_dir
 
 
+def _template_dir_from_environment() -> Path | None:
+    configured = os.environ.get("WEBPENT_NUCLEI_TEMPLATE_DIR", "").strip()
+    return Path(configured).expanduser() if configured else None
+
+
+def _verify_default_template_set(template_dir: Path) -> None:
+    manifest_path = template_dir / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ToolExecutionError(
+            ["nuclei", "template-manifest-check"],
+            78,
+            message="Nuclei default template manifest is missing or invalid; scan refused",
+        ) from exc
+    digest = manifest.get("digest") if isinstance(manifest, dict) else None
+    file_count = manifest.get("file_count") if isinstance(manifest, dict) else None
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema_version") != "nuclei-template-manifest-v1"
+        or not isinstance(manifest.get("version"), str)
+        or not manifest["version"].strip()
+        or not isinstance(digest, str)
+        or len(digest) != 64
+        or any(character not in "0123456789abcdef" for character in digest.lower())
+        or not isinstance(file_count, int)
+        or file_count < 1
+    ):
+        raise ToolExecutionError(
+            ["nuclei", "template-manifest-check"],
+            78,
+            message="Nuclei default template manifest failed validation; scan refused",
+        )
+
+
 def _resolve_nuclei_binary(configured_path: str) -> str:
     """Resolve the configured nuclei binary without weakening tool safety.
 
@@ -158,6 +193,11 @@ def run_nuclei(
             template = template.strip()
             if template:
                 cmd.extend(["-t", template])
+    else:
+        template_dir = _template_dir_from_environment()
+        if template_dir is not None:
+            _verify_default_template_set(template_dir)
+            cmd.extend(["-t", str(template_dir)])
 
     # Keep nuclei aligned with the Python HTTP clients and the target's
     # explicit lab allowlist. Without this header, WAPTLab's bot gate

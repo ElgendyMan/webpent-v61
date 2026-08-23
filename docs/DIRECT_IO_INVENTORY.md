@@ -293,7 +293,7 @@ Total records: **284**.
 | `src/webpent/tools/recon/ffuf.py` | 109 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/tools/recon/httpx.py` | 107 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/tools/recon/katana.py` | 173 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
-| `src/webpent/tools/recon/nuclei.py` | 201 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
+| `src/webpent/tools/recon/nuclei.py` | 241 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/tools/recon/subfinder.py` | 64 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/tools/registry.py` | 215 | `dynamic_import` | `importlib.reload` | `dynamic_import` | `approved_with_expiry` |
 | `src/webpent/tools/registry.py` | 217 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
