@@ -92,3 +92,14 @@ def test_target_brain_excludes_out_of_scope_forms_and_workflows() -> None:
     assert any(item.get("reasoner") == "business_logic" for item in proposals)
     assert all(item.get("execution_mode") == "proposal_only" for item in proposals)
     assert all("outside.example" not in repr(item) for item in proposals)
+
+    brain = result["target_brain"]
+    assert brain["engagement_id"] == "engagement-scope-test"
+    assert brain["endpoint_count"] == 1
+    assert all("outside.example" not in repr(item) for item in brain["knowledge"]["nodes"].values())
+    assert all(
+        "outside.example" not in repr(item)
+        for item in brain["knowledge"]["workflows"].values()
+    )
+    assert "finding" not in repr(brain)
+    assert "proof" not in repr(brain).lower()

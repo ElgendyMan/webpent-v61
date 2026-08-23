@@ -53,3 +53,31 @@ def test_target_understanding_returns_target_knowledge_projection() -> None:
     assert projection["schema_version"] == 1
     assert any(node["kind"] == "endpoint" for node in projection["nodes"].values())
 
+    brain = result["target_brain"]
+    assert brain["engagement_id"] == "waptlab-main"
+    assert brain["endpoint_count"] == 1
+    assert brain["coverage_gaps"] == [
+        "no_authorization_profiles",
+        "no_workflow_observations",
+        "no_data_flow_observations",
+    ]
+    assert brain["knowledge"]["engagement_id"] == "waptlab-main"
+    assert "finding" not in repr(brain)
+
+
+def test_target_understanding_target_brain_fails_closed_for_malformed_state() -> None:
+    result = target_understanding_node(
+        {
+            "engagement_id": "malformed-state",
+            "mental_model": "not-a-dict",
+            "crawled_data": "not-a-dict",
+            "session_cookies": {"session": "secret-cookie"},
+        }  # type: ignore[arg-type]
+    )
+
+    brain = result["target_brain"]
+    assert brain["engagement_id"] == "malformed-state"
+    assert brain["endpoint_count"] == 0
+    assert brain["knowledge"]["nodes"] == {}
+    assert "secret-cookie" not in repr(brain)
+

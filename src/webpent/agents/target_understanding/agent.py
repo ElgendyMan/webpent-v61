@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage
 
+from webpent.intelligence.contracts import EndpointIntelligence
+from webpent.intelligence.target_brain import TargetBrainSnapshot, build_target_brain
 from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.knowledge.target_knowledge import TargetKnowledgeModel
 from webpent.models.mental_model import EdgeKind, extract_mental_model_updates
@@ -145,6 +147,86 @@ def _endpoint_details(
         row["form"] = True
         row["evidence_refs"] = ["obs://target-understanding/forms"]
     return list(details.values())[:_MAX_ENDPOINTS]
+
+
+def _endpoint_intelligence_records(
+    details: list[dict[str, Any]],
+    objects: list[dict[str, Any]],
+    identities: list[dict[str, Any]],
+    auth_signals: list[str],
+    target: Target | None,
+) -> list[EndpointIntelligence]:
+    """Create a bounded advisory endpoint projection from admitted observations."""
+    roles = sorted(
+        {
+            str(identity.get("role")).strip()
+            for identity in identities
+            if identity.get("role") and str(identity.get("role")).strip()
+        }
+    )
+    object_types_by_url: dict[str, str] = {}
+    for item in objects:
+        url = _as_url(item.get("url"))
+        object_type = item.get("type") or item.get("object_type")
+        if (
+            url
+            and (target is None or target.is_in_scope(url))
+            and isinstance(object_type, str)
+            and object_type.strip()
+        ):
+            object_types_by_url[url] = object_type.strip()[:120]
+
+    records: list[EndpointIntelligence] = []
+    for detail in details[:_MAX_ENDPOINTS]:
+        url = _as_url(detail.get("url"))
+        if not url or (target is not None and not target.is_in_scope(url)):
+            continue
+        raw_methods = detail.get("methods")
+        methods = (
+            [str(method).strip().upper() for method in raw_methods if str(method).strip()]
+            if isinstance(raw_methods, list)
+            else []
+        )
+        methods = list(dict.fromkeys(methods))[:8] or ["GET"]
+        detail_signals = detail.get("auth_signals")
+        observed_auth = (
+            [str(signal).strip()[:80] for signal in detail_signals if str(signal).strip()]
+            if isinstance(detail_signals, list)
+            else []
+        )
+        observed_auth = list(dict.fromkeys(observed_auth + auth_signals))[:20]
+        auth_required = bool(observed_auth)
+        role = roles[0] if auth_required and len(roles) == 1 else None
+        object_name = object_types_by_url.get(url)
+        evidence_refs = detail.get("evidence_refs")
+        safe_evidence_refs = (
+            [str(reference).strip() for reference in evidence_refs if str(reference).strip()]
+            if isinstance(evidence_refs, list)
+            else []
+        )
+        safe_evidence_refs = list(dict.fromkeys(safe_evidence_refs))[:32]
+        for method in methods:
+            hypotheses: list[str] = []
+            if detail.get("form"):
+                hypotheses.append("form-workflow-candidate")
+            if object_name and auth_required:
+                hypotheses.append("object-authorization-boundary-candidate")
+            if method in {"POST", "PUT", "PATCH", "DELETE"}:
+                hypotheses.append("state-transition-invariant-candidate")
+            records.append(
+                EndpointIntelligence(
+                    path=url,
+                    method=method,
+                    auth_required=auth_required,
+                    role=role,
+                    object=object_name,
+                    hypotheses=hypotheses,
+                    evidence_refs=safe_evidence_refs,
+                )
+            )
+            if len(records) >= _MAX_ENDPOINTS:
+                return records
+    return records
 
 
 def _identity_records(state: PentestState) -> list[dict[str, Any]]:
@@ -351,8 +433,21 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
         target_knowledge_dict = {}
 
     reasoning_proposals: list[dict[str, Any]] = []
+    target_brain: TargetBrainSnapshot | None = None
     try:
         knowledge_model = TargetKnowledgeModel.model_validate(target_knowledge_dict)
+        endpoint_intelligence = _endpoint_intelligence_records(
+            details,
+            objects,
+            identities,
+            auth_signals,
+            target,
+        )
+        target_brain = build_target_brain(
+            engagement_id=knowledge_model.engagement_id,
+            knowledge=knowledge_model,
+            endpoints=endpoint_intelligence,
+        )
         auth_state = state.get("auth_state") or {}
         auth_observations: dict[str, Any] = {}
         if isinstance(auth_state, dict):
@@ -372,6 +467,7 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
     return {
         "target_understanding": summary,
         "target_knowledge": target_knowledge_dict,
+        "target_brain": target_brain.as_dict() if target_brain is not None else {},
         "security_reasoning_proposals": reasoning_proposals,
         "application_intent": intent,
         "policy_assumptions": intent.get("policy_assumptions", []),
