@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import sys
+import urllib.error
+
 import pytest
 
-from scripts.qualification_harness import _build_command
+from scripts import qualification_harness
+from scripts.qualification_harness import _build_command, _run, _wait_target
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationFixture,
@@ -173,3 +177,60 @@ def test_cookie_file_remains_optional_and_explicit() -> None:
     command = _build_command(args, Path("/tmp/run"), "waptlab-q1")
 
     assert command[-2:] == ["--cookie-file", "/tmp/cookies.json"]
+
+
+def test_run_timeout_returns_reportable_result_and_kills_child() -> None:
+    completed = _run(
+        [sys.executable, "-c", "import time; time.sleep(5)"],
+        timeout=1,
+    )
+
+    assert completed.returncode == 124
+    assert "qualification_timeout_seconds=1" in completed.stderr
+
+
+def test_wait_target_treats_http_error_as_reachable(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(request: object, timeout: int) -> object:
+        raise urllib.error.HTTPError(str(request), 403, "forbidden", {}, None)
+
+    monkeypatch.setattr(qualification_harness.urllib.request, "urlopen", fake_urlopen)
+
+    result = _wait_target("http://127.0.0.1:8000", timeout_seconds=1)
+
+    assert result["status"] == "reachable"
+    assert result["http_status"] == 403
+    assert result["response_class"] == "http_error"
+
+
+def test_wait_target_uses_safe_health_path_when_root_hangs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    class Response:
+        status = 200
+
+        def read(self, size: int) -> bytes:
+            assert size == 256
+            return b"ok"
+
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    def fake_urlopen(request: object, timeout: int) -> object:
+        url = str(getattr(request, "full_url", request))
+        calls.append(url)
+        if url.rstrip("/") == "http://127.0.0.1:8000":
+            raise urllib.error.URLError("root timeout")
+        return Response()
+
+    monkeypatch.setattr(qualification_harness.urllib.request, "urlopen", fake_urlopen)
+
+    result = _wait_target("http://127.0.0.1:8000", timeout_seconds=1)
+
+    assert result["status"] == "reachable"
+    assert result["probe_url"].endswith("/robots.txt")
+    assert calls == ["http://127.0.0.1:8000", "http://127.0.0.1:8000/robots.txt"]

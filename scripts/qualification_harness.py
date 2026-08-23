@@ -13,13 +13,18 @@ accepted.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -57,8 +62,44 @@ def _redact(text: str) -> str:
     return value[:4000]
 
 
-def _run(argv: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = None, timeout: int = 60) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(argv, cwd=cwd, env=env, text=True, capture_output=True, timeout=timeout, check=False)
+def _run(
+    argv: list[str],
+    *,
+    cwd: Path = ROOT,
+    env: dict[str, str] | None = None,
+    timeout: int = 60,
+) -> subprocess.CompletedProcess[str]:
+    """Run a bounded child and always return a reportable result.
+
+    Qualification must not leave a scan process alive after timeout, and a
+    timeout must still produce ``qualification_run.json`` for diagnosis.
+    """
+    process = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+        stdout = stdout or (exc.stdout or "")
+        stderr = stderr or (exc.stderr or "")
+        timeout_note = f"qualification_timeout_seconds={timeout}"
+        stderr = f"{stderr.rstrip()}\\n{timeout_note}\\n" if stderr else f"{timeout_note}\\n"
+        return subprocess.CompletedProcess(argv, 124, stdout, stderr)
+    return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
 
 
 def _git_value(*args: str) -> str | None:
@@ -169,20 +210,48 @@ def _reset_waptlab() -> dict[str, Any]:
 
 
 def _wait_target(url: str, timeout_seconds: int = 90) -> dict[str, Any]:
-    import urllib.error
-    import urllib.request
+    """Wait for a local target without confusing HTTP responses with outages.
 
+    A 4xx/5xx response proves that an HTTP server is reachable, but does not
+    prove that the scan succeeded.  When a root document hangs, probe only
+    harmless public paths so a health check cannot be blocked by application
+    route behavior.  Response bodies are never persisted.
+    """
+    parsed = urllib.parse.urlsplit(url)
+    probe_urls = [url]
+    if parsed.path in ("", "/"):
+        base = url.rstrip("/")
+        probe_urls.extend((f"{base}/robots.txt", f"{base}/login"))
     deadline = time.time() + timeout_seconds
     last: dict[str, Any] = {"status": "not_contacted"}
     while time.time() < deadline:
-        try:
-            request = urllib.request.Request(url, method="GET")
-            with urllib.request.urlopen(request, timeout=5) as response:
-                body = response.read(256)
-                return {"status": "reachable", "http_status": response.status, "body_bytes_sampled": len(body)}
-        except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
-            last = {"status": "waiting", "error": _redact(str(exc))}
-            time.sleep(2)
+        for probe_url in probe_urls:
+            if time.time() >= deadline:
+                break
+            try:
+                request = urllib.request.Request(probe_url, method="GET")
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    body = response.read(256)
+                    return {
+                        "status": "reachable",
+                        "http_status": response.status,
+                        "body_bytes_sampled": len(body),
+                        "probe_url": probe_url,
+                    }
+            except urllib.error.HTTPError as exc:
+                return {
+                    "status": "reachable",
+                    "http_status": exc.code,
+                    "probe_url": probe_url,
+                    "response_class": "http_error",
+                }
+            except (OSError, urllib.error.URLError) as exc:
+                last = {
+                    "status": "waiting",
+                    "error": _redact(str(exc)),
+                    "probe_url": probe_url,
+                }
+        time.sleep(2)
     return {"status": "timeout", **last}
 
 
@@ -321,6 +390,7 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "run_id": run_id,
         "target": args.target,
         "target_url": args.url,
+        "target_reachable": target_wait.get("status") == "reachable",
         "contacted_target": target_wait.get("status") == "reachable",
         "target_wait": target_wait,
         "target_modified": False,
@@ -344,6 +414,8 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "campaign_plan_hash": _sha256_json(command),
         "reset": reset,
         "exit_code": completed.returncode,
+        "scan_completed": completed.returncode == 0 and report_path is not None,
+        "scan_status": "completed" if completed.returncode == 0 else ("timeout" if completed.returncode == 124 else "failed"),
         "duration_seconds": duration,
         "report_path": report_path,
         "execution_events": events,
@@ -384,7 +456,8 @@ def main() -> int:
     intersection = set.intersection(*confirmed_sets) if confirmed_sets else set()
     matrix = {
         "mode": "live_local_qualification",
-        "live_target_executed": any(run["contacted_target"] for run in runs),
+        "live_target_executed": any(run.get("scan_completed") is True for run in runs),
+        "target_reachable": any(run.get("target_reachable") is True for run in runs),
         "target": args.target,
         "runs": runs,
         "reproducibility": (len(intersection) / len(union)) if union else None,
