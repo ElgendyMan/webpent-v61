@@ -57,6 +57,16 @@ services:
     env_file: .env
     environment:
       - WEBPENT_REDIS_URL=redis://redis:6379/0
+      - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
+      - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
+      - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
+      - BBSCOUT_ALLOWED_PROGRAM_IDS=${BBSCOUT_ALLOWED_PROGRAM_IDS:-}
+      - BBSCOUT_MODE=${BBSCOUT_MODE:-offline}
+      - BBSCOUT_REQUIRE_VERIFIED_SIGNATURE=${BBSCOUT_REQUIRE_VERIFIED_SIGNATURE:-true}
+      - BBSCOUT_BROWSER_ENABLED=${BBSCOUT_BROWSER_ENABLED:-false}
+      - BBSCOUT_BROWSER_READ_ONLY=${BBSCOUT_BROWSER_READ_ONLY:-true}
+      - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
+      - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
       - PYTHONUNBUFFERED=1
       # V6 Develop-First: auth + rate limit disabled by default
       - AUTH_ENABLED=false
@@ -76,6 +86,7 @@ services:
       - ./output:/app/output
       - ./memory:/app/memory
       - ./webpent.db:/app/webpent.db
+      - ${BBSCOUT_PACKAGE_HOST_PATH:-./config/bbscout}:/run/webpent/bbscout:ro
     networks:
       - webpent-dev
 
@@ -103,6 +114,16 @@ services:
     env_file: .env
     environment:
       - WEBPENT_REDIS_URL=redis://redis:6379/0
+      - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
+      - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
+      - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
+      - BBSCOUT_ALLOWED_PROGRAM_IDS=${BBSCOUT_ALLOWED_PROGRAM_IDS:-}
+      - BBSCOUT_MODE=${BBSCOUT_MODE:-offline}
+      - BBSCOUT_REQUIRE_VERIFIED_SIGNATURE=${BBSCOUT_REQUIRE_VERIFIED_SIGNATURE:-true}
+      - BBSCOUT_BROWSER_ENABLED=${BBSCOUT_BROWSER_ENABLED:-false}
+      - BBSCOUT_BROWSER_READ_ONLY=${BBSCOUT_BROWSER_READ_ONLY:-true}
+      - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
+      - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
       - PYTHONUNBUFFERED=1
       - AUTH_ENABLED=false
       - RATE_LIMIT_ENABLED=false
@@ -121,6 +142,7 @@ services:
       - ./output:/app/output
       - ./memory:/app/memory
       - ./webpent.db:/app/webpent.db
+      - ${BBSCOUT_PACKAGE_HOST_PATH:-./config/bbscout}:/run/webpent/bbscout:ro
     networks:
       - webpent-dev
 

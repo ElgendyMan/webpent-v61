@@ -3,6 +3,9 @@ __pycache__/
 .env
 *.db
 *.sqlite3
+# Local bbscout packages may contain provider metadata; never commit them.
+/config/bbscout/*.json
+/config/bbscout/*.zip
 /memory/
 audit/
 output/

@@ -336,6 +336,72 @@ class Settings(BaseSettings):
         ),
     )
 
+    # -- bbscout provider-source bridge ---------------------------------------
+    # bbscout may supply an advisory Target Package v2, but it cannot grant
+    # action authority. Browser/signup/provider-submission paths are explicitly
+    # denied here and require a separate reviewed implementation if ever added.
+    bbscout_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("bbscout_enabled", "BBSCOUT_ENABLED"),
+        description="Enable local bbscout package admission; default is disabled.",
+    )
+    bbscout_package_path: str = Field(
+        default="",
+        validation_alias=AliasChoices("bbscout_package_path", "BBSCOUT_PACKAGE_PATH"),
+        description="Optional local Target Package v2 JSON path; never a credential path.",
+    )
+    bbscout_mode: str = Field(
+        default="offline",
+        validation_alias=AliasChoices("bbscout_mode", "BBSCOUT_MODE"),
+        description="bbscout bridge mode: offline or live; live requires verified signature.",
+    )
+    bbscout_require_verified_signature: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "bbscout_require_verified_signature", "BBSCOUT_REQUIRE_VERIFIED_SIGNATURE"
+        ),
+        description="Keep detached signature verification mandatory for any live handoff.",
+    )
+    bbscout_allowed_provider_ids: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "bbscout_allowed_provider_ids", "BBSCOUT_ALLOWED_PROVIDER_IDS"
+        ),
+        description="Comma-separated provider IDs allowlisted by the operator.",
+    )
+    bbscout_allowed_program_ids: str = Field(
+        default="",
+        validation_alias=AliasChoices("bbscout_allowed_program_ids", "BBSCOUT_ALLOWED_PROGRAM_IDS"),
+        description="Comma-separated program IDs allowlisted by the operator.",
+    )
+    bbscout_browser_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("bbscout_browser_enabled", "BBSCOUT_BROWSER_ENABLED"),
+        description="Browser handoff switch; remains disabled by default.",
+    )
+    bbscout_browser_read_only: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("bbscout_browser_read_only", "BBSCOUT_BROWSER_READ_ONLY"),
+        description="Browser handoff must be read-only and cannot submit forms.",
+    )
+    bbscout_signup_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("bbscout_signup_enabled", "BBSCOUT_SIGNUP_ENABLED"),
+        description="Blocked policy flag; automatic account creation is not supported.",
+    )
+    bbscout_provider_submission_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "bbscout_provider_submission_enabled", "BBSCOUT_PROVIDER_SUBMISSION_ENABLED"
+        ),
+        description="Blocked policy flag; automatic bounty-platform submission is not supported.",
+    )
+    bbscout_credentials_ref: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("bbscout_credentials_ref", "BBSCOUT_CREDENTIALS_REF"),
+        description="Opaque secret-manager reference only; raw credentials/cookies are denied.",
+    )
+
     smart_require_proof_bundle: bool = Field(
         default=False,
         validation_alias=AliasChoices(
@@ -1345,6 +1411,20 @@ class Settings(BaseSettings):
                 (per the CISO directive, checked against
                 ``_INSECURE_JWT_DEFAULTS``).
         """
+        # bbscout is an advisory package source only. These checks prevent a
+        # configuration typo from turning it into an account-creation or provider
+        # submission agent.
+        if self.bbscout_mode not in {"offline", "live"}:
+            raise ValueError("bbscout_mode must be either 'offline' or 'live'")
+        if self.bbscout_mode == "live" and not self.bbscout_require_verified_signature:
+            raise ValueError("live bbscout mode requires verified detached signatures")
+        if self.bbscout_signup_enabled:
+            raise ValueError("automatic bbscout signup is disabled by policy")
+        if self.bbscout_provider_submission_enabled:
+            raise ValueError("automatic bbscout provider submission is disabled by policy")
+        if self.bbscout_browser_enabled and not self.bbscout_browser_read_only:
+            raise ValueError("bbscout browser handoff must remain read-only")
+
         # Environment profile is explicit and fail-closed for non-lab deployments.
         # The lab default preserves existing local/offline behavior while staging and
         # production cannot silently run with authentication disabled.

@@ -1,6 +1,6 @@
 # WebPent
 
-**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). The latest metadata/audit revision is `c685909`; historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
+**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). The latest metadata/audit revision is recorded by the final release manifest; historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
 
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
@@ -12,15 +12,15 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 
 الحكم الهندسي الحالي هو **Evidence-Aware Bounded Autonomous Bug Hunter**، وليس ادعاءً بتغطية شاملة أو تأهل VIP. آخر مراجعة للطلبات والتنفيذ موثقة في [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md)، وسجل المراحل في [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md).
 
-الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` وملفات التتبع داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). آخر metadata/audit commit مدفوع هو `c685909`، ولا يُخلط ذلك مع implementation source revision المسجل في canonical release identity.
+الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` وملفات التتبع داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). الـmetadata commit النهائي مسجل في manifest، ولا يُخلط ذلك مع implementation source revision المسجل في canonical release identity.
 
 | البوابة | النتيجة |
 |---|---|
-| bbscout full pytest | 36 passed |
-| WebPent full regression | 1512 passed، 56 warnings |
-| Phase 11 qualification/target/graph/research/autonomy/benchmark contracts | 140 passed |
-| Release/plan-artifact audit suite | 43 passed |
-| G-02 inventory/runtime/precommit gate | Passed؛ 283 direct-I/O records |
+| bbscout source/contract checks | External reviewed source configured; no vendoring |
+| WebPent full regression | 1611 passed، 56 warnings |
+| bbscout/WebPent bridge + settings contracts | Passed |
+| Release/plan-artifact audit suite | Passed |
+| G-02 inventory/runtime/precommit gate | Passed؛ 297 direct-I/O records |
 | Ruff | Passed |
 | compileall | Passed |
 | `git diff --check` | Passed |
@@ -166,6 +166,35 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 استخدم القيم الناتجة مع `JWT_SECRET_KEY` و`AUDIT_SECRET_KEY` و`CELERY_PAYLOAD_KEY` حسب مسار التشغيل. لا تضع API keys أو cookies أو credentials داخل source أو prompts أو checkpoints.
+
+## تكامل bbscout وتشغيل الـworker
+
+WebPent يقرأ bbscout كـ**مصدر advisory لـTarget Package v2 فقط** عبر [`src/webpent/shared/bbscout_bridge.py`](src/webpent/shared/bbscout_bridge.py). الـbridge لا ينفذ HTTP أو browser navigation أو signup أو login أو إرسال تقارير لمنصات bug bounty؛ كل action تنفيذي يظل خلف `ActionAuthority` و`ActionExecutor`. تفاصيل الـschema والـrunbook موجودة في [`docs/integration/BBSCOUT_INTEGRATION.md`](docs/integration/BBSCOUT_INTEGRATION.md).
+
+الإعدادات الآمنة الافتراضية هي:
+
+```dotenv
+BBSCOUT_ENABLED=false
+BBSCOUT_MODE=offline
+BBSCOUT_REQUIRE_VERIFIED_SIGNATURE=true
+BBSCOUT_BROWSER_ENABLED=false
+BBSCOUT_BROWSER_READ_ONLY=true
+BBSCOUT_SIGNUP_ENABLED=false
+BBSCOUT_PROVIDER_SUBMISSION_ENABLED=false
+```
+
+لا تضع Gmail passwords أو cookies أو OTPs أو API keys داخل `.env` أو source أو checkpoints أو prompts أو reports. `BBSCOUT_CREDENTIALS_REF` — إن استُخدم مستقبلًا — يجب أن يكون reference opaque داخل secret manager فقط، مع human-approved session handoff.
+
+الـlocal Docker stack موجود في `docker-compose.dev.yml` ويشغّل Redis داخليًا، FastAPI API، وCelery worker. صورة التطبيق تعتمد على `webpent-base` المبنية من `Dockerfile.base`، والتي تتضمن Playwright/Chromium. التشغيل يحتاج Docker-capable environment:
+
+```bash
+make build-base
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.dev.yml logs -f api worker
+```
+
+الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
 
 ## تشغيل WebPent
 

@@ -24,6 +24,11 @@ from webpent.config.settings import (
     profile_requires_proof_bundle,
     resolve_scan_profile,
 )
+from webpent.shared.bbscout_bridge import (
+    BbscoutPackageAdmission,
+    enforce_bbscout_allowlist,
+    load_bbscout_package,
+)
 from webpent.shared.campaign_planner import build_campaign_plan
 from webpent.shared.campaigns import (
     build_generic_campaign_ledger,
@@ -118,6 +123,24 @@ def build_initial_state(
     resolved_owner_username = str(owner_username or "").strip() or None
     resolved_client_id = str(client_id or "").strip() or None
     target_url = target.url if hasattr(target, "url") else str(target.get("url", ""))
+    settings = get_settings()
+    if action_ledger_path:
+        settings = settings.model_copy(
+            update={"action_ledger_path": Path(action_ledger_path).expanduser()}
+        )
+    bbscout_admission: BbscoutPackageAdmission | None = None
+    if settings.bbscout_enabled:
+        package_path = str(settings.bbscout_package_path or "").strip()
+        if not package_path:
+            raise ValueError("bbscout_package_path_required")
+        bbscout_admission = enforce_bbscout_allowlist(
+            load_bbscout_package(
+                package_path,
+                mode=settings.bbscout_mode,
+            ),
+            provider_ids=settings.bbscout_allowed_provider_ids,
+            program_ids=settings.bbscout_allowed_program_ids,
+        )
     if target_package is not None and target_package_context is not None:
         raise ValueError(
             "raw target_package and admitted target_package_context are mutually exclusive"
@@ -159,11 +182,6 @@ def build_initial_state(
         resolved_inventory = requested_inventory
     else:
         raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
-    settings = get_settings()
-    if action_ledger_path:
-        settings = settings.model_copy(
-            update={"action_ledger_path": Path(action_ledger_path).expanduser()}
-        )
     resolved_scan_mode = settings.scan_mode
     if profile is not None:
         resolved_profile, resolved_scan_mode = resolve_scan_profile(profile)
@@ -269,6 +287,11 @@ def build_initial_state(
         "target_package_knowledge_gaps": [],
         "target_package_blocked_tasks": [],
         "target_package_binding": binding_projection,
+        "bbscout_advisory": (
+            bbscout_admission.as_state()["bbscout"]
+            if bbscout_admission is not None
+            else {}
+        ),
         "additional_target_origins": normalized_origins,
         "messages": [],
         "findings": [],

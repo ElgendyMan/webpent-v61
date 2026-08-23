@@ -44,6 +44,7 @@ def test_artifact_safety_rejects_incomplete_or_invalid_summary(monkeypatch, tmp_
 
 
 def test_optional_bbscout_check_is_explicit_and_fail_closed(monkeypatch):
+    monkeypatch.delenv("BBSCOUT_SOURCE_ROOT", raising=False)
     monkeypatch.setattr(gate.importlib.util, "find_spec", lambda name: None)
 
     result = gate._bbscout_integration_check()
@@ -55,6 +56,7 @@ def test_optional_bbscout_check_is_explicit_and_fail_closed(monkeypatch):
 
 
 def test_optional_bbscout_check_reports_available_without_importing_code(monkeypatch):
+    monkeypatch.delenv("BBSCOUT_SOURCE_ROOT", raising=False)
     monkeypatch.setattr(gate.importlib.util, "find_spec", lambda name: object())
 
     result = gate._bbscout_integration_check()
@@ -63,6 +65,18 @@ def test_optional_bbscout_check_reports_available_without_importing_code(monkeyp
     assert result["status"] == "available"
     assert result["required_for_full_gate"] is True
     assert result["reason"] == "bbscout source is importable"
+
+
+def test_optional_bbscout_check_accepts_explicit_external_source(monkeypatch, tmp_path):
+    package_dir = tmp_path / "bbscout"
+    package_dir.mkdir()
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    monkeypatch.setenv("BBSCOUT_SOURCE_ROOT", str(tmp_path))
+    result = gate._bbscout_integration_check()
+
+    assert result["passed"] is True
+    assert result["status"] == "external-reviewed-source"
+    assert result["source_root"] == "external:BBSCOUT_SOURCE_ROOT"
 
 
 def test_gate_blockers_include_missing_bbscout_source():

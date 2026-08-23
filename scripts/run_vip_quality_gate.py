@@ -30,8 +30,31 @@ UV = shutil.which("uv")
 PYTEST = [PYTHON, "-m", "pytest", "-q"]
 
 
+def _configured_bbscout_source() -> Path | None:
+    """Return a reviewed external bbscout source root when explicitly configured."""
+    configured = os.environ.get("BBSCOUT_SOURCE_ROOT", "").strip()
+    if not configured:
+        return None
+    root = Path(configured).expanduser().resolve()
+    package_dir = root / "bbscout"
+    if (package_dir / "__init__.py").is_file():
+        return root
+    return None
+
+
 def _bbscout_integration_check() -> dict[str, Any]:
-    """Report optional bbscout availability without importing or executing it."""
+    """Report bbscout availability without importing or executing source code."""
+    external_root = _configured_bbscout_source()
+    if external_root is not None:
+        return {
+            "name": "bbscout-integration-source",
+            "passed": True,
+            "returncode": 0,
+            "status": "external-reviewed-source",
+            "required_for_full_gate": True,
+            "source_root": "external:BBSCOUT_SOURCE_ROOT",
+            "reason": "bbscout source is explicitly configured outside the WebPent checkout",
+        }
     try:
         available = importlib.util.find_spec("bbscout") is not None
     except (ImportError, ModuleNotFoundError, ValueError):
@@ -55,16 +78,25 @@ def _bbscout_integration_check() -> dict[str, Any]:
     }
 
 
+def _gate_pythonpath() -> str:
+    """Build the subprocess path with optional external bbscout source."""
+    parts = [str(PROJECT_ROOT / "src")]
+    external_root = _configured_bbscout_source()
+    if external_root is not None:
+        parts.append(str(external_root))
+    inherited = os.environ.get("PYTHONPATH", "")
+    if inherited:
+        parts.append(inherited)
+    return os.pathsep.join(parts)
+
+
 RUFF_PATHS = ["src", "tests", "scripts"]
 
 
 def _run(name: str, command: list[str], *, timeout: int = 300) -> dict[str, Any]:
     """Run one gate and retain bounded output for machine-readable review."""
     try:
-        inherited_pythonpath = os.environ.get("PYTHONPATH", "")
-        pythonpath = os.pathsep.join(
-            part for part in ("src", inherited_pythonpath) if part
-        )
+        pythonpath = _gate_pythonpath()
         completed = subprocess.run(
             command,
             cwd=PROJECT_ROOT,
