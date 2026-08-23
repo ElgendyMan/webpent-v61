@@ -17,10 +17,10 @@
       "verified_points": 20,
       "status": "verified",
       "evidence": [
-        "1504 passed in the final offline/full regression recorded for the Phase 8 release gate",
+        "1512 passed in the final offline/full regression recorded for the Phase 10/12 release gate",
         "Ruff, compileall, and git diff --check passed",
         "G-02 direct-I/O inventory remains deterministic and its targeted tests passed",
-        "latest source commit 1882b42 is pushed to origin/master"
+        "latest source commit 8571c67 is pushed to origin/master"
       ],
       "remaining_gap": "Keep dependency, warning, and release-artifact review current for future releases."
     },
@@ -111,6 +111,6 @@
     "candidate_or_inventory_counted_as_finding": false,
     "gates_lowered": false,
     "live_target_scope": "WAPTLab local owner-authorized only",
-    "source_commit": "1882b42"
+    "source_commit": "8571c67"
   }
 }

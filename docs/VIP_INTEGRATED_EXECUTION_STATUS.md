@@ -4,7 +4,7 @@
 
 تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية حتى مرحلة release preparation، مع الحفاظ على الفصل الصارم بين **engineering maturity** و**VIP qualification**. الحكم الحالي يظل **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
-آخر commit مدفوع إلى `origin/master` هو `7d2ab3d` (`gate benchmark metrics on proof controls`). المستودع النشط نظيف بعد كل بوابات الجودة، وruntime artifacts والـcredentials والـcookies تظل خارج Git.
+آخر commit مدفوع إلى `origin/master` هو `8571c67` (`refresh reproducible release manifest`). المستودع النشط نظيف بعد كل بوابات الجودة، وruntime artifacts والـcredentials والـcookies تظل خارج Git.
 
 ## ما تم تنفيذه
 
@@ -28,7 +28,8 @@
 
 ## حدود qualification الحي
 
-لم تُعاد جولة WAPTLab في Phase 11/12 لأن آخر تغيير كان في طبقة benchmark metrics فقط، وليس في live proof generation أو target coverage. إعادة تشغيل live target بلا أثر وظيفي جديد كانت ستضيف runtime noise ولا تبرر تغيير الحكم. آخر qualification smoke حي موثق من commit `1882b42` سجّل `target_reachable=true` و`live_target_executed=true` و4 candidate rows، لكن `strict_confirmed=0` و`promoted ProofBundles=0`؛ لذلك يظل verdict `NOT_QUALIFIED`.
+لم تُعاد جولة WAPTLab في Phase 11/12 لأن آخر تغييرات هذه الدورة كانت في طبقة benchmark metrics والتوثيق/release manifest، وليست في live proof generation أو target coverage.
+ إعادة تشغيل live target بلا أثر وظيفي جديد كانت ستضيف runtime noise ولا تبرر تغيير الحكم. آخر qualification smoke حي موثق من commit `1882b42` سجّل `target_reachable=true` و`live_target_executed=true` و4 candidate rows، لكن `strict_confirmed=0` و`promoted ProofBundles=0`؛ لذلك يظل verdict `NOT_QUALIFIED`.
 
 أي تأهل مستقبلي يحتاج، في تشغيل محلي مصرح ومضبوط، target-backed causal signal مستقلًا عن candidate materialization، negative control مستقلًا، sealed/replayable ProofBundle، وreplay ناجحًا عبر الجولات المطلوبة. لا يرفع benchmark أو report lifecycle أو scorecard هذه الشروط.
 

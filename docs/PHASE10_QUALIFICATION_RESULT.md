@@ -28,7 +28,7 @@
 
 الـgolden benchmark يقيس صحة metrics وreproducibility على corpus معلن offline، ويفصل FDR عن FPR الذي لا يُحسب إلا بوجود negative universe صريح. هذا القياس لا يدّعي live vulnerability discovery.
 
-آخر بوابة full regression المسجلة نجحت بـ`1504 passed`، مع نجاح Ruff وcompileall و`git diff --check`. أحدث source commit هو `1882b42` على `origin/master`.
+آخر بوابة full regression المسجلة في هذه الدورة نجحت بـ`1512 passed`، مع نجاح Ruff وcompileall و`git diff --check`. أحدث source commit هو `8571c67` على `origin/master`؛ أرقام WAPTLab أدناه تخص smoke التاريخي الموثق ولا تتغير بمجرد تحديث التوثيق.
 
 ## Maturity verdict
 

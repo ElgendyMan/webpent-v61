@@ -26,7 +26,7 @@
 
 | المجال | الدليل القابل للمراجعة |
 |---|---|
-| Regression | `1504 passed` في بوابة Phase 8 المسجلة، مع استمرار بوابات Ruff وcompileall و`git diff --check` |
+| Regression | `1512 passed` في بوابة Phase 10/12 المسجلة، مع استمرار بوابات Ruff وcompileall و`git diff --check` |
 | G-02 | direct-I/O inventory deterministic واختبارات G-02 المستهدفة ناجحة |
 | Lifecycle | regression يمنع بقاء child tool orphan عند موت orchestrator الأب، مع parent-death safeguard |
 | Scope وauthority | Security Invariant Suite تغطي dot-segments/encoded traversal، authority denials، ledger states، engagement continuity، وProofBundle promotion |
@@ -36,7 +36,7 @@
 | Reports | تم تصدير `report.json` و`report.html` و`report.pdf` و`report.md` في workspace التشغيل |
 | Discovery limit | أحدث تقرير احتوى 4 candidate rows، وليس 4 confirmations |
 | Proof limit | `strict_confirmed=0`، و`promoted ProofBundles=0` |
-| Source provenance | أحدث source commit هو `1882b42` ومرفوع إلى `origin/master` |
+| Source provenance | أحدث source commit هو `8571c67` ومرفوع إلى `origin/master` |
 
 ## نتيجة WAPTLab Phase 10
 
