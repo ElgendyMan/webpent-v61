@@ -654,3 +654,63 @@ def test_low_coverage_path_gets_priority_boost(monkeypatch: pytest.MonkeyPatch) 
     assert result["smart_replanning"]["controller_executed"] == 1
     assert result["smart_replanning"]["controller_trace"][0]["task_id"] == "low"
     assert result["smart_replanning"]["controller_trace"][0]["status"] == "executed"
+
+
+def test_controller_stops_when_execution_adds_no_evidence_or_state_delta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = CampaignTask(
+        task_id="no-progress-task",
+        engagement_id="eng-1",
+        asset_id="asset-1",
+        source_evidence_ids=("e-1",),
+        vulnerability_class="test",
+        hypothesis_id="hyp-1",
+        expected_information_gain=0.9,
+        budget=1.0,
+        capability="http_read",
+        target_url="https://example.invalid/",
+    )
+    monkeypatch.setattr(
+        "webpent.shared.autonomous_controller.smart_campaigns_node",
+        lambda state: {"campaign_plan": {}, "smart_replanning": {}},
+    )
+    monkeypatch.setattr(
+        AutonomousController,
+        "_planned_tasks",
+        staticmethod(lambda state, planning: [task]),
+    )
+
+    class NoProgressExecutor(ActionExecutor):
+        def __init__(self) -> None:
+            self.lifecycle_events: list[dict[str, Any]] = []
+            self.calls = 0
+
+        def execute(
+            self,
+            task: CampaignTask,
+            handler: Any,
+            *,
+            preconditions_met: bool = True,
+        ) -> dict[str, Any]:
+            self.calls += 1
+            return {
+                "task_id": task.task_id,
+                "status": "executed",
+                "output_available": False,
+                "proof_bundle_sealed": False,
+                "negative_control_present": False,
+                "evidence_refs": [],
+            }
+
+    executor = NoProgressExecutor()
+    result = AutonomousController(action_executor=executor, max_iterations=5).run(
+        {"engagement_id": "eng-1", "action_budget": {"limit": 10.0}},
+        handler=lambda _task: {"ok": True},
+        iterations=5,
+    )
+
+    assert executor.calls == 1
+    assert result["smart_replanning"]["stop_reason"] == "same_action_repeated"
+    assert result["stop_decision"]["category"] == "normal"
+    assert result["campaign_task_outcomes"][0]["proof_bundle_sealed"] is False
