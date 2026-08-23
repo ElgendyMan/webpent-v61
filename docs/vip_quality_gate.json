@@ -37,22 +37,30 @@
         "-q"
       ],
       "name": "pytest",
-      "passed": false,
-      "returncode": 2,
+      "passed": true,
+      "returncode": 0,
       "tail": [
-        "/usr/lib/python3.12/importlib/__init__.py:90: in import_module",
-        "    return _bootstrap._gcd_import(name[level:], package, level)",
-        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
-        "tests/test_target_package_v2_hardening.py:6: in <module>",
-        "    from bbscout.models import (",
-        "E   ModuleNotFoundError: No module named 'bbscout'",
+        "",
+        "tests/test_v58_post_form_hypotheses.py: 20 warnings",
+        "tests/test_v72_json_request_context.py: 24 warnings",
+        "tests/test_v72_request_context_and_primary_identity.py: 10 warnings",
+        "  /tmp/webpent-fixes-git-full/.venv/lib/python3.12/site-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
+        "    return self.model_fields  # pydantic 2.x",
+        "",
+        "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
         "=========================== short test summary info ============================",
-        "ERROR tests/security_invariants/test_engagement_invariants.py",
-        "ERROR tests/test_target_package_integration.py",
-        "ERROR tests/test_target_package_v2_hardening.py",
-        "!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!",
-        "3 errors in 1.17s"
+        "SKIPPED [2] tests/test_target_package_v2_hardening.py:7: optional bbscout integration source is not available in this checkout",
+        "SKIPPED [4] tests/test_target_package_integration.py:14: optional bbscout integration source is not available in this checkout",
+        "1544 passed, 6 skipped, 56 warnings in 77.48s (0:01:17)"
       ]
+    },
+    {
+      "name": "bbscout-integration-source",
+      "passed": false,
+      "reason": "bbscout source tree is unavailable in this checkout",
+      "required_for_full_gate": true,
+      "returncode": 1,
+      "status": "blocked"
     },
     {
       "command": [
@@ -74,9 +82,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1490",
+        "  \"total_test_functions\": 1509",
         "}",
-        "OK: preserved test-function count 1490 >= minimum 818"
+        "OK: preserved test-function count 1509 >= minimum 818"
       ]
     },
     {
@@ -88,7 +96,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/webpent-fixes-git-full/docs/direct_io_inventory.json and /tmp/webpent-fixes-git-full/docs/DIRECT_IO_INVENTORY.md (291 records)"
+        "wrote /tmp/webpent-fixes-git-full/docs/direct_io_inventory.json and /tmp/webpent-fixes-git-full/docs/DIRECT_IO_INVENTORY.md (293 records)"
       ]
     },
     {
@@ -100,7 +108,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 291}"
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 293}"
       ]
     },
     {
@@ -263,15 +271,16 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 883, \"output\": \"/tmp/webpent-fixes-git-full/docs/release_manifest.json\"}"
+        "{\"file_count\": 888, \"output\": \"/tmp/webpent-fixes-git-full/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-23T14:57:25.190123+00:00",
+  "generated_at": "2026-08-23T15:50:34.110603+00:00",
   "hard_checks_passed": false,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
-    "worker critical-path qualification and live Docker qualification remain environment-blocked"
+    "worker critical-path qualification and live Docker qualification remain environment-blocked",
+    "bbscout source tree is unavailable; optional target-package integration is blocked"
   ],
   "passed": false,
   "project": "WebPent v72",
