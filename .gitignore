@@ -9,6 +9,9 @@ __pycache__/
 *.sqlite3-wal
 *.sqlite3-shm
 *.sqlite3-journal
+# Runtime-only verification and SQLite migration artifacts.
+/phase0_secret_scan.log
+/webpent.db.migration.lock
 # Local bbscout packages may contain provider metadata; never commit them.
 /config/bbscout/*.json
 /config/bbscout/*.zip
