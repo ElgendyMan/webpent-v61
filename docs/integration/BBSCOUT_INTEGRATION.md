@@ -52,7 +52,7 @@ The repository already contains the local development stack in `docker-compose.d
 - `worker` runs `celery -A worker.celery_app worker` with concurrency one.
 - Playwright/Chromium are supplied by the pinned `webpent-base` image when that image is built from `Dockerfile.base`.
 
-For the development compose, put an operator-reviewed package at the host-only path `BBSCOUT_PACKAGE_HOST_PATH`; it is mounted into both API and worker containers as read-only. The package directory is ignored by Git and must not contain credentials, cookies, or provider session exports.
+For the development compose, put an operator-reviewed package at the host-only path `BBSCOUT_PACKAGE_HOST_PATH`; it is mounted into both API and worker containers as read-only. The production compose uses the same container path and passes the same 11 safe policy/reference variables to API and worker, while keeping the feature default-off. The package directory is ignored by Git and must not contain credentials, cookies, or provider session exports.
 
 Build the base image and application from a Docker-capable, owner-controlled machine:
 
@@ -76,7 +76,7 @@ Stop the stack and remove containers when finished:
 docker compose -f docker-compose.dev.yml down
 ```
 
-This development stack is not a production deployment. The production `docker-compose.yml` intentionally expects externally managed TLS Redis (`rediss://`) and strong secrets, and it fails closed if authentication, CORS, rate limiting, or secret requirements are not satisfied. Production Docker, HA, backup/restore, and distributed worker qualification require a persistent Docker-capable staging environment and were not proven in the sandbox.
+This development stack is not a production deployment. The production `docker-compose.yml` intentionally expects externally managed TLS Redis (`rediss://`) and strong secrets, and it fails closed if authentication, CORS, rate limiting, or secret requirements are not satisfied. Its bbscout package mount is read-only and the API/worker configuration is parity-tested, but that is a configuration contract—not proof of a live container startup. Production Docker, HA, backup/restore, and distributed worker qualification require a persistent Docker-capable staging environment and were not proven in the sandbox.
 
 ## Package handoff workflow
 

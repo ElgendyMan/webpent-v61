@@ -17,7 +17,8 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | البوابة | النتيجة |
 |---|---|
 | bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent full regression | 1611 passed، 56 warnings |
+| WebPent full regression with external reviewed bbscout source | 1613 passed، 56 warnings |
+| WebPent checkout-only regression | 1589 passed، 6 skipped، 56 warnings |
 | bbscout/WebPent bridge + settings contracts | Passed |
 | Release/plan-artifact audit suite | Passed |
 | G-02 inventory/runtime/precommit gate | Passed؛ 297 direct-I/O records |
@@ -25,7 +26,8 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | compileall | Passed |
 | `git diff --check` | Passed |
 | tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
-| Offline release verifier | Passed؛ لا target contact؛ signature operator key optional |
+| Offline release verifier | Passed؛ يرفض DB/WAL/SHM/journal/log artifacts؛ لا target contact |
+| Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount |
 
 هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Adapters الـproviders الأربعة في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
 
@@ -194,7 +196,7 @@ docker compose -f docker-compose.dev.yml ps
 docker compose -f docker-compose.dev.yml logs -f api worker
 ```
 
-الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
+الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. إعدادات API والworker متطابقة في bbscout، والـpackage source mounted read-only فقط. في production يتلقى كل من API والworker نفس إعدادات bbscout الآمنة ونفس package mount بصلاحية read-only، مع بقاء bbscout default-off. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
 
 ## تشغيل WebPent
 

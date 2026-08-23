@@ -85,7 +85,7 @@ services:
       - WEBPENT_FAIL_ON_OWNERSHIP_ERROR=true
       - WEBPENT_REDIS_URL=${REDIS_URL:?REDIS_URL must be set to a rediss:// URL}
       - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
-      - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-}
+      - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
       - BBSCOUT_MODE=${BBSCOUT_MODE:-offline}
       - BBSCOUT_REQUIRE_VERIFIED_SIGNATURE=${BBSCOUT_REQUIRE_VERIFIED_SIGNATURE:-true}
       - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
@@ -94,6 +94,7 @@ services:
       - BBSCOUT_BROWSER_READ_ONLY=${BBSCOUT_BROWSER_READ_ONLY:-true}
       - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
       - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
+      - BBSCOUT_CREDENTIALS_REF=${BBSCOUT_CREDENTIALS_REF:-}
       - PYTHONUNBUFFERED=1
       # V10 HOSTILE P0-2: AUTH_ENABLED=true is explicit. The H9 hard-stops
       # in settings.py will crash the container on startup if any secret
@@ -131,6 +132,8 @@ services:
       - ./output:/app/output
       - ./memory:/app/memory
       - ./webpent.db:/app/webpent.db
+      # Optional reviewed package source; never writable from the container.
+      - ${BBSCOUT_PACKAGE_HOST_PATH:-./config/bbscout}:/run/webpent/bbscout:ro
     networks:
       - webpent-net
     healthcheck:
@@ -155,6 +158,17 @@ services:
       - WEBPENT_RATE_LIMIT_REDIS_URL=${RATE_LIMIT_REDIS_URL:?RATE_LIMIT_REDIS_URL must be set in .env}
       - WEBPENT_ENVIRONMENT_PROFILE=production
       - WEBPENT_FAIL_ON_OWNERSHIP_ERROR=true
+      - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
+      - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
+      - BBSCOUT_MODE=${BBSCOUT_MODE:-offline}
+      - BBSCOUT_REQUIRE_VERIFIED_SIGNATURE=${BBSCOUT_REQUIRE_VERIFIED_SIGNATURE:-true}
+      - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
+      - BBSCOUT_ALLOWED_PROGRAM_IDS=${BBSCOUT_ALLOWED_PROGRAM_IDS:-}
+      - BBSCOUT_BROWSER_ENABLED=${BBSCOUT_BROWSER_ENABLED:-false}
+      - BBSCOUT_BROWSER_READ_ONLY=${BBSCOUT_BROWSER_READ_ONLY:-true}
+      - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
+      - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
+      - BBSCOUT_CREDENTIALS_REF=${BBSCOUT_CREDENTIALS_REF:-}
       - PYTHONUNBUFFERED=1
       # V10 HOSTILE P0-2: AUTH_ENABLED=true + no weak fallbacks.
       - WEBPENT_AUTH_ENABLED=true
@@ -173,6 +187,8 @@ services:
       - ./output:/app/output
       - ./memory:/app/memory
       - ./webpent.db:/app/webpent.db
+      # Keep package admission inputs identical to API and read-only.
+      - ${BBSCOUT_PACKAGE_HOST_PATH:-./config/bbscout}:/run/webpent/bbscout:ro
     networks:
       - webpent-net
 

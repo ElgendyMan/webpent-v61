@@ -28,6 +28,27 @@ def test_production_compose_uses_container_bind_and_external_tls_redis() -> None
     assert "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}" in content
 
 
+def test_production_bbscout_config_is_parity_safe() -> None:
+    content = PRODUCTION_COMPOSE.read_text(encoding="utf-8")
+    keys = (
+        "BBSCOUT_ENABLED",
+        "BBSCOUT_PACKAGE_PATH",
+        "BBSCOUT_MODE",
+        "BBSCOUT_REQUIRE_VERIFIED_SIGNATURE",
+        "BBSCOUT_ALLOWED_PROVIDER_IDS",
+        "BBSCOUT_ALLOWED_PROGRAM_IDS",
+        "BBSCOUT_BROWSER_ENABLED",
+        "BBSCOUT_BROWSER_READ_ONLY",
+        "BBSCOUT_SIGNUP_ENABLED",
+        "BBSCOUT_PROVIDER_SUBMISSION_ENABLED",
+        "BBSCOUT_CREDENTIALS_REF",
+    )
+    for key in keys:
+        assert content.count(f"- {key}=") == 2, key
+    assert content.count("/run/webpent/bbscout:ro") == 2
+    assert content.count("/run/webpent/bbscout/target-package.json") == 2
+
+
 def test_environment_template_and_security_target_are_release_safe() -> None:
     env_example = ENV_EXAMPLE.read_text(encoding="utf-8")
     makefile = MAKEFILE.read_text(encoding="utf-8")

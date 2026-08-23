@@ -26,7 +26,17 @@ FORBIDDEN_MEMBER_PARTS = {
     ".mypy_cache",
     "chroma_db",
 }
-FORBIDDEN_SUFFIXES = {".pyc", ".pyo", ".sqlite", ".sqlite3", ".db"}
+FORBIDDEN_SUFFIXES = {
+    ".pyc",
+    ".pyo",
+    ".sqlite",
+    ".sqlite3",
+    ".db",
+    ".db-shm",
+    ".db-wal",
+    ".db-journal",
+    ".log",
+}
 FORBIDDEN_NAMES = {"cookies.json", "credentials.json", "secrets.json"}
 SECRET_PATTERNS = (
     re.compile(r"BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY"),

@@ -43,6 +43,17 @@ def test_archive_rejects_runtime_and_secret_members(tmp_path: Path) -> None:
     assert any("secret-like" in error or "private.pem" in error for error in errors)
 
 
+def test_archive_rejects_sqlite_sidecars_and_logs(tmp_path: Path) -> None:
+    archive = tmp_path / "runtime-sidecars.zip"
+    with zipfile.ZipFile(archive, "w") as handle:
+        for suffix in (".db-wal", ".db-shm", ".db-journal", ".log"):
+            handle.writestr(f"project/runtime/target{suffix}", "runtime state\\n")
+
+    errors = verify_archive(archive)
+    for suffix in (".db-wal", ".db-shm", ".db-journal", ".log"):
+        assert any(suffix in error for error in errors)
+
+
 def test_manifest_excludes_sqlite_sidecars(tmp_path: Path, monkeypatch) -> None:
     import scripts.build_release_manifest as manifest_builder
 
