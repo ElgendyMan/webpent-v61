@@ -2,7 +2,7 @@
   "checks": [
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "-m",
         "compileall",
         "-q",
@@ -16,7 +16,7 @@
     },
     {
       "command": [
-        "/usr/local/bin/ruff",
+        "/tmp/webpent-fixes-git-full/.venv/bin/ruff",
         "check",
         "src",
         "tests",
@@ -31,32 +31,32 @@
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "-m",
         "pytest",
         "-q"
       ],
       "name": "pytest",
-      "passed": true,
-      "returncode": 0,
+      "passed": false,
+      "returncode": 2,
       "tail": [
-        "tests/test_v58_post_form_hypotheses.py::test_post_form_generates_method_body_and_target_parameter",
-        "  /tmp/bbscout_webpent_integration/webpent-git/src/webpent/memory/embeddings.py:118: LangChainDeprecationWarning: The class `HuggingFaceEmbeddings` was deprecated in LangChain 0.2.2 and will be removed in 1.0. An updated version of the class exists in the `langchain-huggingface package and should be used instead. To use it run `pip install -U `langchain-huggingface` and import as `from `langchain_huggingface import HuggingFaceEmbeddings``.",
-        "    embeddings = HuggingFaceEmbeddings(**kwargs)",
-        "",
-        "tests/test_v58_post_form_hypotheses.py: 20 warnings",
-        "tests/test_v72_json_request_context.py: 24 warnings",
-        "tests/test_v72_request_context_and_primary_identity.py: 10 warnings",
-        "  /usr/local/lib/python3.12/dist-packages/chromadb/types.py:144: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.",
-        "    return self.model_fields  # pydantic 2.x",
-        "",
-        "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
-        "1428 passed, 56 warnings in 54.94s"
+        "/usr/lib/python3.12/importlib/__init__.py:90: in import_module",
+        "    return _bootstrap._gcd_import(name[level:], package, level)",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "tests/test_target_package_v2_hardening.py:6: in <module>",
+        "    from bbscout.models import (",
+        "E   ModuleNotFoundError: No module named 'bbscout'",
+        "=========================== short test summary info ============================",
+        "ERROR tests/security_invariants/test_engagement_invariants.py",
+        "ERROR tests/test_target_package_integration.py",
+        "ERROR tests/test_target_package_v2_hardening.py",
+        "!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!",
+        "3 errors in 1.17s"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/verify_test_count.py",
         "--minimum",
         "818"
@@ -69,43 +69,43 @@
         "    \"tests/test_waptlab_catalog_manifest.py\": 6,",
         "    \"tests/test_waptlab_detector_improvements.py\": 51,",
         "    \"tests/test_waptlab_live_improvements.py\": 3,",
-        "    \"tests/test_webpent_diagnostics.py\": 4,",
+        "    \"tests/test_webpent_diagnostics.py\": 9,",
         "    \"tests/test_wildcard_scope.py\": 15,",
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1374",
+        "  \"total_test_functions\": 1490",
         "}",
-        "OK: preserved test-function count 1374 >= minimum 818"
+        "OK: preserved test-function count 1490 >= minimum 818"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/scan_direct_io.py"
       ],
       "name": "g02-artifact-regeneration",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/bbscout_webpent_integration/webpent-git/docs/direct_io_inventory.json and /tmp/bbscout_webpent_integration/webpent-git/docs/DIRECT_IO_INVENTORY.md (280 records)"
+        "wrote /tmp/webpent-fixes-git-full/docs/direct_io_inventory.json and /tmp/webpent-fixes-git-full/docs/DIRECT_IO_INVENTORY.md (291 records)"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/check_g02_runtime.py"
       ],
       "name": "g02-static-runtime-contract",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 280}"
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 291}"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/check_g02_precommit.py"
       ],
       "name": "g02-precommit-contract",
@@ -117,7 +117,7 @@
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/build_preflight_report.py",
         "--host",
         "127.0.0.1"
@@ -126,36 +126,36 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}"
+        "{\"output\": \"/tmp/webpent-fixes-git-full/docs/preflight_report.json\", \"state\": \"READY_WITH_WARNING\"}"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/build_capability_report.py"
       ],
       "name": "capability-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"catalog_count\": 20, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/capability_report.json\"}"
+        "{\"catalog_count\": 20, \"output\": \"/tmp/webpent-fixes-git-full/docs/capability_report.json\"}"
       ]
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/build_mock_qualification_report.py"
       ],
       "name": "mock-qualification-report",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
+        "{\"final_confirmed_minimum\": 0, \"output\": \"/tmp/webpent-fixes-git-full/docs/waptlab_qualification_report.json\", \"stable\": true, \"tool_confirmed_minimum\": 5}"
       ]
     },
     {
       "command": [
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/preflight_report.json"
+        "/tmp/webpent-fixes-git-full/docs/preflight_report.json"
       ],
       "name": "preflight-report-contract",
       "passed": true,
@@ -164,7 +164,7 @@
     },
     {
       "command": [
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/capability_report.json"
+        "/tmp/webpent-fixes-git-full/docs/capability_report.json"
       ],
       "name": "capability-report-contract",
       "passed": true,
@@ -173,7 +173,7 @@
     },
     {
       "command": [
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/waptlab_qualification_report.json"
+        "/tmp/webpent-fixes-git-full/docs/waptlab_qualification_report.json"
       ],
       "name": "mock-qualification-contract",
       "passed": true,
@@ -182,7 +182,7 @@
     },
     {
       "command": [
-        "/usr/local/bin/bandit",
+        "/tmp/webpent-fixes-git-full/.venv/bin/bandit",
         "-q",
         "-r",
         "src/webpent",
@@ -192,7 +192,7 @@
         "-f",
         "json",
         "-o",
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/bandit_release.json"
+        "/tmp/webpent-fixes-git-full/docs/bandit_release.json"
       ],
       "name": "bandit-high-severity",
       "passed": true,
@@ -202,16 +202,16 @@
     },
     {
       "command": [
-        "/usr/local/bin/pip-audit",
+        "/tmp/webpent-fixes-git-full/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/requirements-audit-release.txt",
+        "/tmp/webpent-fixes-git-full/docs/requirements-audit-release.txt",
         "--format",
         "cyclonedx-json",
         "--output",
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/sbom.cdx.json"
+        "/tmp/webpent-fixes-git-full/docs/sbom.cdx.json"
       ],
       "name": "pip-audit-sbom",
       "passed": true,
@@ -223,16 +223,16 @@
     },
     {
       "command": [
-        "/usr/local/bin/pip-audit",
+        "/tmp/webpent-fixes-git-full/.venv/bin/pip-audit",
         "--strict",
         "--timeout",
         "15",
         "--requirement",
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/requirements-audit-release.txt",
+        "/tmp/webpent-fixes-git-full/docs/requirements-audit-release.txt",
         "--format",
         "json",
         "--output",
-        "/tmp/bbscout_webpent_integration/webpent-git/docs/pip_audit_release.json"
+        "/tmp/webpent-fixes-git-full/docs/pip_audit_release.json"
       ],
       "name": "pip-audit-strict",
       "passed": true,
@@ -244,7 +244,7 @@
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/check_tracked_secrets.py"
       ],
       "name": "tracked-secret-scan",
@@ -256,19 +256,19 @@
     },
     {
       "command": [
-        "/usr/bin/python",
+        "/tmp/webpent-fixes-git-full/.venv/bin/python",
         "scripts/build_release_manifest.py"
       ],
       "name": "release-manifest",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 791, \"output\": \"/tmp/bbscout_webpent_integration/webpent-git/docs/release_manifest.json\"}"
+        "{\"file_count\": 883, \"output\": \"/tmp/webpent-fixes-git-full/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-22T22:40:21.856841+00:00",
-  "hard_checks_passed": true,
+  "generated_at": "2026-08-23T14:57:25.190123+00:00",
+  "hard_checks_passed": false,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
     "worker critical-path qualification and live Docker qualification remain environment-blocked"
@@ -285,8 +285,8 @@
     "campaign_count": 20,
     "passed": true,
     "summary": {
-      "inconclusive": 13,
-      "missing-validator": 7
+      "inconclusive": 18,
+      "missing-validator": 2
     },
     "target_contacted": false,
     "waptlab_modified": false
