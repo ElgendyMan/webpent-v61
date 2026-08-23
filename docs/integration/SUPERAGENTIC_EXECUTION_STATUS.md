@@ -36,7 +36,7 @@ Provider boundaries support disabled/error fallback and redacted metadata withou
 
 ## Current scorecard
 
-At revision `8b47b04`, the regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
+At revision `d959f17`, the regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
 
 The scorecard blockers are:
 
@@ -48,15 +48,15 @@ The scorecard blockers are:
 
 ## Verification record
 
-The final available regression run on revision `8b47b04` completed with:
+The final available regression run on revision `d959f17` completed with:
 
 ```text
-1573 passed, 6 skipped, 56 warnings in 65.39s
+1573 passed, 6 skipped, 64 warnings in 69.59s
 ```
 
 The six skips are explicit optional bbscout integration skips: two in `test_target_package_v2_hardening.py` and four in `test_target_package_integration.py`. The quality gate does not convert those skips into a pass; `bbscout-integration-source` remains `status=blocked` and the overall gate remains `passed=false`.
 
-The latest quality gate also passed compileall, Ruff, test-function preservation, G-02 regeneration and runtime/pre-commit contracts, preflight/capability/mock qualification contracts, Bandit high-severity checks, SBOM and pip-audit checks, tracked-secret scanning, and release-manifest validation. The gate regenerated the direct-I/O inventory at **297 records**.
+The latest available quality gate passed compileall, Ruff, test-function preservation, G-02 regeneration and runtime/pre-commit contracts, preflight/capability/mock qualification contracts, Bandit high-severity checks, SBOM and pip-audit checks, tracked-secret scanning, and release-manifest validation. The gate regenerated the direct-I/O inventory at **297 records**.
 
 ## Live qualification still required
 
@@ -66,4 +66,4 @@ The current repository therefore represents an improved and auditable offline re
 
 ## Delivery checklist
 
-The final closeout regenerates the release manifest from the stable source/docs tree, verifies its hashes, builds a source-only archive, and verifies that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output. The delivery report is shipped together with the archive and the relevant scorecard, wiring-audit, and gate artifacts. The metadata commit that contains the manifest is recorded separately from implementation revision `8b47b04`.
+The final closeout regenerates the release manifest from the stable source/docs tree, verifies its hashes, builds a source-only archive, and verifies that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output. The delivery report is shipped together with the archive and the relevant scorecard, wiring-audit, and gate artifacts. The metadata commit that contains the manifest is recorded separately from implementation revision `d959f17`.

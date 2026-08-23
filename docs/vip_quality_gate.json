@@ -51,7 +51,7 @@
         "=========================== short test summary info ============================",
         "SKIPPED [2] tests/test_target_package_v2_hardening.py:7: optional bbscout integration source is not available in this checkout",
         "SKIPPED [4] tests/test_target_package_integration.py:14: optional bbscout integration source is not available in this checkout",
-        "1573 passed, 6 skipped, 56 warnings in 65.12s (0:01:05)"
+        "1573 passed, 6 skipped, 56 warnings in 67.77s (0:01:07)"
       ]
     },
     {
@@ -275,7 +275,7 @@
       ]
     }
   ],
-  "generated_at": "2026-08-23T16:48:01.550718+00:00",
+  "generated_at": "2026-08-23T16:56:37.580727+00:00",
   "hard_checks_passed": false,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

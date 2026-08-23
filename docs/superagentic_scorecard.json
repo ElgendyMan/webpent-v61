@@ -1,6 +1,6 @@
 {
   "artifact_type": "superagentic_scorecard",
-  "integrity_seal": "0a2dbb9aff7d6650dbf241f6e7669c6949cdc1bf5fd7bda7e714e6345181c1f9",
+  "integrity_seal": "bf51172e4cdbfbcb6d27cc2030a27a9bdd651df5ad49a5e897be9fa71bac0247",
   "offline_only": true,
   "scenario_results": [
     {
@@ -326,7 +326,7 @@
       }
     ],
     "full_regression_passed": true,
-    "integrity_signature": "0a2dbb9aff7d6650dbf241f6e7669c6949cdc1bf5fd7bda7e714e6345181c1f9",
+    "integrity_signature": "bf51172e4cdbfbcb6d27cc2030a27a9bdd651df5ad49a5e897be9fa71bac0247",
     "live_qualification_passed": false,
     "live_qualification_runs": 0,
     "offline_behavior": {
@@ -344,7 +344,7 @@
     "readiness_score": 71,
     "readiness_status": "below-threshold",
     "readiness_threshold": 75,
-    "revision": "8b47b0420f91948ad332d0cd455a1c2dea5e579f",
+    "revision": "d959f17729dcc0c917f18f0d10b67a0d94836a8a",
     "schema_version": "superagentic-scorecard-v2",
     "signature_note": "SHA-256 integrity seal only; not an operator cryptographic signature."
   },
