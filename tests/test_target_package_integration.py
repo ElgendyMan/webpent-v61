@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from bbscout.integrity import package_digest
 
 from webpent.shared.action_authority import ActionAuthority, ActionRequest
 from webpent.shared.target_package_context import (
@@ -9,6 +8,13 @@ from webpent.shared.target_package_context import (
     admit_target_package,
     assert_package_continuity,
 )
+
+
+def _package_digest(package):
+    return pytest.importorskip(
+        "bbscout.integrity",
+        reason="optional bbscout integration source is not available in this checkout",
+    ).package_digest(package)
 
 
 def package_fixture(**overrides):
@@ -53,7 +59,7 @@ def package_fixture(**overrides):
         "provenance": {"normalization_version": "v1", "source_references": []},
     }
     package.update(overrides)
-    package.setdefault("integrity", {})["content_sha256"] = package_digest(package)
+    package.setdefault("integrity", {})["content_sha256"] = _package_digest(package)
     return package
 
 
@@ -69,19 +75,19 @@ def test_admission_returns_redaction_safe_projection_and_digests():
 def test_admission_rejects_expired_revoked_or_secret_bearing_packages():
     expired = package_fixture()
     expired["authorization"]["package_expires_at"] = "2020-01-01T00:00:00Z"
-    expired["integrity"]["content_sha256"] = package_digest(expired)
+    expired["integrity"]["content_sha256"] = _package_digest(expired)
     with pytest.raises(TargetPackageAdmissionError, match="package_expired"):
         admit_target_package(expired)
 
     revoked = package_fixture()
     revoked["authorization"]["revocation_state"] = "revoked"
-    revoked["integrity"]["content_sha256"] = package_digest(revoked)
+    revoked["integrity"]["content_sha256"] = _package_digest(revoked)
     with pytest.raises(TargetPackageAdmissionError, match="package_revoked"):
         admit_target_package(revoked)
 
     secret = package_fixture()
     secret["provider_secret"] = "must-not-enter-state"
-    secret["integrity"]["content_sha256"] = package_digest(secret)
+    secret["integrity"]["content_sha256"] = _package_digest(secret)
     with pytest.raises(TargetPackageAdmissionError, match="secret_like"):
         admit_target_package(secret)
 

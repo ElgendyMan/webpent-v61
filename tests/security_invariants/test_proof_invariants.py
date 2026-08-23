@@ -64,3 +64,60 @@ def test_missing_provenance_cannot_promote_even_with_causal_flags() -> None:
 
     assert validate_proof_bundle(bundle, require_negative_control=True) is False
     assert proof_bundle_promotion_ready(bundle) is False
+
+
+def test_replay_rejects_cross_engagement_or_target_binding() -> None:
+    bundle = _complete_bundle()
+    evidence = [{"status": 200, "marker": "candidate"}]
+    control = {"status": 403, "marker": "control"}
+    matching_context = {
+        "engagement_id": "engagement-proof",
+        "finding_id": "finding-proof",
+        "hypothesis_id": "hypothesis-proof",
+        "target_fingerprint": "target-fingerprint",
+    }
+
+    assert bundle.replay(evidence, control, replay_context=matching_context) is True
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**matching_context, "engagement_id": "other-engagement"},
+    ) is False
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**matching_context, "target_fingerprint": "other-target"},
+    ) is False
+
+
+def test_replay_binding_requires_package_identity_when_bundle_is_package_bound() -> None:
+    bundle = _complete_bundle(
+        target_package_id="package-proof",
+        target_package_sha256="a" * 64,
+        target_package_scope_digest="b" * 64,
+        target_package_policy_digest="c" * 64,
+    )
+    evidence = [{"status": 200, "marker": "candidate"}]
+    control = {"status": 403, "marker": "control"}
+    context = {
+        "engagement_id": "engagement-proof",
+        "finding_id": "finding-proof",
+        "hypothesis_id": "hypothesis-proof",
+        "target_fingerprint": "target-fingerprint",
+        "target_package_id": "package-proof",
+        "target_package_sha256": "a" * 64,
+        "target_package_scope_digest": "b" * 64,
+        "target_package_policy_digest": "c" * 64,
+    }
+
+    assert bundle.replay(evidence, control, replay_context=context) is True
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**context, "target_package_scope_digest": "d" * 64},
+    ) is False
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**context, "target_package_id": "other-package"},
+    ) is False

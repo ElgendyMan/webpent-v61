@@ -1,8 +1,12 @@
 import pytest
-from bbscout.signatures import verify_detached_signature
 
 from tests.test_target_package_v2_hardening import signed_package
 from webpent.shared.engagement_factory import EngagementAdmissionError, EngagementFactory
+
+verify_detached_signature = pytest.importorskip(
+    "bbscout.signatures",
+    reason="optional bbscout integration source is not available in this checkout",
+).verify_detached_signature
 
 
 def _factory(tmp_path, private_key):

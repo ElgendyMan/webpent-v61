@@ -7,6 +7,7 @@ validator result before claiming confirmation.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -195,13 +196,52 @@ class ProofBundle(BaseModel):
         expected = f"sha256:{sha256_text(self._seal_payload())}"
         return expected == self.seal_digest
 
+    def verify_replay_binding(self, replay_context: Mapping[str, Any]) -> bool:
+        """Require replay to remain bound to the original campaign and target."""
+        if not isinstance(replay_context, Mapping):
+            return False
+
+        required = {"engagement_id", "finding_id"}
+        if self.target_fingerprint:
+            required.add("target_fingerprint")
+        package_fields = (
+            "target_package_id",
+            "target_package_sha256",
+            "target_package_scope_digest",
+            "target_package_policy_digest",
+        )
+        if self.target_package_id:
+            required.update(package_fields)
+
+        for field in required:
+            expected = replay_context.get(field)
+            stored = getattr(self, field, None)
+            if expected is None or stored is None or str(expected) != str(stored):
+                return False
+        for field, expected in replay_context.items():
+            if field in {
+                "engagement_id",
+                "finding_id",
+                "hypothesis_id",
+                "target_fingerprint",
+                *package_fields,
+            }:
+                stored = getattr(self, field, None)
+                if stored is None or str(expected) != str(stored):
+                    return False
+        return True
+
     def replay(
         self,
         evidence_payloads: tuple[Any, ...] | list[Any],
         negative_control: Any = None,
+        *,
+        replay_context: Mapping[str, Any] | None = None,
     ) -> bool:
-        """Verify supplied deterministic evidence payloads against stored digests."""
+        """Verify evidence digests and optional campaign/target replay binding."""
         if not self.sealed or not self.verify_seal():
+            return False
+        if replay_context is not None and not self.verify_replay_binding(replay_context):
             return False
         digests = tuple(
             f"sha256:{sha256_text(redact_sensitive(item)[0])}"

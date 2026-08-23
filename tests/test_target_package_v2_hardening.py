@@ -3,6 +3,11 @@ from __future__ import annotations
 import json
 
 import pytest
+
+pytest.importorskip(
+    "bbscout",
+    reason="optional bbscout integration source is not available in this checkout",
+)
 from bbscout.models import (
     CapabilityProfile,
     NormalizedRule,

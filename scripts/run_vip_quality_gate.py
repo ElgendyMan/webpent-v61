@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -27,6 +28,32 @@ BANDIT = _local_or_path("bandit")
 PIP_AUDIT = _local_or_path("pip-audit")
 UV = shutil.which("uv")
 PYTEST = [PYTHON, "-m", "pytest", "-q"]
+
+
+def _bbscout_integration_check() -> dict[str, Any]:
+    """Report optional bbscout availability without importing or executing it."""
+    try:
+        available = importlib.util.find_spec("bbscout") is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        available = False
+    if available:
+        return {
+            "name": "bbscout-integration-source",
+            "passed": True,
+            "returncode": 0,
+            "status": "available",
+            "required_for_full_gate": True,
+            "reason": "bbscout source is importable",
+        }
+    return {
+        "name": "bbscout-integration-source",
+        "passed": False,
+        "returncode": 1,
+        "status": "blocked",
+        "required_for_full_gate": True,
+        "reason": "bbscout source tree is unavailable in this checkout",
+    }
+
 
 RUFF_PATHS = ["src", "tests", "scripts"]
 
@@ -331,6 +358,11 @@ def _build_gate_report(checks: list[dict[str, Any]], safety: dict[str, Any]) -> 
         )
     if not check_by_name.get("release-manifest", {}).get("passed", False):
         blockers.append("release manifest could not be generated")
+    bbscout_check = check_by_name.get("bbscout-integration-source", {})
+    if not bbscout_check.get("passed", False):
+        blockers.append(
+            "bbscout source tree is unavailable; optional target-package integration is blocked"
+        )
     return {
         "schema_version": "vip-quality-gate-v2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -360,6 +392,7 @@ def main() -> int:
         _run("compileall", [PYTHON, "-m", "compileall", "-q", "src", "scripts"]),
         _run("ruff", [RUFF, "check", *RUFF_PATHS]),
         _run("pytest", [*PYTEST], timeout=420),
+        _bbscout_integration_check(),
         _run(
             "test-function-count",
             # This is a static function-preservation guard; pytest's passed count is checked above.

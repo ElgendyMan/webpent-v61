@@ -1,6 +1,7 @@
 import pytest
 
 from webpent.models.proof_bundle import build_proof_bundle
+from webpent.validators.replay_validator import validate_replay
 
 
 def test_proof_bundle_seal_is_immutable_and_verifiable() -> None:
@@ -20,6 +21,35 @@ def test_proof_bundle_seal_is_immutable_and_verifiable() -> None:
     ) is True
     with pytest.raises(ValueError, match="sealed_proof_bundle_is_immutable"):
         sealed.append_custody(actor="tester", action="mutate")
+
+
+def test_replay_validator_enforces_explicit_binding_context() -> None:
+    bundle = build_proof_bundle(
+        engagement_id="engagement:adapter",
+        finding_id="finding:adapter",
+        target_fingerprint="target:adapter",
+        evidence=[{"status": 200}],
+        evidence_refs=["obs:adapter"],
+    ).seal()
+
+    assert validate_replay(
+        bundle,
+        [{"status": 200}],
+        replay_context={
+            "engagement_id": "engagement:adapter",
+            "finding_id": "finding:adapter",
+            "target_fingerprint": "target:adapter",
+        },
+    ) is True
+    assert validate_replay(
+        bundle,
+        [{"status": 200}],
+        replay_context={
+            "engagement_id": "engagement:adapter",
+            "finding_id": "finding:adapter",
+            "target_fingerprint": "target:other",
+        },
+    ) is False
 
 
 def test_proof_bundle_replay_fails_on_changed_evidence() -> None:

@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **291**.
+Total records: **293**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -173,6 +173,8 @@ Total records: **291**.
 | `src/webpent/memory/db.py` | 845 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 80 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 88 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 218 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 229 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/action_authority.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 71 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 79 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
