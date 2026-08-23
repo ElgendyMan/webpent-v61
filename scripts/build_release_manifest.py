@@ -102,6 +102,7 @@ def _artifact_hashes() -> dict[str, str]:
     artifacts = [
         "docs/vip_quality_gate.json",
         "docs/waptlab_regression.json",
+        "docs/waptlab_live_smoke_2cb9024.json",
         "docs/waptlab_coverage_ledger.json",
         "docs/waptlab_mock_reproducibility.json",
         "docs/bandit_release.json",
@@ -116,7 +117,8 @@ def _artifact_hashes() -> dict[str, str]:
 
 
 def _qualification() -> dict[str, Any]:
-    path = PROJECT_ROOT / "docs" / "waptlab_regression.json"
+    live_path = PROJECT_ROOT / "docs" / "waptlab_live_smoke_2cb9024.json"
+    path = live_path if live_path.is_file() else PROJECT_ROOT / "docs" / "waptlab_regression.json"
     if not path.is_file():
         return {
             "live_qualification": False,
@@ -125,14 +127,33 @@ def _qualification() -> dict[str, Any]:
             "status": "missing_artifact",
         }
     payload = json.loads(path.read_text(encoding="utf-8"))
-    return {
+    result: dict[str, Any] = {
         "live_qualification": bool(payload.get("live_qualification", False)),
         "target_contacted": payload.get("target_contacted"),
         "waptlab_modified": payload.get("waptlab_modified"),
-        "campaign_count": payload.get("campaign_count"),
-        "summary": payload.get("summary", {}),
-        "status": "live" if payload.get("live_qualification") else "contract_only",
+        "campaign_count": payload.get("campaign_count", payload.get("catalog_count")),
+        "summary": payload.get("summary", payload.get("campaign_summary", {})),
+        "status": payload.get(
+            "qualification_status",
+            "live" if payload.get("live_qualification") else "contract_only",
+        ),
+        "artifact": path.name,
     }
+    for key in (
+        "run_id",
+        "scan_completed",
+        "scan_status",
+        "exit_code",
+        "findings_total",
+        "reported_confirmed",
+        "strict_confirmed",
+        "evidence_bundle_count",
+        "proof_bundle_count",
+        "threshold",
+    ):
+        if key in payload:
+            result[key] = payload[key]
+    return result
 
 
 def _security_status() -> dict[str, Any]:

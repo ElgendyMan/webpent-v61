@@ -46,9 +46,24 @@ def test_release_manifest_does_not_confuse_integrity_with_signature() -> None:
 
     assert manifest["schema_version"] == "webpent-release-manifest-v1"
     assert manifest["file_count"] > 0
-    assert manifest["qualification"]["live_qualification"] is False
+    assert manifest["qualification"]["live_qualification"] is True
+    assert manifest["qualification"]["status"] == "not_qualified"
+    assert manifest["qualification"]["strict_confirmed"] == 0
     assert manifest["signature"]["status"] in {"not_configured", "operator_required"}
     assert "note" in manifest["signature"]
+
+
+def test_live_smoke_artifact_is_redacted_and_not_qualified() -> None:
+    report = _read_json("waptlab_live_smoke_2cb9024.json")
+    assert report["live_qualification"] is True
+    assert report["qualification_status"] == "not_qualified"
+    assert report["target_contacted"] is True
+    assert report["waptlab_modified"] is False
+    assert report["strict_confirmed"] == 0
+    assert report["evidence_bundle_count"] == 0
+    assert report["proof_bundle_count"] == 0
+    assert report["raw_runtime_artifacts_excluded"] is True
+    assert report["threshold"]["strict_confirmed_threshold_met"] is False
 
 
 def test_capability_entries_cover_the_catalog() -> None:
