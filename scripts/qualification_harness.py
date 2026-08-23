@@ -150,12 +150,27 @@ def _container_metadata(target: str) -> dict[str, Any]:
     return {"containers": containers, "image_digests": digests, "image_digest": _sha256_json(digests) if digests else None}
 
 
-def _tool_manifest(env: dict[str, str]) -> dict[str, Any]:
+def _tool_manifest(
+    env: dict[str, str],
+    *,
+    scan_mode: str = "authorized-active",
+) -> dict[str, Any]:
+    """Capture capabilities using the same per-run authority as the child scan.
+
+    The harness runs in a separate process from WebPent.  Sampling the cached
+    parent settings used to report a legacy/disabled manifest even when the
+    child command was explicitly authorized-active.  Build a scoped settings
+    copy for metadata only; discovery remains side-effect free and never opens
+    target or provider connections.
+    """
     try:
         sys.path.insert(0, str(ROOT / "src"))
+        from webpent.config.settings import ScanMode, get_settings
         from webpent.shared.capability_manifest import CapabilityRegistry
 
-        manifest = _json(CapabilityRegistry().ensure_discovered())
+        mode = ScanMode(scan_mode).value
+        settings = get_settings().model_copy(update={"scan_mode": mode})
+        manifest = _json(CapabilityRegistry(settings).ensure_discovered())
         return {"manifest": manifest, "sha256": _sha256_json(manifest)}
     except Exception as exc:  # pragma: no cover - infrastructure fallback
         return {"manifest": {}, "sha256": None, "status": "manifest_error", "error": _redact(str(exc))}
@@ -400,7 +415,7 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "container_metadata": _container_metadata(args.target),
         "seed": _seed_metadata(args.target),
         "ground_truth": _catalog_metadata(Path(args.ground_truth)),
-        "tool_manifest": _tool_manifest(env),
+        "tool_manifest": _tool_manifest(env, scan_mode="authorized-active"),
         "environment_profile": "authorized-active",
         "campaign_plan": {
             "command": command,

@@ -126,6 +126,15 @@ def test_qualification_serialization_redacts_fixture_and_run_values(
 
 
 
+def test_tool_manifest_uses_run_authority_not_parent_legacy_settings() -> None:
+    manifest_record = qualification_harness._tool_manifest({}, scan_mode="authorized-active")
+    manifest = manifest_record["manifest"]
+
+    assert manifest["profile"] == "authorized-active"
+    assert manifest["capabilities"]["active_workflow"]["available"] is True
+    assert manifest["capabilities"]["active_workflow"]["policy"] == "authorized-active-only"
+
+
 def test_waptlab_command_uses_waptlab_inventory_and_declared_frontend_origin() -> None:
     from argparse import Namespace
     from pathlib import Path
