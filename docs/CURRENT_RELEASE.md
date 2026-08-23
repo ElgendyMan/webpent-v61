@@ -11,17 +11,17 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `d959f17` (`avoid secret-scanner false positive in redaction fixture`; source baseline `8b47b04`) |
+| Implementation source revision | `c963f55` (`use scanner-safe redaction fixture value`; source baseline `8b47b04`) |
 | Benchmark contract revision | `e4f8c74` (`add proof-gated VIP benchmark efficiency metrics`) |
-| Manifest generation revision | generated from the stable release tree containing implementation source revision `d959f17`; the manifest records the final metadata commit that created it |
+| Manifest generation revision | generated from the stable release tree containing implementation source revision `c963f55`; the manifest records the final metadata commit that created it |
 | Final metadata commit | the Git commit that adds the verified `docs/release_manifest.json`; it is recorded in the delivery report and is distinct from the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
 ## What is validated offline
 
-The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. The current locked environment passed **1,573 tests** with 6 explicit optional bbscout skips and 64 warnings. The official gate remains failed/blocked because the reviewed bbscout source tree is absent from this checkout; the skipped integration tests are not treated as passes. The offline proof/replay simulation contacts no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
+The release candidate is validated through deterministic unit and regression tests, static checks, secret scans, direct-I/O inventory checks, G-02 checks, provider fixture checks, signed-package checks, and the WebPent/bbscout integration contracts. The current locked environment passed **1,573 tests** with 6 explicit optional bbscout skips and 56 warnings. The official gate remains failed/blocked because the reviewed bbscout source tree is absent from this checkout; the skipped integration tests are not treated as passes. The offline proof/replay simulation contacts no target and therefore does not qualify as live evidence. LLM use remains advisory and cannot authorize target actions, promote evidence, or disclose findings automatically.
 
-The final regression on source revision `d959f17` completed with **1,573 passed**, 6 explicit optional bbscout skips, and 64 warnings in 69.59 seconds. The six skips remain blocked integration checks and are not counted as passes. The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
+The final regression on source revision `c963f55` completed with **1,573 passed**, 6 explicit optional bbscout skips, and 56 warnings in 68.71 seconds. The six skips remain blocked integration checks and are not counted as passes. The lock file records resolved dependency versions for reproducibility. This release line intentionally declares Python `==3.12.3` and validates against that interpreter; changing the compatibility range requires a separate compatibility policy and migration test set.
 
 ## LLM cost and fallback boundary
 
