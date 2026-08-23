@@ -176,3 +176,32 @@ def test_smart_campaigns_reliability_trace_rejects_out_of_scope_advice():
     trace = _llm_reliability_projection(state)
     assert trace[0]["status"] == "rejected"
     assert "scope:target_origin_mismatch" in trace[0]["reasons"]
+
+
+def test_llm_metadata_is_redacted_and_bounded():
+    result = LLMReliabilityGate().evaluate(
+        _payload(
+            metadata={
+                "authorization": "Bearer super-secret-token",
+                "cookie": "session=raw-cookie-value",
+                "nested": {"api_key": "key-value", "note": "safe"},
+            }
+        ),
+        _policy(),
+    )
+    assert result.allowed is True
+    assert result.envelope is not None
+    metadata = result.envelope.metadata
+    assert "super-secret-token" not in str(metadata)
+    assert "raw-cookie-value" not in str(metadata)
+    assert "key-value" not in str(metadata)
+    assert metadata["nested"]["note"] == "safe"
+
+
+def test_llm_metadata_rejects_non_json_values():
+    result = LLMReliabilityGate().evaluate(
+        _payload(metadata={"bad": object()}),
+        _policy(),
+    )
+    assert result.status == "rejected"
+    assert result.envelope is None

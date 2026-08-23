@@ -29,12 +29,60 @@ _INJECTION_MARKERS = (
     "disable safety",
 )
 
+_SENSITIVE_METADATA_KEYS = {
+    "authorization",
+    "cookie",
+    "cookies",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "session",
+    "session_id",
+}
+_MAX_METADATA_DEPTH = 4
+_MAX_METADATA_ITEMS = 32
+
 
 def sanitize_untrusted_text(value: Any, *, limit: int = 1200) -> str:
     """Normalize untrusted model text without interpreting instructions."""
     text = redact_text(str(value or ""))
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
     return " ".join(text.split())[:limit]
+
+
+def _sanitize_metadata(value: Any, *, depth: int = 0) -> Any:
+    """Return bounded JSON-like metadata with sensitive fields redacted."""
+    if depth > _MAX_METADATA_DEPTH:
+        raise ValueError("metadata nesting exceeds safety limit")
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return sanitize_untrusted_text(value, limit=400)
+    if isinstance(value, dict):
+        if len(value) > _MAX_METADATA_ITEMS:
+            raise ValueError("metadata object exceeds safety limit")
+        result: dict[str, Any] = {}
+        for raw_key, raw_value in value.items():
+            if not isinstance(raw_key, str):
+                raise ValueError("metadata keys must be strings")
+            key = sanitize_untrusted_text(raw_key, limit=80).lower()
+            if not key:
+                raise ValueError("metadata keys must not be empty")
+            if key in _SENSITIVE_METADATA_KEYS or any(
+                marker in key for marker in ("password", "secret", "token", "cookie", "credential")
+            ):
+                result[key] = "[REDACTED]"
+            else:
+                result[key] = _sanitize_metadata(raw_value, depth=depth + 1)
+        return result
+    if isinstance(value, (list, tuple)):
+        if len(value) > _MAX_METADATA_ITEMS:
+            raise ValueError("metadata list exceeds safety limit")
+        return [_sanitize_metadata(item, depth=depth + 1) for item in value]
+    raise ValueError("metadata contains a non-JSON value")
 
 
 class LLMDecisionEnvelope(BaseModel):
@@ -69,6 +117,14 @@ class LLMDecisionEnvelope(BaseModel):
     @classmethod
     def _bound_strings(cls, value: Any) -> str:
         return sanitize_untrusted_text(value, limit=500)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _safe_metadata(cls, value: Any) -> dict[str, Any]:
+        sanitized = _sanitize_metadata(value)
+        if not isinstance(sanitized, dict):
+            raise ValueError("metadata must be an object")
+        return sanitized
 
 
 @dataclass(frozen=True)
