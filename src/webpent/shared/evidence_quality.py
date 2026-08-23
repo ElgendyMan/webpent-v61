@@ -13,12 +13,14 @@ signals are missing or contradictory.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from webpent.models.proof_bundle import proof_bundle_promotion_ready, validate_proof_bundle
+from webpent.validators.replay_validator import validate_replay
 
 
 class EvidenceClassification(str, Enum):
@@ -48,6 +50,26 @@ class EvidenceAssessment(BaseModel):
     present_signals: list[str] = Field(default_factory=list, max_length=12)
     missing_signals: list[str] = Field(default_factory=list, max_length=12)
     reasons: list[str] = Field(default_factory=list, max_length=12)
+
+
+class ValidationStatus(BaseModel):
+    """Strict, non-promoting view of the complete validation contract."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    classification: EvidenceClassification
+    impact_present: bool = False
+    root_cause_present: bool = False
+    evidence_present: bool = False
+    reproducible: bool = False
+    causal_signal: bool = False
+    negative_control_complete: bool = False
+    proof_bundle_valid: bool = False
+    promotion_ready_proof_bundle: bool = False
+    replay_verified: bool = False
+    confirmation_ready: bool = False
+    missing_gates: list[str] = Field(default_factory=list, max_length=16)
+    reasons: list[str] = Field(default_factory=list, max_length=16)
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -91,6 +113,132 @@ def _proof_bundle(finding_data: dict[str, Any], evidence: dict[str, Any]) -> Any
     return evidence.get("proof_bundle")
 
 
+def _has_text(*values: Any) -> bool:
+    return any(isinstance(value, str) and value.strip() for value in values)
+
+
+def _impact_present(finding_data: dict[str, Any], evidence: dict[str, Any]) -> bool:
+    return _has_text(
+        finding_data.get("business_impact"),
+        finding_data.get("impact"),
+        evidence.get("business_impact"),
+        evidence.get("impact"),
+        evidence.get("impact_statement"),
+    )
+
+
+def _root_cause_present(
+    finding_data: dict[str, Any],
+    evidence: dict[str, Any],
+    evidence_bundle: dict[str, Any],
+    proof_bundle: Any,
+) -> bool:
+    if _has_text(
+        finding_data.get("root_cause"),
+        evidence.get("root_cause"),
+        evidence.get("root_cause_analysis"),
+        evidence_bundle.get("root_cause"),
+    ):
+        return True
+    proof_data = _as_dict(proof_bundle)
+    oracle = _as_dict(proof_data.get("causal_oracle"))
+    return _has_text(oracle.get("root_cause"), oracle.get("cause"))
+
+
+def _replay_inputs(
+    evidence: dict[str, Any],
+) -> tuple[Sequence[Any], Any, Mapping[str, Any] | None]:
+    replay = evidence.get("replay")
+    if not isinstance(replay, Mapping):
+        return (), None, None
+    payloads = replay.get("evidence_payloads")
+    if not isinstance(payloads, (list, tuple)):
+        payloads = ()
+    context = replay.get("context")
+    return (
+        payloads,
+        replay.get("negative_control"),
+        context if isinstance(context, Mapping) else None,
+    )
+
+
+def build_validation_status(finding: Any) -> ValidationStatus:
+    """Build a strict status view; it never mutates or promotes the finding."""
+    finding_data = _as_dict(finding)
+    evidence = _as_dict(finding_data.get("evidence"))
+    evidence_bundle = _as_dict(finding_data.get("evidence_bundle"))
+    proof_bundle = _proof_bundle(finding_data, evidence)
+    assessment = assess_finding_evidence(finding)
+    payloads, negative_control, replay_context = _replay_inputs(evidence)
+    replay_verified = bool(
+        payloads
+        and negative_control is not None
+        and validate_replay(
+            proof_bundle,
+            list(payloads),
+            negative_control,
+            replay_context=replay_context,
+        )
+    )
+    impact_present = _impact_present(finding_data, evidence)
+    root_cause_present = _root_cause_present(
+        finding_data, evidence, evidence_bundle, proof_bundle
+    )
+    evidence_present = bool(evidence or evidence_bundle or assessment.proof_bundle_valid)
+    missing: list[str] = []
+    for name, present in (
+        ("impact", impact_present),
+        ("root_cause", root_cause_present),
+        ("evidence", evidence_present),
+        ("reproducible", assessment.reproducible),
+        ("causal_signal", assessment.causal_signal),
+        ("negative_control", assessment.negative_control_complete),
+        ("proof_bundle", assessment.promotion_ready_proof_bundle),
+        ("replay", replay_verified),
+    ):
+        if not present:
+            missing.append(name)
+    confirmation_ready = bool(
+        str(finding_data.get("confidence_level") or "") == "Tool-Confirmed"
+        and impact_present
+        and root_cause_present
+        and evidence_present
+        and assessment.reproducible
+        and assessment.causal_signal
+        and assessment.negative_control_complete
+        and assessment.promotion_ready_proof_bundle
+        and replay_verified
+        and not assessment.contradictory_signal
+    )
+    reasons = ["all_strict_validation_gates_present"] if confirmation_ready else [
+        "confirmation_contract_incomplete"
+    ]
+    status_classification = (
+        EvidenceClassification.CONFIRMED
+        if confirmation_ready
+        else (
+            EvidenceClassification.NEEDS_HUMAN_REVIEW
+            if assessment.classification == EvidenceClassification.CONFIRMED
+            else assessment.classification
+        )
+    )
+    return ValidationStatus(
+        classification=status_classification,
+        impact_present=impact_present,
+        root_cause_present=root_cause_present,
+        evidence_present=evidence_present,
+        reproducible=assessment.reproducible,
+        causal_signal=assessment.causal_signal,
+        negative_control_complete=assessment.negative_control_complete,
+        proof_bundle_valid=assessment.proof_bundle_valid,
+        promotion_ready_proof_bundle=assessment.promotion_ready_proof_bundle,
+        replay_verified=replay_verified,
+        confirmation_ready=confirmation_ready,
+        missing_gates=missing,
+        reasons=reasons,
+    )
+
+
 def _bool_signal(evidence: dict[str, Any], name: str) -> bool:
     if evidence.get(name) is True:
         return True
@@ -111,6 +259,7 @@ def annotate_finding_evidence(finding: Any) -> Any:
     data = _as_dict(finding)
     evidence = _as_dict(data.get("evidence"))
     evidence["evidence_quality"] = assessment.model_dump(mode="json")
+    evidence["validation_status"] = build_validation_status(finding).model_dump(mode="json")
     return finding.model_copy(update={"evidence": evidence})
 
 
@@ -216,6 +365,8 @@ def assess_finding_evidence(finding: Any) -> EvidenceAssessment:
 __all__ = [
     "EvidenceAssessment",
     "EvidenceClassification",
+    "ValidationStatus",
     "annotate_finding_evidence",
     "assess_finding_evidence",
+    "build_validation_status",
 ]
