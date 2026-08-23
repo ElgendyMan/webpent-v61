@@ -25,9 +25,13 @@ EXCLUDED_NAMES = {
     ".env",
     ".coverage",
     "webpent.db",
+    "webpent.db.migration.lock",
     "action_ledger.db",
+    "action_ledger.db.migration.lock",
     "decision_log.db",
+    "decision_log.db.migration.lock",
     "lessons.db",
+    "lessons.db.migration.lock",
 }
 EXCLUDED_SUFFIXES = {
     ".pyc",
@@ -39,6 +43,7 @@ EXCLUDED_SUFFIXES = {
     ".sqlite3",
     ".log",
 }
+EXCLUDED_NAME_SUFFIXES = (".db.migration.lock",)
 EXCLUDED_RELATIVE_PREFIXES = (
     "docs/live_waptlab_output_",
 )
@@ -83,7 +88,11 @@ def _included(path: Path) -> bool:
         return False
     if _is_excluded_relative(relative):
         return False
-    if path.name in EXCLUDED_NAMES or path.suffix in EXCLUDED_SUFFIXES:
+    if (
+        path.name in EXCLUDED_NAMES
+        or path.suffix in EXCLUDED_SUFFIXES
+        or path.name.endswith(EXCLUDED_NAME_SUFFIXES)
+    ):
         return False
     if path.name.endswith(".zip"):
         return False
@@ -216,6 +225,7 @@ def main() -> int:
             "excluded_parts": sorted(EXCLUDED_PARTS | EXCLUDED_ROOT_DIRS),
             "excluded_names": sorted(EXCLUDED_NAMES),
             "excluded_suffixes": sorted(EXCLUDED_SUFFIXES),
+            "excluded_name_suffixes": list(EXCLUDED_NAME_SUFFIXES),
             "excluded_relative_prefixes": list(EXCLUDED_RELATIVE_PREFIXES),
         },
         "release_decision": "blocked" if not _security_status()["gate_passed"] else "candidate",

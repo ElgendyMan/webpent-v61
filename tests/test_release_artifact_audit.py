@@ -47,7 +47,13 @@ def test_manifest_excludes_sqlite_sidecars(tmp_path: Path, monkeypatch) -> None:
     import scripts.build_release_manifest as manifest_builder
 
     monkeypatch.setattr(manifest_builder, "PROJECT_ROOT", tmp_path)
-    for name in ("target.db", "target.db-shm", "target.db-wal", "target.db-journal"):
+    for name in (
+        "target.db",
+        "target.db-shm",
+        "target.db-wal",
+        "target.db-journal",
+        "target.db.migration.lock",
+    ):
         path = tmp_path / name
         path.write_text("runtime state\n", encoding="utf-8")
         assert _included(path) is False
