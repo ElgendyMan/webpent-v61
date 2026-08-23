@@ -165,6 +165,7 @@ def next_best_action_node(state: Mapping[str, Any]) -> dict[str, Any]:
                         **dict(action.metadata),
                         "ranking_score": item.score,
                         "ranking_reasons": list(item.reasons),
+                        "utility_trace": dict(item.utility_trace),
                     },
                 }
             )

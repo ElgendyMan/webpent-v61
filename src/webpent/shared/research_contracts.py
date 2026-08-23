@@ -8,7 +8,7 @@ promotes a finding.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from webpent.models.research import (
@@ -28,6 +28,7 @@ class ResearchDecision:
     score: float
     reasons: tuple[str, ...] = ()
     status: str = "ranked"
+    utility_trace: Mapping[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +36,7 @@ class ResearchDecision:
             "score": self.score,
             "reasons": list(self.reasons),
             "status": self.status,
+            "utility_trace": dict(self.utility_trace),
         }
 
 
@@ -215,6 +217,54 @@ class ResearchDecisionEngine:
             return default
 
     @staticmethod
+    def _utility_trace(
+        candidate: CandidateAction,
+        *,
+        status: str,
+        factors: Mapping[str, float],
+        cost_terms: Mapping[str, float],
+        base_score: float | None,
+        final_score: float,
+        penalties: Iterable[str] = (),
+        blocked_reasons: Iterable[str] = (),
+    ) -> dict[str, Any]:
+        """Return bounded, report-safe utility telemetry for one decision."""
+        return {
+            "version": "research-utility-v1",
+            "status": status,
+            "factors": {key: round(float(value), 6) for key, value in factors.items()},
+            "cost_terms": {
+                key: round(float(value), 6) for key, value in cost_terms.items()
+            },
+            "base_score": None if base_score is None else round(float(base_score), 8),
+            "penalties": [str(item)[:120] for item in penalties][:12],
+            "blocked_reasons": [str(item)[:160] for item in blocked_reasons][:12],
+            "final_score": round(float(final_score), 8),
+            "advisory_only": True,
+        }
+
+    @classmethod
+    def _candidate_utility_inputs(
+        cls, candidate: CandidateAction
+    ) -> tuple[dict[str, float], dict[str, float]]:
+        factors = {
+            "likelihood": cls._bounded(candidate.likelihood, 0.5),
+            "impact": cls._bounded(candidate.impact, 0.5),
+            "evidence_potential": cls._bounded(candidate.evidence_potential, 0.5),
+            "information_gain": cls._bounded(candidate.expected_information_gain),
+            "novelty": cls._bounded(candidate.novelty, 0.5),
+            "coverage_value": cls._bounded(candidate.coverage_value, 0.5),
+        }
+        cost_terms = {
+            "cost": max(0.0, min(100000.0, float(candidate.cost))),
+            "failure_probability": cls._bounded(candidate.failure_probability),
+            "scope_risk": cls._bounded(candidate.scope_risk),
+            "rate_limit_cost": cls._bounded(candidate.rate_limit_cost),
+            "dependency_penalty": cls._bounded(candidate.dependency_penalty),
+        }
+        return factors, cost_terms
+
+    @staticmethod
     def _capability_names(capabilities: Mapping[str, Any] | Iterable[str]) -> set[str]:
         if isinstance(capabilities, Mapping):
             return {
@@ -237,31 +287,34 @@ class ResearchDecisionEngine:
         target_allowed: bool | None = None,
         known_facts: Iterable[str] = (),
     ) -> ResearchDecision:
-        reasons: list[str] = []
+        factors, cost_terms = self._candidate_utility_inputs(candidate)
+
+        def blocked(reason: str) -> ResearchDecision:
+            return ResearchDecision(
+                candidate=candidate,
+                score=-1.0,
+                reasons=(reason,),
+                status="blocked",
+                utility_trace=self._utility_trace(
+                    candidate,
+                    status="blocked",
+                    factors=factors,
+                    cost_terms=cost_terms,
+                    base_score=None,
+                    final_score=-1.0,
+                    blocked_reasons=(reason,),
+                ),
+            )
+
         available = self._capability_names(available_capabilities)
         required = {str(item) for item in candidate.required_capabilities if str(item)}
         missing = sorted(required - available) if required else []
         if missing:
-            return ResearchDecision(
-                candidate=candidate,
-                score=-1.0,
-                reasons=("missing_capability:" + ",".join(missing),),
-                status="blocked",
-            )
+            return blocked("missing_capability:" + ",".join(missing))
         if target_allowed is False:
-            return ResearchDecision(
-                candidate=candidate,
-                score=-1.0,
-                reasons=("target_scope_denied",),
-                status="blocked",
-            )
+            return blocked("target_scope_denied")
         if budget_remaining is not None and candidate.cost > max(0.0, float(budget_remaining)):
-            return ResearchDecision(
-                candidate=candidate,
-                score=-1.0,
-                reasons=("budget_exhausted",),
-                status="blocked",
-            )
+            return blocked("budget_exhausted")
         known = {str(item).strip() for item in known_facts if str(item).strip()}
         missing_prerequisites = sorted(
             {
@@ -271,30 +324,23 @@ class ResearchDecisionEngine:
             }
         )
         if missing_prerequisites:
-            return ResearchDecision(
-                candidate=candidate,
-                score=-1.0,
-                reasons=("missing_prerequisite:" + ",".join(missing_prerequisites),),
-                status="blocked",
-            )
+            return blocked("missing_prerequisite:" + ",".join(missing_prerequisites))
 
-        values = (
-            self._bounded(candidate.likelihood, 0.5),
-            self._bounded(candidate.impact, 0.5),
-            self._bounded(candidate.evidence_potential, 0.5),
-            self._bounded(candidate.expected_information_gain),
-            self._bounded(candidate.novelty, 0.5),
-            self._bounded(candidate.coverage_value, 0.5),
-        )
         numerator = 1.0
-        for value in values:
+        for value in factors.values():
             numerator *= max(0.01, value)
-        denominator = max(0.05, candidate.cost)
-        denominator *= 1.0 + self._bounded(candidate.failure_probability)
-        denominator *= 1.0 + self._bounded(candidate.scope_risk)
-        denominator *= 1.0 + self._bounded(candidate.rate_limit_cost)
-        denominator *= 1.0 + self._bounded(candidate.dependency_penalty)
-        score = numerator / max(0.01, denominator)
+        denominator = max(0.05, cost_terms["cost"])
+        for key in (
+            "failure_probability",
+            "scope_risk",
+            "rate_limit_cost",
+            "dependency_penalty",
+        ):
+            denominator *= 1.0 + cost_terms[key]
+        base_score = numerator / max(0.01, denominator)
+        score = base_score
+        reasons: list[str] = []
+        penalties: list[str] = []
 
         attempted = {str(item) for item in attempted_fingerprints}
         failed = {str(item) for item in failed_path_fingerprints}
@@ -302,18 +348,36 @@ class ResearchDecisionEngine:
         if fingerprint in attempted and not new_evidence:
             score *= self.duplicate_penalty
             reasons.append("duplicate_without_new_evidence_penalty")
+            penalties.append(
+                f"duplicate_without_new_evidence:{self.duplicate_penalty:.6f}"
+            )
         if fingerprint in failed and not (new_evidence or revisit_authorized):
             score *= self.failed_path_penalty
             reasons.append("failed_path_revisit_penalty")
+            penalties.append(f"failed_path_revisit:{self.failed_path_penalty:.6f}")
         if candidate.requires_approval:
             reasons.append("approval_boundary_required")
-        if candidate.expected_information_gain >= 0.7:
+        if factors["information_gain"] >= 0.7:
             reasons.append("high_information_gain")
-        if candidate.coverage_value >= 0.7:
+        if factors["coverage_value"] >= 0.7:
             reasons.append("coverage_gap_value")
         if target_allowed is True:
             reasons.append("explicit_scope_match")
-        return ResearchDecision(candidate=candidate, score=round(score, 8), reasons=tuple(reasons))
+        final_score = round(score, 8)
+        return ResearchDecision(
+            candidate=candidate,
+            score=final_score,
+            reasons=tuple(reasons),
+            utility_trace=self._utility_trace(
+                candidate,
+                status="ranked",
+                factors=factors,
+                cost_terms=cost_terms,
+                base_score=base_score,
+                final_score=final_score,
+                penalties=penalties,
+            ),
+        )
 
     def rank(self, candidates: Sequence[CandidateAction], **kwargs: Any) -> list[ResearchDecision]:
         return sorted(

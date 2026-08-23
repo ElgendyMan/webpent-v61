@@ -73,6 +73,8 @@ def test_research_node_projection_preserves_specialized_researcher_metadata():
     candidate = result["research_candidate_actions"][0]
     assert candidate["metadata"]["researcher_id"] == "workflow-researcher"
     assert candidate["metadata"]["advisory_only"] is True
+    assert candidate["metadata"]["utility_trace"]["version"] == "research-utility-v1"
+    assert candidate["metadata"]["utility_trace"]["advisory_only"] is True
 
 
 def test_research_context_is_checkpoint_safe_and_redacts_secret():
@@ -99,6 +101,40 @@ def test_candidate_action_rejects_unknown_fields():
             objective="bounded discovery",
             unsupported_authority=True,
         )
+
+
+def test_research_decision_exposes_bounded_utility_trace():
+    engine = ResearchDecisionEngine()
+    candidate = _candidate()
+    decision = engine.score(
+        candidate,
+        available_capabilities={"http_read"},
+        target_allowed=True,
+    )
+
+    payload = decision.as_dict()
+    trace = payload["utility_trace"]
+    assert payload["status"] == "ranked"
+    assert trace["version"] == "research-utility-v1"
+    assert trace["status"] == "ranked"
+    assert trace["factors"] == {
+        "likelihood": 0.8,
+        "impact": 0.7,
+        "evidence_potential": 0.9,
+        "information_gain": 0.9,
+        "novelty": 0.6,
+        "coverage_value": 0.9,
+    }
+    assert trace["cost_terms"] == {
+        "cost": 1.0,
+        "failure_probability": 0.0,
+        "scope_risk": 0.0,
+        "rate_limit_cost": 0.0,
+        "dependency_penalty": 0.0,
+    }
+    assert trace["base_score"] == decision.score
+    assert trace["penalties"] == []
+    assert trace["final_score"] == decision.score
 
 
 def test_research_decision_engine_fails_closed_on_missing_capability_scope_and_budget():
@@ -198,9 +234,50 @@ def test_smart_campaigns_emits_typed_research_projection_without_execution():
     assert result["research_candidate_actions"]
     assert result["research_unified_decision_trace"]
     assert all(item["status"] == "ranked" for item in result["research_unified_decision_trace"])
+    assert all(
+        item["utility_trace"]["version"] == "research-utility-v1"
+        for item in result["research_unified_decision_trace"]
+    )
     assert result["campaign_task_outcomes"] == [] or all(
         item["status"] != "executed" for item in result["campaign_task_outcomes"]
     )
+
+
+def test_smart_campaigns_replanning_penalizes_checkpointed_candidate_fingerprint():
+    state = {
+        "smart_mode": True,
+        "engagement_id": "engagement:replan",
+        "client_id": "client:replan",
+        "target": {"url": "https://target.test"},
+        "crawled_data": {
+            "surface_records": [
+                {"record_id": "surface:object:1", "url": "https://target.test/object/1"}
+            ]
+        },
+        "relational_evidence": [],
+        "authorization_matrix": {},
+        "capability_manifest": {
+            "capabilities": {"http_read": {"available": True, "status": "available"}}
+        },
+        "smart_governance": {"profile": "safe-smart"},
+        "action_budget": {"used_actions": 0, "used_cost": 0.0},
+        "campaign_ledger": {"entries": []},
+    }
+    first = smart_campaigns_node(state)
+    checkpointed = {
+        **state,
+        "research_unified_decision_trace": first["research_unified_decision_trace"],
+        "research_candidate_actions": first["research_candidate_actions"],
+        "research_decision_trace": first["research_decision_trace"],
+    }
+    replanned = smart_campaigns_node(checkpointed)
+    owner = next(
+        item
+        for item in replanned["research_unified_decision_trace"]
+        if item["candidate"]["action_class"] == "identity_acquisition"
+    )
+    assert "duplicate_without_new_evidence_penalty" in owner["reasons"]
+    assert "duplicate_without_new_evidence" in owner["utility_trace"]["penalties"][0]
 
 
 def test_negative_evidence_reorders_same_gap_without_suppressing_alternate_control():

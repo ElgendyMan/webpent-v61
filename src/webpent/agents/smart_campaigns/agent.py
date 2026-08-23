@@ -1069,11 +1069,19 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     research_context.unknowns = [gap.unknown for gap in knowledge_gaps]
     selected_gap = gap_engine.choose(knowledge_gaps)
     if selected_gap is not None:
-        attempted_information = {
-            str(item.get("fingerprint"))
-            for item in state.get("research_decision_trace", [])
-            if isinstance(item, Mapping)
-        }
+        attempted_information: set[str] = set()
+        for trace_key in (
+            "research_decision_trace",
+            "research_unified_decision_trace",
+            "research_candidate_actions",
+        ):
+            for item in state.get(trace_key, []) or []:
+                if not isinstance(item, Mapping):
+                    continue
+                records = (item, item.get("candidate"), item.get("action"))
+                for record in records:
+                    if isinstance(record, Mapping) and record.get("fingerprint"):
+                        attempted_information.add(str(record["fingerprint"]))
         ranked_information = information_ranker.rank(
             selected_gap.candidate_actions,
             attempted_fingerprints=attempted_information,
@@ -1110,7 +1118,13 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             if isinstance(state.get("action_budget"), Mapping)
             else None,
         )
-        research_candidate_actions = [item.candidate.as_dict() for item in unified_decisions]
+        research_candidate_actions = []
+        for item in unified_decisions:
+            candidate_payload = item.candidate.as_dict()
+            candidate_metadata = dict(candidate_payload.get("metadata") or {})
+            candidate_metadata["utility_trace"] = dict(item.utility_trace)
+            candidate_payload["metadata"] = candidate_metadata
+            research_candidate_actions.append(candidate_payload)
         research_unified_decision_trace = [item.as_dict() for item in unified_decisions]
         if ranked_information:
             research_session.record_action(ranked_information[0], outcome="planned")

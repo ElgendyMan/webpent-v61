@@ -452,9 +452,15 @@ class RankedAction:
     action: InformationAction
     score: float
     reasons: tuple[str, ...]
+    utility_trace: Mapping[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
-        return {"action": self.action.as_dict(), "score": self.score, "reasons": list(self.reasons)}
+        return {
+            "action": self.action.as_dict(),
+            "score": self.score,
+            "reasons": list(self.reasons),
+            "utility_trace": dict(self.utility_trace),
+        }
 
 
 class SmartNextBestActionEngine:
@@ -493,7 +499,9 @@ class SmartNextBestActionEngine:
             "coverage_value": _bounded_number(coverage_value, default=0.5),
         }
         numerator = 1.0
+        weighted_factors: dict[str, float] = {}
         for key, value in values.items():
+            weighted_factors[key] = round(value * self.weights[key], 6)
             numerator *= max(0.01, value * self.weights[key])
         denominator = max(
             0.01,
@@ -503,20 +511,48 @@ class SmartNextBestActionEngine:
             * max(0.05, 1.0 + action.rate_limit_cost)
             * max(0.05, 1.0 + action.dependency_penalty),
         )
-        score = numerator / denominator
+        base_score = numerator / denominator
+        score = base_score
+        penalties: list[str] = []
         if action.fingerprint() in set(attempted_fingerprints) and not new_evidence:
             score *= 0.05
             reasons.append("duplicate_without_new_evidence_penalty")
+            penalties.append("duplicate_without_new_evidence:0.050000")
         if action.action_class == ActionClass.SAFE_STOP:
             score = min(score, 0.001)
             reasons.append("safe_stop_is_not_an_exploit_action")
+            penalties.append("safe_stop_cap:0.001000")
         if action.requires_approval:
             reasons.append("approval_boundary_required")
-        if action.expected_information_gain >= 0.7:
+        if values["information_gain"] >= 0.7:
             reasons.append("high_information_gain")
         if action.cost <= 1.0:
             reasons.append("low_cost")
-        return RankedAction(action=action, score=round(score, 8), reasons=tuple(reasons))
+        final_score = round(score, 8)
+        utility_trace = {
+            "version": "research-utility-v1",
+            "status": "ranked",
+            "factors": values,
+            "weighted_factors": weighted_factors,
+            "cost_terms": {
+                "cost": round(max(0.0, min(100000.0, action.cost)), 6),
+                "failure_probability": round(action.failure_probability, 6),
+                "scope_risk": round(action.scope_risk, 6),
+                "rate_limit_cost": round(action.rate_limit_cost, 6),
+                "dependency_penalty": round(action.dependency_penalty, 6),
+            },
+            "base_score": round(base_score, 8),
+            "penalties": penalties,
+            "blocked_reasons": [],
+            "final_score": final_score,
+            "advisory_only": True,
+        }
+        return RankedAction(
+            action=action,
+            score=final_score,
+            reasons=tuple(reasons),
+            utility_trace=utility_trace,
+        )
 
     def rank(self, actions: Sequence[InformationAction], **kwargs: Any) -> list[RankedAction]:
         return sorted(
