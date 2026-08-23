@@ -25,7 +25,11 @@ from webpent.models.evidence import (
     make_evidence_ref,
     redact_sensitive,
 )
-from webpent.shared.exceptions import ToolExecutionError, ToolNotFoundError
+from webpent.shared.exceptions import (
+    MissingToolInputError,
+    ToolExecutionError,
+    ToolNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +108,7 @@ class ToolAdapter:
             status = "partial" if exc.stdout else "failed"
             error_class = exc.__class__.__name__
             error_message = _safe_error(exc)
-        except ToolNotFoundError as exc:
+        except (MissingToolInputError, ToolNotFoundError) as exc:
             status = "not_run"
             return_code = None
             error_class = exc.__class__.__name__
@@ -206,6 +210,35 @@ def _nuclei_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
     return run_nuclei(target, *args, **kwargs)
 
 
+def _subfinder_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+    from webpent.tools.recon.subfinder import run_subfinder
+
+    return run_subfinder(target, *args, **kwargs)
+
+
+def _ffuf_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+    from webpent.tools.recon.ffuf import run_ffuf
+
+    wordlist_path = kwargs.get("wordlist_path")
+    if not isinstance(wordlist_path, str) or not wordlist_path.strip():
+        raise MissingToolInputError("ffuf", "wordlist_path")
+    forwarded = dict(kwargs)
+    forwarded.pop("wordlist_path", None)
+    return run_ffuf(target, wordlist_path, *args, **forwarded)
+
+
+def _dalfox_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+    from webpent.tools.exploitation.dalfox import run_dalfox
+
+    return run_dalfox(target, *args, **kwargs)
+
+
+def _sqlmap_target_runner(target: str, *args: Any, **kwargs: Any) -> Any:
+    from webpent.tools.exploitation.sqlmap import run_sqlmap
+
+    return run_sqlmap(target, *args, **kwargs)
+
+
 @lru_cache(maxsize=1)
 def builtin_adapters() -> dict[str, ToolAdapter]:
     """Return lazy wrappers for one representative tool per recon family."""
@@ -224,6 +257,26 @@ def builtin_adapters() -> dict[str, ToolAdapter]:
             name="nuclei",
             runner=_nuclei_target_runner,
             category="recon",
+        ),
+        "subfinder": ToolAdapter(
+            name="subfinder",
+            runner=_subfinder_target_runner,
+            category="recon",
+        ),
+        "ffuf": ToolAdapter(
+            name="ffuf",
+            runner=_ffuf_target_runner,
+            category="recon",
+        ),
+        "dalfox": ToolAdapter(
+            name="dalfox",
+            runner=_dalfox_target_runner,
+            category="exploitation",
+        ),
+        "sqlmap": ToolAdapter(
+            name="sqlmap",
+            runner=_sqlmap_target_runner,
+            category="exploitation",
         ),
     }
 

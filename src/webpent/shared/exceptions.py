@@ -22,6 +22,15 @@ class WebPentError(Exception):
     """
 
 
+class MissingToolInputError(WebPentError):
+    """Raised when a canonical tool invocation lacks required safe inputs."""
+
+    def __init__(self, tool: str, missing: str) -> None:
+        self.tool = tool
+        self.missing = missing
+        super().__init__(f"Tool {tool!r} requires input {missing!r}; execution refused")
+
+
 class ToolNotFoundError(WebPentError):
     """Raised when a required external executable cannot be located.
 
