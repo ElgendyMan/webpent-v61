@@ -1289,9 +1289,23 @@ def _validate_via_oob(
     # entry point.
     from webpent.shared.http import make_safe_httpx_client
 
-    oob_url = _build_oob_url(finding.id, finding.oob_token)
+    settings = get_settings()
+    from webpent.shared.oob_provider import build_oob_provider
+
+    external_oob = build_oob_provider(settings)
+    oob_url = (
+        external_oob.open(finding.id)
+        if external_oob is not None
+        else _build_oob_url(finding.id, finding.oob_token)
+    )
     if oob_url is None:
-        # OOB disabled — fail closed immediately with a clear reason.
+        # OOB disabled or the explicitly selected provider is unavailable —
+        # fail closed immediately with a clear reason.
+        reason = (
+            "oob_external_provider_unavailable"
+            if external_oob is not None
+            else "oob_channel_unavailable"
+        )
         return finding.model_copy(
             update={
                 "confidence_level": "Needs Human Review",
@@ -1300,11 +1314,14 @@ def _validate_via_oob(
                     "validator": f"oob:{vuln_class}",
                     "validation_unavailable": True,
                     "tool_infra_failure": True,
-                    "validation_failure_reason": "oob_channel_unavailable",
+                    "validation_failure_reason": reason,
+                    "oob_provider": "interactsh"
+                    if external_oob is not None
+                    else "local",
                 },
                 "reasoning": (
-                    "OOB validation is unavailable because the operator has not "
-                    "enabled a callback channel. No automated confirmation is "
+                    "OOB validation is unavailable because the configured callback "
+                    "provider could not be started. No automated confirmation is "
                     "claimed; human review is required."
                 ),
             }
@@ -1398,9 +1415,65 @@ def _validate_via_oob(
                 exc,
             )
 
-    # Wait briefly for the target to call back. The poll loop reads
-    # the DB row; if the OOB endpoint flipped confidence_level to
-    # "Tool-Confirmed", we return the updated finding.
+    # Wait briefly for the target to call back. The local poll loop reads
+    # the DB row and is the only path allowed to return Tool-Confirmed.
+    if external_oob is not None:
+        interaction = None
+        try:
+            interaction = external_oob.poll(
+                finding.id, timeout, max_poll_attempts
+            )
+        finally:
+            external_oob.close(finding.id)
+        if interaction is not None:
+            logger.info(
+                "External OOB %s interaction observed for finding %s; "
+                "confirmation remains blocked pending independent proof gates.",
+                vuln_class.upper(),
+                finding.id,
+            )
+            return finding.model_copy(
+                update={
+                    "confidence_level": "Needs Human Review",
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        "validator": f"oob:{vuln_class}",
+                        "oob_provider": interaction.provider,
+                        "oob_external_interaction_observed": True,
+                        "oob_interaction_type": interaction.interaction_type,
+                        "oob_observed_at": interaction.observed_at,
+                        "oob_evidence_digest": interaction.evidence_digest,
+                        "confirmation_blocked_reason": (
+                            "external_oob_requires_independent_target_correlation_"
+                            "negative_control_and_replayable_proof"
+                        ),
+                    },
+                    "reasoning": (
+                        "An external OOB interaction was observed for the generated "
+                        "canary. It is recorded as an observation only; independent "
+                        "target correlation, negative control, and replayable proof "
+                        "are still required. No automated confirmation is claimed."
+                    ),
+                }
+            )
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "validator": f"oob:{vuln_class}",
+                    "oob_provider": "interactsh",
+                    "oob_external_interaction_observed": False,
+                    "validation_failure_reason": "oob_callback_not_received",
+                },
+                "reasoning": (
+                    "The external OOB provider returned no interaction within the "
+                    f"bounded {timeout:.1f}s window. No automated confirmation is "
+                    "claimed; human review is required."
+                ),
+            }
+        )
+
     confirmed = _poll_for_oob_callback(finding.id, timeout, max_attempts=max_poll_attempts)
 
     if confirmed is not None:
@@ -1502,6 +1575,10 @@ def _validate_deserialization(
     """
 
     from webpent.config.settings import get_settings
+    from webpent.shared.oob_provider import build_oob_provider
+
+    settings = get_settings()
+    external_oob = build_oob_provider(settings)
 
     # V6 Omniscient Audit Fix (P0 — SSRF): deserialization probes are
     # fired at user-supplied target URLs. Route every request through
@@ -1509,7 +1586,11 @@ def _validate_deserialization(
     # even if a future caller flips follow_redirects=True.
     from webpent.shared.http import make_safe_httpx_client
 
-    oob_url = _build_oob_url(finding.id, finding.oob_token)
+    oob_url = (
+        external_oob.open(finding.id)
+        if external_oob is not None
+        else _build_oob_url(finding.id, finding.oob_token)
+    )
     if oob_url is None:
         return finding.model_copy(
             update={
@@ -1519,12 +1600,20 @@ def _validate_deserialization(
                     "validator": "oob:deserialization",
                     "validation_unavailable": True,
                     "tool_infra_failure": True,
-                    "validation_failure_reason": "oob_channel_unavailable",
+                    "validation_failure_reason": (
+                        "oob_external_provider_unavailable"
+                        if external_oob is not None
+                        else "oob_channel_unavailable"
+                    ),
+                    "oob_provider": "interactsh"
+                    if external_oob is not None
+                    else "local",
                 },
                 "reasoning": (
-                    "OOB validation is unavailable because no callback channel "
-                    "is configured. Deserialization cannot be confirmed without "
-                    "an authenticated callback; human review is required."
+                    "OOB validation is unavailable because the configured callback "
+                    "provider could not be started. Deserialization cannot be "
+                    "confirmed without a usable callback channel; human review is "
+                    "required."
                 ),
             }
         )
@@ -1797,7 +1886,62 @@ def _validate_deserialization(
                     exc,
                 )
 
-    # ---- Stage 3: poll DB for OOB callback ----------------------------
+    # ---- Stage 3: poll OOB callback -----------------------------------
+    if external_oob is not None:
+        interaction = None
+        try:
+            interaction = external_oob.poll(finding.id, timeout, 30)
+        finally:
+            external_oob.close(finding.id)
+        if interaction is not None:
+            logger.info(
+                "deserialization external OOB interaction observed for finding %s; "
+                "confirmation remains blocked by proof gates.",
+                finding.id,
+            )
+            return finding.model_copy(
+                update={
+                    "confidence_level": "Needs Human Review",
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        "validator": "deserialization",
+                        "oob_provider": interaction.provider,
+                        "oob_external_interaction_observed": True,
+                        "oob_interaction_type": interaction.interaction_type,
+                        "oob_observed_at": interaction.observed_at,
+                        "oob_evidence_digest": interaction.evidence_digest,
+                        "confirmation_blocked_reason": (
+                            "external_oob_requires_independent_target_correlation_"
+                            "negative_control_and_replayable_proof"
+                        ),
+                    },
+                    "reasoning": (
+                        "An external OOB interaction was observed from a bounded "
+                        "deserialization canary. It is an observation only; "
+                        "independent target correlation, negative control, and "
+                        "replayable proof are required. No automated confirmation "
+                        "is claimed."
+                    ),
+                }
+            )
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "validator": "deserialization",
+                    "oob_provider": "interactsh",
+                    "oob_external_interaction_observed": False,
+                    "validation_failure_reason": "oob_callback_not_received",
+                },
+                "reasoning": (
+                    "Deserialization probes were sent, but the external OOB "
+                    "provider observed no interaction within the bounded window. "
+                    "No automated confirmation is claimed."
+                ),
+            }
+        )
+
     confirmed = _poll_for_oob_callback(finding.id, timeout)
 
     if confirmed is not None:
@@ -3568,24 +3712,37 @@ def _validate_xxe_via_oob(
     """
     from webpent.config.settings import get_settings
     from webpent.shared.http import build_cookie_header, make_safe_httpx_client
+    from webpent.shared.oob_provider import build_oob_provider
 
-    oob_url = _build_oob_url(finding.id, finding.oob_token)
+    settings = get_settings()
+    external_oob = build_oob_provider(settings)
+    oob_url = (
+        external_oob.open(finding.id)
+        if external_oob is not None
+        else _build_oob_url(finding.id, finding.oob_token)
+    )
     if oob_url is None:
         return finding.model_copy(
             update={
                 "confidence_level": "Needs Human Review",
                 "reasoning": (
-                    "XXE validation is unavailable because the operator has "
-                    "not enabled an authenticated callback endpoint. No "
-                    "automated confirmation is claimed; human review is "
-                    "required."
+                    "XXE validation is unavailable because the configured callback "
+                    "provider could not be started. No automated confirmation is "
+                    "claimed; human review is required."
                 ),
                 "evidence": {
                     **(finding.evidence or {}),
                     "validator": "xxe_oob",
                     "validation_unavailable": True,
                     "tool_infra_failure": True,
-                    "validation_failure_reason": "oob_channel_unavailable",
+                    "validation_failure_reason": (
+                        "oob_external_provider_unavailable"
+                        if external_oob is not None
+                        else "oob_channel_unavailable"
+                    ),
+                    "oob_provider": "interactsh"
+                    if external_oob is not None
+                    else "local",
                 },
             }
         )
@@ -3657,7 +3814,62 @@ def _validate_xxe_via_oob(
             }
         )
 
-    confirmed = _poll_for_oob_callback(finding.id, get_settings().oob_poll_timeout_seconds)
+    if external_oob is not None:
+        interaction = None
+        try:
+            interaction = external_oob.poll(
+                finding.id, settings.oob_poll_timeout_seconds, 30
+            )
+        finally:
+            external_oob.close(finding.id)
+        if interaction is not None:
+            return finding.model_copy(
+                update={
+                    "confidence_level": "Needs Human Review",
+                    "reasoning": (
+                        "An external OOB interaction was observed for the XXE "
+                        "canary. It is an observation only; independent target "
+                        "correlation, negative control, and replayable proof are "
+                        "required. No automated confirmation is claimed."
+                    ),
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        "validator": "xxe_oob",
+                        "request_sent": True,
+                        "payload_label": "external_entity_canary",
+                        "oob_provider": interaction.provider,
+                        "oob_external_interaction_observed": True,
+                        "oob_interaction_type": interaction.interaction_type,
+                        "oob_observed_at": interaction.observed_at,
+                        "oob_evidence_digest": interaction.evidence_digest,
+                        "confirmation_blocked_reason": (
+                            "external_oob_requires_independent_target_correlation_"
+                            "negative_control_and_replayable_proof"
+                        ),
+                    },
+                }
+            )
+        return finding.model_copy(
+            update={
+                "confidence_level": "Needs Human Review",
+                "reasoning": (
+                    "XXE external-entity canary was sent, but the external OOB "
+                    "provider observed no interaction within the configured "
+                    "window. No automated confirmation is claimed."
+                ),
+                "evidence": {
+                    **(finding.evidence or {}),
+                    "validator": "xxe_oob",
+                    "request_sent": True,
+                    "payload_label": "external_entity_canary",
+                    "oob_provider": "interactsh",
+                    "oob_external_interaction_observed": False,
+                    "validation_failure_reason": "oob_callback_not_received",
+                },
+            }
+        )
+
+    confirmed = _poll_for_oob_callback(finding.id, settings.oob_poll_timeout_seconds)
     if confirmed is not None:
         return confirmed
     return finding.model_copy(

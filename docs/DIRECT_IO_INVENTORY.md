@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **284**.
+Total records: **291**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -132,26 +132,26 @@ Total records: **284**.
 | `src/webpent/agents/validator/agent.py` | 596 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/validator/agent.py` | 745 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
 | `src/webpent/agents/validator/agent.py` | 928 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1322 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 1340 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 1384 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1535 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 1723 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 1783 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 2332 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 2593 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 2594 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 2595 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 2937 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 2939 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 2986 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3038 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3045 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3080 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3211 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3593 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/validator/agent.py` | 3633 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/validator/agent.py` | 3734 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 1339 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 1357 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 1401 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 1624 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 1812 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 1872 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 2476 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 2737 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 2738 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 2739 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3081 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3083 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3130 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3182 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3189 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3224 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3355 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3750 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/validator/agent.py` | 3790 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/validator/agent.py` | 3946 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/validator/structural_checks.py` | 89 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/validator/structural_checks.py` | 104 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/validator/structural_checks.py` | 575 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
@@ -187,8 +187,8 @@ Total records: **284**.
 | `src/webpent/shared/confidence.py` | 369 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/control_plane_spine.py` | 181 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/differential_workflow.py` | 160 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 522 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 523 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 537 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 538 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 19 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 35 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/finding_aggregation.py` | 39 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -227,6 +227,13 @@ Total records: **284**.
 | `src/webpent/shared/llm.py` | 638 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/llm.py` | 642 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/llm.py` | 1389 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/oob_provider.py` | 18 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
+| `src/webpent/shared/oob_provider.py` | 213 | `dynamic_import` | `__import__` | `dynamic_import` | `approved_with_expiry` |
+| `src/webpent/shared/oob_provider.py` | 240 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/oob_provider.py` | 243 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/oob_provider.py` | 247 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/oob_provider.py` | 248 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/oob_provider.py` | 251 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/package_preflight.py` | 73 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 70 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

@@ -144,6 +144,7 @@ APPROVED_DIRECT_FILES = {
     "src/webpent/cli/git_source.py": "bounded_git_source_subprocess",
     "src/webpent/shared/capability_manifest.py": "read_only_tool_capability_probe",
     "src/webpent/shared/preflight.py": "read_only_playwright_capability_probe",
+    "src/webpent/shared/oob_provider.py": "bounded_opt_in_oob_subprocess_and_session_files",
     "src/webpent/agents/authentication/agent.py": "scoped_playwright_auth_flow",
     "src/webpent/agents/execution_sandbox/agent.py": "scoped_playwright_xss_replay",
     "src/webpent/agents/validator/agent.py": "scoped_playwright_csrf_replay",
@@ -162,6 +163,9 @@ APPROVED_RAW_SYMBOLS_BY_FILE: dict[str, frozenset[str]] = {
     "src/webpent/cli/git_source.py": frozenset({"subprocess", "subprocess.run"}),
     "src/webpent/shared/capability_manifest.py": frozenset({"subprocess", "subprocess.run"}),
     "src/webpent/shared/preflight.py": frozenset({"playwright"}),
+    "src/webpent/shared/oob_provider.py": frozenset(
+        {"subprocess", "subprocess.Popen"}
+    ),
     "src/webpent/agents/authentication/agent.py": frozenset(
         {"playwright.sync_api.sync_playwright", "sync_playwright"}
     ),
@@ -229,6 +233,17 @@ DYNAMIC_IMPORT_ALLOWLIST: tuple[dict[str, Any], ...] = (
         "required_wrapper_contract": (
             "no target-controlled module path; loader class must be in static map"
         ),
+    },
+    {
+        "file": "src/webpent/shared/oob_provider.py",
+        "line_range": [213, 213],
+        "symbols": ["__import__"],
+        "constant_source": "literal hashlib module used only for local JSONL digesting",
+        "owner": "security-engineering",
+        "reason": "digest-only dynamic import; no target-controlled module resolution",
+        "approved_by": "g02-oob-review-20260823",
+        "expires_at": "2026-11-19",
+        "required_wrapper_contract": "module name remains the source literal hashlib",
     },
 )
 

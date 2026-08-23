@@ -907,6 +907,58 @@ class Settings(BaseSettings):
         description="Maximum database polls per OOB validation attempt.",
     )
 
+    # -- Optional Interactsh OOB provider ------------------------------------
+    # The local authenticated callback remains the default.  External OOB is
+    # opt-in and requires an explicit server so offline/local runs never
+    # contact a public service implicitly.
+    oob_provider: str = Field(
+        default="local",
+        validation_alias=AliasChoices(
+            "oob_provider",
+            "OOB_PROVIDER",
+            "WEBPENT_OOB_PROVIDER",
+        ),
+        description="OOB provider: local (default) or interactsh (explicit opt-in).",
+    )
+    interactsh_binary: str = Field(
+        default="interactsh-client",
+        validation_alias=AliasChoices(
+            "interactsh_binary",
+            "INTERACTSH_BINARY",
+            "WEBPENT_INTERACTSH_BINARY",
+        ),
+        description="Pinned interactsh-client executable path/name.",
+    )
+    interactsh_server: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "interactsh_server",
+            "INTERACTSH_SERVER",
+            "WEBPENT_INTERACTSH_SERVER",
+        ),
+        description="Explicit self-hosted Interactsh server; empty disables provider.",
+    )
+    interactsh_token: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices(
+            "interactsh_token",
+            "INTERACTSH_TOKEN",
+            "WEBPENT_INTERACTSH_TOKEN",
+        ),
+        description="Optional protected Interactsh server token; never report it.",
+    )
+    interactsh_poll_interval_seconds: int = Field(
+        default=1,
+        ge=1,
+        le=30,
+        validation_alias=AliasChoices(
+            "interactsh_poll_interval_seconds",
+            "INTERACTSH_POLL_INTERVAL_SECONDS",
+            "WEBPENT_INTERACTSH_POLL_INTERVAL_SECONDS",
+        ),
+        description="Bounded Interactsh polling interval.",
+    )
+
     # -- Stealth mode (V5 Sprint 6) -----------------------------------------
     # When stealth_mode is True, the framework inserts randomized
     # delays (jitter) before every external tool invocation and every
