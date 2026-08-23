@@ -14,6 +14,7 @@ from webpent.graph.builder import (
     route_after_smart_campaigns_execution,
 )
 from webpent.models.targets import Target
+from webpent.models.workflows import WorkflowObservation
 from webpent.shared.coverage_ledger import project_coverage_ledger
 from webpent.state.initial_state import build_initial_state
 
@@ -159,6 +160,42 @@ def test_initial_plan_refreshes_from_observed_surface_url() -> None:
         entry["key"] == "export_blade_ssti" and entry["matched_observation_refs"]
         for entry in result["campaign_plan"]["entries"]
     )
+
+
+def test_typed_workflow_observation_becomes_observed_surface_task() -> None:
+    observation = WorkflowObservation(
+        fingerprint="workflow-download-1",
+        workflow_key="download",
+        transition_key="read-object",
+        source_ref="crawler:download",
+        endpoint="https://target.test/download/1",
+        method="GET",
+        signals=["object_reference", "identity_context"],
+        object_refs=["object:1"],
+        evidence_refs=["http:download:1"],
+        scope_decision="allowed",
+    )
+    state = _state()
+    state["crawled_data"] = {"workflow_steps": [observation]}
+    state["campaign_plan"] = {
+        "entries": [
+            {
+                "key": "download_idor",
+                "status": "not_observed",
+                "validator_id": "idor",
+                "matched_observation_refs": [],
+                "gaps": ["missing-surface:download_idor"],
+                "contract": {},
+            }
+        ]
+    }
+
+    tasks, outcomes = build_smart_campaign_tasks(state)
+
+    assert tasks
+    assert {task.target_url for task in tasks} == {"https://target.test/download/1"}
+    assert all(item["reason"] != "missing_concrete_surface_url" for item in outcomes)
+    assert all(item["status"] != "confirmed" for item in outcomes)
 
 
 def test_crawler_endpoint_strings_become_observed_surface_tasks() -> None:

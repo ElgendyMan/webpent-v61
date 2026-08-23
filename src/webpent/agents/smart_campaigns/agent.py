@@ -363,6 +363,20 @@ def _observation_ref(item: Mapping[str, Any], fallback: str) -> str:
     return str(fallback)[:200]
 
 
+def _coerce_observed_record(item: Any) -> Mapping[str, Any] | None:
+    """Normalize mapping-like observation models without guessing or transporting."""
+    if isinstance(item, Mapping):
+        return item
+    model_dump = getattr(item, "model_dump", None)
+    if not callable(model_dump):
+        return None
+    try:
+        dumped = model_dump(mode="json")
+    except (AttributeError, TypeError, ValueError):
+        return None
+    return dumped if isinstance(dumped, Mapping) else None
+
+
 def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """Return bounded passive surface records from the current graph state."""
     crawled = state.get("crawled_data") or {}
@@ -388,8 +402,9 @@ def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
             candidates.extend(value)
     records: list[Mapping[str, Any]] = []
     for item in candidates[:500]:
-        if isinstance(item, Mapping):
-            records.append(_annotate_observed_object_surface(item))
+        normalized = _coerce_observed_record(item)
+        if normalized is not None:
+            records.append(_annotate_observed_object_surface(normalized))
         elif isinstance(item, str) and item.strip():
             records.append(
                 _annotate_observed_object_surface(
