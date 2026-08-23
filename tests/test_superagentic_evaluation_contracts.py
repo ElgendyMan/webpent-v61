@@ -34,11 +34,13 @@ def test_behavior_evaluation_is_offline_and_counts_unsafe_events() -> None:
 
 def test_observability_is_bounded_and_redacted() -> None:
     recorder = ObservabilityRecorder(max_events=1)
-    recorder.emit("decision", run_id="r1", engagement_id="e1", password="synthetic-secret")
-    recorder.emit("second", token="another-secret")
+    recorder.emit(
+        "decision", run_id="r1", engagement_id="e1", password="fixture-password-value-123"
+    )
+    recorder.emit("second", token="fixture-token-value-456")
     snapshot = recorder.snapshot()
     assert len(snapshot) == 1
-    assert "another-secret" not in repr(snapshot)
+    assert "fixture-token-value-456" not in repr(snapshot)
 
 
 def test_scorecard_never_claims_qualification_without_live_evidence() -> None:
