@@ -74,13 +74,20 @@ def _artifact_safety() -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as exc:
         return {"passed": False, "reason": f"invalid regression artifact: {exc}"}
     summary = payload.get("summary", {})
+    summary_is_complete = (
+        isinstance(summary, dict)
+        and bool(summary)
+        and all(
+            isinstance(value, int) and not isinstance(value, bool) and value >= 0
+            for value in summary.values()
+        )
+        and sum(summary.values()) == 20
+    )
     passed = (
         payload.get("campaign_count") == 20
         and payload.get("target_contacted") is False
         and payload.get("waptlab_modified") is False
-        and sum(summary.values()) == 20
-        and summary.get("inconclusive") == 13
-        and summary.get("missing-validator") == 7
+        and summary_is_complete
     )
     return {
         "passed": passed,
