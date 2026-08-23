@@ -12,6 +12,7 @@ import hashlib
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlsplit
 from uuid import NAMESPACE_URL, uuid5
@@ -26,6 +27,12 @@ from webpent.models.hypothesis import Hypothesis, HypothesisOrigin, HypothesisSt
 from webpent.models.research import ResearchContext
 from webpent.shared.action_authority import ActionRisk
 from webpent.shared.action_ledger import SQLiteActionLedger
+from webpent.shared.agent_harness import (
+    AgentRunContext,
+    BudgetReservation,
+    HarnessOutcome,
+    proposal_from_campaign_task,
+)
 from webpent.shared.campaign_executor import (
     CampaignTask,
     CampaignTaskStatus,
@@ -1786,6 +1793,145 @@ def build_smart_campaign_handler(
         return result
     return handler
 
+def _execute_campaign_task(
+    runtime: RuntimeContext,
+    task: CampaignTask,
+    handler: Any,
+    *,
+    state: Mapping[str, Any],
+    root: str,
+    observed_preconditions: tuple[str, ...],
+    preconditions_met: bool,
+) -> dict[str, Any]:
+    """Execute one task through the governed harness when explicitly opted in.
+
+    Legacy callers remain on the existing executor path by default.  The opt-in
+    path uses the same executor behind ``RuntimeContext.run_agent_proposal`` and
+    therefore cannot create a second authority or promote execution to finding
+    confirmation.  Missing grants, identity, package, or scope fail closed.
+    """
+    if (
+        state.get("superagentic_harness_enabled") is not True
+        or runtime.agent_harness is None
+    ):
+        return runtime.action_executor.execute(
+            task,
+            handler,
+            preconditions_met=preconditions_met,
+        )
+    package = state.get("target_package")
+    package_digest = str(state.get("package_digest") or "").strip()
+    if not package_digest and isinstance(package, Mapping):
+        package_digest = str(
+            package.get("package_sha256") or package.get("digest") or ""
+        ).strip()
+    if not package_digest:
+        package_digest = hashlib.sha256(
+            canonical_json(
+                {
+                    "engagement_id": runtime.engagement_id,
+                    "target_origin": root,
+                    "target_package": dict(package) if isinstance(package, Mapping) else {},
+                }
+            ).encode("utf-8")
+        ).hexdigest()
+    try:
+        action_budget = state.get("action_budget")
+        action_budget = action_budget if isinstance(action_budget, Mapping) else {}
+        max_actions = max(1, int(action_budget.get("max_actions", 1)))
+        max_cost = max(float(task.budget), float(action_budget.get("max_cost", task.budget)))
+        used_actions = max(0, int(action_budget.get("used_actions", 0)))
+        used_cost = max(0.0, float(action_budget.get("used_cost", 0.0)))
+    except (TypeError, ValueError):
+        return {
+            "status": CampaignTaskStatus.STOPPED.value,
+            "reason": "harness:invalid_budget",
+        }
+    capabilities_value = state.get("agent_capabilities")
+    capabilities = tuple(
+        str(item).strip()[:80]
+        for item in capabilities_value
+        if str(item).strip()
+    ) if isinstance(capabilities_value, (list, tuple, set)) else ()
+    authorization = state.get("authorization_context")
+    safe_authorization, _ = redact_sensitive(
+        dict(authorization) if isinstance(authorization, Mapping) else {}
+    )
+    deadline = str(state.get("agent_deadline") or "").strip()
+    if not deadline:
+        deadline = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
+    run_id = str(state.get("run_id") or state.get("campaign_id") or "smart-campaign")[:120]
+    trace_id = str(state.get("trace_id") or f"smart:{task.task_id}")[:160]
+    context = AgentRunContext(
+        run_id=run_id,
+        engagement_id=runtime.engagement_id,
+        package_digest=package_digest,
+        authorization_context=safe_authorization,
+        target_model_version=str(state.get("target_model_version") or "unknown")[:120],
+        agent_identity=str(state.get("agent_identity") or "smart_campaigns")[:120],
+        capabilities=capabilities,
+        budget=BudgetReservation(
+            max_actions=max_actions,
+            max_cost=max_cost,
+            used_actions=used_actions,
+            used_cost=used_cost,
+        ),
+        deadline=deadline,
+        stop_token=str(state.get("stop_token") or f"stop:{run_id}")[:160],
+        trace_id=trace_id,
+        stop_requested=bool(state.get("stop_requested", False)),
+    )
+    try:
+        proposal = proposal_from_campaign_task(
+            task,
+            proposal_id=f"proposal:{task.task_id}",
+            objective=f"smart_campaign:{task.vulnerability_class}",
+            expected_observations=(task.oracle,),
+        )
+        outcome: HarnessOutcome = runtime.run_agent_proposal(
+            context,
+            proposal,
+            {task.task_id: handler},
+            observed_preconditions=observed_preconditions,
+            expected_package_digest=package_digest,
+        )
+    except (TypeError, ValueError, RuntimeError) as exc:
+        return {
+            "status": CampaignTaskStatus.STOPPED.value,
+            "reason": f"harness:adapter_failure:{type(exc).__name__}",
+        }
+    payload = outcome.as_dict()
+    action_results = payload.get("action_results")
+    if (
+        isinstance(action_results, list)
+        and action_results
+        and isinstance(action_results[0], Mapping)
+    ):
+        result = dict(action_results[0])
+    else:
+        status = str(payload.get("status") or "blocked")
+        result = {
+            "status": (
+                CampaignTaskStatus.BLOCKED_BY_PRECONDITION.value
+                if not preconditions_met
+                else CampaignTaskStatus.POLICY_DENIED.value
+                if status == "blocked"
+                else CampaignTaskStatus.INFRASTRUCTURE_FAILURE.value
+            ),
+            "reason": ";".join(str(item) for item in payload.get("blocked_reasons", ()))[:500],
+        }
+    result.update(
+        {
+            "harness_status": payload.get("status"),
+            "harness_confirmation_status": payload.get("confirmation_status", "not_confirmed"),
+            "harness_blocked_reasons": list(payload.get("blocked_reasons") or ())[:8],
+            "harness_run_id": payload.get("run_id"),
+            "harness_trace_id": payload.get("trace_id"),
+        }
+    )
+    return result
+
+
 def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     """Execute bounded same-origin tasks and deterministic proofs in active mode."""
     profile = str(
@@ -1978,7 +2124,17 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             blocked_preconditions=state_blocked_preconditions,
             require_observations=True,
         )
-        outcomes.append(executor.execute(task, handler, preconditions_met=ready))
+        outcomes.append(
+            _execute_campaign_task(
+                runtime,
+                task,
+                handler,
+                state=state,
+                root=root,
+                observed_preconditions=tuple(state_observed_preconditions),
+                preconditions_met=ready,
+            )
+        )
 
     for information_task, information_record in information_tasks:
         information_ready, _ = resolve_preconditions(
@@ -1987,9 +2143,13 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             blocked_preconditions=state_blocked_preconditions,
             require_observations=True,
         )
-        information_outcome = executor.execute(
+        information_outcome = _execute_campaign_task(
+            runtime,
             information_task,
             handler,
+            state=state,
+            root=root,
+            observed_preconditions=tuple(state_observed_preconditions),
             preconditions_met=information_ready,
         )
         outcomes.append(information_outcome)
@@ -2025,7 +2185,17 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 blocked_preconditions=state_blocked_preconditions,
                 require_observations=True,
             )
-            outcomes.append(executor.execute(swagger_task, handler, preconditions_met=ready))
+            outcomes.append(
+                _execute_campaign_task(
+                    runtime,
+                    swagger_task,
+                    handler,
+                    state=state,
+                    root=root,
+                    observed_preconditions=observed,
+                    preconditions_met=ready,
+                )
+            )
 
     campaign_hypotheses = _campaign_hypotheses_from_execution(
         selected,

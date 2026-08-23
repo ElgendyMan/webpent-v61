@@ -20,6 +20,15 @@ from webpent.config.settings import Settings, get_settings
 from webpent.models.evidence import redact_sensitive
 from webpent.shared.action_authority import ActionAuthority
 from webpent.shared.action_ledger import SQLiteActionLedger
+from webpent.shared.agent_harness import (
+    AgentProposal,
+    AgentRunContext,
+    HarnessOutcome,
+    HarnessRunner,
+    HarnessStatus,
+    ToolCapability,
+    ToolCapabilityRegistry,
+)
 from webpent.shared.campaign_executor import ActionExecutor, NextBestActionEngine
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.control_plane import EngagementScope
@@ -197,9 +206,7 @@ class AdapterRegistry:
         if not key or not adapter.capability.strip() or not adapter.transport.strip():
             raise RuntimeConfigurationError("adapter registration is incomplete")
         if not adapter.policy_checked:
-            raise RuntimeConfigurationError(
-                f"adapter:{key}:policy_checked_manifest_required"
-            )
+            raise RuntimeConfigurationError(f"adapter:{key}:policy_checked_manifest_required")
         if key in self._adapters:
             raise RuntimeConfigurationError(f"adapter:{key}:duplicate_registration")
         self._adapters[key] = adapter
@@ -275,6 +282,8 @@ class RuntimeContext:
     engagement_scope: EngagementScope | None = None
     # Live wildcard scope handle; never placed directly in state/checkpoints.
     scope_runtime_handle: ScopeRuntimeHandle | None = None
+    # Shared governed harness; live handlers and grants are never checkpointed.
+    agent_harness: HarnessRunner | None = None
 
     @property
     def valid(self) -> bool:
@@ -341,6 +350,82 @@ class RuntimeContext:
             "clean": False,
         }
 
+    def run_agent_proposal(
+        self,
+        context: AgentRunContext,
+        proposal: AgentProposal,
+        handlers: Mapping[str, Callable[[Any], Any]],
+        *,
+        observed_preconditions: tuple[str, ...] = (),
+        expected_package_digest: str | None = None,
+    ) -> HarnessOutcome:
+        """Run a governed proposal through the shared harness when explicitly available.
+
+        This is an integration seam, not a second executor.  It fails closed when
+        the runtime is invalid, the engagement differs, the package identity is
+        not the expected one, or an action target is outside the compiled scope.
+        """
+        if self.agent_harness is None:
+            return HarnessOutcome(
+                status=HarnessStatus.BLOCKED,
+                run_id=context.run_id,
+                proposal_id=proposal.proposal_id,
+                action_results=(),
+                observations=(),
+                blocked_reasons=("runtime:agent_harness_unavailable",),
+                trace_id=context.trace_id,
+            )
+        if not self.valid:
+            return HarnessOutcome(
+                status=HarnessStatus.BLOCKED,
+                run_id=context.run_id,
+                proposal_id=proposal.proposal_id,
+                action_results=(),
+                observations=(),
+                blocked_reasons=("runtime:context_invalid",),
+                trace_id=context.trace_id,
+            )
+        if context.engagement_id != self.engagement_id:
+            return HarnessOutcome(
+                status=HarnessStatus.BLOCKED,
+                run_id=context.run_id,
+                proposal_id=proposal.proposal_id,
+                action_results=(),
+                observations=(),
+                blocked_reasons=("runtime:engagement_mismatch",),
+                trace_id=context.trace_id,
+            )
+        if (
+            expected_package_digest is not None
+            and context.package_digest != expected_package_digest
+        ):
+            return HarnessOutcome(
+                status=HarnessStatus.BLOCKED,
+                run_id=context.run_id,
+                proposal_id=proposal.proposal_id,
+                action_results=(),
+                observations=(),
+                blocked_reasons=("runtime:package_identity_mismatch",),
+                trace_id=context.trace_id,
+            )
+        for action in proposal.proposed_actions:
+            if not self.scope_matcher.allows(action.target_url, method=action.method):
+                return HarnessOutcome(
+                    status=HarnessStatus.BLOCKED,
+                    run_id=context.run_id,
+                    proposal_id=proposal.proposal_id,
+                    action_results=(),
+                    observations=(),
+                    blocked_reasons=(f"runtime:target_scope_denied:{action.action_id}",),
+                    trace_id=context.trace_id,
+                )
+        return self.agent_harness.run(
+            context,
+            proposal,
+            handlers,
+            observed_preconditions=observed_preconditions,
+        )
+
     def diagnostics(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
@@ -349,9 +434,7 @@ class RuntimeContext:
             "target_origin": self.target_origin,
             "valid": self.valid,
             "configuration_errors": list(self.configuration_errors),
-            "capability_gaps": [
-                gap.as_dict() for gap in self.current_capability_gaps()
-            ],
+            "capability_gaps": [gap.as_dict() for gap in self.current_capability_gaps()],
             "capabilities": self.capabilities.diagnostics(),
             "adapters": self.adapters.manifest(),
             "control_plane": (
@@ -360,6 +443,11 @@ class RuntimeContext:
                 else None
             ),
             "event_count": len(self.event_sink.snapshot()),
+            "agent_harness": (
+                self.agent_harness.capability_registry.descriptor()
+                if self.agent_harness is not None
+                else None
+            ),
         }
 
 
@@ -509,10 +597,62 @@ class RuntimeFactory:
             target_package=dict(target_package or {}),
             scope_compiler=package_scope_compiler,
         )
-        bundle_store = (
-            proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
-        )
+        bundle_store = proof_bundle_store if proof_bundle_store is not None else ProofBundleStore()
         executor = ActionExecutor(authority, proof_bundle_store=bundle_store)
+        harness_capabilities = ToolCapabilityRegistry()
+        for capability_name, side_effects, authorization, evidence, fallback, direct_io in (
+            (
+                "http_read",
+                ("read_only",),
+                "scope_and_action_authority",
+                "observation",
+                "blocked",
+                True,
+            ),
+            (
+                "browser_read",
+                ("read_only",),
+                "scope_and_action_authority",
+                "observation",
+                "blocked",
+                True,
+            ),
+            (
+                "browser_action",
+                ("state_change",),
+                "scope_and_human_approval",
+                "observation",
+                "awaiting_confirmation",
+                True,
+            ),
+            ("recon", ("read_only",), "scope_and_action_authority", "observation", "blocked", True),
+            (
+                "validation",
+                ("read_only",),
+                "scope_and_proof_contract",
+                "validation_observation",
+                "inconclusive",
+                True,
+            ),
+        ):
+            try:
+                harness_capabilities.register(
+                    ToolCapability(
+                        name=capability_name,
+                        input_schema={"type": "object"},
+                        allowed_side_effects=side_effects,
+                        required_authorization=authorization,
+                        budget_class="engagement_action_budget",
+                        evidence_output=evidence,
+                        safe_fallback=fallback,
+                        direct_io=direct_io,
+                    )
+                )
+            except ValueError:
+                # A duplicate is impossible in the local tuple; keep runtime
+                # creation fail-closed if a future extension is malformed.
+                errors.append(f"harness:capability_registration_failed:{capability_name}")
+        harness = HarnessRunner(executor, harness_capabilities, event_sink=sink)
         control_plane_runtime = None
         engagement_scope = None
         if enable_control_plane and normalized_origin and not errors:
@@ -562,8 +702,7 @@ class RuntimeFactory:
                     )
                 except RuntimeConfigurationError as exc:
                     errors.append(
-                        "control_plane:browser_adapter_registration_failed:"
-                        f"{str(exc)[:160]}"
+                        f"control_plane:browser_adapter_registration_failed:{str(exc)[:160]}"
                     )
         capability_gaps = cls._capability_gaps(
             adapters=registry,
@@ -607,6 +746,7 @@ class RuntimeFactory:
             identity_provisioning_agent=identity_provisioning_agent,
             engagement_scope=engagement_scope,
             scope_runtime_handle=scope_runtime_handle,
+            agent_harness=harness,
         )
 
     @staticmethod
@@ -625,9 +765,7 @@ class RuntimeFactory:
             "smart_action_budget": float(settings.smart_action_budget),
             "used_actions": int(context.action_authority.used_actions),
             "used_budget": float(context.action_authority.used_budget),
-            "capability_gaps": [
-                gap.as_dict() for gap in context.current_capability_gaps()
-            ],
+            "capability_gaps": [gap.as_dict() for gap in context.current_capability_gaps()],
             "manifest": context.capabilities.ensure_discovered(),
             "control_plane_enabled": context.control_plane_runtime is not None,
             "safety_gate_enabled": context.safety_gate is not None,
@@ -639,10 +777,9 @@ class RuntimeFactory:
             "kill_switch_tripped": bool(
                 context.safety_gate is not None and context.safety_gate.kill_switch.tripped
             ),
+            "agent_harness_enabled": context.agent_harness is not None,
             "kill_switch_reason": (
-                context.safety_gate.kill_switch.reason
-                if context.safety_gate is not None
-                else ""
+                context.safety_gate.kill_switch.reason if context.safety_gate is not None else ""
             ),
         }
 
@@ -727,9 +864,7 @@ def register_control_plane_browser_adapter(
 
     if not isinstance(adapter, BrowserActionAdapter):
         raise RuntimeConfigurationError("control_plane_browser:typed_adapter_required")
-    approval_expiry = expires_at or (
-        datetime.now(UTC) + timedelta(hours=1)
-    ).date().isoformat()
+    approval_expiry = expires_at or (datetime.now(UTC) + timedelta(hours=1)).date().isoformat()
     registration = RegisteredAdapter(
         name=CONTROL_PLANE_BROWSER_ADAPTER_NAME,
         capability="browser_action",

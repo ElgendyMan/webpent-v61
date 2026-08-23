@@ -73,6 +73,7 @@ from webpent.agents.reporter.agent import reporter_node, reporter_node_bug_bount
 from webpent.agents.request_smuggling.agent import request_smuggling_node
 from webpent.agents.scope_enforcer.agent import scope_enforcer_node
 from webpent.agents.smart_campaigns.agent import (
+    _execute_campaign_task,
     build_smart_campaign_handler,
     smart_campaigns_execution_node,
     smart_campaigns_node,
@@ -473,7 +474,23 @@ def _active_research_runtime_node(state: Mapping[str, Any]) -> dict[str, Any]:
             blocked_preconditions=(blocked if not isinstance(blocked, str) else (blocked,)),
             require_observations=bool(task.preconditions),
         )
-        record = runtime.action_executor.execute(task, handler, preconditions_met=ready)
+        record = _execute_campaign_task(
+            runtime,
+            task,
+            handler,
+            state=state,
+            root=runtime.target_origin,
+            observed_preconditions=(
+                observed
+                if isinstance(observed, tuple)
+                else tuple(observed)
+                if isinstance(observed, (list, set))
+                else (observed,)
+                if isinstance(observed, str)
+                else ()
+            ),
+            preconditions_met=ready,
+        )
         status = str(record.get("status") or "inconclusive")
         proof_bundle = record.get("proof_bundle")
         evidence_refs = (
