@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from webpent.attack_graph.path_ranker import AttackPathRanker
+from webpent.attack_graph.reasoner import AttackGraphReasoner
 from webpent.copilot.critic import LLMCritic
 from webpent.copilot.explainer import LLMExplainer
 from webpent.copilot.planner import LLMPlanner
@@ -77,6 +78,52 @@ def test_knowledge_facades_are_read_only_and_evidence_preserving() -> None:
     assert AuthorizationModel.from_target_knowledge(model).is_authorized("user-a") is False
     assert len(DataFlowModel.from_target_knowledge(model).observed()) == 1
     assert WorkflowModel.from_target_knowledge(model).get("missing") is None
+
+
+def test_attack_graph_reasoner_recommends_only_explicit_evidence_paths() -> None:
+    graph = {
+        "nodes": {"a": {}, "b": {}, "c": {}, "d": {}},
+        "edges": [
+            {
+                "id": "edge-bc",
+                "kind": "observed",
+                "source_id": "b",
+                "target_id": "c",
+                "confidence": "observed",
+                "evidence_refs": ["ev-bc"],
+            },
+            {
+                "id": "edge-ab",
+                "kind": "observed",
+                "source_id": "a",
+                "target_id": "b",
+                "confidence": "mental_model_observed",
+                "evidence_refs": ["ev-ab"],
+            },
+            {
+                "id": "edge-cd-no-evidence",
+                "kind": "observed",
+                "source_id": "c",
+                "target_id": "d",
+                "confidence": "causal_observed",
+                "evidence_refs": [],
+            },
+        ],
+        "coverage_gaps": ["missing negative control"],
+    }
+
+    reasoner = AttackGraphReasoner()
+    result = reasoner.recommend_paths(graph, max_paths=8, max_hops=4)
+    paths = result["paths"]
+
+    assert result["proposal_only"] is True
+    assert result["authoritative"] is False
+    assert result["gaps"] == ["missing negative control"]
+    assert any(path["edge_ids"] == ["edge-ab", "edge-bc"] for path in paths)
+    assert all("edge-cd-no-evidence" not in path["edge_ids"] for path in paths)
+    assert all("finding" not in repr(path) for path in paths)
+    assert all("execute" not in path for path in paths)
+    assert result == reasoner.recommend_paths(graph, max_paths=8, max_hops=4)
 
 
 def test_path_ranker_does_not_create_paths() -> None:

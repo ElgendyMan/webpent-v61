@@ -19,6 +19,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from webpent.agents.validator.registry import capability_for
 from webpent.attack_graph.builder import AttackGraphBuilder
+from webpent.attack_graph.reasoner import AttackGraphReasoner
 from webpent.config.settings import ScanMode, get_settings
 from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.models.evidence import canonical_json, redact_sensitive
@@ -900,6 +901,7 @@ def _research_projections(
         runtime_capability_gaps=state.get("runtime_capability_gaps") or (),
         target_knowledge=knowledge,
     )
+    attack_path_recommendations = AttackGraphReasoner().recommend_paths(graph)
     outcome_names = [
         str(item.get("status") or item.get("outcome") or "unknown")
         for item in outcomes
@@ -921,6 +923,7 @@ def _research_projections(
         "target_knowledge": knowledge,
         "target_knowledge_version": version,
         "attack_graph": graph,
+        "attack_path_recommendations": attack_path_recommendations,
         "research_loop_contract": contract.as_dict(),
     }
 
