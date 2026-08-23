@@ -127,6 +127,27 @@ def test_planner_node_keeps_legacy_shape_when_flag_disabled(monkeypatch):
     get_settings.cache_clear()
 
 
+def test_planner_no_llm_skips_advisory_rag_retrieval(monkeypatch):
+    import webpent.agents.planner.agent as planner_agent
+    from webpent.config.settings import get_settings
+
+    monkeypatch.delenv("ENABLE_PLANNER_DECISIONS", raising=False)
+    monkeypatch.setenv("DISABLE_RAG", "false")
+    get_settings.cache_clear()
+
+    def fail_if_retrieved():
+        raise AssertionError("no-LLM planner must not initialize advisory RAG")
+
+    monkeypatch.setattr(planner_agent, "_retrieve_methodologies", fail_if_retrieved)
+    state = _planner_state()
+    state["llm_enabled_override"] = False
+    result = planner_agent.planner_node(state)
+
+    assert result["messages"][0].content.endswith("LLM-based planning was unavailable.)")
+    assert "planner_decision" not in result
+    get_settings.cache_clear()
+
+
 def test_planner_provider_timeout_uses_heuristic_decision(monkeypatch):
     import webpent.agents.planner.agent as planner_agent
     from webpent.config.settings import get_settings

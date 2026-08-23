@@ -79,10 +79,10 @@ Total records: **282**.
 | `src/webpent/agents/payload_generator/agent.py` | 271 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/payload_generator/agent.py` | 370 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/payload_optimizer/agent.py` | 147 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/planner/agent.py` | 113 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/planner/agent.py` | 114 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/planner/agent.py` | 125 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/planner/agent.py` | 140 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/planner/agent.py` | 115 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/planner/agent.py` | 126 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/planner/agent.py` | 141 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/post_exploit/agent.py` | 256 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |
 | `src/webpent/agents/post_exploit/agent.py` | 337 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/post_exploit/agent.py` | 438 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

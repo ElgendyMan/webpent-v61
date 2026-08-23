@@ -9,6 +9,7 @@ it never controls graph routing and never carries executable commands.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -150,7 +151,14 @@ def planner_node(state: PentestState) -> dict:
     logger.info("Planner phase starting for target=%s", safe_target)
     logger.info("Planner: generating plan (informational; graph topology remains fixed)")
 
-    methodologies = _retrieve_methodologies()
+    # A no-LLM run must remain deterministic and bounded.  The planner's
+    # methodology retrieval is advisory only; avoid initializing the vector
+    # store when the operator explicitly disabled LLM/RAG for qualification.
+    llm_disabled = state.get("llm_enabled_override") is False
+    rag_disabled = os.getenv("DISABLE_RAG", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    methodologies = "" if llm_disabled or rag_disabled else _retrieve_methodologies()
     llm: Any = None
     response: Any = None
     budget_allowed, budget_reason = llm_budget_allows(state.get("action_budget"))
