@@ -41,6 +41,93 @@ def _host_for_url(url: str) -> str:
     return parsed.netloc or parsed.path.split("/", 1)[0]
 
 
+def _safe_text(value: Any, *, limit: int = 200) -> str | None:
+    """Return a bounded non-empty string, or None for untrusted input."""
+    if not isinstance(value, (str, int, float, bool)):
+        return None
+    text = str(value).strip()
+    return text[:limit] if text else None
+
+
+def _safe_node_metadata(raw: dict[str, Any], kind: str) -> dict[str, Any]:
+    """Project bounded business metadata from an observed mental node only."""
+    metadata: dict[str, Any] = {
+        "discovery_source": _safe_text(raw.get("discovery_source"), limit=100) or "unknown"
+    }
+    raw_metadata = raw.get("metadata")
+    if not isinstance(raw_metadata, Mapping):
+        return metadata
+
+    allowed_fields: dict[str, tuple[str, ...]] = {
+        "object": ("object_type", "url"),
+        "identity": ("role", "auth_pattern", "ownership_signal"),
+        "workflow": ("required_role", "auth_pattern"),
+        "endpoint": ("methods", "parameter_names", "is_form", "auth_signals"),
+    }
+    list_fields = {"methods", "parameter_names", "auth_signals"}
+    for field in allowed_fields.get(kind, ()):
+        value = raw_metadata.get(field)
+        if field in list_fields:
+            if not isinstance(value, list):
+                continue
+            cleaned = [
+                item for item in (_safe_text(item, limit=100) for item in value) if item
+            ]
+            if cleaned:
+                metadata[field] = list(dict.fromkeys(cleaned))[:100]
+            continue
+        if field == "is_form":
+            if isinstance(value, bool) and value:
+                metadata[field] = True
+            continue
+        safe_value = _safe_text(value)
+        if safe_value:
+            if field == "url":
+                parsed = urlsplit(safe_value)
+                if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                    continue
+            metadata[field] = safe_value
+    return metadata
+
+
+def _normalise_transitions(raw: dict[str, Any]) -> list[dict[str, str]]:
+    """Normalize observed workflow transitions or form steps only."""
+    candidates = raw.get("transitions")
+    if not isinstance(candidates, list) or not candidates:
+        candidates = raw.get("steps")
+    if not isinstance(candidates, list):
+        return []
+
+    transitions: list[dict[str, str]] = []
+    field_aliases = {
+        "method": ("method",),
+        "endpoint": ("endpoint", "url", "action_url"),
+        "from_state": ("from_state", "state_from"),
+        "to_state": ("to_state", "state_to"),
+    }
+    for candidate in candidates[:100]:
+        if not isinstance(candidate, Mapping):
+            continue
+        transition: dict[str, str] = {}
+        for output_field, aliases in field_aliases.items():
+            for alias in aliases:
+                value = _safe_text(candidate.get(alias), limit=200)
+                if value:
+                    transition[output_field] = value
+                    break
+        if transition:
+            transitions.append(transition)
+    return transitions
+
+
+def _safe_confidence(value: Any, default: float = 0.5) -> float:
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        confidence = default
+    return max(0.0, min(1.0, confidence))
+
+
 def build_target_knowledge_model(
     *,
     engagement_id: str,
@@ -75,7 +162,7 @@ def build_target_knowledge_model(
                 confidence=1.0 if raw.get("in_scope") is True else 0.5,
                 in_scope=raw.get("in_scope"),
                 evidence_refs=_evidence(raw),
-                metadata={"discovery_source": raw.get("discovery_source", "unknown")},
+                metadata=_safe_node_metadata(raw, node_kind.value),
             )
         )
     for raw in mental.get("edges", []) if isinstance(mental.get("edges"), list) else []:
@@ -102,7 +189,7 @@ def build_target_knowledge_model(
                 node_id=endpoint_id,
                 kind=KnowledgeKind.ENDPOINT,
                 canonical_key=url,
-                confidence=float(endpoint.get("confidence", 0.5)),
+                confidence=_safe_confidence(endpoint.get("confidence", 0.5)),
                 in_scope=endpoint.get("in_scope"),
                 evidence_refs=_evidence(endpoint),
                 metadata={"method": str(endpoint.get("method", "GET")).upper()},
@@ -137,14 +224,31 @@ def build_target_knowledge_model(
         workflow_id = str(raw.get("workflow_id") or raw.get("id") or "")
         if not workflow_id:
             continue
+        transitions = _normalise_transitions(raw)
+        observed_states = [
+            str(item)[:100]
+            for item in raw.get("states", [])
+            if isinstance(item, (str, int, float)) and str(item).strip()
+        ][:100]
+        for transition in transitions:
+            for field_name in ("from_state", "to_state"):
+                state = transition.get(field_name)
+                if state and state not in observed_states:
+                    observed_states.append(state)
+        required_role = _safe_text(raw.get("required_role"), limit=100)
         model.workflows[workflow_id] = WorkflowState(
             workflow_id=workflow_id,
             name=str(raw.get("name") or raw.get("label") or workflow_id),
-            states=[str(item) for item in raw.get("states", []) if item],
-            transitions=[item for item in raw.get("transitions", []) if isinstance(item, dict)],
-            identity_refs=[str(item) for item in raw.get("identity_refs", []) if item],
+            required_role=required_role,
+            states=observed_states,
+            transitions=transitions,
+            identity_refs=[
+                str(item)[:200]
+                for item in raw.get("identity_refs", [])
+                if isinstance(item, (str, int, float)) and str(item).strip()
+            ][:100],
             evidence_refs=_evidence(raw),
-            confidence=float(raw.get("confidence", 0.5)),
+            confidence=_safe_confidence(raw.get("confidence", 0.5)),
         )
         model.add_node(
             KnowledgeNode(
@@ -153,8 +257,29 @@ def build_target_knowledge_model(
                 canonical_key=workflow_id,
                 confidence=model.workflows[workflow_id].confidence,
                 evidence_refs=_evidence(raw),
+                metadata={
+                    key: value
+                    for key, value in {
+                        "required_role": required_role,
+                        "auth_pattern": _safe_text(raw.get("auth_pattern")),
+                    }.items()
+                    if value
+                },
             )
         )
+        for transition in transitions:
+            endpoint = transition.get("endpoint")
+            if not endpoint:
+                continue
+            model.add_edge(
+                KnowledgeEdge(
+                    source_id=workflow_id,
+                    target_id=_stable_id("endpoint", endpoint),
+                    relation="contains",
+                    confidence=model.workflows[workflow_id].confidence,
+                    evidence_refs=_evidence(raw),
+                )
+            )
 
     for raw in authorization_profiles or []:
         if not isinstance(raw, dict):

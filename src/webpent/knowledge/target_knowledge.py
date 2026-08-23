@@ -69,6 +69,10 @@ class WorkflowState(BaseModel):
 
     workflow_id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
+    required_role: str | None = Field(
+        default=None,
+        description="Observed role requirement candidate; never an authorization proof.",
+    )
     states: list[str] = Field(default_factory=list)
     transitions: list[dict[str, str]] = Field(default_factory=list)
     identity_refs: list[str] = Field(default_factory=list)
