@@ -711,6 +711,6 @@ def test_controller_stops_when_execution_adds_no_evidence_or_state_delta(
     )
 
     assert executor.calls == 1
-    assert result["smart_replanning"]["stop_reason"] == "same_action_repeated"
-    assert result["stop_decision"]["category"] == "normal"
+    assert result["smart_replanning"]["stop_reason"] == "no_new_evidence_or_state_delta"
+    assert result["stop_decision"]["category"] == "evidence"
     assert result["campaign_task_outcomes"][0]["proof_bundle_sealed"] is False

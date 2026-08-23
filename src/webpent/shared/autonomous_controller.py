@@ -75,7 +75,10 @@ class AutonomousController:
             "negative_evidence": state.get("negative_evidence_ledger", []),
             "knowledge_gaps": state.get("knowledge_gaps", []),
             "findings": state.get("findings", []),
-            "coverage_ledger": state.get("coverage_ledger", {}),
+            # Coverage attempts are bookkeeping, not new knowledge. Including
+            # them here lets an execution with no output/evidence look like
+            # progress and delays the fail-closed no-progress stop by one
+            # controller round. The ledger remains persisted for reporting.
             "causal_attack_edges": state.get(
                 "causal_attack_edges", state.get("causal_edges", [])
             ),
