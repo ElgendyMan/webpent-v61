@@ -17,6 +17,10 @@
 
 يجب أن تظل الحالات محددة بمفاتيح case صريحة، وأن تكون نتائجها قابلة للتكرار. لا يجوز تحويل predicted أو candidate إلى confirmed، ولا استخدام benchmark كبديل عن causal signal وindependent negative control وsealed/replayable ProofBundle. أي qualification حي يظل منفصلًا ويحتاج target-backed evidence موثقًا داخل WAPTLab المصرح فقط.
 
+## بوابة confirmation في metrics
+
+يُحتسب finding داخل `confirmed` أو repeatability فقط إذا كان status المؤكد مصحوبًا بـ`causal_signal=true` و`negative_control_complete=true` و`proof_bundle_sealed=true`. أما status المؤكد الذي يفتقد أيًا من هذه الضوابط فيظهر تشخيصيًا تحت `confirmed_unverified` ولا يدخل في precision أو recall أو repeatability. هذا القياس لا يخلق ProofBundle ولا يثبت target-backed evidence؛ إنه يمنع benchmark من مكافأة label غير مدعوم.
+
 ## التحقق
 
-بوابة Phase 8 الحالية: `26 passed` لاختبارات golden وmetrics وrelease contracts، مع نجاح Ruff وcompileall و`git diff --check`.
+بوابة Phase 10 الحالية: اختبارات benchmark وqualification وrelease contracts اجتازت، وتأكدت بوابات Ruff وcompileall و`git diff --check`؛ full regression النهائي لهذه الدورة موثق في `VIP_INTEGRATED_EXECUTION_STATUS.md`.
