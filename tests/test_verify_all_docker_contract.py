@@ -44,3 +44,11 @@ def test_u1d_rejects_unapproved_or_unwired_base_image() -> None:
     assert checker("ARG BASE_IMAGE=ubuntu:24.04\nFROM ${BASE_IMAGE}\n") is False
     assert checker("ARG BASE_IMAGE=webpent-base:latest\nFROM ubuntu:24.04\n") is False
     assert checker("ARG BASE_IMAGE=webpent-base:latest\nFROM ${OTHER_IMAGE}\n") is False
+
+
+def test_base_image_exposes_playwright_browser_to_non_root_runtime() -> None:
+    dockerfile = (PROJECT_ROOT / "Dockerfile.base").read_text(encoding="utf-8")
+
+    assert "ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright" in dockerfile
+    assert "playwright install --with-deps chromium" in dockerfile
+    assert "chmod -R a+rX /ms-playwright" in dockerfile

@@ -96,11 +96,11 @@ RUN for i in 1 2 3; do \
 RUN go install -v github.com/hahwul/dalfox/v2@v2.12.0
 
 # ---------------------------------------------------------------------------
-# Stage 2: the actual runtime image (Playwright + Python) — same base
-# image as before, but Go tools are COPYed in as finished binaries
-# instead of being compiled inside it with an ancient apt Go.
+# Stage 2: the actual runtime image (Python + Playwright browser). The
+# official Python 3.12.3 image keeps this aligned with pyproject.toml; the
+# pinned Playwright package and Chromium are installed below.
 # ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
+FROM python:3.12.3-slim-bookworm
 
 LABEL org.opencontainers.image.title="WebPent V6 Base Image" \
       org.opencontainers.image.description="Heavy dependencies layer — rebuild rarely" \
@@ -151,7 +151,7 @@ COPY --from=gobuilder /go/bin/dalfox /usr/local/bin/dalfox
 ENV WEBPENT_NUCLEI_TEMPLATE_DIR=/opt/webpent/nuclei-templates
 COPY scripts/build_nuclei_template_manifest.py /usr/local/bin/build_nuclei_template_manifest.py
 RUN mkdir -p "$WEBPENT_NUCLEI_TEMPLATE_DIR" && \
-    nuclei -update-templates -update-directory "$WEBPENT_NUCLEI_TEMPLATE_DIR" && \
+    nuclei -update-templates -ud "$WEBPENT_NUCLEI_TEMPLATE_DIR" && \
     python3 /usr/local/bin/build_nuclei_template_manifest.py \
         --root "$WEBPENT_NUCLEI_TEMPLATE_DIR" \
         --version "nuclei-v3.9.0" \
@@ -220,11 +220,17 @@ RUN export PIP_RETRIES=5 PIP_DEFAULT_TIMEOUT=100 && \
         pip install --no-cache-dir --retries 5 --timeout 100 "playwright==1.48.0" sentence-transformers chromadb \
         && break \
         || { echo "heavy pip install attempt $i failed (likely a transient network/TLS error), retrying..."; sleep 10; }; \
-    done && \
-    echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    done
+
+# Install browsers into a shared, non-user-specific location. Installing into
+# root's default cache would make the browser invisible to the non-root
+# `webpent` runtime user.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
     for i in 1 2 3 4 5; do \
         playwright install --with-deps chromium && break || { echo "playwright install attempt $i failed, retrying..."; sleep 8; }; \
-    done
+    done && \
+    chmod -R a+rX /ms-playwright
 
 # ---------------------------------------------------------------------------
 # Stage 2c: Lightweight framework dependencies (from pyproject.toml)
