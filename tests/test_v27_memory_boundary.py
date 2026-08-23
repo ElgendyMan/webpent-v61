@@ -121,6 +121,113 @@ def test_hypothesis_node_boundary_is_advisory_and_redacted(monkeypatch: pytest.M
     assert "advisory" in result["messages"][0].content.lower()
 
 
+def test_hypothesis_boundary_passes_client_and_engagement_scope(monkeypatch: pytest.MonkeyPatch):
+    settings = SimpleNamespace(
+        enable_memory_boundary=True,
+        memory_max_records=20,
+        memory_max_retrievals=2,
+        memory_max_items_per_retrieval=3,
+        memory_max_chars_per_retrieval=2000,
+        memory_max_content_chars=2000,
+        memory_max_feedback_records=5,
+    )
+
+    class FakeVectorStore:
+        def __init__(self) -> None:
+            self.lesson_calls: list[dict[str, object]] = []
+
+        def search_knowledge(
+            self,
+            query: str,
+            k: int = 3,
+            doc_type: str | None = None,
+            stack: str | None = None,
+        ):
+            return []
+
+        def search_lessons(
+            self,
+            query: str,
+            k: int = 5,
+            *,
+            client_id: str | None = None,
+            engagement_id: str | None = None,
+        ):
+            self.lesson_calls.append(
+                {
+                    "query": query,
+                    "k": k,
+                    "client_id": client_id,
+                    "engagement_id": engagement_id,
+                }
+            )
+            return ["Scoped experience lesson"]
+
+    monkeypatch.setattr(hypothesis_agent, "get_settings", lambda: settings)
+    vector_store = FakeVectorStore()
+    monkeypatch.setattr(hypothesis_agent, "get_vector_store_manager", lambda: vector_store)
+
+    result = hypothesis_agent.hypothesis_node(
+        {
+            "target": Target(url="https://example.test/search?q=one"),
+            "crawled_data": {"endpoints": ["https://example.test/search?q=one"]},
+            "client_id": "client-a",
+            "engagement_id": "engagement-a",
+        }
+    )
+
+    assert result["memory_summary"]["retrieval_items"] >= 1
+    assert vector_store.lesson_calls
+    assert all(call["client_id"] == "client-a" for call in vector_store.lesson_calls)
+    assert all(call["engagement_id"] == "engagement-a" for call in vector_store.lesson_calls)
+
+
+def test_hypothesis_boundary_fails_closed_without_engagement_scope(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    settings = SimpleNamespace(
+        enable_memory_boundary=True,
+        memory_max_records=20,
+        memory_max_retrievals=2,
+        memory_max_items_per_retrieval=3,
+        memory_max_chars_per_retrieval=2000,
+        memory_max_content_chars=2000,
+        memory_max_feedback_records=5,
+    )
+
+    class FakeVectorStore:
+        def __init__(self) -> None:
+            self.lesson_calls = 0
+
+        def search_knowledge(
+            self,
+            query: str,
+            k: int = 3,
+            doc_type: str | None = None,
+            stack: str | None = None,
+        ):
+            return []
+
+        def search_lessons(self, *args, **kwargs):
+            self.lesson_calls += 1
+            return ["foreign campaign lesson"]
+
+    monkeypatch.setattr(hypothesis_agent, "get_settings", lambda: settings)
+    vector_store = FakeVectorStore()
+    monkeypatch.setattr(hypothesis_agent, "get_vector_store_manager", lambda: vector_store)
+
+    result = hypothesis_agent.hypothesis_node(
+        {
+            "target": Target(url="https://example.test/search?q=one"),
+            "crawled_data": {"endpoints": ["https://example.test/search?q=one"]},
+            "client_id": "client-a",
+        }
+    )
+
+    assert result["memory_summary"]["retrieval_items"] == 0
+    assert vector_store.lesson_calls == 0
+
+
 def test_hypothesis_node_legacy_rag_path_remains_available(monkeypatch: pytest.MonkeyPatch):
     settings = SimpleNamespace(enable_memory_boundary=False)
     monkeypatch.setattr(hypothesis_agent, "get_settings", lambda: settings)

@@ -209,12 +209,17 @@ def _retrieve_with_memory_boundary(
             source = "vectorstore:curated-knowledge"
             prefix = "Knowledge"
         elif kind is MemoryKind.EXPERIENCE_LESSON:
-            if not client_id:
+            # Experience lessons are campaign-specific advisory data.  A
+            # client boundary alone is insufficient here: reusing lessons
+            # from another engagement can leak target-specific observations
+            # into a new campaign.  Missing scope therefore fails closed.
+            if not client_id or not engagement_id:
                 return []
             values = manager.search_lessons(
                 query,
                 k=limit,
                 client_id=client_id,
+                engagement_id=engagement_id,
             )
             # Negative feedback is persisted in the scoped SQLite lesson
             # store by the validator.  Read it explicitly as a deterministic
@@ -228,7 +233,7 @@ def _retrieve_with_memory_boundary(
                 sqlite_lessons = get_lessons_manager().search_lessons(
                     "negative_lesson",
                     client_id=client_id,
-                    engagement_id=None,
+                    engagement_id=engagement_id,
                     limit=min(50, max(limit * 4, 10)),
                 )
                 values.extend(
