@@ -7,6 +7,11 @@ from webpent.benchmark.golden import (
     run_golden_benchmark,
 )
 from webpent.benchmark.metrics import BenchmarkReport, evaluate
+from webpent.benchmark.profiles import (
+    OfflineTargetProfile,
+    build_offline_target_profile,
+    default_offline_target_profiles,
+)
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationMatrix,
@@ -16,13 +21,16 @@ from webpent.benchmark.qualification import (
 
 __all__ = [
     "BenchmarkReport",
+    "OfflineTargetProfile",
     "GoldenBenchmarkCase",
     "GoldenBenchmarkResult",
     "GroundTruthCase",
     "QualificationMatrix",
     "QualificationRun",
+    "build_offline_target_profile",
     "build_qualification_matrix",
     "default_golden_cases",
+    "default_offline_target_profiles",
     "evaluate",
     "run_golden_benchmark",
 ]

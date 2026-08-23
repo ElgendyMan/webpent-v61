@@ -23,6 +23,8 @@ class BenchmarkReport:
     evidence_quality: float
     coverage: float
     reproducibility: float
+    elapsed_seconds: float = 0.0
+    llm_tokens: int = 0
 
     def as_dict(self) -> dict[str, int | float]:
         return {
@@ -39,6 +41,8 @@ class BenchmarkReport:
             "evidence_quality": self.evidence_quality,
             "coverage": self.coverage,
             "reproducibility": self.reproducibility,
+            "elapsed_seconds": self.elapsed_seconds,
+            "llm_tokens": self.llm_tokens,
         }
 
 
@@ -51,6 +55,8 @@ def evaluate(
     total_surface_count: int = 0,
     independent_runs: Iterable[Iterable[str]] = (),
     negative_case_ids: Iterable[str] = (),
+    elapsed_seconds: float = 0.0,
+    llm_tokens: int = 0,
 ) -> BenchmarkReport:
     """Evaluate exact finding keys without inferring unknown negatives.
 
@@ -103,6 +109,8 @@ def evaluate(
             else 0.0
         ),
         reproducibility=round(reproducibility, 6),
+        elapsed_seconds=round(max(0.0, float(elapsed_seconds)), 6),
+        llm_tokens=max(0, int(llm_tokens)),
     )
 
 

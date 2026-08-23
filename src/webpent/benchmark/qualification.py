@@ -219,6 +219,21 @@ class QualificationMatrix:
             for case_id in run.confirmed_case_ids
             if case_id in expected
         }
+        expected_classes = {
+            case.category.strip().lower()
+            for case in self.ground_truth
+            if case.expected and case.category.strip()
+        }
+        category_by_case = {
+            case.case_id: case.category.strip().lower()
+            for case in self.ground_truth
+            if case.expected and case.category.strip()
+        }
+        confirmed_classes = {
+            category_by_case[case_id]
+            for case_id in confirmed
+            if case_id in category_by_case
+        }
         candidate_false_positives = candidate - expected
         candidate_false_negatives = expected - candidate
         proof_replay_pairs = [
@@ -233,6 +248,13 @@ class QualificationMatrix:
             "candidate_cases": len(candidate),
             "confirmed_expected_cases": len(confirmed),
             "coverage": round(len(confirmed) / len(expected), 4) if expected else 0.0,
+            "expected_vulnerability_classes": len(expected_classes),
+            "confirmed_vulnerability_classes": len(confirmed_classes),
+            "class_coverage": (
+                round(len(confirmed_classes) / len(expected_classes), 4)
+                if expected_classes
+                else 0.0
+            ),
             "candidate_false_positives": len(candidate_false_positives),
             "candidate_false_negative_cases": len(candidate_false_negatives),
             "proof_replay_agreement_cases": agreement_numerator,
