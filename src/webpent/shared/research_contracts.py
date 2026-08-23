@@ -132,6 +132,7 @@ class ResearchDecisionEngine:
         revisit_authorized: bool = False,
         budget_remaining: float | None = None,
         target_allowed: bool | None = None,
+        known_facts: Iterable[str] = (),
     ) -> ResearchDecision:
         reasons: list[str] = []
         available = self._capability_names(available_capabilities)
@@ -156,6 +157,21 @@ class ResearchDecisionEngine:
                 candidate=candidate,
                 score=-1.0,
                 reasons=("budget_exhausted",),
+                status="blocked",
+            )
+        known = {str(item).strip() for item in known_facts if str(item).strip()}
+        missing_prerequisites = sorted(
+            {
+                str(item).strip()
+                for item in candidate.prerequisites
+                if str(item).strip() and str(item).strip() not in known
+            }
+        )
+        if missing_prerequisites:
+            return ResearchDecision(
+                candidate=candidate,
+                score=-1.0,
+                reasons=("missing_prerequisite:" + ",".join(missing_prerequisites),),
                 status="blocked",
             )
 
@@ -331,6 +347,7 @@ class ActiveResearchLoop:
             failed_path_fingerprints=failed_path_fingerprints,
             budget_remaining=context.budget_remaining,
             target_allowed=target_allowed,
+            known_facts=context.known_facts,
         )
         selected = next((item for item in decisions if item.status == "ranked"), None)
         if selected is None:

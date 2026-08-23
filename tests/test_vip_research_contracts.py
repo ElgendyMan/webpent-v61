@@ -69,6 +69,42 @@ def test_research_decision_engine_fails_closed_on_missing_capability_scope_and_b
     ).reasons == ("budget_exhausted",)
 
 
+def test_research_decision_engine_blocks_unmet_prerequisites_and_ranks_ready_alternative():
+    engine = ResearchDecisionEngine()
+    blocked = _candidate(
+        action_id="action:blocked",
+        prerequisites=["fact:owner-context"],
+        expected_information_gain=1.0,
+    )
+    ready = _candidate(
+        action_id="action:ready",
+        prerequisites=["fact:surface-observed"],
+        expected_information_gain=0.1,
+    )
+
+    blocked_decision = engine.score(
+        blocked,
+        available_capabilities={"http_read"},
+        target_allowed=True,
+        known_facts={"fact:surface-observed"},
+    )
+    ranked = engine.rank(
+        [blocked, ready],
+        available_capabilities={"http_read"},
+        target_allowed=True,
+        known_facts={"fact:surface-observed"},
+    )
+
+    assert blocked_decision.status == "blocked"
+    assert blocked_decision.score == -1.0
+    assert blocked_decision.reasons == ("missing_prerequisite:fact:owner-context",)
+    assert ranked[0].candidate.action_id == "action:ready"
+    assert all(
+        item.candidate.action_id != "action:blocked" or item.status == "blocked"
+        for item in ranked
+    )
+
+
 def test_research_decision_engine_penalizes_failed_revisit_until_new_evidence():
     engine = ResearchDecisionEngine()
     candidate = _candidate()
