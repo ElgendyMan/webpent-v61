@@ -318,8 +318,30 @@ def _perform_login_sync(
         page = context.new_page()
         page.set_default_navigation_timeout(_NAV_TIMEOUT_MS)
 
+        def _navigate_with_readiness(target_url: str) -> bool:
+            """Navigate after response commit without waiting on stalled assets.
+
+            Some authorized labs keep a page subresource open indefinitely.  A
+            DOMContentLoaded-only navigation therefore blocks the auth worker
+            even when the document and login form are already available.  The
+            response commit remains the hard navigation boundary; readiness is
+            best-effort and form selectors below remain the source of truth.
+            """
+            page.goto(target_url, wait_until="commit")
+            try:
+                page.wait_for_load_state(
+                    "domcontentloaded", timeout=min(_NAV_TIMEOUT_MS, 4_000)
+                )
+            except Exception as exc:
+                logger.debug(
+                    "Navigation readiness wait skipped for %s: %s",
+                    target_url,
+                    type(exc).__name__,
+                )
+            return True
+
         try:
-            page.goto(url, wait_until="domcontentloaded")
+            _navigate_with_readiness(url)
         except Exception as exc:
             logger.warning("Navigation to %s failed: %s", url, exc)
             return {}
@@ -371,7 +393,7 @@ def _perform_login_sync(
                 if login_url.rstrip("/") == current_url:
                     continue
                 try:
-                    page.goto(login_url, wait_until="domcontentloaded")
+                    _navigate_with_readiness(login_url)
                 except Exception:
                     continue
                 if _visible("input[type='password']") or _visible(login_field_selector):

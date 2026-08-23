@@ -40,7 +40,7 @@ Total records: **282**.
 | `src/webpent/agents/api_testing/agent.py` | 123 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/api_testing/agent.py` | 616 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/authentication/agent.py` | 250 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/authentication/agent.py` | 1015 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/authentication/agent.py` | 1037 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_impact/agent.py` | 133 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_logic_fuzzer/agent.py` | 46 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_logic_fuzzer/agent.py` | 49 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

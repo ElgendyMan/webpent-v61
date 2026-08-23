@@ -663,7 +663,7 @@
       "column": 25,
       "file": "src/webpent/agents/authentication/agent.py",
       "kind": "dynamic_resolution",
-      "line": 1015,
+      "line": 1037,
       "normalized_symbol": "getattr(login_material, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",

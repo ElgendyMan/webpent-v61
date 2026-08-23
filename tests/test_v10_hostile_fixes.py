@@ -296,6 +296,34 @@ class TestP11PlaywrightLoginVerification:
         assert result != {}, "P1-1 REGRESSION: _perform_login returned empty on validation success"
         assert result == _fake_cookies
 
+    def test_perform_login_uses_commit_navigation_when_assets_stall(self):
+        """A stalled document asset must not block the login form."""
+        from webpent.agents.authentication import agent as auth_agent
+
+        with (
+            patch("webpent.agents.authentication.agent._validate_session_cookies") as mock_validate,
+            patch("playwright.sync_api.sync_playwright") as mock_pw,
+        ):
+            mock_validate.return_value = (True, "target session validated")
+            _pw_instance = MagicMock()
+            _browser = MagicMock()
+            _context = MagicMock()
+            _page = MagicMock()
+            _pw_instance.chromium.launch.return_value = _browser
+            _browser.new_context.return_value = _context
+            _context.new_page.return_value = _page
+            _page.wait_for_load_state.side_effect = TimeoutError("asset stalled")
+            _context.cookies.return_value = [{"name": "SESSION", "value": "opaque"}]
+            mock_pw.return_value.start.return_value = _pw_instance
+
+            result = auth_agent._perform_login(
+                "http://target/login.php", "admin", "correctpassword"
+            )
+
+        assert result == {"SESSION": "opaque"}
+        assert _page.goto.call_args.kwargs["wait_until"] == "commit"
+        _page.wait_for_load_state.assert_called()
+
     def test_perform_login_does_not_log_login_successful_on_failure(self):
         """On validation failure, the log must NOT say 'Login successful'."""
         from webpent.agents.authentication import agent as auth_agent
