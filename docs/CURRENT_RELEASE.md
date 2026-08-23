@@ -11,9 +11,9 @@ This document is the source of truth for the current WebPent release candidate. 
 | Declared Python compatibility | `==3.12.3` for this release line |
 | Resolved LangGraph | `1.2.11` in `uv.lock` |
 | Resolved LangGraph checkpoint SQLite | `3.1.1` in `uv.lock` |
-| Implementation source revision | `c963f55` (`use scanner-safe redaction fixture value`; source baseline `8b47b04`) |
+| Implementation source revision | `85b4202` (`integrate reviewed bbscout bridge and guarded runtime`; source baseline `8b47b04`) |
 | Benchmark contract revision | `e4f8c74` (`add proof-gated VIP benchmark efficiency metrics`) |
-| Manifest generation revision | generated from the stable release tree containing implementation source revision `c963f55`; the manifest records the final metadata commit that created it |
+| Manifest generation revision | generated from the stable release tree containing implementation source revision `85b4202`; the manifest records the final metadata commit that created it |
 | Final metadata commit | the Git commit that adds the verified `docs/release_manifest.json`; it is recorded in the delivery report and is distinct from the implementation source revision |
 | Qualification state | `NOT QUALIFIED` for VIP status |
 
