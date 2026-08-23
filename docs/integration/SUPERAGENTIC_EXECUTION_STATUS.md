@@ -19,14 +19,14 @@ The implementation preserves the existing `ActionAuthority` and central `ActionE
 | Phase 7 — recovery, idempotency, and stop states | Complete offline | `recovery.py`, recovery contract tests, existing autonomous completion ledger | Distributed/worker qualification remains environment-blocked |
 | Phase 8 — provider, target package, and proof boundaries | Complete at source-contract level | `provider_boundary.py`, provider boundary tests, package identity checks | Provider results remain advisory-only; raw credentials are never retained; no live provider qualification was performed |
 | Phase 9 — evaluation, observability, and scorecard | Complete offline | `evaluation.py`, `build_superagentic_scorecard.py`, `audit_superagentic_wiring.py`, scorecard and wiring artifacts | Integrity seal is SHA-256 integrity metadata, not an operator cryptographic signature |
-| Phase 10 — regression and release gates | Complete for available environment | Full pytest: **1571 passed, 6 skipped, 56 warnings**; Ruff, compileall, diff check, G-02, Bandit, SBOM, secret scan, and manifest checks passed | bbscout source check is explicitly `blocked`; Docker and live qualification are unavailable |
-| Phase 11 — documentation and delivery | Complete for this source release; final archive/manifest verification pending after docs update | This status document, scorecard, wiring audit, release manifest, source-only archive, and final verification report | Final delivery retains all blockers and the `NOT QUALIFIED` statement |
+| Phase 10 — regression and release gates | Complete for available environment | Full pytest: **1573 passed, 6 skipped, 56 warnings**; Ruff, compileall, diff check, G-02, Bandit, SBOM, secret scan, and manifest checks passed | bbscout source check is explicitly `blocked`; Docker and live qualification are unavailable |
+| Phase 11 — documentation and delivery | Complete for available environment | This status document, scorecard, wiring audit, release manifest, source-only archive, and final verification report | Final delivery retains all blockers and the `NOT QUALIFIED` statement; archive policy excludes runtime and sensitive data |
 
 ## Implemented integration surfaces
 
 The central `AgentHarness` provides typed proposals, capability grants, lease and identity checks, bounded budgets, idempotency, redaction, stop controls, and delegation to the existing executor. `RuntimeContext.run_agent_proposal` is an opt-in governed entry point. Legacy execution remains available only when the harness is not explicitly enabled, preserving backward compatibility while making the new path testable.
 
-The smart-campaign and active-research graph paths have a governed adapter to the central runtime path. The static wiring audit currently reports one `run_agent_proposal` call and three remaining direct executor calls, including checkpoint-related paths. This is recorded as a source-contract limitation rather than hidden behind a false completeness claim. AST counts do not prove runtime reachability or live safety.
+The smart-campaign and active-research graph paths have a governed adapter to the central runtime path. The static wiring audit currently reports one `run_agent_proposal` call and one remaining direct `ActionExecutor` call. SQLite checkpoint `execute` calls are excluded from this count and are not execution-authority calls. The remaining direct executor path is recorded as a source-contract limitation rather than hidden behind a false completeness claim. AST counts do not prove runtime reachability or live safety.
 
 The behavior suite contains 12 deterministic cases covering scope drift, prompt/tool overreach, redaction, proof gating, bounded loops, failure and checkpoint handling, race evidence boundaries, independent negative control, and target-package identity. The evaluator classifies these results as safe offline fixtures only.
 
@@ -36,7 +36,7 @@ Provider boundaries support disabled/error fallback and redacted metadata withou
 
 ## Current scorecard
 
-At revision `5705f57`, the regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
+At revision `8b47b04`, the regenerated offline scorecard reports **71/100 readiness**, `readiness_status=below-threshold`, and `qualification_status=blocked`. It records `full_regression_passed=true`, 12/12 offline scenarios passed, `target_contacted=false`, and `live_qualification_runs=0`. The score is not a VIP claim and is not a production qualification.
 
 The scorecard blockers are:
 
@@ -48,10 +48,10 @@ The scorecard blockers are:
 
 ## Verification record
 
-The final available regression run completed with:
+The final available regression run on revision `8b47b04` completed with:
 
 ```text
-1571 passed, 6 skipped, 56 warnings in 68.04s
+1573 passed, 6 skipped, 56 warnings in 65.39s
 ```
 
 The six skips are explicit optional bbscout integration skips: two in `test_target_package_v2_hardening.py` and four in `test_target_package_integration.py`. The quality gate does not convert those skips into a pass; `bbscout-integration-source` remains `status=blocked` and the overall gate remains `passed=false`.
@@ -66,4 +66,4 @@ The current repository therefore represents an improved and auditable offline re
 
 ## Delivery checklist
 
-The remaining mechanical delivery step is to regenerate the release manifest after this documentation commit, verify all manifest hashes, build a source-only archive, verify that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output, and attach the final verification report together with the archive and the relevant scorecard/gate artifacts.
+The final closeout regenerates the release manifest from the stable source/docs tree, verifies its hashes, builds a source-only archive, and verifies that the archive contains no `.git`, virtual environment, runtime database/WAL/SHM, logs, cookies, credentials, secrets, or raw target output. The delivery report is shipped together with the archive and the relevant scorecard, wiring-audit, and gate artifacts. The metadata commit that contains the manifest is recorded separately from implementation revision `8b47b04`.

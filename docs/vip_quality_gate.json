@@ -51,7 +51,7 @@
         "=========================== short test summary info ============================",
         "SKIPPED [2] tests/test_target_package_v2_hardening.py:7: optional bbscout integration source is not available in this checkout",
         "SKIPPED [4] tests/test_target_package_integration.py:14: optional bbscout integration source is not available in this checkout",
-        "1544 passed, 6 skipped, 56 warnings in 77.48s (0:01:17)"
+        "1573 passed, 6 skipped, 56 warnings in 65.12s (0:01:05)"
       ]
     },
     {
@@ -82,9 +82,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1509",
+        "  \"total_test_functions\": 1538",
         "}",
-        "OK: preserved test-function count 1509 >= minimum 818"
+        "OK: preserved test-function count 1538 >= minimum 818"
       ]
     },
     {
@@ -96,7 +96,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "wrote /tmp/webpent-fixes-git-full/docs/direct_io_inventory.json and /tmp/webpent-fixes-git-full/docs/DIRECT_IO_INVENTORY.md (293 records)"
+        "wrote /tmp/webpent-fixes-git-full/docs/direct_io_inventory.json and /tmp/webpent-fixes-git-full/docs/DIRECT_IO_INVENTORY.md (297 records)"
       ]
     },
     {
@@ -108,7 +108,7 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 293}"
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 297}"
       ]
     },
     {
@@ -271,11 +271,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 888, \"output\": \"/tmp/webpent-fixes-git-full/docs/release_manifest.json\"}"
+        "{\"file_count\": 915, \"output\": \"/tmp/webpent-fixes-git-full/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-23T15:50:34.110603+00:00",
+  "generated_at": "2026-08-23T16:48:01.550718+00:00",
   "hard_checks_passed": false,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
