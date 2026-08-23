@@ -127,13 +127,19 @@ def _artifact_hashes() -> dict[str, str]:
 
 def _qualification() -> dict[str, Any]:
     live_path = PROJECT_ROOT / "docs" / "waptlab_live_smoke_2cb9024.json"
-    path = live_path if live_path.is_file() else PROJECT_ROOT / "docs" / "waptlab_regression.json"
+    using_historical_live_artifact = live_path.is_file()
+    path = (
+        live_path
+        if using_historical_live_artifact
+        else PROJECT_ROOT / "docs" / "waptlab_regression.json"
+    )
     if not path.is_file():
         return {
             "live_qualification": False,
             "target_contacted": None,
             "waptlab_modified": None,
             "status": "missing_artifact",
+            "artifact_scope": "missing_artifact",
         }
     payload = json.loads(path.read_text(encoding="utf-8"))
     result: dict[str, Any] = {
@@ -147,6 +153,11 @@ def _qualification() -> dict[str, Any]:
             "live" if payload.get("live_qualification") else "contract_only",
         ),
         "artifact": path.name,
+        "artifact_scope": (
+            "historical_live_artifact"
+            if using_historical_live_artifact
+            else "offline_regression_artifact"
+        ),
     }
     for key in (
         "run_id",
