@@ -68,6 +68,10 @@ class AttackGraph(BaseModel):
     nodes: dict[str, AttackGraphNode] = Field(default_factory=dict)
     edges: list[AttackGraphEdge] = Field(default_factory=list)
     coverage_gaps: list[str] = Field(default_factory=list, max_length=100)
+    knowledge_gaps: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
+    runtime_capability_gaps: list[dict[str, Any]] = Field(
+        default_factory=list, max_length=100
+    )
     generated_from: list[str] = Field(default_factory=list, max_length=50)
 
 

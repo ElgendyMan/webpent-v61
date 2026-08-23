@@ -21,6 +21,8 @@ class AttackGraphBuilder:
         novel_behaviors: Iterable[Any] = (),
         causal_edges: Iterable[Any] = (),
         coverage_gaps: Iterable[Any] = (),
+        knowledge_gaps: Iterable[Any] = (),
+        runtime_capability_gaps: Iterable[Any] = (),
         target_knowledge: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         return build_attack_graph(
@@ -31,6 +33,8 @@ class AttackGraphBuilder:
             novel_behaviors=novel_behaviors,
             causal_edges=causal_edges,
             coverage_gaps=coverage_gaps,
+            knowledge_gaps=knowledge_gaps,
+            runtime_capability_gaps=runtime_capability_gaps,
             target_knowledge=target_knowledge,
         )
 

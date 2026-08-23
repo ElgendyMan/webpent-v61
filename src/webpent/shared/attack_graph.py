@@ -19,6 +19,7 @@ from webpent.models.attack_graph import (
     AttackGraphNode,
     AttackGraphNodeKind,
 )
+from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Confidence
 from webpent.models.mental_model import (
     MentalModel,
@@ -112,6 +113,75 @@ def _safe_metadata(value: Any) -> dict[str, Any]:
         elif isinstance(raw_value, list):
             safe[key] = [str(item)[:120] for item in raw_value[:20]]
     return safe
+
+
+_KNOWLEDGE_GAP_KEYS = (
+    "gap_id",
+    "kind",
+    "status",
+    "objective",
+    "unknown",
+    "target_ref",
+    "affected_actor",
+    "affected_object",
+    "affected_tenant",
+    "supporting_evidence",
+    "contradicting_evidence",
+    "expected_information_gain",
+    "cost",
+    "risk",
+    "priority",
+    "dependencies",
+    "stopping_condition",
+    "invalidation_condition",
+)
+_RUNTIME_GAP_KEYS = ("code", "component", "required_for", "recovery_action")
+
+
+def _safe_gap_value(key: str, value: Any) -> Any:
+    if key in {"supporting_evidence", "contradicting_evidence", "dependencies"}:
+        if not isinstance(value, (list, tuple)):
+            return []
+        result: list[str] = []
+        for item in value[:20]:
+            clean, _ = redact_sensitive(str(item))
+            if clean.strip():
+                result.append(" ".join(clean.split())[:240])
+        return result
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    clean, _ = redact_sensitive(str(value or ""))
+    return " ".join(clean.split())[:320]
+
+
+def _safe_gap(row: Any, *, keys: tuple[str, ...]) -> dict[str, Any] | None:
+    if not isinstance(row, Mapping):
+        return None
+    safe = {
+        key: _safe_gap_value(key, row[key])
+        for key in keys
+        if key in row and row[key] is not None
+    }
+    return safe or None
+
+
+def _safe_gap_list(rows: Iterable[Any], *, keys: tuple[str, ...]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        safe = _safe_gap(row, keys=keys)
+        if not safe:
+            continue
+        identity = str(safe.get("gap_id") or safe.get("code") or repr(sorted(safe.items())))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        result.append(safe)
+        if len(result) >= 100:
+            break
+    return result
 
 
 def _node_from_mental_model(node_id: str, node: MentalModelNode) -> AttackGraphNode:
@@ -560,6 +630,8 @@ def build_attack_graph(
     novel_behaviors: Iterable[Any] = (),
     causal_edges: Iterable[Any] = (),
     coverage_gaps: Iterable[Any] = (),
+    knowledge_gaps: Iterable[Any] = (),
+    runtime_capability_gaps: Iterable[Any] = (),
     target_knowledge: Any = None,
 ) -> dict[str, Any]:
     """Project current state into a deterministic, redacted Attack Graph."""
@@ -588,7 +660,15 @@ def build_attack_graph(
     _add_novel_behavior_nodes(graph, novel_behaviors)
     _add_causal_edges(graph, causal_edges)
     graph.coverage_gaps.extend(
-        str(item)[:240] for item in coverage_gaps if str(item).strip()
+        str(item)[:240]
+        for item in coverage_gaps
+        if isinstance(item, str) and item.strip()
+    )
+    graph.knowledge_gaps.extend(
+        _safe_gap_list(knowledge_gaps, keys=_KNOWLEDGE_GAP_KEYS)
+    )
+    graph.runtime_capability_gaps.extend(
+        _safe_gap_list(runtime_capability_gaps, keys=_RUNTIME_GAP_KEYS)
     )
 
     if not graph.nodes:

@@ -887,7 +887,9 @@ def _research_projections(
         findings=state.get("findings") or (),
         hypotheses=state.get("hypotheses") or (),
         causal_edges=state.get("causal_edges") or (),
-        coverage_gaps=knowledge_gaps,
+        coverage_gaps=state.get("research_failed_paths") or (),
+        knowledge_gaps=knowledge_gaps,
+        runtime_capability_gaps=state.get("runtime_capability_gaps") or (),
         target_knowledge=knowledge,
     )
     outcome_names = [

@@ -77,3 +77,48 @@ def test_attack_graph_target_knowledge_scope_is_deterministic_and_isolated() -> 
     other_ids = set(other["nodes"])
     assert first_ids.isdisjoint(other_ids)
 
+
+def test_attack_graph_preserves_typed_knowledge_and_runtime_gaps() -> None:
+    graph = build_attack_graph(
+        {"nodes": {}, "edges": []},
+        knowledge_gaps=[
+            {
+                "gap_id": "gap:auth-1",
+                "kind": "authorization",
+                "status": "open",
+                "target_ref": "http://example.test/api/item/1",
+                "unknown": "owner binding",
+                "candidate_actions": [{"action_class": "baseline"}],
+                "unexpected_secret": "must-not-persist",
+            }
+        ],
+        runtime_capability_gaps=[
+            {
+                "code": "browser_unavailable",
+                "component": "browser",
+                "required_for": "workflow_replay",
+                "recovery_action": "install browser",
+            }
+        ],
+    )
+
+    assert graph["knowledge_gaps"] == [
+        {
+            "gap_id": "gap:auth-1",
+            "kind": "authorization",
+            "status": "open",
+            "target_ref": "http://example.test/api/item/1",
+            "unknown": "owner binding",
+        }
+    ]
+    assert graph["runtime_capability_gaps"] == [
+        {
+            "code": "browser_unavailable",
+            "component": "browser",
+            "required_for": "workflow_replay",
+            "recovery_action": "install browser",
+        }
+    ]
+    assert "must-not-persist" not in str(graph)
+    assert "candidate_actions" not in str(graph)
+

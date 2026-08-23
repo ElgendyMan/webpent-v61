@@ -40,6 +40,8 @@ def attack_graph_node(state: dict[str, Any]) -> dict[str, Any]:
             novel_behaviors=state.get("novel_behavior_observations") or (),
             causal_edges=state.get("causal_attack_edges") or (),
             coverage_gaps=state.get("research_failed_paths") or (),
+            knowledge_gaps=state.get("knowledge_gaps") or (),
+            runtime_capability_gaps=state.get("runtime_capability_gaps") or (),
             target_knowledge=state.get("target_knowledge") or {},
         )
     except Exception:
