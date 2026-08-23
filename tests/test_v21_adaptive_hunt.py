@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from webpent.agents.rabbit_hole.agent import (
+    _rabbit_hole_branch_depth,
+    _rabbit_hole_parent_goal_id,
+)
 from webpent.models.adaptive_hunt import (
     BranchBudget,
     RevisitOutcome,
@@ -123,6 +127,77 @@ def test_adaptive_update_emits_tasks_and_decision_log_when_enabled(monkeypatch):
     assert all(
         entry["decision_type"] == "adaptive_revisit_scheduled" for entry in update["decision_log"]
     )
+
+
+def test_signal_driven_revisit_carries_depth_stage_and_signal_kind():
+    finding = _finding(finding_id="f-7")
+    tasks = build_targeted_revisit_tasks(
+        findings=[finding],
+        interesting_signals=[
+            {
+                "id": "signal-1",
+                "finding_id": "f-7",
+                "signal_type": "hidden_export_fields",
+                "target_url": "https://example.test/export",
+                "next_surface": "object_family",
+                "depth": 1,
+                "evidence_refs": ["evidence:signal-1"],
+            }
+        ],
+    )
+
+    signal_tasks = [task for task in tasks if task.signal_kind == "hidden_export_fields"]
+    assert len(signal_tasks) == 1
+    assert signal_tasks[0].target_url == "https://example.test/export"
+    assert signal_tasks[0].surface == RevisitSurface.OBJECT_FAMILY.value
+    assert signal_tasks[0].depth == 1
+    assert signal_tasks[0].investigation_stage == "validation"
+    assert "evidence:signal-1" in signal_tasks[0].evidence_refs
+
+
+def test_deep_branch_without_new_signal_is_marked_diminishing_returns():
+    task = RevisitTask(
+        target_url="https://example.test/export",
+        surface=RevisitSurface.OBJECT_FAMILY,
+        surface_key="object-key",
+        task_type="object_family_revisit",
+        reason="bounded deep validation",
+        depth=2,
+    )
+    outcome = RevisitOutcome(
+        task_id=task.id,
+        status=RevisitStatus.DEAD_END,
+        note="no new target-backed signal",
+        new_signal=False,
+    )
+
+    updated = apply_revisit_outcome(task, outcome)
+
+    assert updated.status == RevisitStatus.DIMINISHING_RETURNS
+    assert updated.investigation_stage == "exploitation_reasoning"
+
+
+def test_rabbit_hole_depth_uses_explicit_goal_lineage_not_branch_count():
+    goal_tree = {
+        "nodes": {
+            "branch-parent": {
+                "metadata": {
+                    "trigger_artifact_identity": "archive-parent",
+                    "branch_depth": 2,
+                }
+            },
+            "branch-sibling": {
+                "metadata": {
+                    "trigger_artifact_identity": "archive-sibling",
+                    "branch_depth": 0,
+                }
+            },
+        }
+    }
+
+    assert _rabbit_hole_branch_depth(goal_tree, "archive-parent") == 2
+    assert _rabbit_hole_branch_depth(goal_tree, "unknown") == 0
+    assert _rabbit_hole_parent_goal_id(goal_tree, "archive-parent") == "branch-parent"
 
 
 def test_relational_revisit_is_scoped_to_relation_target():

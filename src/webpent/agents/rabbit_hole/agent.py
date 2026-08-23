@@ -480,6 +480,61 @@ def _draft_next_step_description(
         return None
 
 
+def _rabbit_hole_branch_depth(
+    goal_tree_state: Any,
+    artifact_identity: str | None,
+) -> int:
+    """Return the deepest observed branch for an artifact lineage.
+
+    Goal-tree metadata is the only trusted source here. Missing or malformed
+    lineage is treated as depth zero rather than inferred from branch count.
+    """
+    if not artifact_identity:
+        return 0
+    if not isinstance(goal_tree_state, dict):
+        return 0
+    nodes = goal_tree_state.get("nodes", {}) or {}
+    if not isinstance(nodes, dict):
+        return 0
+    depths: list[int] = []
+    for node in nodes.values():
+        if not isinstance(node, dict):
+            continue
+        metadata = node.get("metadata", {}) or {}
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("trigger_artifact_identity") != artifact_identity:
+            continue
+        try:
+            depths.append(max(0, int(metadata.get("branch_depth", 0))))
+        except (TypeError, ValueError):
+            continue
+    return max(depths, default=0)
+
+
+def _rabbit_hole_parent_goal_id(
+    goal_tree_state: Any,
+    parent_artifact_identity: str | None,
+) -> str | None:
+    """Find a prior branch goal only when its artifact lineage is explicit."""
+    if not parent_artifact_identity:
+        return None
+    if not isinstance(goal_tree_state, dict):
+        return None
+    nodes = goal_tree_state.get("nodes", {}) or {}
+    if not isinstance(nodes, dict):
+        return None
+    for node_id, node in nodes.items():
+        if not isinstance(node, dict):
+            continue
+        metadata = node.get("metadata", {}) or {}
+        if not isinstance(metadata, dict):
+            continue
+        if metadata.get("trigger_artifact_identity") == parent_artifact_identity:
+            return str(node_id)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Phase 7: The Rabbit Hole node.
 # ---------------------------------------------------------------------------
@@ -595,13 +650,18 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
         forced_hitl_category = candidate["forced_hitl_category"]
         url = candidate["url"]
 
-        # Step 4: Risk Manager check.
-        # Depth for this candidate = current branch count (each new
-        # branch starts at depth 0; deeper recursion is tracked by
-        # the Goal Tree's branch_depth metadata in future passes).
+        # Step 4: Risk Manager check. Depth comes from explicit artifact
+        # lineage in Goal Tree metadata, never from total branch count.
+        parent_artifact_identity = (
+            (candidate.get("node_metadata") or {}).get("parent_artifact_identity")
+        )
+        parent_depth = _rabbit_hole_branch_depth(
+            goal_tree_state, parent_artifact_identity,
+        )
+        branch_depth = parent_depth + 1 if parent_artifact_identity else 0
         risk_reason = _check_risk_manager(
             policy,
-            current_depth=current_branches,  # conservative: treat as depth
+            current_depth=branch_depth,
             current_branches=current_branches,
             curiosity_budget_consumed=curiosity_budget_consumed,
         )
@@ -705,7 +765,7 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
                 artifact_type=artifact_type,
                 action_type=action_type,
                 url=url,
-                depth=current_branches,
+                depth=branch_depth,
                 llm=llm,
             )
 
@@ -774,10 +834,13 @@ def rabbit_hole_node(state: PentestState) -> dict[str, Any]:
         ledger_updates.update(ledger_update)
 
         # Create a Goal Tree branch goal for this Rabbit Hole branch.
+        parent_goal_id = _rabbit_hole_parent_goal_id(
+            goal_tree_state, parent_artifact_identity,
+        ) or _find_root_goal_id(goal_tree_state) or "root"
         branch_goal = create_rabbit_hole_branch_goal(
-            parent_id=_find_root_goal_id(goal_tree_state) or "root",
+            parent_id=parent_goal_id,
             label=f"rabbit_hole:{artifact_type}@{url[:60]}",
-            branch_depth=current_branches,
+            branch_depth=branch_depth,
             parent_hypothesis_id=str(new_hypothesis.id),
             trigger_artifact_identity=identity_key,
             budget_remaining=policy.max_actions_per_branch,

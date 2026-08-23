@@ -114,6 +114,8 @@ class RevisitTask(BaseModel):
     workflow_id: str | None = Field(default=None, max_length=200)
     role: str | None = Field(default=None, max_length=100)
     js_route: str | None = Field(default=None, max_length=500)
+    signal_kind: str | None = Field(default=None, max_length=100)
+    investigation_stage: str = Field(default="discovery", max_length=40)
     depth: int = Field(default=0, ge=0, le=20)
     status: RevisitStatus = RevisitStatus.PENDING
     score: AdaptiveLeadScore = Field(default_factory=AdaptiveLeadScore)
@@ -143,6 +145,7 @@ class RevisitOutcome(BaseModel):
     time_seconds_used: int = Field(default=0, ge=0)
     llm_units_used: float = Field(default=0.0, ge=0.0)
     evidence_refs: list[str] = Field(default_factory=list)
+    new_signal: bool | None = None
 
 
 __all__ = [

@@ -107,6 +107,12 @@ def _stable_key(*parts: Any) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
 
+def _investigation_stage(depth: int) -> str:
+    """Map bounded investigation depth to the roadmap's named stages."""
+    stages = ("discovery", "validation", "exploitation_reasoning", "business_impact")
+    return stages[min(max(0, int(depth)), len(stages) - 1)]
+
+
 def _safe_context_value(value: Any) -> str | None:
     """Keep labels useful while avoiding credential/token material in state."""
     text = _text(value)
@@ -193,6 +199,7 @@ def _candidate(
     workflow_id: str | None = None,
     role: str | None = None,
     js_route: str | None = None,
+    signal_kind: str | None = None,
 ) -> RevisitTask | None:
     url = _normalise_url(context.get("url", ""))
     finding_id = context.get("id") or None
@@ -215,6 +222,8 @@ def _candidate(
         workflow_id=workflow_id,
         role=role,
         js_route=js_route,
+        signal_kind=signal_kind,
+        investigation_stage=_investigation_stage(depth),
         depth=depth,
         budget=_budget_for(task_type),
     )
@@ -225,6 +234,7 @@ def build_targeted_revisit_tasks(
     findings: Iterable[Any] | None = None,
     relational_evidence: Iterable[Any] | None = None,
     workflow_observations: Iterable[Any] | None = None,
+    interesting_signals: Iterable[Any] | None = None,
     existing_tasks: Any = None,
     max_depth: int = _MAX_REVISIT_DEPTH,
 ) -> list[RevisitTask]:
@@ -329,6 +339,66 @@ def build_targeted_revisit_tasks(
                 reason="The finding references a JavaScript route; review and revalidate that route only.",
                 js_route=js_route,
             ))
+
+    # Interesting signals are explicit, target-backed prompts for deeper
+    # investigation. Unknown signal/surface values are ignored fail-closed;
+    # this never becomes a target-wide crawl or an execution instruction.
+    signal_specs = {
+        "endpoint": (RevisitSurface.ENDPOINT, "endpoint_revalidation"),
+        "auth_pattern": (RevisitSurface.AUTH_PATTERN, "auth_pattern_revisit"),
+        "object_family": (RevisitSurface.OBJECT_FAMILY, "object_family_revisit"),
+        "workflow": (RevisitSurface.WORKFLOW, "workflow_transition_revisit"),
+        "role": (RevisitSurface.ROLE, "auth_pattern_revisit"),
+        "js_route": (RevisitSurface.JS_ROUTE, "js_route_revisit"),
+        "relation": (RevisitSurface.RELATION, "relation_revalidation"),
+    }
+    for signal in interesting_signals or []:
+        signal_id = _text(_get(signal, "id"))
+        signal_kind = _safe_context_value(
+            _get(signal, "signal_type") or _get(signal, "kind")
+        )
+        next_surface = _text(_get(signal, "next_surface"))
+        spec = signal_specs.get(next_surface)
+        if not signal_id or not signal_kind or spec is None:
+            continue
+        source_id = _text(_get(signal, "finding_id"))
+        context = by_id.get(source_id)
+        if context is None:
+            continue
+        target_url = _text(_get(signal, "target_url")) or context["url"]
+        try:
+            signal_depth = max(0, int(_get(signal, "depth", 0)))
+        except (TypeError, ValueError):
+            signal_depth = 0
+        if signal_depth > max_depth:
+            continue
+        signal_refs = [
+            str(ref) for ref in (_get(signal, "evidence_refs") or []) if ref
+        ]
+        signal_context = {
+            **context,
+            "url": target_url,
+            "evidence_refs": list(dict.fromkeys([
+                *context.get("evidence_refs", []),
+                *signal_refs,
+            ])),
+        }
+        surface, task_type = spec
+        add(_candidate(
+            context=signal_context,
+            surface=surface,
+            surface_key=_stable_key(
+                "signal", signal_id, signal_kind, next_surface,
+                _normalise_url(target_url),
+            ),
+            task_type=task_type,
+            reason=(
+                f"Explicit signal {signal_kind} warrants a bounded "
+                f"{next_surface} investigation."
+            ),
+            depth=signal_depth,
+            signal_kind=signal_kind,
+        ))
 
     # Relations and workflow observations are explicit sources of additional
     # tasks; they do not cause a target-wide crawl.
@@ -506,12 +576,22 @@ def apply_revisit_outcome(task: RevisitTask, outcome: RevisitOutcome) -> Revisit
         "llm_units_used": task.budget.llm_units_used + outcome.llm_units_used,
     })
     status = _enum_value(outcome.status)
+    if (
+        outcome.new_signal is False
+        and task.depth >= 1
+        and status not in {
+            RevisitStatus.CONFIRMED.value,
+            RevisitStatus.NEEDS_APPROVAL.value,
+        }
+    ):
+        status = RevisitStatus.DIMINISHING_RETURNS.value
     if status not in _TERMINAL_STATUSES and budget.exhausted:
         status = RevisitStatus.BUDGET_EXHAUSTED.value
     return task.model_copy(update={
         "status": status,
         "budget": budget,
         "evidence_refs": list(dict.fromkeys([*task.evidence_refs, *outcome.evidence_refs])),
+        "investigation_stage": _investigation_stage(task.depth),
         "outcome_note": outcome.note[:500],
         "updated_at": datetime.now(timezone.utc),
     })
@@ -545,6 +625,7 @@ def build_adaptive_hunt_update(state: Any) -> dict[str, Any]:
         findings=findings,
         relational_evidence=state.get("relational_evidence") or [],
         workflow_observations=state.get("workflow_observations") or [],
+        interesting_signals=state.get("interesting_signals") or [],
         existing_tasks=existing,
         max_depth=policy_depth,
     )
@@ -589,6 +670,8 @@ def build_adaptive_hunt_update(state: Any) -> dict[str, Any]:
             "surface": _enum_value(task.surface),
             "surface_key": task.surface_key,
             "depth": task.depth,
+            "investigation_stage": task.investigation_stage,
+            "signal_kind": task.signal_kind,
             "budget": task.budget.model_dump(mode="json"),
         },
     } for task in selected]
