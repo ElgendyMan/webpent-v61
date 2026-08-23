@@ -1,28 +1,31 @@
 # WebPent
 
-**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). Historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
+**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). The latest metadata/audit revision is `c685909`; historical v55/v56/v57/v58/v59/v61/v95 documents remain historical evidence and do not redefine this release.
 
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
-> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى admission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
+> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى Target Brain وKnowledge/Attack Graph وbounded research planning وspecialized researcher contracts وmemory/LLM boundaries وadmission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
 ## الحكم الحالي والنتائج الموثقة
 
-الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` و`docs/PLAN4_TRACEABILITY.md` داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md).
+الحكم الهندسي الحالي هو **Evidence-Aware Bounded Autonomous Bug Hunter**، وليس ادعاءً بتغطية شاملة أو تأهل VIP. آخر مراجعة للطلبات والتنفيذ موثقة في [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md)، وسجل المراحل في [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md).
+
+الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` وملفات التتبع داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). آخر metadata/audit commit مدفوع هو `c685909`، ولا يُخلط ذلك مع implementation source revision المسجل في canonical release identity.
 
 | البوابة | النتيجة |
 |---|---|
 | bbscout full pytest | 36 passed |
-| WebPent full pytest | 1423 passed؛ coverage حوالي 73% |
-| Package/entrypoint/hardening/proof focused suite | 236 passed، 54 warnings |
-| G-02 inventory/runtime/precommit gate | Passed؛ 280 primary records |
+| WebPent full regression | 1512 passed، 56 warnings |
+| Phase 11 qualification/target/graph/research/autonomy/benchmark contracts | 140 passed |
+| Release/plan-artifact audit suite | 43 passed |
+| G-02 inventory/runtime/precommit gate | Passed؛ 283 direct-I/O records |
 | Ruff | Passed |
 | compileall | Passed |
-| G-02 runtime invariant | Passed؛ 280 primary records؛ لا اتصال خارجي بالهدف |
+| `git diff --check` | Passed |
 | tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
-| Bandit على الملفات المعدلة | LOW legacy findings فقط؛ لا HIGH/MEDIUM في الملخص |
+| Offline release verifier | Passed؛ لا target contact؛ signature operator key optional |
 
 هذه النتائج تثبت العقود والـregressions التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Adapters الـproviders الأربعة في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
 
@@ -263,10 +266,16 @@ PYTHONPATH=../bbscout/src:src python -m pytest tests/ -q --tb=short
 ruff check src tests scripts
 python -m compileall -q src scripts tests
 PYTHONPATH=../bbscout/src:src python -m pytest \
-  tests/test_g02_runtime_invariants.py \
+  tests/test_g02_adversarial_indirection.py \
   tests/test_g02_direct_io_inventory.py \
+  tests/test_g02_execution_plane.py \
   tests/test_g02_precommit_enforcement.py \
+  tests/test_g02_runtime_invariants.py \
   tests/test_g02_scanner_expansion.py -q
+
+python scripts/verify_release_artifacts.py \
+  --repo . \
+  --manifest docs/release_manifest.json
 ```
 
 شغّل `make doctor` و`preflight` قبل stack الكامل. نجاح الاختبارات المحلية لا يثبت أن Docker أو Redis أو Celery أو checkpoint resume مؤهل إنتاجيًا؛ اختبارات worker الحالية تستخدم graph/storage mocks ولا تمثل multi-worker أو broker qualification. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials في release.
@@ -284,21 +293,23 @@ PYTHONPATH=../bbscout/src:src python -m pytest \
 | Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
 | Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
-| WAPTLab وJuice Shop live qualification في هذه الجولة | **لم تُنفذ** |
+| WAPTLab وJuice Shop live qualification في Phase 11/12 | **لم تُعاد في هذه الجولة**؛ آخر WAPTLab smoke تاريخي ظل `NOT_QUALIFIED` |
 | Docker/Celery distributed qualification | **غير مثبتة** |
 | Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة** |
 | Auto-submit provider reports | غير مسموح به في هذا المسار |
 
 لذلك قرار promotion الحالي هو **NO** حتى تُجمع الأدلة المطلوبة في بيئة مصرح بها وتُراجع النتائج بصورة مستقلة.
 
-## ملفات التسليم
+## ملفات التوثيق والتسليم
 
-- `webpent_bbscout_integration_release.zip` — archive نظيف للمشروع والتكامل.
-- `integration_evidence_bundle.zip` — matrices وaudits وtest logs والـpatch.
-- `webpent_target_package_v2.patch` — patch قابل للمراجعة.
-- `webpent_bbscout_integration_release.sha256` — checksum للأرشيف.
-- `integration_evidence_bundle.sha256` — checksum لحزمة الأدلة.
-- [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — manifest المتطلبات.
+- [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md) — سجل تنفيذ مراحل الخطة التكاملية وحدود qualification.
+- [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md) — مراجعة آخر ثلاثة طلبات والتحقق من عدم حذف ملفات tracked.
+- [`docs/release_manifest.json`](docs/release_manifest.json) — manifest وبصمات source-only release.
+- [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) و[`docs/v75_maturity_scorecard.json`](docs/v75_maturity_scorecard.json) — scorecard هندسي لا يساوي VIP qualification.
+- [`docs/PHASE10_QUALIFICATION_RESULT.md`](docs/PHASE10_QUALIFICATION_RESULT.md) — نتيجة WAPTLab التاريخية وحدودها.
+- [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
 - [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — final audit وحدود الادعاء.
+
+Source-only archives وملفات SHA-256 الناتجة من release process تُحفظ خارج Git، ويجب توليدها من HEAD المطلوب والتحقق منها بالـmanifest والـoffline verifier قبل التسليم.
 
 > **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، وسلسلة proof/report continuity قابلة للتدقيق. لكنه لا يملك بعد دليلًا صادقًا يسمح بإعلان VIP أو تغطية شاملة لكل نوع من الثغرات أو كل provider/target.
