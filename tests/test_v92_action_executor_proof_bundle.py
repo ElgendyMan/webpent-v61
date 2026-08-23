@@ -1,4 +1,5 @@
 from webpent.config.settings import ScanMode, Settings
+from webpent.research.experiment_manager import ExperimentManager
 from webpent.shared.action_authority import ActionAuthority, ActionRisk
 from webpent.shared.campaign_executor import ActionExecutor, CampaignTask, CampaignTaskStatus
 
@@ -49,6 +50,47 @@ def test_action_executor_seals_bundle_only_from_explicit_proof_payload():
     assert record["negative_control_present"] is True
     assert record["proof_bundle"]["sealed"] is True
     assert record["proof_bundle"]["finding_id"] == "finding-1"
+
+
+def test_action_executor_projects_experiment_lifecycle_without_promoting_finding():
+    manager = ExperimentManager()
+    settings = Settings(
+        scan_mode=ScanMode.SAFE_SMART,
+        smart_require_idempotency=True,
+        smart_action_budget=10.0,
+        smart_max_actions=5,
+    )
+    authority = ActionAuthority(
+        settings=settings,
+        allowed_origin="http://example.test",
+        manifest={"capabilities": {"http_read": {"available": True}}},
+    )
+    executor = ActionExecutor(authority, experiment_manager=manager)
+    record = executor.execute(
+        _task(),
+        lambda _task: {
+            "finding_id": "finding-1",
+            "template_id": "idor",
+            "proof_evidence": [{"status": 200}],
+            "evidence_refs": ["execution:1"],
+            "baseline": {"status": 403},
+            "negative_control": {"status": 403},
+            "causal_oracle": {"causal_signal": True},
+            "target_backed": True,
+            "negative_control_independent": True,
+            "validator_id": "idor_differential",
+            "validator_version": "1",
+            "replay_metadata": {"replayable": True},
+            "cleanup_status": "complete",
+        },
+    )
+
+    assert record["proof_bundle_sealed"] is True
+    assert record["experiment_record"]["template_id"] == "idor"
+    assert record["experiment_record"]["proof_bundle_id"] == record["proof_bundle"]["bundle_id"]
+    assert record["experiment_record"]["replayable"] is True
+    assert manager.records()[0]["engagement_id"] == "engagement-1"
+    assert record["proof_bundle"]["target_backed"] is True
 
 
 def test_action_executor_denies_out_of_scope_without_calling_handler():

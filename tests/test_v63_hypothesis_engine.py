@@ -104,3 +104,62 @@ def test_experiment_manager_bounds_and_redacts_records() -> None:
     assert record["evidence_refs"] == ["obs:1"]
     assert "request" not in record
     assert len(manager.records()) == 1
+
+
+def test_experiment_manager_builds_bounded_template_and_evidence_lifecycle() -> None:
+    manager = ExperimentManager()
+    plan = manager.plan(
+        hypothesis_id="hypidor",
+        engagement_id="engagement:test",
+        template="idor",
+        inputs={"actor_refs": ["identity:a", "identity:b"], "object_ref": "object:1"},
+    )
+    assert plan["template_id"] == "idor"
+    assert plan["approval_required"] is True
+    assert plan["stages"] == ["input", "action", "observation", "validator", "evidence"]
+    assert plan["max_steps"] <= 8
+    assert "object:1" not in str(plan["inputs"])
+
+    blocked = manager.plan(
+        hypothesis_id="hyp-missing",
+        engagement_id="engagement:test",
+        template="idor",
+        inputs={},
+    )
+    assert blocked["status"] == "blocked"
+    assert blocked["reason"] == "required_experiment_inputs_missing"
+    assert blocked["missing_inputs"] == ["actor_refs", "object_ref"]
+    assert blocked["execution_mode"] == "proposal_only"
+
+    record = manager.record(
+        "hypidor",
+        {
+            "engagement_id": "engagement:test",
+            "template_id": "idor",
+            "outcome": "validated",
+            "baseline": {"status": 403},
+            "candidate": {"status": 200},
+            "negative_control": {"status": 403},
+            "causal_signal": True,
+            "negative_control_complete": True,
+            "negative_control_independent": True,
+            "target_backed": True,
+            "evidence_refs": ["obs:baseline", "obs:candidate", "obs:control"],
+            "proof_bundle_id": "proof_bundle_1",
+            "replayable": True,
+            "validator_id": "idor_differential",
+            "cleanup_status": "complete",
+            "request": "Authorization: secret",
+        },
+    )
+    assert record["engagement_id"] == "engagement:test"
+    assert record["template_id"] == "idor"
+    assert record["evidence_roles"] == ["baseline", "candidate", "negative_control"]
+    assert record["proof_bundle_id"] == "proof_bundle_1"
+    assert record["replayable"] is True
+    assert record["validator_id"] == "idor_differential"
+    assert record["cleanup_status"] == "complete"
+    assert "baseline" not in record
+    assert "candidate" not in record
+    assert "negative_control" not in record
+    assert "request" not in record

@@ -17,6 +17,7 @@ from typing import Any
 
 from webpent.models.evidence import canonical_json, redact_sensitive
 from webpent.models.proof_bundle import build_proof_bundle
+from webpent.research.experiment_manager import ExperimentManager
 from webpent.shared.action_authority import (
     ActionAuthority,
     ActionRequest,
@@ -252,10 +253,12 @@ class CampaignExecutor:
         *,
         action_engine: NextBestActionEngine | None = None,
         proof_bundle_store: ProofBundleStore | None = None,
+        experiment_manager: ExperimentManager | None = None,
     ) -> None:
         self.authority = authority
         self.action_engine = action_engine or NextBestActionEngine()
         self.proof_bundle_store = proof_bundle_store
+        self.experiment_manager = experiment_manager
         self.coverage: dict[str, dict[str, Any]] = {}
         self.decision_trace: list[dict[str, Any]] = []
         self.lifecycle_events: list[dict[str, Any]] = []
@@ -481,6 +484,24 @@ class CampaignExecutor:
                         record["proof_bundle"] = bundle.model_dump(mode="json")
                         record["proof_bundle_sealed"] = bundle.verify_seal()
                 record["negative_control_present"] = output.get("negative_control") is not None
+            if self.experiment_manager is not None:
+                experiment_observation = dict(output)
+                bundle_value = record.get("proof_bundle")
+                if isinstance(bundle_value, Mapping):
+                    experiment_observation["proof_bundle_id"] = bundle_value.get("bundle_id")
+                    experiment_observation["proof_bundle_sealed"] = (
+                        bundle_value.get("sealed") is True
+                    )
+                experiment_observation["engagement_id"] = task.engagement_id
+                experiment_observation.setdefault(
+                    "template_id", task.metadata.get("experiment_template")
+                )
+                experiment_observation.setdefault("outcome", record.get("status"))
+                experiment_record = self.experiment_manager.record(
+                    task.hypothesis_id,
+                    experiment_observation,
+                )
+                record["experiment_record"] = experiment_record
         with self._bookkeeping_lock:
             self.coverage[task.task_id] = record
             self.decision_trace.append({"selected_task": task.task_id, "outcome": record})
