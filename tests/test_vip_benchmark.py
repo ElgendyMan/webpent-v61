@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from benchmarks.metrics import compute_metrics, is_confirmed_with_required_controls
+from benchmarks.metrics import (
+    compare_runs,
+    compute_metrics,
+    is_confirmed_with_required_controls,
+    summarize_run,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "benchmarks" / "vip_v1"
@@ -53,6 +58,70 @@ def test_confirmation_requires_causal_control_and_sealed_proof():
         rejected = {**accepted, field: False}
         assert is_confirmed_with_required_controls(rejected) is False
     assert is_confirmed_with_required_controls(accepted) is True
+
+
+def test_summarize_run_does_not_count_unproven_confirmed_status():
+    summary = summarize_run(
+        {
+            "case_id": "unproven-confirmed",
+            "findings": [
+                {
+                    "key": "header_sqli",
+                    "status": "confirmed",
+                    "causal_signal": False,
+                    "negative_control_complete": False,
+                    "proof_bundle_sealed": False,
+                }
+            ],
+        },
+        ground_truth=[{"key": "header_sqli"}],
+    )
+
+    assert summary["confirmed"] == 0
+    assert summary["confirmed_unverified"] == 1
+    assert summary["proof_bundle_coverage"] is None
+    assert summary["replay_success_rate"] is None
+    assert summary["true_positives"] == 0
+    assert summary["false_positives"] == 0
+    assert summary["ground_truth_positive_count"] == 1
+
+
+def test_compare_runs_preserves_gated_repeatability_only():
+    result = compare_runs(
+        [
+            {
+                "case_id": "r1",
+                "comparison_group": "same-fixture",
+                "findings": [
+                    {
+                        "key": "header_sqli",
+                        "status": "confirmed",
+                        "causal_signal": False,
+                        "negative_control_complete": False,
+                        "proof_bundle_sealed": False,
+                    }
+                ],
+            },
+            {
+                "case_id": "r2",
+                "comparison_group": "same-fixture",
+                "findings": [
+                    {
+                        "key": "header_sqli",
+                        "status": "confirmed",
+                        "causal_signal": True,
+                        "negative_control_complete": True,
+                        "proof_bundle_sealed": True,
+                    }
+                ],
+            },
+        ],
+        ground_truth=[{"key": "header_sqli"}],
+    )
+
+    assert result["runs"][0]["confirmed"] == 0
+    assert result["runs"][1]["confirmed"] == 1
+    assert result["repeatability"]["same-fixture"] == 0.0
 
 
 def test_metrics_use_set_semantics_and_confirmed_findings_only():

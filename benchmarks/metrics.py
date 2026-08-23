@@ -33,6 +33,10 @@ def _run_status(item: Mapping[str, Any]) -> str:
     return _STATUS_ALIASES.get(raw, raw)
 
 
+def _is_verified_confirmation(item: Mapping[str, Any]) -> bool:
+    return _run_status(item) == "confirmed" and is_confirmed_with_required_controls(item)
+
+
 def _run_key(item: Mapping[str, Any]) -> str:
     explicit = str(item.get("canonical_key") or item.get("finding_key") or "").strip()
     if explicit:
@@ -54,7 +58,11 @@ def summarize_run(
 ) -> dict[str, Any]:
     """Summarize one captured artifact bundle without executing anything."""
     findings = _run_records(run, "findings")
-    confirmed = [item for item in findings if _run_status(item) == "confirmed"]
+    confirmed = [item for item in findings if _is_verified_confirmation(item)]
+    confirmed_unverified = sum(
+        _run_status(item) == "confirmed" and not _is_verified_confirmation(item)
+        for item in findings
+    )
     confirmed_keys = {_run_key(item) for item in confirmed if _run_key(item)}
     truth_keys = {_run_key(item) for item in ground_truth if _run_key(item)}
     surfaces = _run_records(run, "discovered", "surface", "observations")
@@ -94,6 +102,7 @@ def summarize_run(
         "case_id": str(run.get("case_id") or run.get("run_id") or "unnamed"),
         "comparison_group": str(run.get("comparison_group") or ""),
         "confirmed": len(confirmed),
+        "confirmed_unverified": confirmed_unverified,
         "candidates": sum(_run_status(item) == "candidate" for item in findings),
         "needs_human_review": sum(_run_status(item) == "needs_human_review" for item in findings),
         "not_scanned": sum(_run_status(item) == "not_scanned" for item in findings),
@@ -140,7 +149,7 @@ def compare_runs(
                 {
                     _run_key(item)
                     for item in _run_records(run, "findings")
-                    if _run_status(item) == "confirmed" and _run_key(item)
+                    if _is_verified_confirmation(item) and _run_key(item)
                 }
             )
     repeatability: dict[str, float | None] = {}
