@@ -59,6 +59,96 @@ class SpecializedResearcherContract:
         }
 
 
+@dataclass(frozen=True)
+class SpecialistResearcherProfile:
+    """Domain routing metadata; it cannot authorize or execute a probe."""
+
+    domain_id: str
+    researcher_id: str
+    action_classes: tuple[ActionClass, ...]
+    evidence_focus: str
+    capability_hints: tuple[str, ...] = ()
+    contract_version: int = 1
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "domain_id": self.domain_id,
+            "researcher_id": self.researcher_id,
+            "action_classes": [item.value for item in self.action_classes],
+            "evidence_focus": self.evidence_focus,
+            "capability_hints": list(self.capability_hints),
+            "contract_version": self.contract_version,
+            "advisory_only": True,
+        }
+
+
+_SPECIALIST_PROFILES: tuple[SpecialistResearcherProfile, ...] = (
+    SpecialistResearcherProfile(
+        "auth",
+        "auth-researcher",
+        (ActionClass.IDENTITY_ACQUISITION, ActionClass.BROWSER_ACTION),
+        "authorized identity state and session prerequisites",
+        ("http_read", "browser_read"),
+    ),
+    SpecialistResearcherProfile(
+        "authorization",
+        "authorization-researcher",
+        (ActionClass.ACTIVE_PROBE, ActionClass.NEGATIVE_CONTROL),
+        "owner/foreign differential and negative-control prerequisites",
+        ("http_read", "http_write"),
+    ),
+    SpecialistResearcherProfile(
+        "business_logic",
+        "business-logic-researcher",
+        (ActionClass.WORKFLOW_REPLAY, ActionClass.BASELINE),
+        "observed state transitions and invariant boundaries",
+        ("http_read", "workflow_replay"),
+    ),
+    SpecialistResearcherProfile(
+        "api",
+        "api-researcher",
+        (ActionClass.DISCOVERY, ActionClass.PARSER_PROBE, ActionClass.ACTIVE_PROBE),
+        "API surface, parser behavior, and bounded response observations",
+        ("http_read", "schema_read"),
+    ),
+    SpecialistResearcherProfile(
+        "client_side",
+        "client-side-researcher",
+        (ActionClass.DISCOVERY, ActionClass.BROWSER_ACTION, ActionClass.PARSER_PROBE),
+        "client-rendered routes, forms, and parser/oracle observations",
+        ("browser_read", "http_read"),
+    ),
+)
+
+_SPECIALIST_PROFILE_BY_DOMAIN = {
+    profile.domain_id: profile for profile in _SPECIALIST_PROFILES
+}
+
+
+def specialist_profile_for_domain(
+    domain_id: str,
+) -> SpecialistResearcherProfile | None:
+    """Return bounded domain routing metadata, never an execution capability."""
+    return _SPECIALIST_PROFILE_BY_DOMAIN.get(str(domain_id or "").strip().lower())
+
+
+def specialist_domains_for_action(action_class: ActionClass | str) -> tuple[str, ...]:
+    """Return deterministic domain labels associated with an action class."""
+    try:
+        normalized = (
+            action_class
+            if isinstance(action_class, ActionClass)
+            else ActionClass(str(action_class))
+        )
+    except (TypeError, ValueError):
+        return ()
+    return tuple(
+        profile.domain_id
+        for profile in _SPECIALIST_PROFILES
+        if normalized in profile.action_classes
+    )
+
+
 _SPECIALIZED_RESEARCHER_CONTRACTS: tuple[SpecializedResearcherContract, ...] = (
     SpecializedResearcherContract(
         "surface-researcher", (ActionClass.DISCOVERY,), "bounded surface and asset coverage"
@@ -129,6 +219,7 @@ def researcher_metadata_for_action(action_class: ActionClass | str) -> dict[str,
             "researcher_id": "unassigned",
             "researcher_contract_status": "unmapped",
             "researcher_contract_version": 1,
+            "specialist_domains": list(specialist_domains_for_action(action_class)),
             "advisory_only": True,
         }
     return {
@@ -136,6 +227,7 @@ def researcher_metadata_for_action(action_class: ActionClass | str) -> dict[str,
         "researcher_contract_status": "mapped",
         "researcher_contract_version": contract.contract_version,
         "researcher_evidence_focus": contract.evidence_focus,
+        "specialist_domains": list(specialist_domains_for_action(action_class)),
         "advisory_only": True,
     }
 
@@ -652,7 +744,10 @@ __all__ = [
     "ResearchDecision",
     "ResearchDecisionEngine",
     "SpecializedResearcherContract",
+    "SpecialistResearcherProfile",
     "candidate_from_information_action",
+    "specialist_domains_for_action",
+    "specialist_profile_for_domain",
     "researcher_contract_for_action",
     "researcher_metadata_for_action",
     "research_context_from_state",

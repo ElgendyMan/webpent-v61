@@ -7,6 +7,8 @@ from webpent.shared.research_contracts import (
     ResearchDecisionEngine,
     candidate_from_information_action,
     researcher_contract_for_action,
+    specialist_domains_for_action,
+    specialist_profile_for_domain,
 )
 from webpent.shared.research_intelligence import ActionClass, InformationAction
 from webpent.shared.research_nodes import next_best_action_node
@@ -51,6 +53,17 @@ def test_specialized_researcher_contracts_are_mapped_and_advisory():
     assert "requires_approval" not in candidate.metadata
 
 
+def test_specialist_domain_profiles_are_explicit_and_advisory():
+    expected = {"auth", "authorization", "business_logic", "api", "client_side"}
+    profiles = {specialist_profile_for_domain(domain) for domain in expected}
+
+    assert all(profile is not None for profile in profiles)
+    assert {profile.domain_id for profile in profiles if profile} == expected
+    assert all(profile.as_dict()["advisory_only"] is True for profile in profiles if profile)
+    assert "authorization" in specialist_domains_for_action(ActionClass.ACTIVE_PROBE)
+    assert "business_logic" in specialist_domains_for_action(ActionClass.WORKFLOW_REPLAY)
+
+
 def test_research_node_projection_preserves_specialized_researcher_metadata():
     result = next_best_action_node(
         {
@@ -72,6 +85,7 @@ def test_research_node_projection_preserves_specialized_researcher_metadata():
 
     candidate = result["research_candidate_actions"][0]
     assert candidate["metadata"]["researcher_id"] == "workflow-researcher"
+    assert "business_logic" in candidate["metadata"]["specialist_domains"]
     assert candidate["metadata"]["advisory_only"] is True
     assert candidate["metadata"]["utility_trace"]["version"] == "research-utility-v1"
     assert candidate["metadata"]["utility_trace"]["advisory_only"] is True
