@@ -14,7 +14,12 @@
       "negative_control_complete",
       "proof_bundle_sealed"
     ],
-    "duplicate_policy": "set semantics"
+    "duplicate_policy": "set semantics",
+    "human_agreement": "separately supplied reviewer decisions only",
+    "cost_efficiency": {
+      "denominator": "unique strict_confirmed finding keys",
+      "zero_strict_confirmed": "unavailable"
+    }
   },
   "safety": {
     "modifies_target": false,

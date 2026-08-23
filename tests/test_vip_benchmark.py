@@ -22,6 +22,18 @@ def test_versioned_manifest_is_fail_closed_and_reproducible():
     manifest = _read("manifest.json")
     assert manifest["schema_version"] == 1
     assert manifest["metric_contract"]["confirmed_only"] is True
+    assert (
+        manifest["metric_contract"]["human_agreement"]
+        == "separately supplied reviewer decisions only"
+    )
+    assert (
+        manifest["metric_contract"]["cost_efficiency"]["denominator"]
+        == "unique strict_confirmed finding keys"
+    )
+    assert (
+        manifest["metric_contract"]["cost_efficiency"]["zero_strict_confirmed"]
+        == "unavailable"
+    )
     assert set(manifest["metric_contract"]["required_confirmation_fields"]) == {
         "causal_signal",
         "negative_control_complete",
@@ -163,3 +175,122 @@ def test_metrics_use_set_semantics_and_confirmed_findings_only():
     assert metrics.precision == 0.5
     assert metrics.recall == 1 / 3
     assert round(metrics.f1, 6) == round(0.4, 6)
+
+
+def test_human_agreement_requires_separately_supplied_reviewer_decisions():
+    run = {
+        "case_id": "reviewed",
+        "requests": 12,
+        "actions": [{"name": "read"}, {"name": "replay"}],
+        "findings": [
+            {
+                "key": "idor",
+                "status": "confirmed",
+                "causal_signal": True,
+                "negative_control_complete": True,
+                "proof_bundle_sealed": True,
+            },
+            {
+                "key": "xss",
+                "status": "candidate",
+                "causal_signal": True,
+                "negative_control_complete": True,
+                "proof_bundle_sealed": True,
+            },
+        ],
+    }
+
+    without_review = summarize_run(run)
+    assert without_review["human_agreement"] is None
+
+    reviewed = summarize_run(
+        run,
+        reviewer_decisions={"idor": "confirmed", "xss": "rejected"},
+    )
+    assert reviewed["human_agreement"] == {
+        "reviewed_count": 2,
+        "agreed_count": 2,
+        "agreement_rate": 1.0,
+    }
+
+
+def test_cost_efficiency_is_proof_gated_and_none_without_strict_confirmation():
+    run = {
+        "case_id": "no-proof",
+        "requests": 20,
+        "cost_usd": 0.50,
+        "actions": [{"name": "read"}, {"name": "write"}],
+        "findings": [
+            {
+                "key": "idor",
+                "status": "confirmed",
+                "causal_signal": False,
+                "negative_control_complete": False,
+                "proof_bundle_sealed": False,
+            }
+        ],
+    }
+
+    summary = summarize_run(run)
+    assert summary["strict_confirmed"] == 0
+    assert summary["cost_efficiency"] == {
+        "requests_per_strict_confirmed": None,
+        "actions_per_strict_confirmed": None,
+        "cost_usd_per_strict_confirmed": None,
+        "unavailable_reason": "no_strict_confirmed_findings",
+    }
+
+
+def test_compare_runs_can_attach_explicit_reviewer_decisions_by_case():
+    result = compare_runs(
+        [
+            {
+                "case_id": "reviewed-run",
+                "findings": [
+                    {
+                        "key": "idor",
+                        "status": "confirmed",
+                        "causal_signal": True,
+                        "negative_control_complete": True,
+                        "proof_bundle_sealed": True,
+                    }
+                ],
+            }
+        ],
+        reviewer_decisions={"reviewed-run": {"idor": "confirmed"}},
+    )
+    assert result["runs"][0]["human_agreement"]["agreement_rate"] == 1.0
+
+
+def test_cost_efficiency_uses_strict_confirmed_denominator_only():
+    run = {
+        "case_id": "proof-gated",
+        "requests": 30,
+        "cost_usd": 0.75,
+        "actions": [{"name": "read"}, {"name": "replay"}, {"name": "cleanup"}],
+        "findings": [
+            {
+                "key": "idor",
+                "status": "confirmed",
+                "causal_signal": True,
+                "negative_control_complete": True,
+                "proof_bundle_sealed": True,
+            },
+            {
+                "key": "xss",
+                "status": "candidate",
+                "causal_signal": True,
+                "negative_control_complete": True,
+                "proof_bundle_sealed": True,
+            },
+        ],
+    }
+
+    summary = summarize_run(run)
+    assert summary["strict_confirmed"] == 1
+    assert summary["cost_efficiency"] == {
+        "requests_per_strict_confirmed": 30.0,
+        "actions_per_strict_confirmed": 3.0,
+        "cost_usd_per_strict_confirmed": 0.75,
+        "unavailable_reason": None,
+    }

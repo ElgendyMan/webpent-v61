@@ -18,6 +18,17 @@ _STATUS_ALIASES = {
 }
 _FAILURE_STATUSES = {"failed", "error", "timeout", "terminated", "tool_failed"}
 _RECOVERY_STATUSES = {"recovered", "fallback", "alternative_action", "retried_successfully"}
+_REVIEWER_CONFIRMED = {"confirmed", "tool-confirmed", "true", "yes", "agree", "agreed"}
+_REVIEWER_REJECTED = {
+    "rejected",
+    "false",
+    "no",
+    "candidate",
+    "unconfirmed",
+    "not confirmed",
+    "needs_human_review",
+    "needs human review",
+}
 
 
 def _run_records(run: Mapping[str, Any], *names: str) -> list[Mapping[str, Any]]:
@@ -38,7 +49,13 @@ def _is_verified_confirmation(item: Mapping[str, Any]) -> bool:
 
 
 def _run_key(item: Mapping[str, Any]) -> str:
-    explicit = str(item.get("canonical_key") or item.get("finding_key") or "").strip()
+    explicit = str(
+        item.get("canonical_key")
+        or item.get("finding_key")
+        or item.get("key")
+        or item.get("id")
+        or ""
+    ).strip()
     if explicit:
         return explicit
     return "|".join(
@@ -51,10 +68,79 @@ def _ratio(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 6) if denominator else None
 
 
+def _reviewer_verdict(value: Any) -> bool | None:
+    """Normalize an explicit human verdict without inferring one from code."""
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().lower()
+    if normalized in _REVIEWER_CONFIRMED:
+        return True
+    if normalized in _REVIEWER_REJECTED:
+        return False
+    return None
+
+
+def _human_agreement(
+    reviewer_decisions: Mapping[str, Any] | None,
+    findings: Iterable[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Compare explicit reviewer verdicts with strict agent verdicts.
+
+    A reviewer payload is optional and is never synthesized from status, LLM
+    output, ground truth, or proof fields. Unknown/invalid reviewer entries are
+    ignored rather than treated as agreement.
+    """
+    if not reviewer_decisions:
+        return None
+    strict_keys = {
+        _run_key(item)
+        for item in findings
+        if _run_key(item) and _is_verified_confirmation(item)
+    }
+    reviewed: list[tuple[str, bool]] = []
+    for raw_key, raw_verdict in list(reviewer_decisions.items())[:256]:
+        key = str(raw_key or "").strip()[:160]
+        verdict = _reviewer_verdict(raw_verdict)
+        if key and verdict is not None:
+            reviewed.append((key, verdict))
+    if not reviewed:
+        return None
+    agreed = sum((key in strict_keys) == verdict for key, verdict in reviewed)
+    return {
+        "reviewed_count": len(reviewed),
+        "agreed_count": agreed,
+        "agreement_rate": _ratio(agreed, len(reviewed)),
+    }
+
+
+def _cost_efficiency(
+    *,
+    strict_confirmed: int,
+    requests: int,
+    actions: int,
+    cost_usd: float,
+) -> dict[str, Any]:
+    """Return bounded efficiency metrics with a strict-confirmation denominator."""
+    if strict_confirmed <= 0:
+        return {
+            "requests_per_strict_confirmed": None,
+            "actions_per_strict_confirmed": None,
+            "cost_usd_per_strict_confirmed": None,
+            "unavailable_reason": "no_strict_confirmed_findings",
+        }
+    return {
+        "requests_per_strict_confirmed": round(requests / strict_confirmed, 6),
+        "actions_per_strict_confirmed": round(actions / strict_confirmed, 6),
+        "cost_usd_per_strict_confirmed": round(cost_usd / strict_confirmed, 6),
+        "unavailable_reason": None,
+    }
+
+
 def summarize_run(
     run: Mapping[str, Any],
     *,
     ground_truth: Iterable[Mapping[str, Any]] = (),
+    reviewer_decisions: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Summarize one captured artifact bundle without executing anything."""
     findings = _run_records(run, "findings")
@@ -91,6 +177,10 @@ def summarize_run(
         )
         for item in confirmed
     )
+    strict_confirmed = len(confirmed_keys)
+    action_count = max(0, int(run.get("actions_count") or len(events)))
+    request_count = max(0, int(run.get("requests") or 0))
+    cost_usd = max(0.0, float(run.get("cost_usd") or 0.0))
     surface_keys = {
         str(item.get("url") or item.get("endpoint") or item.get("path") or "").strip()
         for item in surfaces
@@ -102,6 +192,7 @@ def summarize_run(
         "case_id": str(run.get("case_id") or run.get("run_id") or "unnamed"),
         "comparison_group": str(run.get("comparison_group") or ""),
         "confirmed": len(confirmed),
+        "strict_confirmed": strict_confirmed,
         "confirmed_unverified": confirmed_unverified,
         "candidates": sum(_run_status(item) == "candidate" for item in findings),
         "needs_human_review": sum(_run_status(item) == "needs_human_review" for item in findings),
@@ -116,10 +207,24 @@ def summarize_run(
         "tool_failures": len(failures),
         "recovery_rate": _ratio(len(recovered), len(failures)) if failures else 1.0,
         "duplicates": max(0, duplicate_count),
-        "requests": int(run.get("requests") or 0),
+        "requests": request_count,
+        "actions": action_count,
         "duration_seconds": float(run.get("duration_seconds") or 0.0),
-        "cost_usd": float(run.get("cost_usd") or 0.0),
+        "cost_usd": cost_usd,
         "scope_violations": int(run.get("scope_violations") or 0),
+        "human_agreement": _human_agreement(reviewer_decisions, findings),
+        "cost_efficiency": _cost_efficiency(
+            strict_confirmed=strict_confirmed,
+            requests=request_count,
+            actions=action_count,
+            cost_usd=cost_usd,
+        ),
+        "metric_assumptions": [
+            "strict_confirmed requires explicit confirmed status, causal signal, "
+            "completed negative control, and sealed proof bundle",
+            "human_agreement uses only separately supplied reviewer decisions",
+            "cost_efficiency denominators are unique strict_confirmed finding keys",
+        ],
     }
     if truth_keys:
         result.update(
@@ -136,11 +241,21 @@ def compare_runs(
     runs: Iterable[Mapping[str, Any]],
     *,
     ground_truth: Iterable[Mapping[str, Any]] = (),
+    reviewer_decisions: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compare offline captures and measure repeatability only when replicated."""
     run_list = list(runs)
     truth = list(ground_truth)
-    summaries = [summarize_run(run, ground_truth=truth) for run in run_list]
+    summaries = [
+        summarize_run(
+            run,
+            ground_truth=truth,
+            reviewer_decisions=(reviewer_decisions or {}).get(
+                str(run.get("case_id") or run.get("run_id") or "")
+            ),
+        )
+        for run in run_list
+    ]
     groups: dict[str, list[set[str]]] = {}
     for run in run_list:
         group = str(run.get("comparison_group") or "").strip()
