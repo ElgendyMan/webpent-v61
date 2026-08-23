@@ -283,7 +283,7 @@
       "validator_status": "offline-fixture"
     }
   ],
-  "generated_at": "2026-08-23T14:56:52.153851+00:00",
+  "generated_at": "2026-08-23T15:30:59.921155+00:00",
   "ledger": "docs/waptlab_coverage_ledger.json",
   "live_qualification": false,
   "notes": [
@@ -391,9 +391,9 @@
       "vuln_class": "info_disclosure"
     },
     {
-      "evidence_mode": "human-review",
-      "validator_id": null,
-      "validator_status": "missing-validator",
+      "evidence_mode": "deterministic",
+      "validator_id": "race_condition",
+      "validator_status": "tested",
       "vuln_class": "race_condition"
     },
     {
@@ -501,17 +501,14 @@
     {
       "evidence_mode": "human-review",
       "validator_id": null,
-      "validator_status": "missing-validator",
+      "validator_status": "not_applicable",
       "vuln_class": "unknown"
     }
   ],
-  "vip_scope_missing_validators": [
-    "race_condition",
-    "unknown"
-  ],
+  "vip_scope_missing_validators": [],
   "vip_scope_validator_status_counts": {
-    "missing-validator": 2,
+    "not_applicable": 1,
     "offline-fixture": 7,
-    "tested": 25
+    "tested": 26
   }
 }

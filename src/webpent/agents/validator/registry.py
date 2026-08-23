@@ -125,6 +125,13 @@ def capability_for(vuln_class: str) -> ValidatorCapability:
             status="offline-fixture",
             evidence_mode="offline-contract",
         )
+    if vuln_class == "unknown":
+        return ValidatorCapability(
+            vuln_class=vuln_class,
+            validator_id=None,
+            status="not_applicable",
+            evidence_mode="human-review",
+        )
     return ValidatorCapability(
         vuln_class=vuln_class,
         validator_id=None,
