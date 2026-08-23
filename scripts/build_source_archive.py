@@ -11,7 +11,10 @@ import argparse
 import zipfile
 from pathlib import Path
 
-from scripts.build_release_manifest import _included
+try:
+    from scripts.build_release_manifest import _included
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from build_release_manifest import _included
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE_EXCLUDED_PREFIXES = (
