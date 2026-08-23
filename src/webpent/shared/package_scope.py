@@ -208,6 +208,10 @@ class ScopeCompiler:
             path = unquote(parsed.path or "/")
             if not path.startswith("/"):
                 return None
+            if any(ord(char) < 32 for char in path):
+                return None
+            if any(segment in {".", ".."} for segment in path.split("/")):
+                return None
             return parsed.scheme.lower(), host, port, path
         except (TypeError, ValueError):
             return None

@@ -27,6 +27,8 @@ class LedgerReservation:
 class SQLiteActionLedger:
     """SQLite-backed reservation ledger safe across worker restarts."""
 
+    _TERMINAL_STATUSES = frozenset({"executed", "failed"})
+
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path).expanduser()
         if str(self.path) != ":memory:":
@@ -191,6 +193,8 @@ class SQLiteActionLedger:
     ) -> bool:
         """Mark a reservation terminal without persisting sensitive output."""
         if not str(idempotency_key or "").strip():
+            return False
+        if str(status or "").strip() not in self._TERMINAL_STATUSES:
             return False
         try:
             with self._connect() as connection:
