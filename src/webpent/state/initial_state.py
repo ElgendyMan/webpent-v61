@@ -335,6 +335,7 @@ def build_initial_state(
         "canonical_observations": [],
         "target_understanding": {},
         "target_knowledge": {},
+        "security_reasoning_proposals": [],
         "attack_graph": {},
         "report_quality_gate": {},
         "memory_summary": {},

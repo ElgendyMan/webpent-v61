@@ -17,10 +17,12 @@ from urllib.parse import urlparse
 from langchain_core.messages import AIMessage
 
 from webpent.knowledge.builder import KnowledgeBuilder
+from webpent.knowledge.target_knowledge import TargetKnowledgeModel
 from webpent.models.mental_model import EdgeKind, extract_mental_model_updates
 from webpent.models.targets import Target
 from webpent.shared.application_intent import infer_application_intent
 from webpent.shared.bac_identity_tester import normalise_identity_profiles
+from webpent.shared.security_reasoners import propose_security_reasoning
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -348,9 +350,29 @@ def target_understanding_node(state: PentestState) -> dict[str, Any]:
         logger.warning("Target Knowledge projection degraded safely: %s", exc)
         target_knowledge_dict = {}
 
+    reasoning_proposals: list[dict[str, Any]] = []
+    try:
+        knowledge_model = TargetKnowledgeModel.model_validate(target_knowledge_dict)
+        auth_state = state.get("auth_state") or {}
+        auth_observations: dict[str, Any] = {}
+        if isinstance(auth_state, dict):
+            lifecycle = auth_state.get("lifecycle_observations")
+            evidence_refs = auth_state.get("evidence_refs")
+            if isinstance(lifecycle, list):
+                auth_observations["lifecycle_observations"] = lifecycle[:20]
+            if isinstance(evidence_refs, list):
+                auth_observations["evidence_refs"] = evidence_refs[:20]
+        reasoning_proposals = propose_security_reasoning(
+            knowledge_model,
+            auth_observations,
+        )
+    except Exception as exc:
+        logger.warning("Security reasoning projection degraded safely: %s", exc)
+
     return {
         "target_understanding": summary,
         "target_knowledge": target_knowledge_dict,
+        "security_reasoning_proposals": reasoning_proposals,
         "application_intent": intent,
         "policy_assumptions": intent.get("policy_assumptions", []),
         "mental_model": model_update,

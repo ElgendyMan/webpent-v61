@@ -283,6 +283,10 @@ class PentestState(TypedDict, total=False):
     target_understanding: Annotated[dict[str, Any], merge_dicts]
     # V62 additive Target Knowledge projection derived from observed state only.
     target_knowledge: Annotated[dict[str, Any], merge_dicts]
+    # Deterministic, evidence-linked security proposals. These are advisory
+    # hypotheses only; promotion and execution remain in existing proof and
+    # Action Authority paths.
+    security_reasoning_proposals: Annotated[list[dict[str, Any]], merge_lists]
     # Application intent is a bounded, report-safe projection used by
     # business-logic and hypothesis agents. Optional for legacy checkpoints.
     application_intent: Annotated[dict[str, Any], merge_dicts]

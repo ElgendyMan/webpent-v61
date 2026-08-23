@@ -86,3 +86,9 @@ def test_target_brain_excludes_out_of_scope_forms_and_workflows() -> None:
         workflow.get("name") != "form:admin"
         for workflow in knowledge.get("workflows", {}).values()
     )
+
+    proposals = result.get("security_reasoning_proposals", [])
+    assert proposals
+    assert any(item.get("reasoner") == "business_logic" for item in proposals)
+    assert all(item.get("execution_mode") == "proposal_only" for item in proposals)
+    assert all("outside.example" not in repr(item) for item in proposals)
