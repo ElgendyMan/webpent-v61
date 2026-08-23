@@ -12,14 +12,13 @@ from typing import Any, Final
 
 from webpent.agents.validator.registry import validator_id_for
 
+# Campaigns remain human-review-only only when no deterministic live
+# validator contract exists.  Vertical campaigns that reuse a registered base
+# validator (for example IDOR or information disclosure) must still enter the
+# normal planner/executor path; strict evidence/proof gates decide confirmation.
 CAMPAIGN_HUMAN_REVIEW: Final[frozenset[str]] = frozenset(
     {
-        "download_idor",
-        "tenant_context_switching",
         "elasticsearch_snapshot_traversal",
-        "public_backup_disclosure",
-        "laravel_app_debug",
-        "public_elasticsearch_exposure",
         "xslt_injection",
     }
 )

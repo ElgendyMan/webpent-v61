@@ -42,19 +42,19 @@
       "target_contacted": false
     },
     {
-      "disposition": "missing-validator",
+      "disposition": "inconclusive",
       "evidence_complete": false,
       "id": 6,
       "key": "download_idor",
-      "reason": "No complete validator plugin is registered for this campaign.",
+      "reason": "No local WAPTLab fixture is available; no target was contacted.",
       "target_contacted": false
     },
     {
-      "disposition": "missing-validator",
+      "disposition": "inconclusive",
       "evidence_complete": false,
       "id": 7,
       "key": "tenant_context_switching",
-      "reason": "No complete validator plugin is registered for this campaign.",
+      "reason": "No local WAPTLab fixture is available; no target was contacted.",
       "target_contacted": false
     },
     {
@@ -114,19 +114,19 @@
       "target_contacted": false
     },
     {
-      "disposition": "missing-validator",
+      "disposition": "inconclusive",
       "evidence_complete": false,
       "id": 15,
       "key": "public_backup_disclosure",
-      "reason": "No complete validator plugin is registered for this campaign.",
+      "reason": "No local WAPTLab fixture is available; no target was contacted.",
       "target_contacted": false
     },
     {
-      "disposition": "missing-validator",
+      "disposition": "inconclusive",
       "evidence_complete": false,
       "id": 16,
       "key": "laravel_app_debug",
-      "reason": "No complete validator plugin is registered for this campaign.",
+      "reason": "No local WAPTLab fixture is available; no target was contacted.",
       "target_contacted": false
     },
     {
@@ -138,11 +138,11 @@
       "target_contacted": false
     },
     {
-      "disposition": "missing-validator",
+      "disposition": "inconclusive",
       "evidence_complete": false,
       "id": 18,
       "key": "public_elasticsearch_exposure",
-      "reason": "No complete validator plugin is registered for this campaign.",
+      "reason": "No local WAPTLab fixture is available; no target was contacted.",
       "target_contacted": false
     },
     {
@@ -162,14 +162,14 @@
       "target_contacted": false
     }
   ],
-  "generated_at": "2026-08-20T12:28:46.184568+00:00",
+  "generated_at": "2026-08-23T08:01:23.414806+00:00",
   "mode": "local-contract-only",
   "project": "WebPent v60",
   "safety_statement": "This artifact validates local campaign accounting and evidence-gap planning only. Inconclusive and missing-validator are not negative findings.",
   "schema_version": "waptlab-regression-v1",
   "summary": {
-    "inconclusive": 13,
-    "missing-validator": 7
+    "inconclusive": 18,
+    "missing-validator": 2
   },
   "synthetic_contract_checks": [
     {

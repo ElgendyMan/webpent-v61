@@ -14,14 +14,9 @@ def test_validator_plugin_registry_covers_all_campaigns_without_false_confirmati
     assert all(plugin.complete for plugin in plugins)
     assert all(plugin.stages == PLUGIN_STAGES for plugin in plugins)
     human_review = [plugin for plugin in plugins if plugin.evidence_mode == "human-review"]
-    assert len(human_review) == 7
+    assert len(human_review) == 2
     assert {plugin.campaign_key for plugin in human_review} == {
-        "download_idor",
-        "tenant_context_switching",
         "elasticsearch_snapshot_traversal",
-        "public_backup_disclosure",
-        "laravel_app_debug",
-        "public_elasticsearch_exposure",
         "xslt_injection",
     }
 
@@ -29,7 +24,7 @@ def test_validator_plugin_registry_covers_all_campaigns_without_false_confirmati
 def test_plugin_gaps_are_explicit_and_bounded() -> None:
     gaps = plugin_capability_gaps()
 
-    assert len(gaps) == 7
+    assert len(gaps) == 2
     assert all(item["reason"] == "missing-deterministic-validator" for item in gaps)
 
 

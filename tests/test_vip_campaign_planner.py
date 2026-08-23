@@ -10,8 +10,8 @@ def test_planner_materializes_all_campaign_contracts_without_claiming_tested() -
     )
 
     assert len(plan["entries"]) == 20
-    assert plan["summary"]["not_observed"] == 13
-    assert plan["summary"]["missing-validator"] == 7
+    assert plan["summary"]["not_observed"] == 18
+    assert plan["summary"]["missing-validator"] == 2
     assert all(entry["status"] != "tested" for entry in plan["entries"])
     assert all(entry["contract"]["budget"] >= 0 for entry in plan["entries"])
     assert all(entry["plugin_id"].startswith("campaign:") for entry in plan["entries"])
@@ -116,7 +116,7 @@ def test_explicit_waptlab_inventory_keeps_legacy_matrix() -> None:
 
     assert len(plan["entries"]) == 20
     assert plan["entries"][0]["key"] == "header_sqli"
-    assert plan["summary"]["missing-validator"] == 7
+    assert plan["summary"]["missing-validator"] == 2
 
 
 def test_auto_inventory_never_guesses_waptlab_from_url() -> None:

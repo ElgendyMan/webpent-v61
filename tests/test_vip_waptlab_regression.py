@@ -22,7 +22,7 @@ def test_local_waptlab_regression_is_target_free_and_complete() -> None:
     assert report["campaign_count"] == 20
     assert report["target_contacted"] is False
     assert report["waptlab_modified"] is False
-    assert report["summary"] == {"inconclusive": 13, "missing-validator": 7}
+    assert report["summary"] == {"inconclusive": 18, "missing-validator": 2}
     assert all(not item["evidence_complete"] for item in report["campaigns"])
 
 
