@@ -370,7 +370,15 @@ class AutonomousController:
         trace: list[dict[str, Any]] = []
         last_planning: dict[str, Any] = {}
         executed = 0
-        seen_actions: set[str] = set()
+        completed_action_signatures = {
+            str(item).strip()[:160]
+            for item in (state.get("completed_action_signatures") or ())
+            if str(item).strip()
+        }
+        completed_action_signatures = set(
+            sorted(completed_action_signatures)[:500]
+        )
+        seen_actions: set[str] = set(completed_action_signatures)
         stop_reason = "iteration_limit_reached"
         minimum_information_gain = 0.05
         recovery_events: list[dict[str, Any]] = list(
@@ -541,6 +549,7 @@ class AutonomousController:
                 }
                 trace.append(trace_entry)
                 if status == "executed":
+                    completed_action_signatures.add(batch_signature)
                     executed += 1
                     continue
                 batch_failed = True
@@ -702,6 +711,9 @@ class AutonomousController:
         }
         update["recovery_state"] = recovery_state
         update["action_budget"] = budget.as_dict()
+        update["completed_action_signatures"] = sorted(
+            completed_action_signatures
+        )[:500]
         update["autonomous_cycle_records"] = cycle_records
         update["stop_decision"] = StopDecision(
             True,

@@ -714,3 +714,51 @@ def test_controller_stops_when_execution_adds_no_evidence_or_state_delta(
     assert result["smart_replanning"]["stop_reason"] == "no_new_evidence_or_state_delta"
     assert result["stop_decision"]["category"] == "evidence"
     assert result["campaign_task_outcomes"][0]["proof_bundle_sealed"] is False
+
+
+def test_controller_resume_skips_completed_action_from_persisted_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _ranking_task("resume-task", "idor")
+    monkeypatch.setattr(
+        "webpent.shared.autonomous_controller.smart_campaigns_node",
+        lambda state: {
+            "campaign_plan": {},
+            "smart_next_actions": [{"task": {"task_id": task.task_id}}],
+            "smart_replanning": {},
+        },
+    )
+    monkeypatch.setattr(
+        AutonomousController,
+        "_planned_tasks",
+        staticmethod(lambda state, planning: [task]),
+    )
+
+    first_executor = _RecordingExecutor()
+    first = AutonomousController(action_executor=first_executor).run(
+        {"engagement_id": "eng-ranking", "action_budget": {"limit": 5.0}},
+        handler=lambda _task: {"ok": True},
+        iterations=1,
+    )
+
+    second_executor = _RecordingExecutor()
+    resumed_state = {
+        **first,
+        "action_budget": {
+            "limit": 5.0,
+            "spent": 0.0,
+            "iterations_limit": 3,
+            "iterations": 0,
+        },
+    }
+    resumed = AutonomousController(action_executor=second_executor).run(
+        resumed_state,
+        handler=lambda _task: {"ok": True},
+        iterations=1,
+    )
+
+    assert first_executor.calls == ["resume-task"]
+    assert second_executor.calls == []
+    assert resumed["smart_replanning"]["stop_reason"] == "same_action_repeated"
+    assert resumed["completed_action_signatures"] == first["completed_action_signatures"]
+    assert all("target_url" not in item for item in resumed["completed_action_signatures"])
