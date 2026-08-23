@@ -14,12 +14,15 @@ from collections.abc import Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlsplit
+from uuid import NAMESPACE_URL, uuid5
 
+from webpent.agents.validator.registry import capability_for
 from webpent.attack_graph.builder import AttackGraphBuilder
 from webpent.config.settings import ScanMode, get_settings
 from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.models.evidence import canonical_json, redact_sensitive
 from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+from webpent.models.hypothesis import Hypothesis, HypothesisOrigin, HypothesisStatus
 from webpent.models.research import ResearchContext
 from webpent.shared.action_authority import ActionRisk
 from webpent.shared.action_ledger import SQLiteActionLedger
@@ -352,12 +355,30 @@ def _javascript_surface_records(state: Mapping[str, Any]) -> list[Mapping[str, A
     return records
 
 
+def _observation_ref(item: Mapping[str, Any], fallback: str) -> str:
+    for key in ("record_id", "fingerprint", "evidence_ref", "ref"):
+        value = str(item.get(key) or "").strip()
+        if value:
+            return value[:200]
+    return str(fallback)[:200]
+
+
 def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """Return bounded passive surface records from the current graph state."""
     crawled = state.get("crawled_data") or {}
     candidates: list[Any] = []
     if isinstance(crawled, Mapping):
-        for key in ("surface_records", "endpoints", "urls"):
+        for key in (
+            "surface_records",
+            "endpoints",
+            "urls",
+            "xhr_requests",
+            "browser_requests",
+            "openapi_routes",
+            "graphql_operations",
+            "multipart_fields",
+            "workflow_steps",
+        ):
             value = crawled.get(key)
             if isinstance(value, list):
                 candidates.extend(value)
@@ -542,21 +563,37 @@ def _campaign_plan_for_state(state: Mapping[str, Any]) -> dict[str, Any]:
     """Refresh only an unobserved initial plan from passive recon records."""
     current = dict(state.get("campaign_plan") or {})
     entries = current.get("entries", []) if isinstance(current, Mapping) else []
-    if any(
-        isinstance(entry, Mapping) and entry.get("matched_observation_refs")
-        for entry in entries
-    ):
-        return current
     surfaces = _surface_records(state)
     workflows = state.get("workflow_observations") or []
     if not surfaces and not workflows:
         return current
-    return build_campaign_plan(
+    current_refs = {
+        str(ref)[:200]
+        for entry in entries
+        if isinstance(entry, Mapping)
+        for ref in (entry.get("matched_observation_refs") or [])
+    }
+    observed_refs = {
+        _observation_ref(item, f"surface:{index}")
+        for index, item in enumerate([*surfaces, *workflows])
+    }
+    # Preserve an explicit runtime plan while its supporting observations are
+    # unchanged.  Rebuild when a new observation appears, or when the prior
+    # plan had no matched refs, so later recon data can add campaigns.
+    if entries and current_refs and observed_refs <= current_refs:
+        return current
+    # Rebuild deterministically when passive observations extend the known
+    # surface set.  A prior partially matched plan must not hide later routes.
+    # The executor remains the authority for any actual request or finding.
+    refreshed = build_campaign_plan(
         target_url=_target_url(state),
         campaign_inventory=str(state.get("campaign_inventory") or "waptlab"),
         surface_observations=surfaces,
         workflow_observations=workflows,
     )
+    if entries and refreshed.get("entries") == entries:
+        return current
+    return refreshed
 
 
 def build_smart_campaign_tasks(
@@ -986,7 +1023,10 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
     llm_reliability_trace = _llm_reliability_projection(state)
     campaign_plan = _campaign_plan_for_state(state)
     task_state = {**state, "campaign_plan": campaign_plan}
-    tasks, outcomes = build_smart_campaign_tasks(task_state)
+    tasks, outcomes = build_smart_campaign_tasks(
+        task_state,
+        max_tasks=_smart_task_cap(state, settings),
+    )
     runtime_for_planning = state.get("runtime_context")
     if not isinstance(runtime_for_planning, RuntimeContext) or not runtime_for_planning.valid:
         runtime_for_planning = None
@@ -1184,6 +1224,113 @@ def _safe_http_observation(response: Any) -> dict[str, Any]:
         "body_sha256": hashlib.sha256(body).hexdigest(),
         "location_present": bool(getattr(response, "headers", {}).get("location")),
     }
+
+
+def _campaign_vuln_class(value: Any) -> VulnClass | None:
+    """Map campaign aliases to the canonical finding taxonomy, fail closed."""
+    raw = str(value or "").strip().lower().replace("-", "_")
+    if not raw:
+        return None
+    try:
+        return VulnClass(raw)
+    except ValueError:
+        pass
+    aliases = {
+        "download_idor": VulnClass.IDOR,
+        "profile_idor": VulnClass.IDOR,
+        "object_idor": VulnClass.IDOR,
+        "stored_xss": VulnClass.XSS,
+        "reflected_xss": VulnClass.XSS,
+        "blind_ssrf": VulnClass.SSRF,
+        "ssti_template": VulnClass.SSTI,
+        "path_traversal_lfi": VulnClass.PATH_TRAVERSAL,
+    }
+    return aliases.get(raw)
+
+
+def _campaign_hypotheses_from_execution(
+    tasks: Sequence[CampaignTask],
+    outcomes: Iterable[Mapping[str, Any]],
+) -> list[Hypothesis]:
+    """Create unverified hypotheses only from executed, evidence-backed tasks.
+
+    This is deliberately a handoff, not a finding or confirmation.  The task
+    must have a concrete same-origin surface reference and a validator ID;
+    executor outcomes must be ``executed`` with an available output.  The
+    normal strategist/payload/validator path remains responsible for any
+    later promotion, validation, negative control, and proof bundle.
+    """
+    by_task_id = {task.task_id: task for task in tasks}
+    hypotheses: list[Hypothesis] = []
+    seen_ids: set[str] = set()
+    for outcome in outcomes:
+        if not isinstance(outcome, Mapping):
+            continue
+        if str(outcome.get("status") or "") != CampaignTaskStatus.EXECUTED.value:
+            continue
+        task_id = str(outcome.get("task_id") or "")
+        task = by_task_id.get(task_id)
+        if task is None or not outcome.get("output_available"):
+            continue
+        refs = tuple(
+            str(ref)[:200].strip()
+            for ref in task.source_evidence_ids
+            if str(ref).strip()
+        )
+        validator_id = str(task.validator_id or "").strip()[:120]
+        target_url = str(task.target_url or "").strip()[:500]
+        vuln_class = _campaign_vuln_class(task.vulnerability_class)
+        if not refs or not validator_id or vuln_class is None:
+            continue
+        capability = capability_for(vuln_class.value)
+        if capability.status != "tested" or capability.validator_id != validator_id:
+            continue
+        parsed = urlsplit(target_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            continue
+        stable_key = (
+            f"campaign:{task.engagement_id}:{vuln_class.value}:"
+            f"{target_url}:{refs[0]}:{validator_id}"
+        )
+        hypothesis_id = uuid5(NAMESPACE_URL, stable_key)
+        if str(hypothesis_id) in seen_ids:
+            continue
+        seen_ids.add(str(hypothesis_id))
+        request_data: dict[str, Any] = {}
+        raw_body = task.metadata.get("request_body")
+        if isinstance(raw_body, Mapping):
+            request_data = {
+                str(key)[:80]: redact_sensitive(value)[0]
+                for key, value in list(raw_body.items())[:24]
+            }
+        hypotheses.append(
+            Hypothesis(
+                id=hypothesis_id,
+                target_url=target_url,
+                statement=(
+                    f"Potential {vuln_class.value} at {target_url}"
+                )[:500],
+                vuln_class=vuln_class,
+                status=HypothesisStatus.UNEXPLORED,
+                confidence_score=0.45,
+                evidence_refs=list(refs[:8]),
+                origin=HypothesisOrigin.HEURISTIC,
+                origin_detail=(
+                    f"campaign_execution task={task.task_id[:120]} "
+                    f"validator={validator_id} oracle={task.oracle[:160]}"
+                )[:500],
+                estimated_cost=max(0.1, min(10.0, float(task.budget))),
+                request_method=task.method.upper()[:10],
+                request_data=request_data,
+                hint_provenance=[
+                    "observed_surface",
+                    "campaign_execution",
+                    "validator_routable",
+                ],
+                novelty_score=1.0,
+            )
+        )
+    return hypotheses
 
 
 def _finding_value(finding: Any, key: str, default: Any = None) -> Any:
@@ -1816,6 +1963,10 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             )
             outcomes.append(executor.execute(swagger_task, handler, preconditions_met=ready))
 
+    campaign_hypotheses = _campaign_hypotheses_from_execution(
+        selected,
+        outcomes,
+    )
     runtime_feedback = _runtime_feedback_projection(state, outcomes=outcomes)
     feedback_state = dict(state)
     feedback_state["runtime_feedback"] = runtime_feedback
@@ -1870,6 +2021,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         "proof_bundles": proof_bundles,
         "smart_http_observations": observations,
         "findings": direct_findings,
+        "hypotheses": campaign_hypotheses,
         "decision_trace": list(executor.decision_trace),
         "lifecycle_events": list(executor.lifecycle_events),
         "coverage_ledger": coverage_ledger,

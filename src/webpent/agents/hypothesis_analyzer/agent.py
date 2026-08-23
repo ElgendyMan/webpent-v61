@@ -7,7 +7,7 @@ V4.5 Sprint 3: Expanded from XSS-only to multi-class heuristic detection.
 The node now analyzes URL parameters for patterns indicative of:
   - LFI / Path Traversal (file=, path=, page=, dir=)
   - SSRF / Open Redirect (url=, redirect=, next=, callback=)
-  - XSS (retained from V2 — all endpoints get an XSS hypothesis)
+  - XSS when a concrete input surface is observed (query parameter, form input, or XSS route)
 
 All heuristics use fast string/regex operations — NO LLM calls.
 
@@ -1193,9 +1193,8 @@ def hypothesis_node(state: PentestState) -> dict:
         # If the URL path contains a known vuln-path segment (e.g.
         # /vulnerabilities/sqli/), emit a hypothesis with the matching
         # vuln_class so the validator dispatches to the correct tool
-        # (sqlmap for SQLi, dalfox for XSS). This runs BEFORE the
-        # generic "every endpoint gets an XSS hypothesis" path, so a
-        # sqli URL produces a SQLi hypothesis, not a generic XSS one.
+        # (sqlmap for SQLi, dalfox for XSS). Path classification is
+        # independent of generic input-surface heuristics.
         request_context = _request_context_for_url(url)
         if request_context.get("target_param") is None:
             observed_param = _observed_query_parameter(url)
@@ -1236,14 +1235,12 @@ def hypothesis_node(state: PentestState) -> dict:
                 path_class_vuln,
             )
 
-        # 1. Always generate an XSS hypothesis for every endpoint —
-        # UNLESS the path-based classification already produced an XSS
-        # hypothesis (avoid duplicate). The previous code set
-        # severity=HIGH for XSS — that severity is now expressed as a
-        # higher initial confidence_score (0.5 for XSS, vs 0.3 for
-        # heuristic-only MEDIUM-class findings) so Dynamic
-        # Prioritization can rank XSS hypotheses above the others.
-        if path_class_vuln != VulnClass.XSS.value:
+        # 1. Generate XSS only when the endpoint has a concrete input
+        # surface. A path-only endpoint without a query parameter, form,
+        # or an explicit XSS path classification is not evidence of an
+        # XSS sink and must not receive a blanket hypothesis.
+        xss_input_evidence = request_context.get("target_param") is not None
+        if path_class_vuln != VulnClass.XSS.value and xss_input_evidence:
             new_hypotheses.append(
                 Hypothesis(
                     target_url=url,
@@ -1251,8 +1248,8 @@ def hypothesis_node(state: PentestState) -> dict:
                     vuln_class=VulnClass.XSS.value,
                     origin=origin,
                     origin_detail=(
-                        f"{base_provenance}\n\nHeuristic: every endpoint gets an XSS "
-                        "hypothesis (V2 carry-over)."
+                        f"{base_provenance}\n\nHeuristic: concrete input surface "
+                        "observed via query parameter or form metadata."
                     ),
                     confidence_score=_initial_confidence_score(
                         origin,

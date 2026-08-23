@@ -110,7 +110,7 @@ def test_js_observed_query_route_generates_xss_hypothesis_with_parameter() -> No
     )
 
 
-def test_path_only_endpoint_keeps_no_query_and_no_target_parameter() -> None:
+def test_path_only_endpoint_without_input_evidence_has_no_xss_hypothesis() -> None:
     result = hypothesis_node(
         {
             "target": Target(url="https://lab.test"),
@@ -124,6 +124,4 @@ def test_path_only_endpoint_keeps_no_query_and_no_target_parameter() -> None:
         if item.vuln_class == "xss"
         and item.target_url == "https://lab.test/rest/user/whoami"
     ]
-    assert len(hypotheses) == 1
-    assert hypotheses[0].target_param is None
-    assert "?" not in hypotheses[0].target_url
+    assert hypotheses == []

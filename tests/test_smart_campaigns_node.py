@@ -1,4 +1,7 @@
+from dataclasses import replace
+
 from webpent.agents.smart_campaigns.agent import (
+    _campaign_hypotheses_from_execution,
     _javascript_surface_records,
     _smart_task_cap,
     build_smart_campaign_tasks,
@@ -54,7 +57,7 @@ def _state(*, enabled: bool = True) -> dict:
                 {
                     "key": "download_idor",
                     "status": "ready",
-                    "validator_id": "idor_validator",
+                    "validator_id": "idor",
                     "matched_observation_refs": ["surface:download:1"],
                     "gaps": [],
                     "contract": {
@@ -166,7 +169,7 @@ def test_crawler_endpoint_strings_become_observed_surface_tasks() -> None:
             {
                 "key": "download_idor",
                 "status": "not_observed",
-                "validator_id": "idor_validator",
+                "validator_id": "idor",
                 "matched_observation_refs": [],
                 "gaps": ["missing-surface:download_idor"],
                 "contract": {},
@@ -210,6 +213,54 @@ def test_execution_node_blocks_missing_precondition_before_handler(monkeypatch) 
     )
 
 
+def test_campaign_execution_bridge_emits_hypothesis_for_executed_surface() -> None:
+    tasks, _ = build_smart_campaign_tasks(_state())
+    task = tasks[0]
+    hypotheses = _campaign_hypotheses_from_execution(
+        [task],
+        [
+            {
+                "task_id": task.task_id,
+                "status": "executed",
+                "output_available": True,
+            }
+        ],
+    )
+    assert len(hypotheses) == 1
+    hypothesis = hypotheses[0]
+    assert hypothesis.status == "unexplored"
+    assert hypothesis.vuln_class == "idor"
+    assert hypothesis.evidence_refs == ["surface:download:1"]
+    assert hypothesis.target_url == "https://target.test/download/1"
+    assert hypothesis.origin_detail.startswith("campaign_execution")
+
+
+def test_campaign_execution_bridge_fails_closed_for_blocked_or_missing_data() -> None:
+    tasks, _ = build_smart_campaign_tasks(_state())
+    task = tasks[0]
+    executed = {
+        "task_id": task.task_id,
+        "status": "executed",
+        "output_available": True,
+    }
+    assert _campaign_hypotheses_from_execution(
+        [task],
+        [{**executed, "status": "blocked_by_precondition"}],
+    ) == []
+    assert _campaign_hypotheses_from_execution(
+        [replace(task, validator_id="")],
+        [executed],
+    ) == []
+    assert _campaign_hypotheses_from_execution(
+        [replace(task, validator_id="missing-validator")],
+        [executed],
+    ) == []
+    assert _campaign_hypotheses_from_execution(
+        [replace(task, source_evidence_ids=())],
+        [executed],
+    ) == []
+
+
 def test_execution_node_uses_bounded_get_and_records_safe_metadata(monkeypatch) -> None:
     class Response:
         status_code = 200
@@ -234,6 +285,9 @@ def test_execution_node_uses_bounded_get_and_records_safe_metadata(monkeypatch) 
     result = smart_campaigns_execution_node(_state())
     assert result["smart_http_observations"][0]["status_code"] == 200
     assert result["smart_http_observations"][0]["content_length"] == 9
+    assert len(result["hypotheses"]) == 1
+    assert result["hypotheses"][0].status == "unexplored"
+    assert result["findings"] == []
     assert "body" not in result["smart_http_observations"][0]
     assert result["smart_replanning"]["get_only"] is True
     assert result["coverage_ledger"]["entries"][0]["attempts"] == 1
@@ -670,7 +724,7 @@ def test_observed_basket_route_projects_to_generic_idor_campaign() -> None:
                 {
                     "key": "idor_object",
                     "status": "not_observed",
-                    "validator_id": "idor_validator",
+                    "validator_id": "idor",
                     "matched_observation_refs": [],
                     "gaps": ["missing-surface:idor_object"],
                     "contract": {},
@@ -709,7 +763,7 @@ def test_observed_basket_route_without_identity_does_not_match_idor_campaign() -
                 {
                     "key": "idor_object",
                     "status": "not_observed",
-                    "validator_id": "idor_validator",
+                    "validator_id": "idor",
                     "matched_observation_refs": [],
                     "gaps": ["missing-surface:idor_object"],
                     "contract": {},

@@ -272,7 +272,14 @@ def _build_command(args: argparse.Namespace, run_dir: Path, engagement_id: str) 
         "--report-format", "all", "--no-llm",
     ]
     if args.target == "waptlab":
-        command.extend(["--additional-target-origin", "http://127.0.0.1:5173"])
+        command.extend(
+            [
+                "--campaign-inventory",
+                "waptlab",
+                "--additional-target-origin",
+                "http://127.0.0.1:5173",
+            ]
+        )
     cookie_file = getattr(args, "cookie_file", None)
     if cookie_file:
         command.extend(["--cookie-file", str(cookie_file)])
@@ -325,7 +332,15 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "ground_truth": _catalog_metadata(Path(args.ground_truth)),
         "tool_manifest": _tool_manifest(env),
         "environment_profile": "authorized-active",
-        "campaign_plan": {"command": command, "flags": {"no_llm": True, "destructive": False, "authorized_active": True}},
+        "campaign_plan": {
+            "command": command,
+            "flags": {
+                "no_llm": True,
+                "destructive": False,
+                "authorized_active": True,
+                "campaign_inventory": "waptlab" if args.target == "waptlab" else "auto",
+            },
+        },
         "campaign_plan_hash": _sha256_json(command),
         "reset": reset,
         "exit_code": completed.returncode,

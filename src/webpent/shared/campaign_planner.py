@@ -279,6 +279,13 @@ def _safe_gap(value: Any) -> str:
 
 
 def _observation_tokens(item: Mapping[str, Any]) -> set[str]:
+    """Return conservative semantic tokens from one observed surface.
+
+    Tokenization is used only to decide which bounded campaign task is worth
+    attempting.  It never asserts a vulnerability.  URL path/query and
+    explicitly observed transport metadata are included so crawlers that emit
+    plain endpoint records do not silently lose vertical campaign coverage.
+    """
     values: list[str] = []
     for key in (
         "category",
@@ -295,16 +302,55 @@ def _observation_tokens(item: Mapping[str, Any]) -> set[str]:
         "path",
         "method",
         "target_param",
+        "target_params",
         "hint_provenance",
+        "source",
+        "discovery_kind",
+        "content_type",
+        "request_headers",
+        "response_headers",
+        "header_names",
+        "filename",
+        "file_name",
+        "service",
+        "technology",
+        "object_id",
     ):
         value = item.get(key)
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, Mapping):
+            values.extend(str(x).lower() for x in value)
+            values.extend(str(x).lower() for x in value.values())
+        elif isinstance(value, (list, tuple, set)):
             values.extend(str(x).lower() for x in value)
         elif value:
             values.append(str(value).lower())
-    return {
-        token for value in values for token in value.replace("/", " ").replace("-", " ").split()
+
+    tokens = {
+        token
+        for value in values
+        for token in re.findall(r"[a-z0-9]+", value.lower())
+        if token
     }
+    aliases = {
+        "swagger-ui": {"swagger", "openapi"},
+        "swaggerui": {"swagger", "openapi"},
+        "open-api": {"openapi"},
+        "graphql": {"api", "query"},
+        "avatar": {"image", "profile", "url"},
+        "photo": {"image", "profile", "url"},
+        "upload": {"multipart", "file"},
+        "import": {"multipart", "csv", "worker"},
+        "csv": {"multipart", "worker"},
+        "backup": {"artifact", "download"},
+        "snapshot": {"elasticsearch", "service"},
+        "debug": {"error", "laravel"},
+        "oauth2": {"oauth", "callback", "redirect"},
+        "oidc": {"oauth", "callback", "redirect"},
+        "xml": {"multipart"},
+    }
+    for token in tuple(tokens):
+        tokens.update(aliases.get(token, ()))
+    return tokens
 
 
 def _contract(

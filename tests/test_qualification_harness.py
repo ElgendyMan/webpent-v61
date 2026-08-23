@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from scripts.qualification_harness import _build_command
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationFixture,
@@ -118,3 +119,57 @@ def test_qualification_serialization_redacts_fixture_and_run_values(
     assert "not-retained" not in rendered
     assert "raw-secret" not in rendered
     assert "[REDACTED]" in rendered
+
+
+
+def test_waptlab_command_uses_waptlab_inventory_and_declared_frontend_origin() -> None:
+    from argparse import Namespace
+    from pathlib import Path
+
+    args = Namespace(
+        target="waptlab",
+        url="http://127.0.0.1:8000",
+        creds_file="/tmp/test-creds.json",
+        cookie_file=None,
+    )
+    command = _build_command(args, Path("/tmp/run"), "waptlab-q1")
+
+    assert "--campaign-inventory" in command
+    assert command[command.index("--campaign-inventory") + 1] == "waptlab"
+    assert "--additional-target-origin" in command
+    assert "http://127.0.0.1:5173" in command
+    assert "--no-llm" in command
+
+
+def test_non_waptlab_command_is_target_neutral() -> None:
+    from argparse import Namespace
+    from pathlib import Path
+
+    args = Namespace(
+        target="juice-shop",
+        url="http://127.0.0.1:3000",
+        creds_file="/tmp/test-creds.json",
+        cookie_file=None,
+    )
+    command = _build_command(args, Path("/tmp/run"), "juice-shop-q1")
+
+    assert "--campaign-inventory" not in command
+    assert "--additional-target-origin" not in command
+    assert "waptlab" not in command
+    assert "http://127.0.0.1:5173" not in command
+    assert command[command.index("--url") + 1] == "http://127.0.0.1:3000"
+
+
+def test_cookie_file_remains_optional_and_explicit() -> None:
+    from argparse import Namespace
+    from pathlib import Path
+
+    args = Namespace(
+        target="waptlab",
+        url="http://127.0.0.1:8000",
+        creds_file="/tmp/test-creds.json",
+        cookie_file="/tmp/cookies.json",
+    )
+    command = _build_command(args, Path("/tmp/run"), "waptlab-q1")
+
+    assert command[-2:] == ["--cookie-file", "/tmp/cookies.json"]

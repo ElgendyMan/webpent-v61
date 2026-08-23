@@ -95,9 +95,8 @@ def test_vip_profile_seeds_missing_post_only_export_erp_surface() -> None:
     assert hypotheses[0].request_data["rows"] == [{"name": "baseline"}]
     assert hypotheses[0].request_data["__webpent_content_type"] == "application/json"
     generated_urls = [item.target_url for item in result["hypotheses"]]
-    assert generated_urls.index("http://target.test/export-erp") < generated_urls.index(
-        "http://target.test/"
-    )
+    assert "http://target.test/export-erp" in generated_urls
+    assert "http://target.test/" not in generated_urls
 
 
 def test_non_vip_profile_does_not_seed_lab_post_only_surfaces() -> None:
@@ -207,7 +206,7 @@ def test_hypothesis_node_normalizes_structured_endpoint_records_fail_closed() ->
     generated_urls = {item.target_url for item in result["hypotheses"]}
 
     assert "http://target.test/search?q=one" in generated_urls
-    assert "http://target.test/account" in generated_urls
+    assert "http://target.test/account" not in generated_urls
     assert all("{'url'" not in url for url in generated_urls)
     assert all("user:pass@" not in url for url in generated_urls)
     assert all("#secret" not in url for url in generated_urls)
