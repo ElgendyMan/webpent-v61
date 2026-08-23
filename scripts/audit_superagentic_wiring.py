@@ -10,6 +10,17 @@ from pathlib import Path
 from typing import Any
 
 
+def _is_action_executor_call(node: ast.Call) -> bool:
+    if not isinstance(node.func, ast.Attribute) or node.func.attr != "execute":
+        return False
+    receiver = node.func.value
+    if isinstance(receiver, ast.Name):
+        return receiver.id in {"executor", "action_executor"}
+    if isinstance(receiver, ast.Attribute):
+        return receiver.attr in {"executor", "action_executor"}
+    return False
+
+
 def _calls(path: Path) -> dict[str, int]:
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -20,7 +31,7 @@ def _calls(path: Path) -> dict[str, int]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             continue
-        if node.func.attr == "execute":
+        if _is_action_executor_call(node):
             direct_executor += 1
         elif node.func.attr == "run_agent_proposal":
             harness_calls += 1
