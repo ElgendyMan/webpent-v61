@@ -3,7 +3,13 @@ from pydantic import ValidationError
 
 from webpent.agents.smart_campaigns.agent import smart_campaigns_node
 from webpent.models.research import CandidateAction, ResearchContext
-from webpent.shared.research_contracts import ResearchDecisionEngine
+from webpent.shared.research_contracts import (
+    ResearchDecisionEngine,
+    candidate_from_information_action,
+    researcher_contract_for_action,
+)
+from webpent.shared.research_intelligence import ActionClass, InformationAction
+from webpent.shared.research_nodes import next_best_action_node
 
 
 def _candidate(**updates) -> CandidateAction:
@@ -25,6 +31,48 @@ def _candidate(**updates) -> CandidateAction:
     }
     payload.update(updates)
     return CandidateAction.model_validate(payload)
+
+
+def test_specialized_researcher_contracts_are_mapped_and_advisory():
+    action = InformationAction(
+        action_id="action:workflow",
+        action_class=ActionClass.WORKFLOW_REPLAY,
+        objective="replay an observed workflow transition",
+        target_ref="https://target.test/workflow",
+    )
+    contract = researcher_contract_for_action(action.action_class)
+    candidate = candidate_from_information_action(action, gap_id="gap:workflow")
+
+    assert contract is not None
+    assert contract.researcher_id == "workflow-researcher"
+    assert candidate.metadata["researcher_id"] == "workflow-researcher"
+    assert candidate.metadata["researcher_evidence_focus"]
+    assert candidate.metadata["advisory_only"] is True
+    assert "requires_approval" not in candidate.metadata
+
+
+def test_research_node_projection_preserves_specialized_researcher_metadata():
+    result = next_best_action_node(
+        {
+            "smart_information_actions": [
+                {
+                    "action_id": "action:workflow",
+                    "action_class": "workflow_replay",
+                    "objective": "replay an observed workflow transition",
+                    "target_ref": "https://target.test/workflow",
+                    "method": "GET",
+                    "capability": "http_read",
+                    "expected_information_gain": 0.8,
+                    "cost": 1.0,
+                    "idempotency_key": "workflow:one",
+                }
+            ]
+        }
+    )
+
+    candidate = result["research_candidate_actions"][0]
+    assert candidate["metadata"]["researcher_id"] == "workflow-researcher"
+    assert candidate["metadata"]["advisory_only"] is True
 
 
 def test_research_context_is_checkpoint_safe_and_redacts_secret():

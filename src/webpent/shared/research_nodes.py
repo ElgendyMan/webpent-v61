@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from webpent.models.research import CandidateAction, ResearchContext
+from webpent.shared.research_contracts import researcher_metadata_for_action
 from webpent.shared.research_intelligence import (
     InformationAction,
     KnowledgeGapEngine,
@@ -60,6 +61,10 @@ def knowledge_gap_node(state: Mapping[str, Any]) -> dict[str, Any]:
                         "coverage_value": min(1.0, action.expected_information_gain),
                         "required_capabilities": [action.capability],
                         "policy_tags": ["advisory_research"],
+                        "metadata": {
+                            **researcher_metadata_for_action(action.action_class),
+                            **dict(action.metadata),
+                        },
                     }
                 )
             except (TypeError, ValueError):
@@ -156,6 +161,7 @@ def next_best_action_node(state: Mapping[str, Any]) -> dict[str, Any]:
                     "required_capabilities": [action.capability],
                     "policy_tags": ["advisory_research"],
                     "metadata": {
+                        **researcher_metadata_for_action(action.action_class),
                         **dict(action.metadata),
                         "ranking_score": item.score,
                         "ranking_reasons": list(item.reasons),

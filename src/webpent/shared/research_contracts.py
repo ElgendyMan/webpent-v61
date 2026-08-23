@@ -17,7 +17,7 @@ from webpent.models.research import (
     ResearchContext,
     SurfaceCoverage,
 )
-from webpent.shared.research_intelligence import InformationAction
+from webpent.shared.research_intelligence import ActionClass, InformationAction
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,106 @@ class ResearchDecision:
             "reasons": list(self.reasons),
             "status": self.status,
         }
+
+
+@dataclass(frozen=True)
+class SpecializedResearcherContract:
+    """Advisory contract describing which researcher owns an action class."""
+
+    researcher_id: str
+    action_classes: tuple[ActionClass, ...]
+    evidence_focus: str
+    contract_version: int = 1
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "researcher_id": self.researcher_id,
+            "action_classes": [item.value for item in self.action_classes],
+            "evidence_focus": self.evidence_focus,
+            "contract_version": self.contract_version,
+            "advisory_only": True,
+        }
+
+
+_SPECIALIZED_RESEARCHER_CONTRACTS: tuple[SpecializedResearcherContract, ...] = (
+    SpecializedResearcherContract(
+        "surface-researcher", (ActionClass.DISCOVERY,), "bounded surface and asset coverage"
+    ),
+    SpecializedResearcherContract(
+        "identity-researcher",
+        (ActionClass.IDENTITY_ACQUISITION,),
+        "authorized identity and ownership context",
+    ),
+    SpecializedResearcherContract(
+        "workflow-researcher",
+        (ActionClass.WORKFLOW_REPLAY,),
+        "observed workflow transitions and replay prerequisites",
+    ),
+    SpecializedResearcherContract(
+        "baseline-researcher", (ActionClass.BASELINE,), "independent baseline observations"
+    ),
+    SpecializedResearcherContract(
+        "negative-control-researcher",
+        (ActionClass.NEGATIVE_CONTROL,),
+        "independent negative controls",
+    ),
+    SpecializedResearcherContract(
+        "active-probe-researcher",
+        (ActionClass.ACTIVE_PROBE, ActionClass.BROWSER_ACTION),
+        "bounded active observations without confirmation authority",
+    ),
+    SpecializedResearcherContract(
+        "parser-researcher", (ActionClass.PARSER_PROBE,), "parser and oracle behavior"
+    ),
+    SpecializedResearcherContract(
+        "validation-researcher",
+        (ActionClass.VALIDATOR_RETRY, ActionClass.PROOF_REPLAY),
+        "validator and sealed proof replay prerequisites",
+    ),
+    SpecializedResearcherContract(
+        "safe-stop-researcher", (ActionClass.SAFE_STOP,), "safe stop and unresolved state"
+    ),
+)
+
+_RESEARCHER_CONTRACT_BY_ACTION: dict[ActionClass, SpecializedResearcherContract] = {
+    action_class: contract
+    for contract in _SPECIALIZED_RESEARCHER_CONTRACTS
+    for action_class in contract.action_classes
+}
+
+
+def researcher_contract_for_action(
+    action_class: ActionClass | str,
+) -> SpecializedResearcherContract | None:
+    """Return the advisory owner contract for an action class, if mapped."""
+    try:
+        normalized = (
+            action_class
+            if isinstance(action_class, ActionClass)
+            else ActionClass(str(action_class))
+        )
+    except (TypeError, ValueError):
+        return None
+    return _RESEARCHER_CONTRACT_BY_ACTION.get(normalized)
+
+
+def researcher_metadata_for_action(action_class: ActionClass | str) -> dict[str, Any]:
+    """Return bounded researcher metadata without granting execution authority."""
+    contract = researcher_contract_for_action(action_class)
+    if contract is None:
+        return {
+            "researcher_id": "unassigned",
+            "researcher_contract_status": "unmapped",
+            "researcher_contract_version": 1,
+            "advisory_only": True,
+        }
+    return {
+        "researcher_id": contract.researcher_id,
+        "researcher_contract_status": "mapped",
+        "researcher_contract_version": contract.contract_version,
+        "researcher_evidence_focus": contract.evidence_focus,
+        "advisory_only": True,
+    }
 
 
 def candidate_from_information_action(
@@ -77,7 +177,10 @@ def candidate_from_information_action(
         requires_approval=action.requires_approval,
         idempotency_key=action.idempotency_key,
         justification=action.justification,
-        metadata=dict(action.metadata),
+        metadata={
+            **researcher_metadata_for_action(action.action_class),
+            **dict(action.metadata),
+        },
     )
 
 
@@ -484,6 +587,9 @@ __all__ = [
     "CoverageIntelligence",
     "ResearchDecision",
     "ResearchDecisionEngine",
+    "SpecializedResearcherContract",
     "candidate_from_information_action",
+    "researcher_contract_for_action",
+    "researcher_metadata_for_action",
     "research_context_from_state",
 ]
