@@ -6,7 +6,12 @@ import urllib.error
 import pytest
 
 from scripts import qualification_harness
-from scripts.qualification_harness import _build_command, _run, _wait_target
+from scripts.qualification_harness import (
+    _build_command,
+    _prepare_scan_env,
+    _run,
+    _wait_target,
+)
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationFixture,
@@ -171,6 +176,18 @@ def test_non_waptlab_command_is_target_neutral() -> None:
     assert "waptlab" not in command
     assert "http://127.0.0.1:5173" not in command
     assert command[command.index("--url") + 1] == "http://127.0.0.1:3000"
+
+
+def test_no_llm_qualification_skips_rag_without_mutating_other_env() -> None:
+    base = {"PATH": "/usr/bin", "DISABLE_RAG": "false"}
+
+    no_llm_env = _prepare_scan_env(base, ["webpent", "scan", "--no-llm"])
+    normal_env = _prepare_scan_env(base, ["webpent", "scan"])
+
+    assert no_llm_env["DISABLE_RAG"] == "true"
+    assert no_llm_env["EMBEDDINGS_OFFLINE"] == "true"
+    assert normal_env == base
+    assert base["DISABLE_RAG"] == "false"
 
 
 def test_cookie_file_remains_optional_and_explicit() -> None:

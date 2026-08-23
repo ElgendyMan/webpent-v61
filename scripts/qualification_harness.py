@@ -370,6 +370,20 @@ def _build_command(args: argparse.Namespace, run_dir: Path, engagement_id: str) 
     return command
 
 
+def _prepare_scan_env(base_env: dict[str, str], command: list[str]) -> dict[str, str]:
+    """Prepare bounded qualification environment without changing scan policy."""
+    env = dict(base_env)
+    if "--no-llm" in command:
+        # Qualification is deliberately no-LLM.  Skipping RAG here avoids
+        # sentence-transformers/Chroma startup stalls; it does not alter
+        # target scope, ActionAuthority, validators, or proof gates.
+        env.update({
+            "DISABLE_RAG": "true",
+            "EMBEDDINGS_OFFLINE": "true",
+        })
+    return env
+
+
 def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str, Any]:
     run_id = f"{args.target}-q{index}"
     run_dir = output_root / run_id
@@ -392,6 +406,7 @@ def run_one(args: argparse.Namespace, index: int, output_root: Path) -> dict[str
         "FINDINGS_LEDGER_PATH": str(run_dir / "findings_ledger.sqlite3"),
     })
     command = _build_command(args, run_dir, f"{args.target}-qualification-{index}")
+    env = _prepare_scan_env(env, command)
     start = time.time()
     completed = _run(command, env=env, timeout=args.timeout)
     duration = round(time.time() - start, 3)
