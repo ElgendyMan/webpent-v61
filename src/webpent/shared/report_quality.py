@@ -125,7 +125,12 @@ def lifecycle_stage(finding: Any) -> str:
         return "Clean"
     if level == "Not Scanned":
         return "Not Scanned"
-    if level == "Tool-Confirmed" and has_reproduction:
+    assessment = assess_finding_evidence(finding)
+    if (
+        level == "Tool-Confirmed"
+        and has_reproduction
+        and assessment.classification.value == "confirmed"
+    ):
         return "Confirmed"
     if has_reproduction:
         return "Reproduction"

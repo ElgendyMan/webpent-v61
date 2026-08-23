@@ -60,7 +60,7 @@ def test_quality_gate_ready_uses_shared_lifecycle_and_returns_no_values():
     assert result.ready is True
     assert result.status == "ready"
     assert result.ready_finding_count == 1
-    assert result.findings[0].lifecycle_stage == "Confirmed"
+    assert result.findings[0].lifecycle_stage == "Reproduction"
     assert result.findings[0].blocking_issues == []
     assert result.findings[0].evidence_classification == "needs_human_review"
     assert result.findings[0].evidence_missing_signals == [
@@ -71,6 +71,16 @@ def test_quality_gate_ready_uses_shared_lifecycle_and_returns_no_values():
     ]
     assert _SECRET not in str(dumped)
     assert "evidence_bundle" not in str(dumped)
+
+
+def test_quality_gate_does_not_call_unproven_tool_confirmed_finding_confirmed():
+    from webpent.shared.report_quality import evaluate_report_quality
+
+    result = evaluate_report_quality([_finding()])
+
+    assert result.findings[0].evidence_classification == "needs_human_review"
+    assert result.findings[0].lifecycle_stage != "Confirmed"
+    assert result.findings[0].lifecycle_stage == "Reproduction"
 
 
 def test_quality_gate_blocks_missing_contract_fields_without_exposing_values():
