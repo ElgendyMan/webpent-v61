@@ -4,7 +4,7 @@
 
 تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية حتى Phase 11، مع الحفاظ على الفصل الصارم بين **engineering maturity** و**VIP qualification**. الحكم الحالي يظل **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
-آخر commit مدفوع إلى `origin/master` قبل commit التوثيق النهائي هو `5f491ca` (`exclude sqlite migration locks from release manifest`). runtime artifacts والـcredentials والـcookies تظل خارج Git، وسيُعاد توليد release manifest بعد اكتمال metadata reconciliation.
+آخر commit محلي نظيف قبل هذه الإضافات هو `7070aa7` (`Harden typed browser proof and offline local scanning`)؛ تغييرات Phases 2–11 الحالية additive وتخضع للمراجعة النهائية قبل commit جديد. `origin/master` ما زال أقدم من ذلك بسبب تعذر push الناتج عن GitHub token غير صالح. runtime artifacts والـcredentials والـcookies تظل خارج Git، وسيُعاد توليد release manifest بعد اكتمال metadata reconciliation.
 
 ## ما تم تنفيذه
 
@@ -21,10 +21,19 @@
 | Benchmark Metrics | `confirmed` وrepeatability gated على `causal_signal` و`negative_control_complete` و`proof_bundle_sealed`؛ أضيف human agreement من reviewer data صريح وcost efficiency على unique strict confirmations، مع unavailable عند zero denominator | benchmark/qualification suites وfull regression | `e4f8c74` |
 | Production Architecture | assessment موثق يفصل single-node controlled pilot عن horizontal/multi-tenant qualification، ويحافظ على PostgreSQL fail-closed | assessment review وdiff check | `347a3b9` |
 | Offline Qualification | three-run proof/replay simulation deterministic؛ target contact false؛ لا تُحسب كـlive VIP qualification | qualification harness suites وoffline simulation | working validation before final docs commit |
+| Research Core | bounded budget/state/hypothesis/confidence/knowledge-gap planning؛ لا direct promotion أو execution | research engine focused tests وG-02 gates | working validation before final docs commit |
+| Intelligence Projections | application/entity/workflow/permission/state projections target/engagement-scoped وreport-safe | intelligence focused tests | working validation before final docs commit |
+| Identity Matrix | role matrix وhorizontal/vertical gaps فوق authorization observations؛ 403/200 candidate-only وعزل engagement | identity facade tests | working validation before final docs commit |
+| Business Logic | workflow/state/invariant/abuse facades passive؛ illegal transitions proposals فقط | business logic focused tests | working validation before final docs commit |
+| Research Projection Adapter | immutable/serializable Target Brain/Attack Graph/Knowledge Gap planning input بلا graph execution wiring | projection adapter tests | working validation before final docs commit |
+| Validation Facades | canonical causal/replay delegation مع state-diff وidentity candidate validators؛ لا promotion خارج المركز | validation focused tests | working validation before final docs commit |
+| Specialist Planning | bounded deterministic CandidateAction/ResearchTask proposals فقط، مع ActionAuthority requirement | specialist planner tests | working validation before final docs commit |
+| VIP v2 Benchmark | manifest/scenarios وthree-independent-run measurement من supplied results فقط؛ لا synthetic/live claims | vip_v2 benchmark tests | working validation before final docs commit |
+| Production Qualification | fail-closed health/recovery/idempotency/secrets/TLS/logging/retention projection؛ لا تشغيل stack تلقائي | production qualification وrecovery contract tests | working validation before final docs commit |
 
 ## بوابات الجودة
 
-تم اجتياز **full regression: `1530 passed, 56 warnings`** خلال `103.97s` في بوابة Phase 9. كما تم اجتياز **33 اختبار G-02**، ونجح direct-I/O inventory بعدد **284 سجلًا** (بينها record ديناميكي legitimate من Campaign Manager)، ونجحت Ruff وcompileall و`git diff --check`. واختبارات qualification/benchmark/proof المركزة في Phase 11 اجتازت **80 اختبارًا**، كما اجتازت offline simulation ثلاث جولات fixture-only مع replay agreement `1.0` دون target contact.
+تم اجتياز full pytest serial على **253 ملف اختبار**؛ **252 ملفًا خرجت بنجاح**، والملف الوحيد غير الصفري هو `tests/test_target_package_v2_hardening.py` بسبب optional bbscout source غير الموجود، وقد احتوى على skip فقط. كما نجحت Ruff وcompileall و`git diff --check`، وdirect-I/O inventory بعدد **319 سجلًا**، وG-02 precommit/runtime، وtracked-secret scan. اختبارات الإضافات المركزة نجحت، وVIP v2 يرفض أقل من ثلاث نتائج مستقلة أو النتائج غير المتطابقة؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
 
 التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. لا توجد تغييرات على WAPTLab source.
 

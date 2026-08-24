@@ -18,6 +18,7 @@ from webpent.benchmark.qualification import (
     QualificationRun,
     build_qualification_matrix,
 )
+from webpent.benchmark.vip_v2 import VIPV2Metrics, measure_vip_v2, qualify_vip_v2
 
 __all__ = [
     "BenchmarkReport",
@@ -33,4 +34,7 @@ __all__ = [
     "default_offline_target_profiles",
     "evaluate",
     "run_golden_benchmark",
+    "VIPV2Metrics",
+    "measure_vip_v2",
+    "qualify_vip_v2",
 ]

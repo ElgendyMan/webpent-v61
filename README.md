@@ -17,7 +17,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | البوابة | النتيجة |
 |---|---|
 | bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent clean checkout regression | آخر full regression: 1638 passed، 6 skipped؛ Ruff وcompileall وsecret audit وG-02 checker ناجحة |
+| WebPent clean checkout regression | full serial regression: 253 test files؛ 252 files passed، و`tests/test_target_package_v2_hardening.py` فقط optional bbscout skip (rc=5)؛ Ruff وcompileall وsecret audit وG-02 checker ناجحة |
 | Docker Compose dev smoke | Passed؛ API health، Redis PONG، Celery worker، Playwright 1.48.0، Nuclei 3.9.0، Chromium headless |
 | bbscout/WebPent bridge + settings contracts | Passed |
 | Release/plan-artifact audit suite | Passed |
@@ -29,6 +29,9 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | Offline release verifier | Passed؛ يرفض DB/WAL/SHM/journal/log artifacts؛ لا target contact |
 | Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount؛ لا تعني distributed qualification |
 | Execution telemetry/report continuity | Passed؛ observations redacted تصل إلى checkpoint والتقرير النهائي، ولا تغيّر confirmation gate |
+| Research/Intelligence/Identity/Business Logic/Validation projections | Passed؛ passive, target/engagement-scoped، ولا تملك execution أو promotion authority |
+| VIP v2 offline qualification contract | Passed؛ يفرض 3 independent repetitions ويحسب metrics من runs supplied فقط؛ لا توجد نتائج live محفوظة |
+| Production qualification projection | Passed؛ fail-closed checks للـhealth/recovery/idempotency/secrets/TLS/logging/retention؛ distributed qualification نفسها غير مثبتة |
 | Browser adapter expiry contract | Passed؛ timestamp منتهي يُرفض، وdate-only صالح حتى نهاية يوم UTC |
 
 هذه النتائج تثبت العقود والـregressions وruntime smoke التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. آخر scans منفصلة للابات المحلية المصرح بها أنتجت 6 candidates في Juice Shop و4 candidates في WAPTLab؛ كلّها بقيت unconfirmed، مع 0 ProofBundle promoted. التشغيلات لا تُجمع تراكميًا بين الأهداف أو الـengagements. Target Intelligence وAttack Graph وhypothesis bridge وspecialist routing وValidationStatus وHITL levels تعمل كطبقات advisory فوق الـKernel. Adapters الـproviders والـbenchmark profiles في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
@@ -112,6 +115,7 @@ flowchart LR
 .
 ├── src/webpent/
 │   ├── agents/              # عقد LangGraph والـvalidators
+│   │   └── specialists/     # passive proposal planners فقط
 │   ├── api/                 # FastAPI routes
 │   ├── cli/                 # CLI وعمليات الإدخال
 │   ├── config/              # الإعدادات وسياسات الأمان
@@ -119,6 +123,12 @@ flowchart LR
 │   ├── memory/              # Chroma وlessons وretrieval
 │   ├── models/              # النماذج وعقود الأدلة
 │   ├── shared/              # authority وscope وproof وLLM helpers
+│   ├── research_engine/     # bounded planning وprojection adapter
+│   ├── intelligence/        # target brain وentity/workflow/permission/state projections
+│   ├── security_models/     # identity matrix وauthorization facade
+│   ├── business_logic/      # workflow/state/invariant/abuse analysis facades
+│   ├── validation/          # validator facades وstate-diff/identity checks
+│   ├── production/          # fail-closed production qualification projection
 │   ├── state/               # PentestState وreducers
 │   ├── tools/               # adapters واكتشاف الأدوات
 │   └── workers/             # Celery task entrypoints
@@ -329,7 +339,7 @@ python scripts/verify_release_artifacts.py \
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
 | Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
 | WAPTLab وJuice Shop live qualification | التشغيلات التاريخية المنفصلة: Juice Shop: 6 candidates، WAPTLab: 4 candidates، وكلاهما 0 confirmed/0 ProofBundles. الجولة الأخيرة مع LLM على WAPTLab: 1 candidate، 0 confirmed، 0 ProofBundles؛ الحالة `NOT_QUALIFIED` |
-| Playwright وexternal tool readiness | Chromium أصبح متاحًا في البيئة الحالية، لكن typed browser handler التنفيذي ما زال غير مربوط؛ `httpx-pd` و`nuclei` و`katana` غير مثبتة في هذه الجولة، لذلك ظهرت coverage gaps صريحة ولم تُعتبر clean |
+| Playwright وexternal tool readiness | typed BrowserActionAdapter/Playwright proof plane موجود ومختبر offline عبر authority؛ availability لبعض أدوات discovery runtime تبقى capability-dependent وتنتج gaps صريحة ولا تُعتبر clean |
 | Docker/Celery distributed qualification | **غير مثبتة بالكامل**؛ توجد compose وworker contracts، لكن HA/outage/resume qualification ليست مثبتة |
 | Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة**؛ لا يوجد strict confirmed أو promoted ProofBundle في أحدث تشغيلات اللابات |
 | Auto-submit provider reports | غير مسموح به في هذا المسار |
@@ -343,6 +353,8 @@ python scripts/verify_release_artifacts.py \
 - [`docs/release_manifest.json`](docs/release_manifest.json) — manifest وبصمات source-only release.
 - [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) و[`docs/v75_maturity_scorecard.json`](docs/v75_maturity_scorecard.json) — scorecard هندسي لا يساوي VIP qualification.
 - [`benchmarks/vip_v1/manifest.json`](benchmarks/vip_v1/manifest.json) — metric contract، proof gates، human-review input، وcost denominator.
+- [`benchmarks/vip_v2/manifest.json`](benchmarks/vip_v2/manifest.json) — offline-only three-run qualification contract وhonest reporting gates.
+- [`docs/integration/production_qualification.md`](docs/integration/production_qualification.md) — checks المطلوبة للإنتاج وحدود distributed qualification.
 - [`docs/WAPTLAB_QUALIFICATION_STATUS.md`](docs/WAPTLAB_QUALIFICATION_STATUS.md) — الحالة الحالية ونتيجة offline proof/replay simulation وحدود live qualification.
 - [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) — provider-aware configuration ونتيجة WAPTLab مع LLM وحدود الاختبار.
 - [`docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md`](docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md) — assessment صادق لحدود single-node والإنتاج الموزع.
@@ -351,4 +363,4 @@ python scripts/verify_release_artifacts.py \
 
 Source-only archives وملفات SHA-256 الناتجة من release process تُحفظ خارج Git، ويجب توليدها من HEAD المطلوب والتحقق منها بالـmanifest والـoffline verifier قبل التسليم.
 
-> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، execution telemetry قابلة للتدقيق، وسلسلة proof/report continuity لا تُسقط محاولات التحقق. أقرب فجوة تشغيلية للوصول إلى VIP هي توصيل typed `BrowserActionAdapter` حقيقي بـ`ActionExecutor` عبر transport Playwright محمي بالـSSRF/scope، ثم إثبات causal signal وnegative control وsealed/replayable ProofBundle في جولات qualification مستقلة. لا يجوز إعلان VIP أو تغطية شاملة قبل هذه الأدلة.
+> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، execution telemetry قابلة للتدقيق، طبقات identity/business-logic/research/validation passive، وسلسلة proof/report continuity لا تُسقط محاولات التحقق. typed `BrowserActionAdapter` وPlaywright proof plane موجودان كمسار محمي ومختبر offline؛ الفجوة المتبقية هي إثبات causal signal وnegative control وsealed/replayable ProofBundle في جولات qualification مستقلة، إضافة إلى distributed Docker/Redis/Celery evidence. لا يجوز إعلان VIP أو تغطية شاملة قبل هذه الأدلة.
