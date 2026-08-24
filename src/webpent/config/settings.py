@@ -454,6 +454,29 @@ class Settings(BaseSettings):
     )
     log_level: LogLevel = Field(default=LogLevel.INFO)
     max_graph_steps: int = Field(default=50, gt=0)
+    playwright_adapter_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "playwright_adapter_enabled",
+            "PLAYWRIGHT_ADAPTER_ENABLED",
+            "WEBPENT_PLAYWRIGHT_ADAPTER_ENABLED",
+        ),
+        description=(
+            "Explicitly enable the typed, observation-only Playwright transport. "
+            "It remains disabled unless Playwright preflight also succeeds."
+        ),
+    )
+    playwright_browser_timeout_ms: int = Field(
+        default=15_000,
+        ge=100,
+        le=120_000,
+        validation_alias=AliasChoices(
+            "playwright_browser_timeout_ms",
+            "PLAYWRIGHT_BROWSER_TIMEOUT_MS",
+            "WEBPENT_PLAYWRIGHT_BROWSER_TIMEOUT_MS",
+        ),
+        description="Bounded timeout for one typed browser observation.",
+    )
 
     # -- V55 additive architecture feature flags ----------------------------
     # These switches are intentionally disabled by default so the existing

@@ -205,6 +205,44 @@ def build_initial_state(
         str(campaign_id or f"{resolved_engagement_id or 'engagement'}:main").strip()
         or "engagement:main"
     )
+    control_plane_browser_adapter = None
+    browser_capability = (
+        (capability_manifest.get("capabilities") or {}).get("browser") or {}
+    )
+    browser_preflight_ok = browser_capability.get("available") is True
+    if (
+        bool(enable_control_plane)
+        and bool(playwright_enabled)
+        and bool(settings.playwright_adapter_enabled)
+        and browser_preflight_ok
+    ):
+        try:
+            from webpent.shared.control_plane_runtime import BrowserActionAdapter
+            from webpent.shared.playwright_adapter import (
+                EphemeralProbeStore,
+                PlaywrightBrowserHandler,
+            )
+
+            probe_store = EphemeralProbeStore()
+            control_plane_browser_adapter = BrowserActionAdapter(
+                PlaywrightBrowserHandler(
+                    target_origin=target_url,
+                    engagement_id=resolved_engagement_id or "",
+                    profile_root=(
+                        control_plane_profile_root
+                        or str(Path(settings.action_ledger_path).parent / "browser_profiles")
+                    ),
+                    browser_timeout_ms=settings.playwright_browser_timeout_ms,
+                    probe_resolver=probe_store.resolve,
+                ),
+                probe_registrar=probe_store.put,
+                probe_cleaner=probe_store.clear,
+            )
+        except (ImportError, OSError, TypeError, ValueError):
+            # Keep startup fail-closed: an explicitly requested adapter that
+            # cannot be constructed remains unavailable and is visible through
+            # the runtime capability gap rather than becoming a raw handler.
+            control_plane_browser_adapter = None
     runtime_context = RuntimeFactory.create(
         engagement_id=resolved_engagement_id or "",
         campaign_id=resolved_campaign_id,
@@ -213,6 +251,7 @@ def build_initial_state(
         manifest=capability_manifest,
         enable_control_plane=bool(enable_control_plane),
         control_plane_profile_root=control_plane_profile_root,
+        control_plane_browser_adapter=control_plane_browser_adapter,
         raw_scope_entries=list(raw_scope_entries or []),
         target_package=(
             admitted_package_context.as_state()
@@ -372,6 +411,8 @@ def build_initial_state(
         "executive_summary": "",
         "risk_score": "",
         "playwright_enabled": bool(playwright_enabled),
+        "playwright_adapter_requested": bool(settings.playwright_adapter_enabled),
+        "playwright_adapter_active": bool(control_plane_browser_adapter is not None),
         "stealth_mode": bool(stealth_mode),
         "stealth_telemetry": {},
         "llm_enabled_override": llm_override,

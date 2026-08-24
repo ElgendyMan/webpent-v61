@@ -176,3 +176,38 @@ def test_llm_preflight_is_read_only_and_reports_fallback_shape() -> None:
     assert isinstance(report["configured_providers"], list)
     assert isinstance(report["fallback_chains"], dict)
     assert "analysis" in report["fallback_chains"]
+
+
+def test_cli_preflight_uses_validated_chromium_path(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    import webpent.cli as cli
+
+    launched = {}
+
+    class FakeBrowser:
+        def close(self):
+            launched["closed"] = True
+
+    class FakePlaywright:
+        chromium = SimpleNamespace(
+            launch=lambda **kwargs: launched.update(kwargs) or FakeBrowser()
+        )
+
+        def stop(self):
+            launched["stopped"] = True
+
+    fake_module = SimpleNamespace(
+        sync_playwright=lambda: SimpleNamespace(start=lambda: FakePlaywright())
+    )
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", fake_module)
+    monkeypatch.setattr(cli, "resolve_browser_executable", lambda: "/usr/bin/chromium")
+
+    assert cli._perform_preflight_check() is True
+    assert launched == {
+        "headless": True,
+        "executable_path": "/usr/bin/chromium",
+        "closed": True,
+        "stopped": True,
+    }

@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any
 
 from webpent.models.evidence import canonical_json, redact_sensitive
-from webpent.models.proof_bundle import build_proof_bundle
+from webpent.models.proof_bundle import build_proof_bundle, proof_bundle_promotion_ready
 from webpent.research.experiment_manager import ExperimentManager
 from webpent.shared.action_authority import (
     ActionAuthority,
@@ -25,6 +25,7 @@ from webpent.shared.action_authority import (
     ActionRisk,
     ActionStatus,
 )
+from webpent.shared.control_plane_runtime import project_browser_observation
 from webpent.shared.proof_bundle_store import ProofBundleStore
 
 
@@ -421,6 +422,20 @@ class CampaignExecutor:
             "proof_bundle_sealed": False,
         }
         if status == CampaignTaskStatus.EXECUTED and isinstance(output, Mapping):
+            handler_status = str(output.get("handler_status") or "")[:80]
+            handler_reason = str(output.get("handler_reason") or "")[:300]
+            if handler_status:
+                record["handler_status"] = handler_status
+            if handler_reason:
+                record["handler_reason"] = handler_reason
+            observation = project_browser_observation(output.get("observation"))
+            if observation:
+                record["observation"] = observation
+            observation_refs = output.get("observation_refs", ())
+            if isinstance(observation_refs, str):
+                observation_refs = (observation_refs,)
+            if isinstance(observation_refs, (list, tuple)):
+                record["observation_refs"] = tuple(str(ref)[:240] for ref in observation_refs[:32])
             for field_name, max_length in (
                 ("causal_next_action_ids", 20),
                 ("causal_next_hypothesis_ids", 20),
@@ -433,57 +448,90 @@ class CampaignExecutor:
                     record[field_name] = [str(item)[:200] for item in value[:max_length]]
             evidence = output.get("proof_evidence")
             if isinstance(evidence, (list, tuple)) and evidence:
-                evidence_refs = output.get("evidence_refs", ())
-                if isinstance(evidence_refs, str):
-                    evidence_refs = (evidence_refs,)
-                if not isinstance(evidence_refs, (list, tuple)):
-                    evidence_refs = ()
-                continuity = task.metadata.get("target_package_continuity", {})
-                if not isinstance(continuity, Mapping):
-                    continuity = {}
-                bundle = build_proof_bundle(
-                    engagement_id=task.engagement_id,
-                    finding_id=str(output.get("finding_id") or task.hypothesis_id),
-                    evidence=list(evidence),
-                    evidence_refs=list(evidence_refs),
-                    negative_control=output.get("negative_control"),
-                    hypothesis_id=str(output.get("hypothesis_id") or task.hypothesis_id),
-                    target_fingerprint=str(output.get("target_fingerprint") or "") or None,
-                    target_package_id=str(continuity.get("package_id") or "") or None,
-                    target_package_sha256=str(continuity.get("package_sha256") or "") or None,
-                    target_package_scope_digest=str(continuity.get("scope_digest") or "") or None,
-                    target_package_policy_digest=str(continuity.get("policy_digest") or "") or None,
-                    scope_context=output.get("scope_context"),
-                    identity_context=output.get("identity_context"),
-                    baseline=output.get("baseline"),
-                    request_evidence=output.get("request_evidence") or (),
-                    response_evidence=output.get("response_evidence") or (),
-                    causal_oracle=output.get("causal_oracle"),
-                    target_backed=bool(output.get("target_backed")),
-                    negative_control_independent=bool(
-                        output.get("negative_control_independent")
-                    ),
-                    validator_id=str(output.get("validator_id") or task.validator_id) or None,
-                    validator_version=str(output.get("validator_version") or "") or None,
-                    replay_metadata=output.get("replay_metadata"),
-                ).seal(actor="action_executor")
-                record["proof_bundle_store_status"] = "not_configured"
-                if self.proof_bundle_store is None:
-                    record["proof_bundle"] = bundle.model_dump(mode="json")
-                    record["proof_bundle_sealed"] = bundle.verify_seal()
+                record["negative_control_present"] = output.get("negative_control") is not None
+                if output.get("proof_verified") is not True:
+                    record["proof_bundle_rejection_reason"] = "verifier_attestation_required"
+                    record["proof_bundle_store_status"] = "not_verified"
                 else:
-                    try:
-                        self.proof_bundle_store.put(bundle)
-                    except Exception as exc:
-                        record["proof_bundle_store_status"] = "failed"
-                        record["proof_bundle_store_error"] = type(exc).__name__
+                    evidence_refs = output.get("evidence_refs", ())
+                    if isinstance(evidence_refs, str):
+                        evidence_refs = (evidence_refs,)
+                    if not isinstance(evidence_refs, (list, tuple)):
+                        evidence_refs = ()
+                    continuity = task.metadata.get("target_package_continuity", {})
+                    if not isinstance(continuity, Mapping):
+                        continuity = {}
+                    bundle = build_proof_bundle(
+                        engagement_id=task.engagement_id,
+                        finding_id=str(output.get("finding_id") or task.hypothesis_id),
+                        evidence=list(evidence),
+                        evidence_refs=list(evidence_refs),
+                        negative_control=output.get("negative_control"),
+                        hypothesis_id=str(output.get("hypothesis_id") or task.hypothesis_id),
+                        target_fingerprint=str(output.get("target_fingerprint") or "") or None,
+                        target_package_id=str(continuity.get("package_id") or "") or None,
+                        target_package_sha256=str(continuity.get("package_sha256") or "") or None,
+                        target_package_scope_digest=(
+                            str(continuity.get("scope_digest") or "") or None
+                        ),
+                        target_package_policy_digest=(
+                            str(continuity.get("policy_digest") or "") or None
+                        ),
+                        scope_context=output.get("scope_context"),
+                        identity_context=output.get("identity_context"),
+                        baseline=output.get("baseline"),
+                        request_evidence=output.get("request_evidence") or (),
+                        response_evidence=output.get("response_evidence") or (),
+                        causal_oracle=output.get("causal_oracle"),
+                        target_backed=bool(output.get("target_backed")),
+                        negative_control_independent=bool(
+                            output.get("negative_control_independent")
+                        ),
+                        validator_id=str(output.get("validator_id") or task.validator_id) or None,
+                        validator_version=str(output.get("validator_version") or "") or None,
+                        replay_metadata=output.get("replay_metadata"),
+                        cleanup_status=str(output.get("cleanup_status") or "not_recorded")[:80],
+                    ).seal(actor="action_executor")
+                    replay_context = output.get("replay_context")
+                    bundle_ready = bool(
+                        proof_bundle_promotion_ready(bundle)
+                        and bundle.verify_seal()
+                        and (
+                            not output.get("target_backed")
+                            or isinstance(replay_context, Mapping)
+                        )
+                        and bundle.replay(
+                            list(evidence),
+                            output.get("negative_control"),
+                            replay_context=(
+                                replay_context
+                                if isinstance(replay_context, Mapping)
+                                else None
+                            ),
+                        )
+                    )
+                    if not bundle_ready:
                         record["proof_bundle"] = None
                         record["proof_bundle_sealed"] = False
-                    else:
-                        record["proof_bundle_store_status"] = "stored"
+                        record["proof_bundle_rejection_reason"] = (
+                            "bundle_replay_or_promotion_failed"
+                        )
+                        record["proof_bundle_store_status"] = "rejected"
+                    elif self.proof_bundle_store is None:
                         record["proof_bundle"] = bundle.model_dump(mode="json")
-                        record["proof_bundle_sealed"] = bundle.verify_seal()
-                record["negative_control_present"] = output.get("negative_control") is not None
+                        record["proof_bundle_sealed"] = True
+                    else:
+                        try:
+                            self.proof_bundle_store.put(bundle)
+                        except Exception as exc:
+                            record["proof_bundle_store_status"] = "failed"
+                            record["proof_bundle_store_error"] = type(exc).__name__
+                            record["proof_bundle"] = None
+                            record["proof_bundle_sealed"] = False
+                        else:
+                            record["proof_bundle_store_status"] = "stored"
+                            record["proof_bundle"] = bundle.model_dump(mode="json")
+                            record["proof_bundle_sealed"] = True
             if self.experiment_manager is not None:
                 experiment_observation = dict(output)
                 bundle_value = record.get("proof_bundle")

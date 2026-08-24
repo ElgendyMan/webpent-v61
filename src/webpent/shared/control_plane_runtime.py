@@ -78,6 +78,89 @@ def _contains_secret_key(value: Any) -> bool:
     return False
 
 
+_BROWSER_OBSERVATION_SCALARS = frozenset(
+    {
+        "handler_status",
+        "handler_id",
+        "handler_version",
+        "target_backed",
+        "observation_role",
+        "target_fingerprint",
+        "request_digest",
+        "response_digest",
+        "status_code",
+        "final_url_shape_digest",
+        "dialog_count",
+        "network_event_count",
+        "dom_digest",
+        "screenshot_digest",
+        "replayable",
+        "reason",
+    }
+)
+
+
+def project_browser_observation(value: Any) -> dict[str, Any]:
+    """Return a bounded, digest-only browser observation projection."""
+    if not isinstance(value, Mapping) or _contains_secret_key(value):
+        return {}
+    projected: dict[str, Any] = {}
+    for key in _BROWSER_OBSERVATION_SCALARS:
+        if key not in value:
+            continue
+        item = value[key]
+        if key in {
+            "target_backed",
+            "replayable",
+        }:
+            if isinstance(item, bool):
+                projected[key] = item
+        elif key in {"status_code", "dialog_count", "network_event_count"}:
+            if isinstance(item, int) and not isinstance(item, bool):
+                projected[key] = max(0, min(1_000_000, item))
+        else:
+            text = str(item or "")[:240]
+            if key.endswith("_digest") or key in {
+                "target_fingerprint",
+                "request_digest",
+                "response_digest",
+            }:
+                if text.startswith("sha256:") and len(text) == 71:
+                    projected[key] = text
+            elif text:
+                projected[key] = text
+    for key, item_keys, limit in (
+        ("dialog_events", ("type", "message_digest"), 32),
+        ("network_events", ("status", "url_shape_digest", "resource_type"), 128),
+    ):
+        items = value.get(key)
+        if not isinstance(items, (list, tuple)):
+            continue
+        safe_items: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            if not isinstance(item, Mapping) or _contains_secret_key(item):
+                continue
+            safe_item: dict[str, Any] = {}
+            for item_key in item_keys:
+                if item_key not in item:
+                    continue
+                item_value = item[item_key]
+                if item_key == "status":
+                    if isinstance(item_value, int) and not isinstance(item_value, bool):
+                        safe_item[item_key] = max(0, min(1000, item_value))
+                elif item_key.endswith("_digest"):
+                    digest = str(item_value or "")
+                    if digest.startswith("sha256:") and len(digest) == 71:
+                        safe_item[item_key] = digest
+                else:
+                    safe_item[item_key] = str(item_value or "")[:120]
+            if safe_item:
+                safe_items.append(safe_item)
+        if safe_items:
+            projected[key] = safe_items
+    return projected
+
+
 def _intent_binding(value: Any | None) -> tuple[str, str]:
     """Return schema and digest for a bounded passive intent projection."""
     if value is None:
@@ -327,8 +410,25 @@ class BrowserSessionManager:
 class BrowserActionAdapter:
     """Typed adapter boundary; actual handler must be injected and pre-registered."""
 
-    def __init__(self, handler: Callable[[BrowserActionRequest], Mapping[str, Any]]) -> None:
+    def __init__(
+        self,
+        handler: Callable[[BrowserActionRequest], Mapping[str, Any]],
+        *,
+        probe_registrar: Callable[[str, str], None] | None = None,
+        probe_cleaner: Callable[[str], None] | None = None,
+    ) -> None:
         self._handler = handler
+        self._probe_registrar = probe_registrar
+        self._probe_cleaner = probe_cleaner
+
+    def register_ephemeral_probe(self, probe_ref: str, value: str) -> None:
+        if self._probe_registrar is None:
+            raise RuntimeError("ephemeral_probe_registrar_unavailable")
+        self._probe_registrar(probe_ref, value)
+
+    def clear_ephemeral_probe(self, probe_ref: str) -> None:
+        if self._probe_cleaner is not None:
+            self._probe_cleaner(probe_ref)
 
     def execute(
         self,
@@ -345,6 +445,7 @@ class BrowserActionAdapter:
                 "screenshot",
                 "dom_capture",
                 "observe_network",
+                "validate_input",
             }
         ),
     ) -> ActionOutcome:
@@ -391,6 +492,15 @@ class BrowserActionAdapter:
                 reason="adapter_output_not_redaction_safe",
             )
         clean, _ = redact_sensitive(dict(result))
+        handler_status = str(clean.get("handler_status") or "completed")
+        if handler_status != "completed":
+            return ActionOutcome(
+                action_id=request.action_id,
+                status="blocked_by_precondition",
+                reason=str(clean.get("reason") or "browser_handler_blocked")[:300],
+                clean=False,
+                observation=clean,
+            )
         observation_ref = f"observation://browser/{_digest(clean)[7:23]}"
         return ActionOutcome(
             action_id=request.action_id,
@@ -398,6 +508,7 @@ class BrowserActionAdapter:
             observation_refs=(observation_ref,),
             reason="browser_action_completed_redacted",
             clean=False,
+            observation=clean,
         )
 
 
@@ -680,6 +791,7 @@ def seal_control_plane_proof(
 
 __all__ = [
     "BrowserActionAdapter",
+    "project_browser_observation",
     "BrowserSessionManager",
     "ControlPlaneProofInput",
     "EmailArtifact",

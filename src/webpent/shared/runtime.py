@@ -283,6 +283,9 @@ class RuntimeContext:
     configuration_errors: tuple[str, ...] = ()
     capability_gaps: tuple[RuntimeCapabilityGap, ...] = ()
     control_plane_runtime: Any | None = None
+    # Live typed browser boundary only; never included in checkpoint-safe
+    # descriptors or serialized state. Raw Playwright handlers are not exposed.
+    control_plane_browser_adapter: Any | None = None
     campaign_next_best_action_engine: NextBestActionEngine | None = None
     safety_gate: EngagementSafetyGate | None = None
     # Optional transport-injected identity provisioning. It is deliberately
@@ -751,6 +754,11 @@ class RuntimeFactory:
             configuration_errors=tuple(dict.fromkeys(errors)),
             capability_gaps=capability_gaps,
             control_plane_runtime=control_plane_runtime,
+            control_plane_browser_adapter=(
+                control_plane_browser_adapter
+                if control_plane_runtime is not None
+                else None
+            ),
             campaign_next_best_action_engine=campaign_action_engine,
             safety_gate=safety_gate,
             identity_provisioning_agent=identity_provisioning_agent,

@@ -13,6 +13,7 @@ to :class:`webpent.models.findings.Finding` instances.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import os
@@ -60,6 +61,54 @@ def _private_tool_cache_dir() -> Path:
 def _template_dir_from_environment() -> Path | None:
     configured = os.environ.get("WEBPENT_NUCLEI_TEMPLATE_DIR", "").strip()
     return Path(configured).expanduser() if configured else None
+
+
+def _is_local_target(target_url: str) -> bool:
+    """Return whether a target is loopback/private/link-local/reserved.
+
+    Local engagements need a stricter nuclei template policy because the
+    installed upstream set also contains OSINT and verification templates that
+    intentionally call third-party endpoints. This predicate is deliberately
+    based on the target URL, not on lab-specific routes or names.
+    """
+    from urllib.parse import urlparse
+
+    hostname = (urlparse(target_url).hostname or "").strip().lower().rstrip(".")
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return hostname.endswith(".local")
+    return bool(
+        address.is_loopback
+        or address.is_private
+        or address.is_link_local
+        or address.is_reserved
+    )
+
+
+def _append_local_template_exclusions(cmd: list[str], template_dir: Path | None) -> None:
+    """Prevent external-provider templates during private/local scans.
+
+    ``-ni`` prevents Interactsh, but it does not prevent ordinary HTTP
+    templates from contacting RDAP, OSINT, or vendor APIs. Keep the full
+    target-relative security set while excluding only the known external
+    categories/files. The paths are appended as nuclei ``-et`` values and are
+    harmless when a configured template directory does not contain them.
+    """
+    cmd.extend(["-etags", "osint"])
+    if template_dir is None:
+        return
+    for relative_path in (
+        "http/osint",
+        "http/exposures/tokens/google/google-gemini-key-exposure.yaml",
+        "http/miscellaneous/rdap-whois.yaml",
+        "http/misconfiguration/intercom-identity-misconfiguration.yaml",
+    ):
+        candidate = template_dir / relative_path
+        if candidate.exists():
+            cmd.extend(["-et", str(candidate)])
 
 
 def _verify_default_template_set(template_dir: Path) -> None:
@@ -179,6 +228,7 @@ def run_nuclei(
         enforce_min_interval(stealth_mode, extract_host(target_url))
 
     settings = get_settings()
+    local_target = _is_local_target(target_url)
 
     cmd = [
         _resolve_nuclei_binary(settings.nuclei_path),
@@ -196,19 +246,27 @@ def run_nuclei(
         "-c",
         str(settings.nuclei_concurrency),
     ]
+    if local_target:
+        # Local bounded scans must not update, authenticate to, or contact
+        # external providers. Redirects and non-HTTP protocols are also
+        # disabled because they can leave the declared local target origin.
+        cmd.extend(["-duc", "-ni", "-auth=false", "-dr", "-pt", "http"])
     if settings.nuclei_rate_limit > 0:
         cmd.extend(["-rl", str(settings.nuclei_rate_limit)])
 
+    template_dir = _template_dir_from_environment()
     if templates:
         for template in templates:
             template = template.strip()
             if template:
                 cmd.extend(["-t", template])
     else:
-        template_dir = _template_dir_from_environment()
         if template_dir is not None:
             _verify_default_template_set(template_dir)
             cmd.extend(["-t", str(template_dir)])
+
+    if local_target:
+        _append_local_template_exclusions(cmd, template_dir)
 
     # Keep nuclei aligned with the Python HTTP clients and the target's
     # explicit lab allowlist. Without this header, WAPTLab's bot gate

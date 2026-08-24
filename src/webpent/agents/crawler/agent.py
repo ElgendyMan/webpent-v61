@@ -537,7 +537,7 @@ def crawler_node(state: PentestState) -> dict:
                 "returned 0 endpoints. Authenticated discovery coverage is 0.",
                 _cookie_count,
             )
-        return {
+        empty_result = {
             "crawled_data": {
                 "endpoints": [],
                 "http_discovery": {
@@ -551,6 +551,12 @@ def crawler_node(state: PentestState) -> dict:
             ],
             "current_phase": "crawling",
         }
+        empty_scope_handle = getattr(
+            state.get("runtime_context"), "scope_runtime_handle", None
+        )
+        if empty_scope_handle is not None:
+            empty_result["scope_runtime_fingerprint"] = str(empty_scope_handle.fingerprint)
+        return empty_result
 
     logger.info(
         "%s discovered %d endpoint(s); invoking LLM supervisor for triage",

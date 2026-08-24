@@ -65,12 +65,48 @@ def test_controller_executes_only_through_action_executor() -> None:
 
     def handler(task):
         calls.append(task.task_id)
-        return {
-            "finding_id": "finding:test-controller",
-            "proof_evidence": [{"kind": "response", "status_code": 200}],
-            "evidence_refs": ["surface:0"],
-            "negative_control": {"status": "completed", "matched": False},
-        }
+        from webpent.models.findings import Finding, Severity, VulnClass
+        from webpent.shared.verifier import _target_fingerprint, verify_replay_evidence
+
+        finding = Finding(
+            title="Controller proof fixture",
+            severity=Severity.HIGH,
+            description="target-backed controller fixture",
+            tool_name="test.controller",
+            url=task.target_url,
+            vuln_class=VulnClass.IDOR,
+        )
+        fingerprint = _target_fingerprint(task.target_url)
+
+        def observation(role: str, marker: str) -> dict[str, object]:
+            return {
+                "target_backed": True,
+                "observation_role": role,
+                "target_fingerprint": fingerprint,
+                "request_digest": f"sha256:{marker * 64}",
+                "response_digest": f"sha256:{marker * 64}",
+                "status_code": 200 if role == "candidate" else 404,
+                "replayable": True,
+            }
+
+        result = verify_replay_evidence(
+            finding,
+            baseline=observation("baseline", "a"),
+            candidate=observation("candidate", "b"),
+            negative_control=observation("negative_control", "c"),
+            causal_signal=True,
+            negative_control_complete=True,
+            validator_id="test.controller",
+            validator_version="1.0",
+            causal_basis="target-backed controller differential",
+            engagement_id=task.engagement_id,
+            hypothesis_id=task.hypothesis_id,
+            scope_context={"allowed_origin": "http://example.test"},
+            identity_context={"mode": "anonymous"},
+            require_target_backed=True,
+        )
+        assert result.passed is True
+        return result.evidence
 
     result = AutonomousController(action_executor=executor, max_iterations=2).run(
         _state(), handler=handler, iterations=1

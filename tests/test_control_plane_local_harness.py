@@ -24,6 +24,7 @@ from webpent.shared.control_plane_runtime import (
     WorkflowStatus,
     WorkflowStep,
     parse_email_message,
+    project_browser_observation,
     seal_control_plane_proof,
 )
 from webpent.shared.control_plane_spine import (
@@ -38,6 +39,7 @@ from webpent.shared.g02_contract import (
     G02_HTTP_PROOF_CONTRACT,
     G02_HTTP_SCOPE_POLICY,
 )
+from webpent.shared.playwright_adapter import PlaywrightBrowserHandler
 from webpent.shared.runtime import AdapterRegistry, RegisteredAdapter
 from webpent.shared.secret_vault import SecretVault, SecretVaultError
 
@@ -389,6 +391,116 @@ def test_proof_bundle_requires_causal_signal_negative_control_and_clean_state():
             **value.model_dump(exclude={"after_state"}),
             after_state={"password": "not-allowed"},
         )
+
+
+def test_browser_observation_projection_is_bounded_and_secret_safe():
+    digest = "sha256:" + "a" * 64
+    projected = project_browser_observation(
+        {
+            "handler_status": "completed",
+            "handler_id": "fixture.browser",
+            "handler_version": "1",
+            "target_backed": True,
+            "observation_role": "candidate",
+            "target_fingerprint": digest,
+            "request_digest": digest,
+            "response_digest": digest,
+            "status_code": 200,
+            "dialog_count": 1,
+            "network_event_count": 1,
+            "dom_digest": digest,
+            "replayable": True,
+            "dialog_events": [{"type": "alert", "message_digest": digest}],
+            "network_events": [
+                {"status": 200, "url_shape_digest": digest, "resource_type": "document"}
+            ],
+            "raw_response_body": "must not survive",
+        }
+    )
+    assert projected["target_backed"] is True
+    assert projected["request_digest"] == digest
+    assert "raw_response_body" not in projected
+    assert "cookies" not in projected
+    assert len(projected["network_events"]) == 1
+    assert project_browser_observation({"cookies": ["secret"]}) == {}
+
+
+def test_playwright_handler_rejects_account_actions_and_wrong_bindings():
+    handler = PlaywrightBrowserHandler(
+        target_origin=ORIGIN,
+        engagement_id=ENGAGEMENT,
+        browser_timeout_ms=1000,
+    )
+    decision = evaluate_scope(_scope(), f"{ORIGIN}/signup")
+    request = BrowserActionRequest(
+        action_id="browser-account-1",
+        engagement_id=ENGAGEMENT,
+        session_id="session-1",
+        operation="login",
+        url=f"{ORIGIN}/signup",
+        scope_decision=decision,
+        idempotency_key="browser-account-idem",
+    )
+    assert handler(request)["reason"] == "account_action_denied"
+    assert handler(request)["target_backed"] is False
+    wrong_engagement = request.model_copy(update={"engagement_id": "other-engagement"})
+    assert handler(wrong_engagement)["reason"] == "engagement_mismatch"
+    wrong_origin = request.model_copy(
+        update={"operation": "navigate", "url": "https://evil.example.net/"}
+    )
+    assert handler(wrong_origin)["reason"] == "target_origin_mismatch"
+
+
+def test_browser_replay_preserves_redacted_target_observation_through_executor(tmp_path):
+    runtime = build_control_plane_runtime(
+        engagement_id=ENGAGEMENT,
+        scope=_scope(),
+        executor=_browser_executor(),
+        profile_root=str(tmp_path),
+    )
+    session = runtime.session_manager.create_session(
+        engagement_id=ENGAGEMENT,
+        profile_ref="profile-browser-observation",
+        authenticated_origins=(ORIGIN,),
+        cookie_fingerprint="sha256:" + "b" * 64,
+    )
+    digest = "sha256:" + "c" * 64
+    adapter = BrowserActionAdapter(
+        lambda _request: {
+            "handler_status": "completed",
+            "target_backed": True,
+            "observation_role": "candidate",
+            "target_fingerprint": digest,
+            "request_digest": digest,
+            "response_digest": digest,
+            "dom_digest": digest,
+        }
+    )
+    request = BrowserActionRequest(
+        action_id="browser-observation-1",
+        engagement_id=ENGAGEMENT,
+        session_id=session.session_id,
+        operation="navigate",
+        url=f"{ORIGIN}/object/1",
+        scope_decision=evaluate_scope(_scope(), f"{ORIGIN}/object/1"),
+        idempotency_key="browser-observation-idem",
+    )
+    engine = ActionReplayEngine(
+        executor=runtime.replay_engine.executor,
+        engagement_id=ENGAGEMENT,
+    )
+    receipt = engine.replay_browser(
+        request,
+        session,
+        adapter,
+        target_url=ORIGIN,
+        g02_inventory_ref=G02_HTTP_INVENTORY_REF,
+        g02_proof_contract=G02_HTTP_PROOF_CONTRACT,
+    )
+    assert receipt.status == "executed"
+    assert receipt.observation["target_backed"] is True
+    assert receipt.observation["observation_role"] == "candidate"
+    assert "cookies" not in receipt.observation
 
 
 def test_browser_crash_returns_infrastructure_failure_and_resume_stays_safe(tmp_path):

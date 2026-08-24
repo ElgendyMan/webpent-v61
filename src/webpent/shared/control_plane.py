@@ -582,6 +582,24 @@ class BrowserActionRequest(BaseModel):
     timeout_ms: int = Field(default=10000, ge=100, le=120000)
     idempotency_key: str = Field(min_length=1, max_length=200)
     user_takeover_required: bool = False
+    observation_role: str = Field(default="observation", min_length=1, max_length=40)
+    # Ephemeral validator metadata only; the payload value never crosses this
+    # transport contract or enters checkpoints/records.
+    probe_ref: str | None = Field(default=None, max_length=240)
+    probe_digest: str | None = Field(default=None, min_length=71, max_length=71)
+
+    @model_validator(mode="after")
+    def _validate_probe_metadata(self) -> BrowserActionRequest:
+        if self.operation == "validate_input":
+            if not self.probe_ref or not self.probe_digest:
+                raise ValueError("validator_probe_reference_and_digest_required")
+            if not self.probe_ref.startswith("probe://"):
+                raise ValueError("validator_probe_reference_invalid")
+            if not self.probe_digest.startswith("sha256:"):
+                raise ValueError("validator_probe_digest_invalid")
+        elif self.probe_ref is not None or self.probe_digest is not None:
+            raise ValueError("probe_metadata_not_allowed_for_operation")
+        return self
 
 
 class ActionOutcome(BaseModel):
@@ -594,6 +612,7 @@ class ActionOutcome(BaseModel):
     reason: str = Field(default="", max_length=300)
     clean: bool = False
     redacted: bool = True
+    observation: dict[str, Any] = Field(default_factory=dict)
 
 
 _ALLOWED_TRANSITIONS: dict[IdentityStatus, frozenset[IdentityStatus]] = {

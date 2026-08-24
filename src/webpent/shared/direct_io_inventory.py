@@ -144,6 +144,7 @@ APPROVED_DIRECT_FILES = {
     "src/webpent/cli/git_source.py": "bounded_git_source_subprocess",
     "src/webpent/shared/capability_manifest.py": "read_only_tool_capability_probe",
     "src/webpent/shared/preflight.py": "read_only_playwright_capability_probe",
+    "src/webpent/shared/playwright_adapter.py": "typed_playwright_observation_boundary",
     "src/webpent/shared/oob_provider.py": "bounded_opt_in_oob_subprocess_and_session_files",
     "src/webpent/agents/authentication/agent.py": "scoped_playwright_auth_flow",
     "src/webpent/agents/execution_sandbox/agent.py": "scoped_playwright_xss_replay",
@@ -162,7 +163,12 @@ APPROVED_RAW_SYMBOLS_BY_FILE: dict[str, frozenset[str]] = {
     "src/webpent/tools/utils/subprocess.py": frozenset({"subprocess", "subprocess.Popen"}),
     "src/webpent/cli/git_source.py": frozenset({"subprocess", "subprocess.run"}),
     "src/webpent/shared/capability_manifest.py": frozenset({"subprocess", "subprocess.run"}),
-    "src/webpent/shared/preflight.py": frozenset({"playwright"}),
+    "src/webpent/shared/preflight.py": frozenset(
+        {"playwright"}
+    ),
+    "src/webpent/shared/playwright_adapter.py": frozenset(
+        {"playwright.sync_api.sync_playwright", "playwright.chromium.launch"}
+    ),
     "src/webpent/shared/oob_provider.py": frozenset(
         {"subprocess", "subprocess.Popen"}
     ),

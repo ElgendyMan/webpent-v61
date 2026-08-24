@@ -42,7 +42,7 @@ from webpent.config.settings import (
 from webpent.graph.builder import build_graph
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
-from webpent.shared.capability_manifest import CapabilityRegistry
+from webpent.shared.capability_manifest import CapabilityRegistry, resolve_browser_executable
 from webpent.shared.coverage_ledger import CoverageIntelligence
 from webpent.shared.engagement_scope import normalize_declared_origins
 from webpent.shared.finding_aggregation import aggregate_findings, default_engagement_id
@@ -305,7 +305,11 @@ def _perform_preflight_check() -> bool:
         from playwright.sync_api import sync_playwright
 
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(headless=True)
+        executable_path = resolve_browser_executable()
+        launch_kwargs = {"headless": True}
+        if executable_path:
+            launch_kwargs["executable_path"] = executable_path
+        browser = pw.chromium.launch(**launch_kwargs)
         browser.close()
         pw.stop()
         console.print("[green]✓ Playwright Chromium available.[/green]")
@@ -852,6 +856,7 @@ def scan(
                     engagement_id=resolved_engagement_id,
                 )
                 console.print("\n[bold blue][*] Invoking LangGraph orchestrator...[/bold blue]\n")
+                from webpent.memory.embeddings import rag_enabled_override
                 from webpent.shared.llm import (
                     get_llm_budget_summary,
                     llm_enabled_override,
@@ -862,7 +867,11 @@ def scan(
                     from webpent.shared.stealth import reset_stealth_telemetry
 
                     reset_stealth_telemetry()
-                with llm_enabled_override(False if no_llm else None), llm_usage_scope():
+                with (
+                    llm_enabled_override(False if no_llm else None),
+                    rag_enabled_override(False if no_llm else None),
+                    llm_usage_scope(),
+                ):
                     final_state = graph.invoke(initial_state, config=config)
                     if isinstance(final_state, dict):
                         from webpent.shared.llm import get_llm_usage_trace

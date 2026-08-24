@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
+from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Finding
 from webpent.models.proof_bundle import (
     ProofBundle,
@@ -251,23 +252,90 @@ def verify_replay_evidence(
             "raw_response_body",
         ),
     ).seal(actor="strict_replay_verifier")
+    replay_context: dict[str, Any] = {
+        "engagement_id": str(engagement_id),
+        "finding_id": str(finding.id),
+        "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
+        "target_fingerprint": target_fingerprint,
+    }
+    if target_package_id:
+        replay_context.update(
+            {
+                "target_package_id": target_package_id,
+                "target_package_sha256": target_package_sha256,
+                "target_package_scope_digest": target_package_scope_digest,
+                "target_package_policy_digest": target_package_policy_digest,
+            }
+        )
     if not proof_bundle_promotion_ready(bundle):
         evidence["promotion_guard"] = {
             "status": "blocked",
             "reason": "proof_bundle_promotion_contract_failed",
         }
         return VerificationResult(False, "proof_bundle_promotion_contract_failed", evidence)
+    if not bundle.verify_seal():
+        evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "proof_bundle_seal_verification_failed",
+        }
+        return VerificationResult(False, "proof_bundle_seal_verification_failed", evidence)
+    if not bundle.replay(
+        [baseline, candidate, negative_control],
+        negative_control,
+        replay_context=replay_context,
+    ):
+        evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "proof_bundle_replay_failed",
+        }
+        return VerificationResult(False, "proof_bundle_replay_failed", evidence)
 
+    clean_baseline = redact_sensitive(baseline)[0]
+    clean_candidate = redact_sensitive(candidate)[0]
+    clean_negative_control = redact_sensitive(negative_control)[0]
+    clean_replay_metadata = redact_sensitive(
+        {**replay, **(replay_metadata or {}), "replay_verified": True}
+    )[0]
     evidence.update(
         {
+            "proof_verified": True,
             "proof_bundle_sealed": True,
             "target_backed": bool(require_target_backed),
             "negative_control_independent": bool(require_target_backed),
             "proof_bundle": bundle.model_dump(mode="json"),
+            "proof_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+            "baseline": clean_baseline,
+            "candidate": clean_candidate,
+            "negative_control": clean_negative_control,
+            "evidence_refs": [
+                f"replay:{validator_id}:baseline",
+                f"replay:{validator_id}:candidate",
+                f"replay:{validator_id}:negative_control",
+            ],
+            "request_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+            "response_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+            "scope_context": clean_scope,
+            "identity_context": clean_identity,
+            "causal_oracle": {
+                "causal_signal": True,
+                "negative_control_complete": True,
+                "requires_target_backed": bool(require_target_backed),
+                "basis": str(causal_basis)[:240],
+            },
+            "validator_id": validator_id,
+            "validator_version": validator_version,
+            "cleanup_status": "not_applicable",
+            "finding_id": str(finding.id),
+            "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
+            "target_fingerprint": target_fingerprint,
+            "replay_context": replay_context,
+            "replay_metadata": clean_replay_metadata,
             "promotion_guard": {
                 "status": "passed",
                 "proof_bundle_sealed": True,
                 "replayable": True,
+                "replay_verified": True,
+                "replay_context": replay_context,
             },
         }
     )

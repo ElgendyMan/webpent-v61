@@ -31,9 +31,42 @@ Resilience:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
+
+# A scan-scoped switch.  It is intentionally independent from Settings so a
+# `--no-llm` run cannot mutate process-wide configuration or poison later runs.
+_RAG_ENABLED_OVERRIDE: ContextVar[bool | None] = ContextVar(
+    "webpent_rag_enabled_override", default=None
+)
+
+
+@contextmanager
+def rag_enabled_override(enabled: bool | None) -> Iterator[None]:
+    """Temporarily override RAG availability for the current scan context."""
+    token = _RAG_ENABLED_OVERRIDE.set(enabled)
+    try:
+        yield
+    finally:
+        _RAG_ENABLED_OVERRIDE.reset(token)
+
+
+def is_rag_enabled() -> bool:
+    """Return the effective RAG availability for the current execution context."""
+    override = _RAG_ENABLED_OVERRIDE.get()
+    if override is not None:
+        return bool(override)
+    try:
+        from webpent.config.settings import get_settings
+
+        return not bool(getattr(get_settings(), "disable_rag", False))
+    except Exception:
+        return True
+
 
 # The SentenceTransformers model identifier. ``all-MiniLM-L6-v2`` is
 # the canonical choice for the framework — changing it requires
@@ -71,9 +104,17 @@ def get_embeddings():
             set and model not cached). The error message includes
             installation guidance.
     """
-    # V10 P0-2: check the RAG-disable switch FIRST — if the operator
-    # explicitly disabled RAG, do NOT attempt any model load or network
-    # access. Callers catch RuntimeError and degrade gracefully.
+    # Check the scan-scoped override before consulting Settings or importing
+    # any embedding implementation.  This is the no-LLM hard stop for all
+    # current vector-store callers.
+    if not is_rag_enabled():
+        logger.info(
+            "RAG disabled for the current execution context; no embeddings loaded."
+        )
+        raise RuntimeError("RAG disabled for the current execution context.")
+
+    # V10 P0-2: check the persistent RAG-disable switch next — if the operator
+    # explicitly disabled RAG, do NOT attempt any model load or network access.
     try:
         from webpent.config.settings import get_settings
         settings = get_settings()

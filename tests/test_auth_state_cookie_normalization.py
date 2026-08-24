@@ -79,7 +79,7 @@ def test_cross_origin_and_malformed_records_are_rejected_fail_closed() -> None:
     assert cookies == []
 
 
-def test_inject_cookies_passes_normalized_records_to_playwright() -> None:
+def test_inject_cookies_is_disabled_for_execution() -> None:
     context = _Context()
 
     _inject_cookies(
@@ -88,9 +88,7 @@ def test_inject_cookies_passes_normalized_records_to_playwright() -> None:
         {"cookies": [{"name": "sid", "value": "v"}]},
     )
 
-    assert len(context.calls) == 1
-    assert context.calls[0][0]["domain"] == "127.0.0.1"
-    assert context.calls[0][0]["path"] == "/"
+    assert context.calls == []
 
 
 def test_invalid_auth_state_does_not_call_playwright() -> None:

@@ -59,15 +59,51 @@ def test_g02_execution_requires_registered_adapter_and_preserves_proof_contract(
     executor = ActionExecutor(authority)
     called = False
 
-    def handler(_task: CampaignTask) -> dict[str, object]:
+    def handler(task: CampaignTask) -> dict[str, object]:
         nonlocal called
         called = True
-        return {
-            "finding_id": "finding-g02-1",
-            "proof_evidence": [{"causal_signal": "changed"}],
-            "evidence_refs": ["execution:g02-1"],
-            "negative_control": {"causal_signal": "unchanged"},
-        }
+        from webpent.models.findings import Finding, Severity, VulnClass
+        from webpent.shared.verifier import _target_fingerprint, verify_replay_evidence
+
+        finding = Finding(
+            title="G02 proof fixture",
+            severity=Severity.HIGH,
+            description="target-backed G02 fixture",
+            tool_name="test.g02",
+            url=task.target_url,
+            vuln_class=VulnClass.IDOR,
+        )
+        fingerprint = _target_fingerprint(task.target_url)
+
+        def observation(role: str, marker: str) -> dict[str, object]:
+            return {
+                "target_backed": True,
+                "observation_role": role,
+                "target_fingerprint": fingerprint,
+                "request_digest": f"sha256:{marker * 64}",
+                "response_digest": f"sha256:{marker * 64}",
+                "status_code": 200 if role == "candidate" else 404,
+                "replayable": True,
+            }
+
+        result = verify_replay_evidence(
+            finding,
+            baseline=observation("baseline", "a"),
+            candidate=observation("candidate", "b"),
+            negative_control=observation("negative_control", "c"),
+            causal_signal=True,
+            negative_control_complete=True,
+            validator_id="test.g02",
+            validator_version="1.0",
+            causal_basis="target-backed G02 differential",
+            engagement_id=task.engagement_id,
+            hypothesis_id=task.hypothesis_id,
+            scope_context={"allowed_origin": "http://example.test"},
+            identity_context={"mode": "anonymous"},
+            require_target_backed=True,
+        )
+        assert result.passed is True
+        return result.evidence
 
     record = executor.execute(
         _task(

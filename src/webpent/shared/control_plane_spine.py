@@ -26,6 +26,7 @@ from webpent.shared.control_plane_runtime import (
     BrowserSessionManager,
     WorkflowRecord,
     WorkflowStateMachine,
+    project_browser_observation,
 )
 from webpent.shared.secret_vault import SecretVault
 
@@ -105,6 +106,7 @@ class ReplayReceipt(BaseModel):
     status: str = Field(min_length=1, max_length=80)
     reason: str = Field(default="", max_length=300)
     observation_refs: tuple[str, ...] = ()
+    observation: dict[str, Any] = Field(default_factory=dict)
     clean: bool = False
 
 
@@ -169,23 +171,42 @@ class ActionReplayEngine:
                 "scope_decision": request.scope_decision.reason,
             },
         )
+        def _run_browser_action(_task: CampaignTask) -> dict[str, Any]:
+            outcome = adapter.execute(request, session)
+            return {
+                "handler_status": outcome.status,
+                "handler_reason": outcome.reason,
+                "observation_refs": list(outcome.observation_refs),
+                "observation": project_browser_observation(outcome.observation),
+                "clean": outcome.clean,
+            }
+
         result = self.executor.execute(
             task,
-            lambda _task: adapter.execute(request, session),
+            _run_browser_action,
             preconditions_met=preconditions_met,
         )
-        return ReplayReceipt(
-            task_id=request.action_id,
-            engagement_id=self.engagement_id,
-            status=str(
+        handler_status = str(result.get("handler_status") or "")
+        effective_status = (
+            "blocked_by_precondition"
+            if handler_status not in {"", "completed"}
+            else str(
                 getattr(
                     result.get("status"),
                     "value",
                     result.get("status", "infrastructure_failure"),
                 )
-            ),
-            reason=str(result.get("reason", ""))[:300],
+            )
+        )
+        return ReplayReceipt(
+            task_id=request.action_id,
+            engagement_id=self.engagement_id,
+            status=effective_status,
+            reason=str(
+                result.get("handler_reason") or result.get("reason", "")
+            )[:300],
             observation_refs=tuple(result.get("observation_refs", ())),
+            observation=project_browser_observation(result.get("observation")),
             clean=bool(result.get("clean", False)),
         )
 

@@ -2,10 +2,54 @@ from __future__ import annotations
 
 import pytest
 
+from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.models.proof_bundle import build_proof_bundle
 from webpent.shared.campaign_executor import CampaignTask
 from webpent.shared.proof_bundle_store import ProofBundleStore, ProofBundleStoreError
 from webpent.shared.runtime import RuntimeFactory
+from webpent.shared.verifier import _target_fingerprint, verify_replay_evidence
+
+
+def _verified_output() -> dict[str, object]:
+    finding = Finding(
+        title="Proof-store fixture",
+        severity=Severity.HIGH,
+        description="target-backed proof-store fixture",
+        tool_name="test.proof_store",
+        url="https://example.test/object/1",
+        vuln_class=VulnClass.IDOR,
+    )
+    fingerprint = _target_fingerprint(finding.url)
+
+    def observation(role: str, marker: str) -> dict[str, object]:
+        return {
+            "target_backed": True,
+            "observation_role": role,
+            "target_fingerprint": fingerprint,
+            "request_digest": f"sha256:{marker * 64}",
+            "response_digest": f"sha256:{marker * 64}",
+            "status_code": 200 if role == "candidate" else 404,
+            "replayable": True,
+        }
+
+    result = verify_replay_evidence(
+        finding,
+        baseline=observation("baseline", "a"),
+        candidate=observation("candidate", "b"),
+        negative_control=observation("negative_control", "c"),
+        causal_signal=True,
+        negative_control_complete=True,
+        validator_id="test.proof_store",
+        validator_version="1.0",
+        causal_basis="target-backed proof-store differential",
+        engagement_id="eng-1",
+        hypothesis_id="hyp-1",
+        scope_context={"allowed_origin": "https://example.test"},
+        identity_context={"mode": "anonymous"},
+        require_target_backed=True,
+    )
+    assert result.passed is True
+    return result.evidence
 
 
 def _sealed_bundle(*, engagement_id: str = "eng-1", finding_id: str = "finding-1"):
@@ -107,12 +151,7 @@ def test_action_executor_persists_bundle_before_exposing_it() -> None:
         _campaign_task(),
         CampaignTaskStatus.EXECUTED,
         "executed",
-        output={
-            "finding_id": "finding-store",
-            "proof_evidence": [{"status": 200, "body": "redacted"}],
-            "evidence_refs": ["replay://finding-store/positive"],
-            "negative_control": {"status": 404},
-        },
+        output=_verified_output(),
     )
 
     assert record["proof_bundle_store_status"] == "stored"
@@ -133,12 +172,7 @@ def test_action_executor_fails_closed_when_bundle_store_fails() -> None:
         _campaign_task(),
         CampaignTaskStatus.EXECUTED,
         "executed",
-        output={
-            "finding_id": "finding-store-failure",
-            "proof_evidence": [{"status": 200}],
-            "evidence_refs": ["replay://finding-store-failure/positive"],
-            "negative_control": {"status": 404},
-        },
+        output=_verified_output(),
     )
 
     assert record["proof_bundle_store_status"] == "failed"

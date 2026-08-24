@@ -73,6 +73,20 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
+def _rag_available_for_current_context() -> bool:
+    """Return whether this execution may touch the vector store."""
+    try:
+        from webpent.memory.embeddings import is_rag_enabled
+
+        return is_rag_enabled()
+    except Exception:
+        # Preserve the existing fail-open behavior only when the guard itself
+        # cannot be imported; persistent DISABLE_RAG is still enforced by the
+        # embeddings factory on any attempted store initialization.
+        return True
+
+
 _DEFAULT_CHROMA_PATH = "./memory/global/chroma_db"
 _DEFAULT_LESSONS_COLLECTION = "webpent_lessons"
 _KNOWLEDGE_COLLECTION_NAME = "webpent_knowledge"
@@ -153,6 +167,12 @@ class VectorStoreManager:
                 return None
 
     def _get_store(self, collection_name: str) -> Any | None:
+        # A cached Chroma handle must not bypass a scan-scoped `--no-llm`
+        # decision.  Check before acquiring the lock or returning a cache hit.
+        if not _rag_available_for_current_context():
+            logger.info("RAG disabled for current context; skipping vector store access")
+            return None
+
         # V6 Absolute-Flawless: hold the init lock for the entire
         # check-then-init-then-cache sequence so concurrent threads
         # cannot both observe ``is None`` and both call _init_store.

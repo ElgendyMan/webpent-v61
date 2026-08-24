@@ -60,8 +60,8 @@ class TestC2ExecutionSandboxThreadId:
         )
         assert sig.parameters["thread_id"].default is None
 
-    def test_test_finding_payloads_stamps_thread_id_on_confirmed(self, tmp_path):
-        """When a finding is confirmed, thread_id must be stamped before save."""
+    def test_test_finding_payloads_stamps_thread_id_on_blocked_telemetry(self):
+        """A blocked legacy signal keeps thread identity without promotion."""
         from webpent.agents.execution_sandbox import agent as es_agent
         from webpent.models.findings import Confidence, Finding, Severity, VulnClass
 
@@ -77,17 +77,11 @@ class TestC2ExecutionSandboxThreadId:
         )
         tid = f"thread-c2-{uuid.uuid4()}"
 
-        # Mock a causal positive replay followed by a clean neutral control.
-        with (
-            patch.object(es_agent, "_test_payload_with_browser", side_effect=[True, False]),
-            patch.object(es_agent, "get_db_manager") as mock_db_mgr,
-        ):
-            mock_db = MagicMock()
-            mock_db_mgr.return_value = mock_db
+        with patch.object(es_agent, "_test_payload_with_browser", return_value=True):
             result = es_agent._test_finding_payloads(
                 browser=MagicMock(),
                 finding=finding,
-                payloads=["<script>alert(1)</script>"],
+                payloads=["<redacted-probe>"],
                 auth_state={},
                 stealth_mode=False,
                 thread_id=tid,
@@ -98,17 +92,16 @@ class TestC2ExecutionSandboxThreadId:
                     "identity_context": {"mode": "anonymous", "cookie_count": 0},
                 },
             )
-            # save_finding must have been called.
-            assert mock_db.save_finding.called, "save_finding was not called"
-            # The saved finding must have thread_id stamped.
-            saved_finding = mock_db.save_finding.call_args[0][0]
-            assert saved_finding.thread_id == tid, (
-                f"C2 REGRESSION: thread_id not stamped on confirmed finding: "
-                f"got {saved_finding.thread_id!r}, expected {tid!r}"
-            )
-            assert result.confidence == Confidence.CONFIRMED.value
-            assert result.evidence["proof_bundle_sealed"] is True
-            assert result.evidence["proof_bundle"]["sealed"] is True
+
+        assert result.thread_id == tid
+        assert result.confidence == Confidence.TENTATIVE.value
+        assert result.evidence["browser_validation_result"] == (
+            "dialog_observed_proof_blocked"
+        )
+        assert result.evidence["promotion_guard"]["reason"] == (
+            "dialog_only_signal_not_accepted"
+        )
+        assert result.evidence.get("proof_bundle_sealed") is not True
 
 
 # ===========================================================================

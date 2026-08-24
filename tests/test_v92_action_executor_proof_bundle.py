@@ -2,6 +2,7 @@ from webpent.config.settings import ScanMode, Settings
 from webpent.research.experiment_manager import ExperimentManager
 from webpent.shared.action_authority import ActionAuthority, ActionRisk
 from webpent.shared.campaign_executor import ActionExecutor, CampaignTask, CampaignTaskStatus
+from webpent.shared.verifier import _target_fingerprint
 
 
 def _executor() -> ActionExecutor:
@@ -39,9 +40,36 @@ def test_action_executor_seals_bundle_only_from_explicit_proof_payload():
         _task(),
         lambda _task: {
             "finding_id": "finding-1",
-            "proof_evidence": [{"status": 200, "object_id": "1"}],
-            "evidence_refs": ["execution:1"],
-            "negative_control": {"status": 403, "object_id": "1"},
+            "target_fingerprint": _target_fingerprint("http://example.test/object/1"),
+            "proof_verified": True,
+            "proof_evidence": [
+                {"status": 200, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "evidence_refs": ["execution:baseline", "execution:candidate", "execution:negative"],
+            "baseline": {"status": 200, "object_id": "baseline"},
+            "negative_control": {"status": 403, "object_id": "negative"},
+            "request_evidence": [
+                {"status": 200, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "response_evidence": [
+                {"status": 200, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "causal_oracle": {
+                "causal_signal": True,
+                "negative_control_complete": True,
+            },
+            "scope_context": {"allowed_origin": "http://example.test"},
+            "identity_context": {"session_ref": "test-session"},
+            "validator_id": "fixture.validator",
+            "validator_version": "1",
+            "replay_metadata": {"replayable": True},
+            "cleanup_status": "not_applicable",
         },
     )
 
@@ -71,11 +99,38 @@ def test_action_executor_projects_experiment_lifecycle_without_promoting_finding
         lambda _task: {
             "finding_id": "finding-1",
             "template_id": "idor",
-            "proof_evidence": [{"status": 200}],
-            "evidence_refs": ["execution:1"],
-            "baseline": {"status": 403},
-            "negative_control": {"status": 403},
-            "causal_oracle": {"causal_signal": True},
+            "target_fingerprint": _target_fingerprint("http://example.test/object/1"),
+            "replay_context": {
+                "engagement_id": "engagement-1",
+                "finding_id": "finding-1",
+                "hypothesis_id": "hypothesis-1",
+                "target_fingerprint": _target_fingerprint("http://example.test/object/1"),
+            },
+            "proof_verified": True,
+            "proof_evidence": [
+                {"status": 403, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "evidence_refs": ["execution:baseline", "execution:candidate", "execution:negative"],
+            "baseline": {"status": 403, "object_id": "baseline"},
+            "negative_control": {"status": 403, "object_id": "negative"},
+            "request_evidence": [
+                {"status": 403, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "response_evidence": [
+                {"status": 403, "object_id": "baseline"},
+                {"status": 200, "object_id": "candidate"},
+                {"status": 403, "object_id": "negative"},
+            ],
+            "scope_context": {"allowed_origin": "http://example.test"},
+            "identity_context": {"session_ref": "test-session"},
+            "causal_oracle": {
+                "causal_signal": True,
+                "negative_control_complete": True,
+            },
             "target_backed": True,
             "negative_control_independent": True,
             "validator_id": "idor_differential",
@@ -91,6 +146,26 @@ def test_action_executor_projects_experiment_lifecycle_without_promoting_finding
     assert record["experiment_record"]["replayable"] is True
     assert manager.records()[0]["engagement_id"] == "engagement-1"
     assert record["proof_bundle"]["target_backed"] is True
+
+
+def test_action_executor_rejects_unverified_evidence_without_bundle():
+    executor = _executor()
+    record = executor.execute(
+        _task(),
+        lambda _task: {
+            "proof_evidence": [
+                {"status": 200},
+                {"status": 200},
+                {"status": 403},
+            ],
+            "negative_control": {"status": 403},
+        },
+    )
+
+    assert record["status"] == CampaignTaskStatus.EXECUTED.value
+    assert record["proof_bundle"] is None
+    assert record["proof_bundle_sealed"] is False
+    assert record["proof_bundle_rejection_reason"] == "verifier_attestation_required"
 
 
 def test_action_executor_denies_out_of_scope_without_calling_handler():

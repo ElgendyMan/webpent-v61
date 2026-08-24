@@ -1,19 +1,23 @@
 # src/webpent/agents/execution_sandbox/agent.py
 """webpent.agents.execution_sandbox.agent
 
-LangGraph node that actively exploits XSS payloads via Playwright by
-submitting them into discovered forms and detecting triggered dialogs.
+LangGraph node that performs bounded browser telemetry for queued XSS probes.
 
-V3 Phase 1 upgrades the sandbox from a passive skeleton to an active
-browser driver. For each finding's queued payloads, the node:
+The legacy direct-Playwright path is compatibility telemetry only: a dialog
+observation is never a confirmation, never creates a ProofBundle, and never
+promotes a finding. Typed browser proof must use the control-plane replay path;
+central promotion additionally requires target-backed causal evidence, an
+independently executed negative control, and a sealed replayable ProofBundle.
 
-  1. Launches a headless Chromium browser via Playwright.
-  2. Injects any cookies from ``auth_state``.
-  3. Navigates to the finding's URL.
-  4. Locates the first ``<form>`` and fills visible inputs with the payload.
-  5. Registers a ``page.on("dialog", ...)`` listener for XSS detection.
-  6. Clicks submit.
-  7. If a dialog fires, mutates the finding to CONFIRMED.
+For compatibility telemetry, the node may:
+
+  1. Launch a headless Chromium browser via Playwright.
+  2. Navigate to the finding's URL within the authorized scope.
+  3. Submit bounded probes and observe browser behavior.
+  4. Record redacted, bounded observations for human review.
+
+Authentication injection and account operations are intentionally disabled in
+this sandbox path.
 """
 
 from __future__ import annotations
@@ -24,21 +28,18 @@ import logging
 import time
 from typing import Any
 from urllib.parse import urlparse
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from langchain_core.messages import AIMessage
 
-from webpent.memory.db import get_db_manager
 from webpent.models.findings import Confidence, Finding, VulnClass
 from webpent.shared.poc_policy import derive_execution_risk, evaluate_execution_gate
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
 from webpent.shared.target_package_context import package_continuity_kwargs
-from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
 
-_PLAYWRIGHT_CONFIRMED_MARKER = "confirmed-by:playwright-dialog"
 _TEXT_INPUT_SELECTOR = (
     "input[type='text'], input[type='search'], input[type='url'], "
     "input[type='email'], input:not([type])"
@@ -197,30 +198,15 @@ def _normalise_auth_state_cookies(
     return result
 
 
-def _inject_cookies(context, url: str, auth_state: dict[str, Any]) -> None:
-    # V4.5 Sprint 2: Inject cookies from both auth_state and login session.
-    cookies = _normalise_auth_state_cookies(
-        auth_state.get("cookies") if auth_state else None,
-        url,
-    )
-    if cookies:
-        try:
-            context.add_cookies(cookies)
-            logger.debug("Injected %d auth_state cookie(s) for %s", len(cookies), url)
-        except Exception as exc:
-            logger.warning("Failed to inject auth_state cookies for %s: %s", url, exc)
+def _inject_cookies(context: Any, url: str, auth_state: dict[str, Any]) -> None:
+    """Compatibility hook that never transports credentials or cookies.
 
-    # V4.5 Sprint 2: Also inject cookies from the pre-authentication login.
-    if _LAST_LOGIN_COOKIES:
-        login_cookies = [
-            {"name": k, "value": v, "domain": urlparse(url).hostname or "", "path": "/"}
-            for k, v in _LAST_LOGIN_COOKIES.items()
-        ]
-        try:
-            context.add_cookies(login_cookies)
-            logger.debug("Injected %d login cookie(s) for %s", len(login_cookies), url)
-        except Exception as exc:
-            logger.warning("Failed to inject login cookies for %s: %s", url, exc)
+    Browser proof uses the anonymous typed control-plane adapter.  The legacy
+    fallback retains this call site only for compatibility and is explicitly
+    prevented from consuming authentication state.
+    """
+    del context, url, auth_state
+    logger.warning("Cookie injection blocked by account-action policy")
 
 
 def _fill_form_and_submit(page, payload: str) -> bool:
@@ -367,8 +353,11 @@ def _test_payload_with_browser(
             nonlocal dialog_triggered
             dialog_triggered = True
             logger.info(
-                "Dialog detected (%s) at %s — XSS confirmed with payload: %s",
-                dialog.type, url, payload[:80],
+                "Dialog observed (%s) at target shape %s; legacy promotion remains blocked "+
+                "(payload_sha256=%s)",
+                dialog.type,
+                hashlib.sha256(url.encode("utf-8", "replace")).hexdigest()[:16],
+                hashlib.sha256(payload.encode("utf-8", "replace")).hexdigest(),
             )
             with contextlib.suppress(Exception):
                 dialog.dismiss()
@@ -457,314 +446,283 @@ def _test_payload_with_browser(
                 context.close()
 
 
+def _typed_browser_causal_predicate(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    negative_control: dict[str, Any],
+) -> tuple[bool, str]:
+    """Use only target response/network observations for the causal oracle."""
+    candidate_delta = any(
+        baseline.get(field) != candidate.get(field)
+        for field in (
+            "response_digest",
+            "status_code",
+            "final_url_shape_digest",
+            "network_event_count",
+            "dom_digest",
+        )
+    )
+    negative_stable = (
+        baseline.get("response_digest") == negative_control.get("response_digest")
+        and baseline.get("status_code") == negative_control.get("status_code")
+        and baseline.get("network_event_count")
+        == negative_control.get("network_event_count")
+    )
+    return (
+        candidate_delta and negative_stable,
+        "target_response_or_network_delta_with_stable_negative_control",
+    )
+
+
 def _test_finding_payloads(
-    browser, finding: Finding, payloads: list[str], auth_state: dict[str, Any],
-    stealth_mode: bool = False, thread_id: str | None = None,
+    browser,
+    finding: Finding,
+    payloads: list[str],
+    auth_state: dict[str, Any],
+    stealth_mode: bool = False,
+    thread_id: str | None = None,
     verification_context: dict[str, Any] | None = None,
+    proof_runner: Any | None = None,
 ) -> Finding:
+    """Validate payloads without allowing a direct browser promotion bypass.
+
+    When the typed control-plane runner is available, all proof-bound work goes
+    through it and only its verifier attestation is returned to the caller. The
+    legacy Playwright path remains as bounded telemetry for compatibility, but
+    dialog detection alone can never confirm a finding or create a bundle.
+    """
     attempted = 0
+    context = verification_context or {}
+    thread_update = {"thread_id": thread_id} if thread_id else {}
     for payload in payloads:
         attempted += 1
-        confirmed = _test_payload_with_browser(
-            browser, finding.url, payload, auth_state,
-            stealth_mode=stealth_mode,
-        )
-        if confirmed:
-            negative_control_payload = "webpent-neutral-control"
-            negative_control_triggered = _test_payload_with_browser(
-                browser,
-                finding.url,
-                negative_control_payload,
-                auth_state,
-                stealth_mode=stealth_mode,
-            )
-            evidence = {
-                "validator": "playwright_xss_replay",
-                "positive_payload": payload,
-                "positive_signal": True,
-                "causal_signal": True,
-                "negative_control_payload": negative_control_payload,
-                "negative_control_complete": not negative_control_triggered,
-                "negative_control_signal": negative_control_triggered,
-            }
-            if negative_control_triggered:
+        if proof_runner is not None:
+            try:
+                from webpent.shared.browser_proof_runner import EphemeralProbe
+
+                # Probe values are held only for this call and are represented
+                # downstream by probe:// references and SHA-256 digests.
+                result = proof_runner.run(
+                    finding,
+                    baseline=EphemeralProbe.from_value(
+                        "baseline", "webpent-baseline-control"
+                    ),
+                    candidate=EphemeralProbe.from_value("candidate", payload),
+                    negative_control=EphemeralProbe.from_value(
+                        "negative_control", "webpent-neutral-control"
+                    ),
+                    causal_predicate=_typed_browser_causal_predicate,
+                    scope_context=dict(context.get("scope_context") or {}),
+                    identity_context=dict(context.get("identity_context") or {}),
+                    target_url=finding.url,
+                    replay_metadata={"browser": "typed_playwright"},
+                    target_package=package_continuity_kwargs(
+                        context.get("target_package")
+                    ),
+                    probe_values={
+                        "baseline": "webpent-baseline-control",
+                        "candidate": payload,
+                        "negative_control": "webpent-neutral-control",
+                    },
+                )
+            except Exception as exc:
                 logger.warning(
-                    "Playwright XSS promotion blocked for %s: neutral control also triggered",
+                    "Typed browser proof runner failed closed for finding %s: %s",
                     finding.id,
+                    type(exc).__name__,
                 )
+                result = None
+            if result is not None and result.passed and result.attestation:
+                attestation = dict(result.attestation)
+                # A verifier attestation is an input to the central action
+                # executor, not a promotion itself.  In particular, do not
+                # mutate confidence here: CampaignExecutor must build, seal,
+                # validate, and replay the bundle before Tool-Confirmed is
+                # allowed anywhere downstream.
                 return finding.model_copy(
                     update={
-                        "confidence_level": "Needs Human Review",
+                        **thread_update,
                         "evidence": {
                             **(finding.evidence or {}),
-                            **evidence,
+                            "browser_validation_attempted": True,
+                            "browser_validation_result": (
+                                "typed_replay_attestation_pending_bundle"
+                            ),
+                            "verifier_attestation": attestation,
+                            "proof_verified": True,
+                            "proof_evidence": attestation.get("proof_evidence", ()),
+                            "baseline": attestation.get("baseline"),
+                            "candidate": attestation.get("candidate"),
+                            "negative_control": attestation.get("negative_control"),
+                            "evidence_refs": attestation.get("evidence_refs", ()),
+                            "scope_context": attestation.get("scope_context", {}),
+                            "identity_context": attestation.get("identity_context", {}),
+                            "validator_id": attestation.get("validator_id", ""),
+                            "validator_version": attestation.get("validator_version", ""),
+                            "replay_metadata": attestation.get("replay_metadata", {}),
                             "promotion_guard": {
-                                "status": "blocked",
-                                "reason": "negative_control_triggered",
+                                "status": "central_bundle_required",
+                                "reason": "verifier_attestation_requires_central_sealed_bundle",
                             },
                         },
                     }
                 )
-            context = verification_context or {}
-            baseline = {
-                "payload": negative_control_payload,
-                "triggered": False,
-                "control": "neutral_baseline",
-            }
-            candidate = {
-                "payload": payload,
-                "triggered": True,
-                "control": "candidate",
-            }
-            negative_control = {
-                "payload": negative_control_payload,
-                "triggered": bool(negative_control_triggered),
-                "control": "neutral_negative_control",
-            }
-            verification = verify_replay_evidence(
-                finding,
-                baseline=baseline,
-                candidate=candidate,
-                negative_control=negative_control,
-                causal_signal=True,
-                negative_control_complete=not negative_control_triggered,
-                validator_id="execution_sandbox.playwright_xss",
-                validator_version="playwright-dialog-replay.v1",
-                causal_basis="candidate_dialog_triggered_while_neutral_control_did_not",
-                engagement_id=str(context.get("engagement_id") or ""),
-                hypothesis_id=finding.hypothesis_id,
-                scope_context=context.get("scope_context"),
-                identity_context=context.get("identity_context"),
-                replay_metadata={
-                    "browser": "playwright",
-                    "dialog_signal": True,
-                    "negative_control_triggered": bool(negative_control_triggered),
-                },
-                **package_continuity_kwargs(context),
+            reason = (
+                getattr(result, "reason", "typed_browser_proof_unavailable")
+                if result is not None
+                else "typed_browser_proof_runner_failed"
             )
-            if not verification.passed or verification.proof_bundle is None:
-                return finding.model_copy(
-                    update={
-                        "confidence_level": "Needs Human Review",
-                        "evidence": {
-                            **(finding.evidence or {}),
-                            **evidence,
-                            **verification.evidence,
-                            "promotion_guard": {
-                                "status": "blocked",
-                                "reason": verification.reason,
-                            },
-                        },
-                    }
-                )
-            bundle = verification.proof_bundle
-            logger.info(
-                "Playwright CONFIRMED XSS for finding %s (%s) — upgrading confidence",
-                finding.id, finding.title,
-            )
-            confirmed_finding = finding.model_copy(
+            # A failed typed attempt is a reviewable observation, never a
+            # confirmation. Continue only to gather bounded observations for
+            # remaining candidate payloads.
+            if result is not None and result.observations:
+                observations = dict(result.observations)
+            else:
+                observations = {}
+            return finding.model_copy(
                 update={
-                    "confidence": Confidence.CONFIRMED.value,
-                    "payload": f"{_PLAYWRIGHT_CONFIRMED_MARKER}: {payload}",
-                    "confidence_level": "Tool-Confirmed",
+                    **thread_update,
+                    "confidence_level": "Needs Human Review",
                     "evidence": {
                         **(finding.evidence or {}),
-                        **evidence,
-                        "proof_bundle_sealed": True,
-                        "proof_bundle": bundle.model_dump(mode="json"),
+                        "browser_validation_attempted": True,
+                        "browser_payload_count": attempted,
+                        "browser_validation_result": "typed_replay_failed",
+                        "browser_validation_failure_reason": str(reason)[:240],
+                        "browser_observations": observations,
                         "promotion_guard": {
-                            "status": "passed",
-                            "proof_bundle_sealed": True,
-                            "replayable": True,
+                            "status": "blocked",
+                            "reason": str(reason)[:240],
                         },
                     },
                 }
             )
-            # V3.5 Obsidian Master Fix: Incrementally persist the confirmed
-            # finding to the database immediately, rather than waiting for
-            # graph execution to conclude. This prevents data loss if the
-            # worker crashes or times out after Playwright confirmation.
-            # V10 P0-C: stamp thread_id so the mid-scan save is visible
-            # to the API's per-thread query even if the worker never
-            # reaches its final _persist_findings call.
-            # V10 AUDIT FIX (C2): previously referenced `state.get(...)`
-            # but `state` was NOT in scope (function signature lacked
-            # it) → NameError caught by except → save_finding NEVER
-            # executed. Now `thread_id` is passed as an explicit param.
-            try:
-                # V6 DX-Final P0 FIX (CISO audit): use shared singleton.
-                # V10 P0-C + AUDIT C2: stamp thread_id before saving.
-                if thread_id and not getattr(confirmed_finding, "thread_id", None):
-                    confirmed_finding = confirmed_finding.model_copy(
-                        update={"thread_id": thread_id}
-                    )
-                get_db_manager().save_finding(confirmed_finding)
-                logger.info(
-                    "Incrementally persisted Playwright-confirmed finding %s",
-                    finding.id,
-                )
-            except Exception as exc:
-                logger.error(
-                    "Failed to incrementally persist finding %s: %s",
-                    finding.id, exc,
-                )
-                # V10 P1-3 FIX: stamp ``persistence_failed=True`` on the
-                # finding's evidence dict so downstream consumers (the
-                # reporter, the API, the operator) can distinguish a
-                # genuinely-confirmed finding whose DB write failed from
-                # a cleanly-persisted one. Without this flag, the
-                # in-memory ``confirmed_finding`` says "Tool-Confirmed"
-                # while the DB has no row — a silent discrepancy that
-                # the operator cannot detect from the API surface.
-                confirmed_finding = confirmed_finding.model_copy(
-                    update={
-                        "evidence": {
-                            **(confirmed_finding.evidence or {}),
-                            "persistence_failed": True,
-                        }
-                    }
-                )
-            return confirmed_finding
-    logger.info(
-        "Playwright did not confirm XSS for finding %s — keeping original confidence",
-        finding.id,
-    )
-    # Preserve the browser result for downstream validator/report stages.
-    # This is observability only: no dialog means no causal signal and cannot
-    # promote the finding or create a ProofBundle.
+
+        # Compatibility fallback: direct Playwright is telemetry-only. It is
+        # intentionally not passed to verify_replay_evidence and cannot change
+        # confidence or attach a ProofBundle.
+        dialog_observed = _test_payload_with_browser(
+            browser,
+            finding.url,
+            payload,
+            auth_state,
+            stealth_mode=stealth_mode,
+        )
+        if dialog_observed:
+            logger.warning(
+                "Legacy browser dialog observed for finding %s; promotion blocked",
+                finding.id,
+            )
+            return finding.model_copy(
+                update={
+                    **thread_update,
+                    "confidence_level": "Needs Human Review",
+                    "evidence": {
+                        **(finding.evidence or {}),
+                        "browser_validation_attempted": True,
+                        "browser_payload_count": attempted,
+                        "browser_validation_result": "dialog_observed_proof_blocked",
+                        "browser_validation_failure_reason": "typed_replay_required",
+                        "promotion_guard": {
+                            "status": "blocked",
+                            "reason": "dialog_only_signal_not_accepted",
+                        },
+                    },
+                }
+            )
+
+    logger.info("Browser validation produced no promotion for finding %s", finding.id)
     return finding.model_copy(
         update={
+            **thread_update,
             "evidence": {
                 **(finding.evidence or {}),
                 "browser_validation_attempted": True,
                 "browser_payload_count": attempted,
-                "browser_validation_result": "no_dialog",
-                "browser_validation_failure_reason": "dialog_not_observed",
+                "browser_validation_result": "no_causal_signal",
+                "browser_validation_failure_reason": "typed_replay_unavailable_or_not_demonstrated",
             }
         }
     )
 
 
-def _perform_login(
-    browser: Any, url: str, credentials: dict[str, str]
-) -> None:
-    """V4.5 Sprint 2: Perform authenticated login via Playwright.
-
-    Navigates to the target URL, locates login fields, fills credentials,
-    and submits the form. The browser context retains session cookies
-    for subsequent payload tests.
-
-    This function is best-effort — if login fails, the sandbox proceeds
-    with unauthenticated testing.
-    """
-    context = None
-    page = None
-    try:
-        context = browser.new_context()
-        # V6 Zero-Day Patched P0-1: Install SSRF route guard BEFORE
-        # new_page() / goto(). Same rationale as the main sandbox
-        # context — the login navigation must not be allowed to reach
-        # internal networks.
-        from webpent.shared.http import install_playwright_ssrf_guard
-        install_playwright_ssrf_guard(context)
-        page = context.new_page()
-        page.set_default_navigation_timeout(_NAV_TIMEOUT_MS)
-
-        try:
-            page.goto(url, wait_until="domcontentloaded")
-        except Exception as exc:
-            logger.warning("Login navigation to %s failed: %s", url, exc)
-            return
-
-        # Locate the password field — the most reliable login indicator.
-        try:
-            password_input = page.locator("input[type='password']").first
-            password_input.wait_for(state="visible", timeout=5000)
-        except Exception:
-            logger.info("No password field found at %s — skipping login", url)
-            return
-
-        # Try to find a username/email field.
-        username_input = None
-        for selector in [
-            "input[type='text']",
-            "input[type='email']",
-            "input[name='username']",
-            "input[name='user']",
-            "input[name='email']",
-            "input:not([type])",
-        ]:
-            try:
-                username_input = page.locator(selector).first
-                username_input.wait_for(state="visible", timeout=2000)
-                break
-            except Exception:
-                continue
-
-        if username_input is None:
-            logger.info("No username field found — skipping login")
-            return
-
-        username = credentials.get("username", "")
-        password = credentials.get("password", "")
-
-        try:
-            username_input.fill(username)
-            password_input.fill(password)
-        except Exception as exc:
-            logger.warning("Failed to fill login fields: %s", exc)
-            return
-
-        # Submit the form.
-        try:
-            submit = page.locator(
-                "button[type='submit'], input[type='submit'], "
-                "button:has-text('Login'), button:has-text('Log in')"
-            ).first
-            submit.click(timeout=5000)
-        except Exception:
-            try:
-                password_input.press("Enter")
-            except Exception as exc:
-                logger.warning("Failed to submit login form: %s", exc)
-                return
-
-        # Wait for post-login navigation.
-        with contextlib.suppress(Exception):
-            page.wait_for_load_state("networkidle", timeout=10_000)
-
-        logger.info("Login completed — session cookies retained in browser context")
-    except Exception as exc:
-        logger.warning("Playwright login failed: %s", exc)
-    finally:
-        with contextlib.suppress(Exception):
-            if page is not None:
-                page.close()
-        # Note: context is NOT closed here — the caller's browser retains
-        # the context's cookies for subsequent payload tests via the
-        # auth_state injection mechanism. The context will be cleaned up
-        # when the browser is closed in the finally block of
-        # execution_sandbox_node.
-        # However, since each payload test creates its own context, we
-        # need to extract cookies and pass them via auth_state.
-        if context is not None:
-            try:
-                cookies = context.cookies()
-                cookie_dict = {c["name"]: c["value"] for c in cookies if c.get("name")}
-                if cookie_dict:
-                    logger.info(
-                        "Extracted %d session cookie(s) for authenticated testing",
-                        len(cookie_dict),
-                    )
-                    # Store in a module-level variable for _inject_cookies
-                    _LAST_LOGIN_COOKIES.clear()
-                    _LAST_LOGIN_COOKIES.update(cookie_dict)
-            except Exception:
-                pass
+def _perform_login(browser: Any, url: str, credentials: dict[str, str]) -> None:
+    """Compatibility hook that rejects all authenticated browser actions."""
+    del browser, url, credentials
+    logger.warning("Authenticated browser login blocked by account-action policy")
 
 
-# Module-level dict to store login cookies between _perform_login and payload tests.
+# Retained as a compatibility sentinel; it is never populated or transported.
 _LAST_LOGIN_COOKIES: dict[str, str] = {}
+
+
+def _build_typed_browser_proof_runner(
+    state: PentestState,
+    *,
+    thread_id: str | None,
+) -> Any | None:
+    """Build the runner only from live, registered typed control-plane objects."""
+    runtime = state.get("runtime_context")
+    if runtime is None or not getattr(runtime, "valid", False):
+        return None
+    adapter = getattr(runtime, "control_plane_browser_adapter", None)
+    control_plane = getattr(runtime, "control_plane_runtime", None)
+    replay_engine = getattr(runtime, "replay_engine", None)
+    if adapter is None or control_plane is None or replay_engine is None:
+        return None
+    registry = getattr(runtime, "adapters", None)
+    registered = (
+        registry.get("control_plane_browser")
+        if registry is not None and hasattr(registry, "get")
+        else None
+    )
+    if registered is None or not callable(getattr(registered, "handler", None)):
+        return None
+    if registered.handler is not adapter:
+        return None
+    if hasattr(registry, "validate_for_execution"):
+        valid_registration, _errors = registry.validate_for_execution(
+            "control_plane_browser"
+        )
+        if not valid_registration:
+            return None
+    if getattr(registered, "proof_contract", "") != "observation_only_no_confirmation":
+        return None
+    engagement_id = str(state.get("engagement_id") or runtime.engagement_id or "").strip()
+    if not engagement_id or engagement_id != str(runtime.engagement_id):
+        return None
+    scope = getattr(control_plane, "scope", None)
+    session_manager = getattr(control_plane, "session_manager", None)
+    if scope is None or session_manager is None:
+        return None
+    try:
+        from webpent.shared.browser_proof_runner import BrowserProofRunner
+        from webpent.shared.control_plane_runtime import BrowserActionAdapter
+
+        if not isinstance(adapter, BrowserActionAdapter):
+            return None
+        session = session_manager.create_session(
+            engagement_id=engagement_id,
+            profile_ref=f"execution-{thread_id or 'run'}-{uuid4().hex}",
+            browser_type="chromium",
+            authenticated_origins=(),
+            cookie_fingerprint="sha256:" + hashlib.sha256(
+                f"{engagement_id}:{thread_id or ''}".encode()
+            ).hexdigest(),
+        )
+        return BrowserProofRunner(
+            replay_engine=replay_engine,
+            adapter=adapter,
+            session=session,
+            scope=scope,
+            engagement_id=engagement_id,
+        )
+    except (ImportError, OSError, TypeError, ValueError, RuntimeError) as exc:
+        logger.warning(
+            "Typed browser runner unavailable; execution remains fail-closed: %s",
+            type(exc).__name__,
+        )
+        return None
 
 
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
@@ -802,10 +760,8 @@ def execution_sandbox_node(state: PentestState) -> dict:
     # ContextVar was deliberately built to prevent (see
     # shared/engagement_scope.py and pentest_worker.py's `finally:
     # clear_engagement_target_hosts(token)`), just not applied here.
-    # Clearing at entry scopes the cache to this single node
-    # invocation, which is its only legitimate use (populated by
-    # _perform_login below, read by _inject_cookies for each finding
-    # tested further down in this SAME call).
+    # Clear the compatibility sentinel at each invocation; it is never
+    # populated because authenticated browser actions are forbidden.
     _LAST_LOGIN_COOKIES.clear()
 
     target = state["target"]
@@ -891,37 +847,47 @@ def execution_sandbox_node(state: PentestState) -> dict:
 
     findings_by_id: dict[UUID, Finding] = {f.id: f for f in findings}
 
-    # V6 Final-Seal-Revised: pin DNS for every distinct host among the
-    # findings about to be tested, so Playwright's TCP connections go
-    # straight to a pre-validated IP without a second, connection-time
-    # DNS lookup (closing the rebinding race) — see _try_launch_browser.
-    _target_hosts = sorted({
-        urlparse(f.url).hostname
-        for f in findings
-        if f.url and urlparse(f.url).hostname
-    })
-    pw, browser = _try_launch_browser(_target_hosts)
-    if browser is None:
-        logger.error("Could not launch Playwright browser — skipping sandbox execution")
+    # Prefer the registered typed control-plane runner. It creates no direct
+    # browser transport and keeps all proof-bound observations under the
+    # ActionExecutor/replay/verifier chain.
+    proof_runner = _build_typed_browser_proof_runner(
+        state,
+        thread_id=thread_id,
+    )
+    pw = None
+    browser = None
+    if proof_runner is None:
+        # Compatibility fallback is telemetry-only and can never promote.
+        _target_hosts = sorted({
+            urlparse(f.url).hostname
+            for f in findings
+            if f.url and urlparse(f.url).hostname
+        })
+        pw, browser = _try_launch_browser(_target_hosts)
+        if browser is None:
+            logger.error("Could not launch Playwright browser — skipping sandbox execution")
+            execution_observations.append(
+                _execution_event("skipped", reason="browser_launch_failed")
+            )
+            return {
+                "execution_gate": gate_record,
+                "execution_observations": execution_observations,
+                "messages": [
+                    AIMessage(content="Execution sandbox: Playwright unavailable — skipped.")
+                ],
+                "current_phase": "sandbox_execution",
+            }
+        if credentials:
+            # Account actions are intentionally forbidden. Do not invoke the
+            # legacy login helper or consume real credentials.
+            logger.warning("Credentialed browser login is disabled by policy")
+            execution_observations.append(
+                _execution_event("blocked", reason="account_actions_forbidden")
+            )
+    else:
         execution_observations.append(
-            _execution_event("skipped", reason="browser_launch_failed")
+            _execution_event("typed_runner_ready", reason="control_plane_replay_bound")
         )
-        return {
-            "execution_gate": gate_record,
-            "execution_observations": execution_observations,
-            "messages": [AIMessage(content="Execution sandbox: Playwright unavailable — skipped.")],
-            "current_phase": "sandbox_execution",
-        }
-
-    # V4.5 Sprint 2: Perform authenticated login if credentials are provided.
-    if credentials:
-        logger.info("Credentials provided — performing pre-authentication login")
-        # V5 Sprint 6: pace the login navigation in stealth mode so the
-        # auth flow does not stand out as machine-paced traffic.
-        if stealth_mode:
-            apply_jitter(stealth_mode, label=f"playwright-login:{target.url}")
-            enforce_min_interval(stealth_mode, extract_host(target.url))
-        _perform_login(browser, target.url, credentials)
 
     confirmed_count = 0
     tested_count = 0
@@ -959,7 +925,7 @@ def execution_sandbox_node(state: PentestState) -> dict:
             # non-XSS finding would be form-submitted with an
             # LLM-generated "payload" string and, if any unrelated
             # on-page JS happens to fire a dialog, get wrongly marked
-            # Confidence.CONFIRMED via the playwright-dialog marker
+            # a confirmed result via a dialog-only marker
             # despite having no relationship to that finding's actual
             # vuln_class.
             if finding.vuln_class != VulnClass.XSS.value:
@@ -993,11 +959,18 @@ def execution_sandbox_node(state: PentestState) -> dict:
                         "scope_bound": bool(state.get("target_scope") or target.url),
                     },
                     "identity_context": {
-                        "mode": "authenticated" if auth_state.get("cookies") else "anonymous",
-                        "cookie_count": len(auth_state.get("cookies") or []),
-                        "identity_profile_count": len(state.get("identity_profiles") or {}),
+                        "mode": "anonymous",
+                        "cookie_count": 0,
+                        "identity_profile_count": 0,
+                    },
+                    "target_package": {
+                        "target_package_id": state.get("target_package_id"),
+                        "target_package_sha256": state.get("target_package_sha256"),
+                        "target_package_scope_digest": state.get("target_package_scope_digest"),
+                        "target_package_policy_digest": state.get("target_package_policy_digest"),
                     },
                 },
+                proof_runner=proof_runner,
             )
             # Always write back the browser outcome. Previously only a
             # confirmed dialog replaced the finding, so a real no-dialog
@@ -1025,7 +998,10 @@ def execution_sandbox_node(state: PentestState) -> dict:
                     ),
                 )
             )
-            if updated.confidence == Confidence.CONFIRMED.value:
+            if (
+                updated.confidence == Confidence.CONFIRMED.value
+                and (updated.evidence or {}).get("proof_bundle_sealed") is True
+            ):
                 confirmed_count += 1
     finally:
         with contextlib.suppress(Exception):
@@ -1041,7 +1017,7 @@ def execution_sandbox_node(state: PentestState) -> dict:
 
     summary = (
         f"Execution sandbox (Playwright) completed. Tested {tested_count} "
-        f"finding(s); {confirmed_count} confirmed via dialog detection."
+        f"finding(s); {confirmed_count} centrally bundle-confirmed."
     )
     execution_observations.append(
         _execution_event(
