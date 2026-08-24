@@ -290,6 +290,7 @@ def _export_cli_reports(
         authorization_matrix=dict(final_state.get("authorization_matrix") or {}),
         llm_usage_trace=list(final_state.get("llm_usage_trace") or []),
         runtime_capability_gaps=list(final_state.get("runtime_capability_gaps") or []),
+        execution_observations=list(final_state.get("execution_observations") or []),
         formats=list(selected_formats) if selected_formats else None,
     )
 

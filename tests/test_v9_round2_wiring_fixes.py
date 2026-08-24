@@ -125,6 +125,22 @@ class TestPayloadGeneratorClassGating:
             "__SQLMAP_TOOL_DRIVEN__"
         ]
 
+    def test_needs_human_review_xss_is_still_first_pass_actionable(self):
+        # Discovery commonly labels candidates Needs Human Review before any
+        # validator attempt.  That state must not suppress the first,
+        # deterministic no-LLM canary payload generation pass.
+        xss = _make_finding(VulnClass.XSS.value).model_copy(
+            update={"confidence_level": "Needs Human Review"}
+        )
+        with patch("webpent.agents.payload_generator.agent.try_get_llm", return_value=None):
+            result = payload_gen_agent.payload_generator_node({"findings": [xss]})
+
+        updated = result["findings"][0]
+        assert str(xss.id) in result["payloads_to_test"]
+        assert updated.payload is not None
+        assert updated.canary_token in updated.payload
+        assert (updated.evidence or {}).get("validation_attempted") is not True
+
     def test_xss_and_sqli_get_payloads_to_test_entry_csrf_does_not(self):
         xss = _make_finding(VulnClass.XSS.value)
         sqli = _make_finding(VulnClass.SQLI.value)

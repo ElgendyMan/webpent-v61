@@ -162,6 +162,7 @@ def build_report_data(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    execution_observations: list[dict[str, Any]] | None = None,
     target_package: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the canonical report data structure used by all export formats.
@@ -330,6 +331,9 @@ def build_report_data(
         ),
         "llm_usage_trace": _redact_report_value(llm_usage_trace or []),
         "runtime_capability_gaps": _redact_report_value(runtime_capability_gaps or []),
+        # Diagnostic telemetry is deliberately separate from evidence/proof;
+        # it can explain an attempt but can never promote a finding.
+        "execution_observations": _redact_report_value(execution_observations or []),
         "proof_observability": _redact_report_value(proof_observability or {}),
         "target_package_continuity": _redact_report_value(package_continuity),
         "smart_coverage_gate": {
@@ -408,6 +412,7 @@ def export_to_json(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    execution_observations: list[dict[str, Any]] | None = None,
     target_package: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a JSON report with audit trail.
@@ -441,6 +446,7 @@ def export_to_json(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        execution_observations=execution_observations,
         target_package=target_package,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -516,6 +522,34 @@ def export_to_markdown(
                 "",
             ]
         )
+    execution_observations = report_data.get("execution_observations") or []
+    if execution_observations:
+        lines.extend(
+            [
+                "## Execution Observations",
+                "",
+                (
+                    "These redacted runtime observations describe validation attempts only. "
+                    "They are not evidence and cannot promote a finding without a causal "
+                    "signal, negative control, and sealed replayable ProofBundle."
+                ),
+                "",
+                "| Event | Finding | Result | Reason | Payload SHA-256 |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for item in execution_observations:
+            if isinstance(item, dict):
+                lines.append(
+                    "| {event} | {finding} | {result} | {reason} | {payload_hash}… |".format(
+                        event=str(item.get("event") or "")[:80].replace("|", "\\|"),
+                        finding=str(item.get("finding_id") or "")[:80].replace("|", "\\|"),
+                        result=str(item.get("result") or "")[:120].replace("|", "\\|"),
+                        reason=str(item.get("reason") or "")[:180].replace("|", "\\|"),
+                        payload_hash=str(item.get("payload_sha256") or "")[:16],
+                    )
+                )
+        lines.append("")
     decisions = report_data.get("decision_log") or []
     if decisions:
         lines.extend(["## Explainability Log", "", "| Decision | Reason |", "| --- | --- |"])
@@ -560,6 +594,7 @@ def export_to_html(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    execution_observations: list[dict[str, Any]] | None = None,
     target_package: dict[str, Any] | None = None,
 ) -> Path:
     """Export findings to a professional HTML report via Jinja2.
@@ -599,6 +634,7 @@ def export_to_html(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        execution_observations=execution_observations,
         target_package=target_package,
     )
 
@@ -649,6 +685,7 @@ def export_to_pdf(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    execution_observations: list[dict[str, Any]] | None = None,
     target_package: dict[str, Any] | None = None,
 ) -> Path | None:
     """Export findings to a PDF report.
@@ -690,6 +727,7 @@ def export_to_pdf(
         authorization_matrix=authorization_matrix,
         llm_usage_trace=llm_usage_trace,
         runtime_capability_gaps=runtime_capability_gaps,
+        execution_observations=execution_observations,
         target_package=target_package,
     )
     html_content = html_path.read_text(encoding="utf-8")
@@ -763,6 +801,7 @@ def export_all_formats(
     authorization_matrix: dict[str, Any] | None = None,
     llm_usage_trace: list[dict[str, Any]] | None = None,
     runtime_capability_gaps: list[dict[str, Any]] | None = None,
+    execution_observations: list[dict[str, Any]] | None = None,
     target_package: dict[str, Any] | None = None,
     formats: list[str] | None = None,
 ) -> dict[str, Path | None]:
@@ -790,6 +829,7 @@ def export_all_formats(
         "authorization_matrix": authorization_matrix,
         "llm_usage_trace": llm_usage_trace,
         "runtime_capability_gaps": runtime_capability_gaps,
+        "execution_observations": execution_observations,
         "target_package": target_package,
     }
     paths: dict[str, Path | None] = {}

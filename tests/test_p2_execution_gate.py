@@ -86,3 +86,56 @@ def test_low_risk_execution_gate_is_allowed_without_sensitive_state() -> None:
     assert decision.allowed is True
     assert "cookie" not in decision.reason.lower()
     assert "token" not in decision.reason.lower()
+
+
+def test_execution_node_preserves_nonconfirmed_browser_attempt(monkeypatch) -> None:
+    finding = _finding()
+    state = {
+        "target": _target(),
+        "findings": [finding],
+        "payloads_to_test": {str(finding.id): ["<script>webpent-canary</script>"]},
+        "auth_state": {},
+        "credentials": {},
+        "playwright_enabled": True,
+        "stealth_mode": False,
+        "auto_approve": True,
+        "planner_decision": {},
+    }
+
+    class _Browser:
+        def close(self) -> None:
+            pass
+
+    class _Playwright:
+        def stop(self) -> None:
+            pass
+
+    monkeypatch.setattr(
+        "webpent.agents.execution_sandbox.agent._try_launch_browser",
+        lambda _hosts: (_Playwright(), _Browser()),
+    )
+    monkeypatch.setattr(
+        "webpent.agents.execution_sandbox.agent._test_finding_payloads",
+        lambda *args, **kwargs: finding.model_copy(
+            update={
+                "evidence": {
+                    "browser_validation_attempted": True,
+                    "browser_payload_count": 1,
+                    "browser_validation_result": "no_dialog",
+                    "browser_validation_failure_reason": "dialog_not_observed",
+                }
+            }
+        ),
+    )
+
+    result = execution_sandbox_node(state)
+
+    updated = result["findings"][0]
+    assert updated.id == finding.id
+    assert updated.confidence_level == "Pending"
+    assert updated.evidence["browser_validation_attempted"] is True
+    assert updated.evidence["browser_validation_failure_reason"] == "dialog_not_observed"
+    events = result["execution_observations"]
+    assert any(event["event"] == "payload_test" for event in events)
+    assert "webpent-canary" not in str(events)
+    assert all("proof_bundle" not in event for event in events)

@@ -143,6 +143,10 @@ class PentestState(TypedDict, total=False):
     signup_forms_detected: Annotated[list[dict[str, Any]], merge_lists]
     signup_submissions: Annotated[list[dict[str, Any]], merge_lists]
     verification_material_events: Annotated[list[dict[str, Any]], merge_lists]
+    # Redaction-safe browser/execution telemetry. These records explain
+    # attempted, skipped, and blocked validation without granting authority
+    # or acting as a confirmation/proof channel.
+    execution_observations: Annotated[list[dict[str, Any]], merge_lists]
     identity_records: Annotated[dict[str, Any], merge_dicts]
     identity_provisioning_status: str
 

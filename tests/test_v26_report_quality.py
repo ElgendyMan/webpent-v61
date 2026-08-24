@@ -168,5 +168,80 @@ def test_report_quality_flag_is_safe_by_default_and_env_configurable(monkeypatch
     assert Settings().enable_report_quality_gate is True
 
 
+def test_report_exports_redacted_execution_observations_without_promotion(tmp_path):
+    from webpent.reporter.export import build_report_data, export_to_html, export_to_markdown
+
+    raw_payload = "<script>alert('secret-marker')</script>"
+    observations = [
+        {
+            "event": "tested",
+            "finding_id": "finding-quality-1",
+            "vuln_class": "xss",
+            "payload_sha256": "digest-only",
+            "result": "no_dialog",
+            "reason": "browser_validation_completed",
+        }
+    ]
+    data = build_report_data(
+        "https://target.test",
+        [_finding()],
+        execution_observations=observations,
+    )
+
+    assert data["execution_observations"] == observations
+    assert data["confirmed_count"] == 0
+    assert data["findings"][0]["confidence_level"] == "Needs Human Review"
+    assert raw_payload not in str(data)
+
+    html = export_to_html(
+        "https://target.test",
+        [_finding()],
+        tmp_path,
+        execution_observations=observations,
+    ).read_text(encoding="utf-8")
+    markdown = export_to_markdown(
+        "https://target.test",
+        [_finding()],
+        tmp_path,
+        execution_observations=observations,
+    ).read_text(encoding="utf-8")
+
+    assert "Execution Observations" in html
+    assert "browser_validation_completed" in html
+    assert "Execution Observations" in markdown
+    assert "digest-only" in markdown
+    assert raw_payload not in html
+    assert raw_payload not in markdown
+
+
+def test_cli_final_export_preserves_execution_observations(tmp_path):
+    from types import SimpleNamespace
+
+    from webpent.cli import _export_cli_reports
+
+    observations = [
+        {
+            "event": "payload_test",
+            "finding_id": "finding-quality-1",
+            "result": "no_dialog",
+            "reason": "dialog_not_observed",
+            "payload_sha256": "digest-only",
+        }
+    ]
+    paths = _export_cli_reports(
+        target_url="https://target.test",
+        findings=[_finding()],
+        final_state={"execution_observations": observations},
+        workspace=SimpleNamespace(reports_dir=tmp_path),
+        settings=SimpleNamespace(enable_report_quality_gate=False),
+        selected_formats=["json"],
+    )
+
+    report = __import__("json").loads(paths["json"].read_text(encoding="utf-8"))
+    assert report["execution_observations"] == observations
+    assert report["confirmed_count"] == 0
+    assert report["findings"][0]["confidence_level"] == "Needs Human Review"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

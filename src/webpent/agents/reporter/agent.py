@@ -693,6 +693,12 @@ def reporter_node(state: PentestState) -> dict:
         }
         if not target_package["package_id"]:
             target_package = None
+        execution_observations = list(state.get("execution_observations") or [])
+        logger.info(
+            "Reporter export input: execution_observations=%d, findings=%d",
+            len(execution_observations),
+            len(report_findings),
+        )
         paths = export_all_formats(
             target_url=target_url,
             findings=report_findings,
@@ -724,6 +730,7 @@ def reporter_node(state: PentestState) -> dict:
             authorization_matrix=dict(state.get("authorization_matrix") or {}),
             llm_usage_trace=list(state.get("llm_usage_trace") or []),
             runtime_capability_gaps=list(state.get("runtime_capability_gaps") or []),
+            execution_observations=execution_observations,
             target_package=target_package,
             formats=list(selected_formats) if selected_formats else None,
         )

@@ -354,6 +354,31 @@
             {% endif %}
         </section>
 
+        {% if execution_observations %}
+        <section>
+            <h2>Execution Observations</h2>
+            <div class="summary-box">
+                <p>Redacted runtime telemetry for validation attempts. These observations are diagnostic only; they are not evidence and cannot promote a finding without a causal signal, negative control, and sealed replayable ProofBundle.</p>
+                <table>
+                    <thead>
+                        <tr><th>Event</th><th>Finding</th><th>Result</th><th>Reason</th><th>Payload SHA-256</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for item in execution_observations %}
+                        <tr>
+                            <td><code>{{ item.event|default('—') }}</code></td>
+                            <td><code>{{ item.finding_id|default('—') }}</code></td>
+                            <td>{{ item.result|default('—') }}</td>
+                            <td class="impact-text">{{ item.reason|default('—') }}</td>
+                            <td class="hash-cell">{% if item.payload_sha256 %}{{ item.payload_sha256[:16] }}…{% else %}—{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
         {% if authorization_matrix_appendix and authorization_matrix_appendix.row_count %}
         <section>
             <h2>Authorization Matrix Appendix</h2>

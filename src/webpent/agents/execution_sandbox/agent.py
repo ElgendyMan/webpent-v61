@@ -19,6 +19,7 @@ browser driver. For each finding's queued payloads, the node:
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import logging
 import time
 from typing import Any
@@ -53,6 +54,34 @@ _PAYLOAD_TEST_TIMEOUT_S = 60
 def _has_payloads(state: PentestState) -> bool:
     payloads = state.get("payloads_to_test") or {}
     return any(len(pl) > 0 for pl in payloads.values())
+
+
+def _execution_event(
+    event: str,
+    *,
+    reason: str | None = None,
+    finding: Finding | None = None,
+    payload: str | None = None,
+    result: str | None = None,
+) -> dict[str, Any]:
+    """Build a redaction-safe execution telemetry record.
+
+    Raw URLs, payloads, cookies, response bodies, and browser handles are
+    deliberately excluded. The digest lets operators correlate a replay
+    attempt with a checkpoint without turning telemetry into an exploit
+    artifact or a confirmation channel.
+    """
+    record: dict[str, Any] = {"event": event}
+    if reason:
+        record["reason"] = reason
+    if finding is not None:
+        record["finding_id"] = str(finding.id)
+        record["vuln_class"] = str(getattr(finding.vuln_class, "value", finding.vuln_class))
+    if payload is not None:
+        record["payload_sha256"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    if result:
+        record["result"] = result
+    return record
 
 
 def _try_launch_browser(target_hostnames: list[str] | None = None):
@@ -433,7 +462,9 @@ def _test_finding_payloads(
     stealth_mode: bool = False, thread_id: str | None = None,
     verification_context: dict[str, Any] | None = None,
 ) -> Finding:
+    attempted = 0
     for payload in payloads:
+        attempted += 1
         confirmed = _test_payload_with_browser(
             browser, finding.url, payload, auth_state,
             stealth_mode=stealth_mode,
@@ -598,7 +629,20 @@ def _test_finding_payloads(
         "Playwright did not confirm XSS for finding %s — keeping original confidence",
         finding.id,
     )
-    return finding
+    # Preserve the browser result for downstream validator/report stages.
+    # This is observability only: no dialog means no causal signal and cannot
+    # promote the finding or create a ProofBundle.
+    return finding.model_copy(
+        update={
+            "evidence": {
+                **(finding.evidence or {}),
+                "browser_validation_attempted": True,
+                "browser_payload_count": attempted,
+                "browser_validation_result": "no_dialog",
+                "browser_validation_failure_reason": "dialog_not_observed",
+            }
+        }
+    )
 
 
 def _perform_login(
@@ -775,6 +819,12 @@ def execution_sandbox_node(state: PentestState) -> dict:
     # V10 AUDIT FIX (C2): read thread_id from state so it can be passed
     # to _test_finding_payloads for mid-scan persistence stamping.
     thread_id: str | None = state.get("thread_id") or None
+    execution_observations: list[dict[str, Any]] = [
+        _execution_event(
+            "start",
+            reason="payload_queue_present",
+        )
+    ]
 
     logger.info(
         "Execution sandbox (Playwright) phase entered for target=%s "
@@ -797,8 +847,12 @@ def execution_sandbox_node(state: PentestState) -> dict:
             gate.status,
             gate_record["risk_level"],
         )
+        execution_observations.append(
+            _execution_event("blocked", reason=gate.reason)
+        )
         return {
             "execution_gate": gate_record,
+            "execution_observations": execution_observations,
             "messages": [
                 AIMessage(
                     content=(
@@ -813,16 +867,24 @@ def execution_sandbox_node(state: PentestState) -> dict:
     # V4.5 Sprint 2: Pre-flight health check — skip if disabled.
     if not playwright_enabled:
         logger.info("Playwright disabled by pre-flight check — skipping sandbox")
+        execution_observations.append(
+            _execution_event("skipped", reason="playwright_disabled")
+        )
         return {
             "execution_gate": gate_record,
+            "execution_observations": execution_observations,
             "messages": [AIMessage(content="Execution sandbox: Playwright disabled (pre-flight).")],
             "current_phase": "sandbox_execution",
         }
 
     if not _has_payloads(state):
         logger.info("No payloads to test — skipping Playwright execution")
+        execution_observations.append(
+            _execution_event("skipped", reason="no_payloads_queued")
+        )
         return {
             "execution_gate": gate_record,
+            "execution_observations": execution_observations,
             "messages": [AIMessage(content="Execution sandbox: no payloads queued — skipping.")],
             "current_phase": "sandbox_execution",
         }
@@ -841,8 +903,12 @@ def execution_sandbox_node(state: PentestState) -> dict:
     pw, browser = _try_launch_browser(_target_hosts)
     if browser is None:
         logger.error("Could not launch Playwright browser — skipping sandbox execution")
+        execution_observations.append(
+            _execution_event("skipped", reason="browser_launch_failed")
+        )
         return {
             "execution_gate": gate_record,
+            "execution_observations": execution_observations,
             "messages": [AIMessage(content="Execution sandbox: Playwright unavailable — skipped.")],
             "current_phase": "sandbox_execution",
         }
@@ -866,13 +932,22 @@ def execution_sandbox_node(state: PentestState) -> dict:
                 finding_id = UUID(finding_id_str)
             except ValueError:
                 logger.warning("Malformed finding ID: %r", finding_id_str)
+                execution_observations.append(
+                    _execution_event("skipped", reason="malformed_finding_id")
+                )
                 continue
 
             finding = findings_by_id.get(finding_id)
             if finding is None:
                 logger.warning("Finding %s not in state — skipping", finding_id)
+                execution_observations.append(
+                    _execution_event("skipped", reason="finding_not_in_state")
+                )
                 continue
             if not payloads:
+                execution_observations.append(
+                    _execution_event("skipped", reason="empty_payload_list", finding=finding)
+                )
                 continue
             # V9 P0 [round-2 wiring audit]: defense-in-depth — as of
             # this fix, payload_generator_node only ever seeds
@@ -894,6 +969,13 @@ def execution_sandbox_node(state: PentestState) -> dict:
                     "(stale payloads_to_test entry from before the "
                     "wiring fix, or a resumed pre-fix checkpoint).",
                     finding_id, finding.vuln_class,
+                )
+                execution_observations.append(
+                    _execution_event(
+                        "skipped",
+                        reason="non_xss_payload_entry",
+                        finding=finding,
+                    )
                 )
                 continue
 
@@ -917,9 +999,34 @@ def execution_sandbox_node(state: PentestState) -> dict:
                     },
                 },
             )
+            # Always write back the browser outcome. Previously only a
+            # confirmed dialog replaced the finding, so a real no-dialog
+            # attempt disappeared before validator/reporting could explain
+            # the coverage gap. The evidence remains fail-closed.
+            findings_by_id[finding_id] = updated
+            evidence = updated.evidence or {}
+            browser_result = evidence.get("browser_validation_result")
+            if not browser_result:
+                browser_result = (
+                    "dialog_observed_proof_blocked"
+                    if evidence.get("positive_signal") is True
+                    else "no_dialog"
+                )
+            promotion_guard = evidence.get("promotion_guard") or {}
+            execution_observations.append(
+                _execution_event(
+                    "payload_test",
+                    finding=updated,
+                    payload=payloads[0],
+                    result=str(browser_result),
+                    reason=(
+                        evidence.get("browser_validation_failure_reason")
+                        or promotion_guard.get("reason")
+                    ),
+                )
+            )
             if updated.confidence == Confidence.CONFIRMED.value:
                 confirmed_count += 1
-                findings_by_id[finding_id] = updated
     finally:
         with contextlib.suppress(Exception):
             if browser is not None:
@@ -936,11 +1043,21 @@ def execution_sandbox_node(state: PentestState) -> dict:
         f"Execution sandbox (Playwright) completed. Tested {tested_count} "
         f"finding(s); {confirmed_count} confirmed via dialog detection."
     )
+    execution_observations.append(
+        _execution_event(
+            "completed",
+            reason="browser_run_finished",
+            result=(
+                f"tested={tested_count};confirmed={confirmed_count}"
+            ),
+        )
+    )
     logger.info(summary)
 
     return {
         "findings": updated_findings,
         "execution_gate": gate_record,
+        "execution_observations": execution_observations,
         "messages": [AIMessage(content=summary)],
         "current_phase": "sandbox_execution",
     }
