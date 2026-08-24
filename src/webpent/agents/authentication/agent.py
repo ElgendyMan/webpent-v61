@@ -752,6 +752,12 @@ def _bootstrap_secondary_profiles(
             "cookies": cookies,
             "validated": validated,
         }
+        for key in ("owned_object_ids", "owned_ids", "owned_urls"):
+            value = raw_profile.get(key)
+            if isinstance(value, (list, tuple, set, frozenset)):
+                result[name][key] = [str(item) for item in value if str(item).strip()]
+        if isinstance(raw_profile.get("metadata"), dict):
+            result[name]["metadata"] = dict(raw_profile["metadata"])
         logger.info(
             "Secondary identity %s bootstrap: validated=%s cookie_count=%s",
             name, validated, len(cookies),
@@ -842,6 +848,28 @@ def auth_node(state: PentestState) -> dict:
         raw_identity_profiles,
         additional_target_origins=additional_target_origins,
     )
+    primary_provenance: dict[str, Any] = {}
+    for raw_name, raw_profile in raw_identity_profiles.items():
+        if not isinstance(raw_profile, dict):
+            continue
+        profile_role = str(raw_profile.get("role") or "").strip().lower()
+        profile_name = str(raw_profile.get("name") or raw_name).strip().lower()
+        if profile_role in {"owner", "primary"} or profile_name in {
+            str(credentials.get("username") or "").strip().lower(),
+            "owner",
+            "primary-owner",
+        }:
+            primary_provenance = {
+                key: raw_profile[key]
+                for key in (
+                    "owned_object_ids",
+                    "owned_ids",
+                    "owned_urls",
+                    "metadata",
+                )
+                if key in raw_profile
+            }
+            break
 
     def _primary_identity_profile(
         cookies: dict[str, str],
@@ -850,6 +878,7 @@ def auth_node(state: PentestState) -> dict:
         validated: bool,
         label: str,
         source: str,
+        provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Return report-safe runtime metadata for the authenticated operator.
 
@@ -858,7 +887,7 @@ def auth_node(state: PentestState) -> dict:
         owner/foreign differential probing plus a denied negative control are
         still required downstream.
         """
-        return {
+        profile = {
             "name": label[:80] or "primary-owner",
             "role": "owner",
             "cookies": dict(cookies) if validated else {},
@@ -869,6 +898,15 @@ def auth_node(state: PentestState) -> dict:
                 "auth_source": source[:40],
             },
         }
+        for key in ("owned_object_ids", "owned_ids", "owned_urls"):
+            value = (provenance or {}).get(key)
+            if isinstance(value, (list, tuple, set, frozenset)):
+                profile[key] = [str(item) for item in value if str(item).strip()]
+        if isinstance((provenance or {}).get("metadata"), dict):
+            profile["metadata"].update(
+                {str(key): value for key, value in provenance["metadata"].items()}
+            )
+        return profile
 
     # V9 P0 Fix 1-B: fail-closed cookie clearing.
     #
@@ -923,6 +961,7 @@ def auth_node(state: PentestState) -> dict:
                     validated=True,
                     label="primary-owner",
                     source="operator_supplied",
+                    provenance=primary_provenance,
                 ),
                 **secondary_profiles,
             }
@@ -969,6 +1008,7 @@ def auth_node(state: PentestState) -> dict:
                     validated=True,
                     label="primary-owner",
                     source="runtime_header_session",
+                    provenance=primary_provenance,
                 ),
                 **secondary_profiles,
             }
@@ -1096,7 +1136,8 @@ def auth_node(state: PentestState) -> dict:
                 validated=True,
                 label=username or "primary-owner",
                 source="playwright_login",
-            ),
+                provenance=primary_provenance,
+                ),
             **secondary_profiles,
         }
         if cookies or auth_headers

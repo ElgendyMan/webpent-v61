@@ -60,7 +60,8 @@ def test_named_owner_profile_is_promoted_without_implicit_promotion() -> None:
         },
     )
     assert credentials == {"username": "owner@example.test", "password": "owner-pass"}
-    assert set(remaining) == {"foreign"}
+    assert set(remaining) == {"owner", "foreign"}
+    assert remaining["owner"]["role"] == "owner"
 
     untouched_credentials, untouched_profiles = _promote_named_owner_profile(
         {},

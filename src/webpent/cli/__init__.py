@@ -109,14 +109,25 @@ def _promote_named_owner_profile(
     if owner_name is None:
         return credentials, profiles
     owner = profiles[owner_name]
+    owner_secrets = (
+        owner.get("credentials") if isinstance(owner.get("credentials"), dict) else owner
+    )
     primary = {
-        key: str(owner[key])
+        key: str(owner_secrets[key])
         for key in ("username", "password", "email", "token")
-        if key in owner and isinstance(owner[key], str)
+        if key in owner_secrets and isinstance(owner_secrets[key], str)
     }
     if not {"username", "password"}.issubset(primary):
         return credentials, profiles
-    return primary, {name: profile for name, profile in profiles.items() if name != owner_name}
+    # Keep the named owner profile in the runtime profile set.  The primary
+    # credentials remain secret-only, while BAC needs the owner's non-secret
+    # session and ownership provenance to select a real owner identity.
+    retained_profiles = {name: dict(profile) for name, profile in profiles.items()}
+    owner_profile = dict(retained_profiles[owner_name])
+    owner_profile.setdefault("name", str(owner_name))
+    owner_profile["role"] = "owner"
+    retained_profiles[owner_name] = owner_profile
+    return primary, retained_profiles
 
 
 def _parse_cookies(cookies: str | None) -> dict[str, str]:
@@ -595,10 +606,20 @@ def scan(
             "credentials": parsed_identity,
         }
     for name, profile in file_profiles.items():
+        profile_data = dict(profile)
+        nested_credentials = profile_data.pop("credentials", None)
+        if isinstance(nested_credentials, dict):
+            profile_data["credentials"] = dict(nested_credentials)
+        else:
+            profile_data["credentials"] = {
+                key: profile_data.pop(key)
+                for key in ("username", "password", "email", "token")
+                if key in profile_data
+            }
         identity_profiles[str(name)] = {
-            "name": str(name),
-            "role": str(profile.get("role", "secondary")),
-            "credentials": dict(profile),
+            "name": str(profile_data.pop("name", name)),
+            "role": str(profile_data.pop("role", "secondary")),
+            **profile_data,
         }
     jwt_candidates = _load_json_list(jwt_weak_secrets_file, label="JWT candidates", max_items=64)
     disclosed_report_corpus = _load_json_list(
