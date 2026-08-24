@@ -17,7 +17,7 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | البوابة | النتيجة |
 |---|---|
 | bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent clean checkout regression | آخر baseline منشور: 1637 passed، 6 skipped؛ بعد patch expiry يُعاد التحقق في release gate |
+| WebPent clean checkout regression | آخر full regression: 1638 passed، 6 skipped؛ Ruff وcompileall وsecret audit وG-02 checker ناجحة |
 | Docker Compose dev smoke | Passed؛ API health، Redis PONG، Celery worker، Playwright 1.48.0، Nuclei 3.9.0، Chromium headless |
 | bbscout/WebPent bridge + settings contracts | Passed |
 | Release/plan-artifact audit suite | Passed |

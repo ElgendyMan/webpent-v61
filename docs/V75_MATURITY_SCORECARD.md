@@ -26,7 +26,7 @@
 
 | المجال | الدليل القابل للمراجعة |
 |---|---|
-| Regression | `1637 passed` و`6 skipped` في آخر full regression، مع استمرار بوابات Ruff وcompileall و`git diff --check` |
+| Regression | `1638 passed` و`6 skipped` في آخر full regression، مع نجاح Ruff وcompileall و`git diff --check` وsecret audit وG-02 checker |
 | G-02 | direct-I/O inventory deterministic واختبارات G-02 المستهدفة ناجحة |
 | Lifecycle | regression يمنع بقاء child tool orphan عند موت orchestrator الأب، مع parent-death safeguard |
 | Scope وauthority | Security Invariant Suite تغطي dot-segments/encoded traversal، authority denials، ledger states، engagement continuity، وProofBundle promotion |
@@ -36,7 +36,7 @@
 | Reports | تم تصدير `report.json` و`report.html` و`report.pdf` و`report.md` في workspace التشغيل |
 | Discovery limit | أحدث تشغيلات منفصلة احتوت 4 candidate rows في WAPTLab و6 في Juice Shop، وليست confirmations تراكمية |
 | Proof limit | `strict_confirmed=0`، و`promoted ProofBundles=0` |
-| Source provenance | أحدث source commit المنشور قبل patch التوثيق الحالي هو `89a0969`؛ patch الحالي pending review/commit |
+| Source provenance | أحدث source commit المنشور هو `0aa99aa`؛ التوثيق الحالي متوافق معه |
 
 ## نتائج اللابات المحلية المصرح بها
 
