@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime
 import json
 import re
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -122,8 +123,8 @@ def _promote_named_owner_profile(
     # Keep the named owner profile in the runtime profile set.  The primary
     # credentials remain secret-only, while BAC needs the owner's non-secret
     # session and ownership provenance to select a real owner identity.
-    retained_profiles = {name: dict(profile) for name, profile in profiles.items()}
-    owner_profile = dict(retained_profiles[owner_name])
+    retained_profiles = {name: deepcopy(profile) for name, profile in profiles.items()}
+    owner_profile = deepcopy(retained_profiles[owner_name])
     owner_profile.setdefault("name", str(owner_name))
     owner_profile["role"] = "owner"
     retained_profiles[owner_name] = owner_profile
@@ -606,7 +607,7 @@ def scan(
             "credentials": parsed_identity,
         }
     for name, profile in file_profiles.items():
-        profile_data = dict(profile)
+        profile_data = deepcopy(profile)
         nested_credentials = profile_data.pop("credentials", None)
         if isinstance(nested_credentials, dict):
             profile_data["credentials"] = dict(nested_credentials)

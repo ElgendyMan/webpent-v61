@@ -169,11 +169,11 @@ Total records: **319**.
 | `src/webpent/agents/validator/structural_checks.py` | 1111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/waf_detector/agent.py` | 92 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/waf_detector/agent.py` | 93 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 296 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 316 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/cli/__init__.py` | 1019 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 1021 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/cli/__init__.py` | 1130 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 297 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 317 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/cli/__init__.py` | 1020 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 1022 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/cli/__init__.py` | 1131 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/cli/git_source.py` | 6 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
 | `src/webpent/cli/git_source.py` | 71 | `call` | `subprocess.run` | `subprocess` | `approved` |
 | `src/webpent/cli/ingest.py` | 105 | `dynamic_import` | `importlib.import_module` | `dynamic_import` | `approved_with_expiry` |
