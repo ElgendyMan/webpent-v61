@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **300**.
+Total records: **301**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -230,11 +230,12 @@ Total records: **300**.
 | `src/webpent/shared/kev.py` | 25 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/llm.py` | 267 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/llm.py` | 344 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/llm.py` | 631 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/llm.py` | 635 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/llm.py` | 638 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/llm.py` | 642 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/llm.py` | 1389 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 625 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 629 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 632 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 636 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 957 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/llm.py` | 1384 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/oob_provider.py` | 18 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
 | `src/webpent/shared/oob_provider.py` | 213 | `dynamic_import` | `__import__` | `dynamic_import` | `approved_with_expiry` |
 | `src/webpent/shared/oob_provider.py` | 240 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

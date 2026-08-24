@@ -245,3 +245,49 @@ def test_openai_api_base_compatibility_alias(monkeypatch) -> None:
     assert settings.openai_base_url == "https://proxy.example.test/v1"
 
 
+
+
+def test_provider_specific_model_overrides_are_resolved_without_affecting_defaults() -> None:
+    settings = Settings(
+        llm_enabled=True,
+        groq_model="openai/gpt-oss-20b",
+        openrouter_model="google/gemma-4-31b-it:free",
+        cerebras_model="gpt-oss-120b",
+        mistral_model="mistral-small-latest",
+        gemini_model="gemini-2.5-flash",
+        cohere_model="command-a-03-2025",
+        cloudflare_model="@cf/meta/llama-3.2-3b-instruct",
+    )
+
+    assert llm_router._resolve_model_name("groq", "bounded-default", settings) == (
+        "openai/gpt-oss-20b"
+    )
+    assert llm_router._resolve_model_name(
+        "openrouter", "bounded-default", settings
+    ) == "google/gemma-4-31b-it:free"
+    assert llm_router._resolve_model_name("cerebras", "bounded-default", settings) == (
+        "gpt-oss-120b"
+    )
+    assert llm_router._resolve_model_name("mistral", "bounded-default", settings) == (
+        "mistral-small-latest"
+    )
+    assert llm_router._resolve_model_name("gemini", "bounded-default", settings) == (
+        "gemini-2.5-flash"
+    )
+    assert llm_router._resolve_model_name("cohere", "bounded-default", settings) == (
+        "command-a-03-2025"
+    )
+    assert llm_router._resolve_model_name("cloudflare", "bounded-default", settings) == (
+        "@cf/meta/llama-3.2-3b-instruct"
+    )
+    assert llm_router._resolve_model_name("zai", "bounded-default", settings) == (
+        "bounded-default"
+    )
+
+
+def test_provider_specific_model_overrides_ignore_blank_values() -> None:
+    settings = Settings(llm_enabled=True, groq_model="  ")
+
+    assert llm_router._resolve_model_name("groq", "bounded-default", settings) == (
+        "bounded-default"
+    )

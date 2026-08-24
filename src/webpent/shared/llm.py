@@ -481,74 +481,68 @@ class TaskType(str, Enum):
 # that the framework degrades gracefully as long as *any* key is set.
 _TASK_PREFERENCE_ORDER: dict[TaskType, list[tuple[str, str]]] = {
     TaskType.CODE: [
-        ("groq", "llama-3.3-70b-versatile"),
+        ("groq", "openai/gpt-oss-120b"),
         ("openai", "gpt-4o"),
-        # V7 Phase 6 FIX: qwen/qwen3-coder:free returned 404 from
-        # OpenRouter (stale/renamed free-tier slug). Replaced with
-        # meta-llama/llama-3.3-70b-instruct:free — the same slug
-        # already used in ANALYSIS/AUTOMATION/GENERAL chains, so the
-        # doctor and the router stay in sync and we know the slug
-        # resolves. Update both this file and scripts/doctor.py
-        # _PROBE_MODELS together if this is ever bumped again.
-        ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+        # OpenRouter free-tier slugs are periodically retired; keep this
+        # bounded default aligned with the current catalog and doctor probe.
+        ("openrouter", "google/gemma-4-31b-it:free"),
         ("github", "gpt-4o"),
-        ("cerebras", "llama3.1-70b"),
+        ("cerebras", "gpt-oss-120b"),
         ("anthropic", "claude-sonnet-5"),
-        ("cohere", "command-r-plus"),
+        ("cohere", "command-a-03-2025"),
         ("zai", "glm-5.2"),
-        # V7 Phase 6 FIX: gemini-1.5-flash is on Google's deprecation
-        # path. Replaced with gemini-2.0-flash (the documented
-        # successor). Mirrored in scripts/doctor.py _PROBE_MODELS.
-        ("gemini", "gemini-2.0-flash"),
+        # Gemini model IDs are catalog-driven; the current default is
+        # mirrored in scripts/doctor.py _PROBE_MODELS.
+        ("gemini", "gemini-2.5-flash"),
         ("mistral", "mistral-large-latest"),
         ("local", "llama3.1:8b"),
     ],
     TaskType.ANALYSIS: [
-        ("groq", "llama-3.3-70b-versatile"),
+        ("groq", "openai/gpt-oss-120b"),
         ("openai", "gpt-4o"),
-        ("cerebras", "llama3.1-70b"),
+        ("cerebras", "gpt-oss-120b"),
         ("anthropic", "claude-sonnet-5"),
-        ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+        ("openrouter", "google/gemma-4-31b-it:free"),
         ("github", "gpt-4o"),
-        ("cohere", "command-r-plus"),
+        ("cohere", "command-a-03-2025"),
         ("zai", "glm-5.1"),
-        ("gemini", "gemini-2.0-flash"),
+        ("gemini", "gemini-2.5-flash"),
         ("mistral", "mistral-large-latest"),
         ("local", "llama3.1:8b"),
     ],
     TaskType.AUTOMATION: [
-        ("groq", "llama-3.3-70b-versatile"),
+        ("groq", "openai/gpt-oss-120b"),
         ("openai", "gpt-4o-mini"),
-        ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+        ("openrouter", "google/gemma-4-31b-it:free"),
         ("github", "gpt-4o-mini"),
-        ("cerebras", "llama3.1-70b"),
-        ("cohere", "command-r"),
-        ("cloudflare", "@cf/meta/llama-3-8b-instruct"),
+        ("cerebras", "gpt-oss-120b"),
+        ("cohere", "command-a-03-2025"),
+        ("cloudflare", "@cf/meta/llama-3.2-3b-instruct"),
         ("zai", "glm-4-plus"),
-        ("gemini", "gemini-2.0-flash"),
+        ("gemini", "gemini-2.5-flash"),
         ("local", "llama3.1:8b"),
     ],
     TaskType.FAST: [
-        ("groq", "llama-3.1-8b-instant"),
+        ("groq", "openai/gpt-oss-20b"),
         ("openai", "gpt-4o-mini"),
-        ("cerebras", "llama3.1-8b"),
+        ("cerebras", "gpt-oss-120b"),
         ("github", "gpt-4o-mini"),
-        ("cloudflare", "@cf/meta/llama-3-8b-instruct"),
-        ("cohere", "command-r"),
+        ("cloudflare", "@cf/meta/llama-3.2-3b-instruct"),
+        ("cohere", "command-a-03-2025"),
         ("zai", "glm-4.7-flash"),
-        ("gemini", "gemini-2.0-flash"),
+        ("gemini", "gemini-2.5-flash"),
         ("local", "llama3.1:8b"),
     ],
     TaskType.GENERAL: [
-        ("groq", "llama-3.3-70b-versatile"),
+        ("groq", "openai/gpt-oss-120b"),
         ("openai", "gpt-4o"),
         ("github", "gpt-4o"),
-        ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-        ("cerebras", "llama3.1-70b"),
+        ("openrouter", "google/gemma-4-31b-it:free"),
+        ("cerebras", "gpt-oss-120b"),
         ("anthropic", "claude-sonnet-5"),
-        ("cohere", "command-r-plus"),
+        ("cohere", "command-a-03-2025"),
         ("zai", "glm-5.1"),
-        ("gemini", "gemini-2.0-flash"),
+        ("gemini", "gemini-2.5-flash"),
         ("mistral", "mistral-large-latest"),
         ("local", "llama3.1:8b"),
     ],
@@ -958,10 +952,11 @@ def _guard_provider_runnable(
 
 def _resolve_model_name(provider: str, model_name: str, settings: Settings) -> str:
     """Resolve operator model overrides without changing bounded defaults."""
-    if provider == "openai" and settings.openai_model:
-        return settings.openai_model
     if provider == "local":
         return settings.local_llm_model
+    override = getattr(settings, f"{provider}_model", None)
+    if isinstance(override, str) and override.strip():
+        return override.strip()
     return model_name
 
 

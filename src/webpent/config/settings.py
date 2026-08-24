@@ -179,6 +179,20 @@ class Settings(BaseSettings):
         default=None, description="Cloudflare account ID required for Workers AI routing."
     )
 
+    # -- Provider-specific model overrides -----------------------------------
+    # These remain optional so the bounded task preference chains stay the
+    # default. Operators can pin a currently available model without editing
+    # source code or changing the safety/evidence kernel.
+    groq_model: str | None = Field(default=None, validation_alias="GROQ_MODEL")
+    openrouter_model: str | None = Field(default=None, validation_alias="OPENROUTER_MODEL")
+    cerebras_model: str | None = Field(default=None, validation_alias="CEREBRAS_MODEL")
+    github_model: str | None = Field(default=None, validation_alias="GITHUB_MODEL")
+    zai_model: str | None = Field(default=None, validation_alias="ZAI_MODEL")
+    mistral_model: str | None = Field(default=None, validation_alias="MISTRAL_MODEL")
+    gemini_model: str | None = Field(default=None, validation_alias="GEMINI_MODEL")
+    cohere_model: str | None = Field(default=None, validation_alias="COHERE_MODEL")
+    cloudflare_model: str | None = Field(default=None, validation_alias="CLOUDFLARE_MODEL")
+
     # -- LLM selection / generation -----------------------------------------
     default_llm_provider: LLMProvider = Field(
         default=LLMProvider.ANTHROPIC,

@@ -68,27 +68,22 @@ log = logging.getLogger("doctor")
 # doctor stays fast even with many providers configured. These mirror
 # the FAST task preference chain in llm.py.
 #
-# V7 Phase 6 FIX: openrouter + gemini slugs updated to match the
-# matching entries in _TASK_PREFERENCE_ORDER in src/webpent/shared/llm.py.
-# The doctor and the real router MUST stay in sync — if a slug is ever
-# bumped here, bump it in llm.py too (and vice versa), otherwise the
-# doctor can report a provider as ACTIVE while the real router 404s
-# (or vice versa). The previous slugs (qwen/qwen3-coder:free,
-# gemini-1.5-flash) were stale/deprecated and caused exactly that
-# class of false-negative in the doctor's pre-V7 output.
+# Provider probe IDs mirror the bounded defaults in
+# src/webpent/shared/llm.py. Catalogs change over time; if a probe gets
+# retired, doctor must report FAILING rather than claiming provider health.
 _PROBE_MODELS: dict[str, str] = {
-    "groq": "llama-3.1-8b-instant",
+    "groq": "openai/gpt-oss-20b",
     "openai": "gpt-4o-mini",
     "local": "llama3.1:8b",
-    "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter": "google/gemma-4-31b-it:free",
     "github": "gpt-4o-mini",
-    "cerebras": "llama3.1-8b",
+    "cerebras": "gpt-oss-120b",
     "zai": "glm-4.7-flash",
     "mistral": "mistral-small-latest",
-    "gemini": "gemini-2.0-flash",
-    "cohere": "command-r",
+    "gemini": "gemini-2.5-flash",
+    "cohere": "command-a-03-2025",
     # Cloudflare requires account_id too; handled specially below.
-    "cloudflare": "@cf/meta/llama-3-8b-instruct",
+    "cloudflare": "@cf/meta/llama-3.2-3b-instruct",
 }
 
 _PROBE_PROMPT = "Reply with OK"
