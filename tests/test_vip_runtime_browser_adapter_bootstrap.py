@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from webpent.config.settings import ScanMode, Settings
@@ -91,6 +93,27 @@ def test_browser_registration_rejects_duplicate_and_expired_metadata() -> None:
             _browser_adapter(),
             expires_at="2000-01-01",
         )
+
+
+def test_same_day_expired_timestamp_is_rejected_but_date_only_is_valid() -> None:
+    expired_timestamp = datetime.now(UTC).replace(microsecond=0).isoformat()
+    with pytest.raises(RuntimeConfigurationError, match="approval_expired"):
+        register_control_plane_browser_adapter(
+            AdapterRegistry(),
+            _browser_adapter(),
+            expires_at=expired_timestamp,
+        )
+
+    current_date = datetime.now(UTC).date().isoformat()
+    date_registry = AdapterRegistry()
+    register_control_plane_browser_adapter(
+        date_registry,
+        _browser_adapter(),
+        expires_at=current_date,
+    )
+    valid, errors = date_registry.validate_for_execution(CONTROL_PLANE_BROWSER_ADAPTER_NAME)
+    assert valid is True
+    assert errors == ()
 
 
 def test_registered_adapter_expiry_is_not_hardcoded_to_old_g02_date() -> None:

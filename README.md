@@ -1,23 +1,23 @@
 # WebPent
 
-**Current release candidate:** `0.3.0` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The implementation revision for the completed `pasted_content_3.txt` plan is `e3d4717`. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md), and the phase-by-phase delivery matrix is in [`docs/PASTED_CONTENT_3_EXECUTION_STATUS.md`](docs/PASTED_CONTENT_3_EXECUTION_STATUS.md).
+**Current release candidate:** `0.3.1` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The current source revision is recorded by Git and the release manifest; the latest additive patch fixes adapter timestamp expiry handling and preserves execution telemetry through the final CLI export. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md), and the phase-by-phase delivery matrix is in [`docs/PASTED_CONTENT_3_EXECUTION_STATUS.md`](docs/PASTED_CONTENT_3_EXECUTION_STATUS.md).
 
 WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
 
-> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى Target Brain وKnowledge/Attack Graph وbounded research planning وspecialized researcher contracts وmemory/LLM boundaries وadmission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
+> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى Target Brain وKnowledge/Attack Graph وbounded research planning وspecialized researcher contracts وmemory/LLM boundaries وadmission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. أضيفت الآن execution observations منزوعة الحساسية من `execution_sandbox` إلى checkpoint وJSON/Markdown/HTML، مع digest فقط للـpayload وعدم ترقيته إلى دليل. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
 
 > **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
 
 ## الحكم الحالي والنتائج الموثقة
 
-الحكم الهندسي الحالي هو **Evidence-Aware Bounded Autonomous Bug Hunter**، وليس ادعاءً بتغطية شاملة أو تأهل VIP. آخر مراجعة للطلبات والتنفيذ موثقة في [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md)، وسجل المراحل في [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md).
+الحكم الهندسي الحالي هو **Evidence-Aware Bounded Autonomous Bug Hunter — 76/100 engineering maturity**، وليس ادعاءً بتغطية شاملة أو تأهل VIP. آخر مراجعة للطلبات والتنفيذ موثقة في [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md)، وسجل المراحل في [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md). التقييم 76/100 هو maturity هندسية، وليس نسبة اكتشاف ثغرات ولا عدد findings ولا qualification.
 
 الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` وملفات التتبع داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). الـmetadata commit النهائي مسجل في manifest، ولا يُخلط ذلك مع implementation source revision المسجل في canonical release identity.
 
 | البوابة | النتيجة |
 |---|---|
 | bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent clean checkout regression | 1622 passed، 6 skipped، 56 warnings |
+| WebPent clean checkout regression | آخر baseline منشور: 1637 passed، 6 skipped؛ بعد patch expiry يُعاد التحقق في release gate |
 | Docker Compose dev smoke | Passed؛ API health، Redis PONG، Celery worker، Playwright 1.48.0، Nuclei 3.9.0، Chromium headless |
 | bbscout/WebPent bridge + settings contracts | Passed |
 | Release/plan-artifact audit suite | Passed |
@@ -28,8 +28,10 @@ WebPent هو إطار عمل لاختبار اختراق تطبيقات الوي
 | tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
 | Offline release verifier | Passed؛ يرفض DB/WAL/SHM/journal/log artifacts؛ لا target contact |
 | Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount؛ لا تعني distributed qualification |
+| Execution telemetry/report continuity | Passed؛ observations redacted تصل إلى checkpoint والتقرير النهائي، ولا تغيّر confirmation gate |
+| Browser adapter expiry contract | Passed؛ timestamp منتهي يُرفض، وdate-only صالح حتى نهاية يوم UTC |
 
-هذه النتائج تثبت العقود والـregressions وruntime smoke التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. Target Intelligence وAttack Graph وhypothesis bridge وspecialist routing وValidationStatus وHITL levels تعمل كطبقات advisory فوق الـKernel. Adapters الـproviders والـbenchmark profiles في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
+هذه النتائج تثبت العقود والـregressions وruntime smoke التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. آخر scans منفصلة للابات المحلية المصرح بها أنتجت 6 candidates في Juice Shop و4 candidates في WAPTLab؛ كلّها بقيت unconfirmed، مع 0 ProofBundle promoted. التشغيلات لا تُجمع تراكميًا بين الأهداف أو الـengagements. Target Intelligence وAttack Graph وhypothesis bridge وspecialist routing وValidationStatus وHITL levels تعمل كطبقات advisory فوق الـKernel. Adapters الـproviders والـbenchmark profiles في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
 
 ## ما هو Target Package v2؟
 
@@ -324,9 +326,9 @@ python scripts/verify_release_artifacts.py \
 | Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
 | Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
-| WAPTLab وJuice Shop live qualification | **لم تُعاد في هذه الجولة**؛ offline three-run simulation لا تثبت live qualification، وآخر WAPTLab smoke تاريخي ظل `NOT_QUALIFIED` |
-| Docker/Celery distributed qualification | **غير مثبتة** |
-| Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة** |
+| WAPTLab وJuice Shop live qualification | تم تشغيلهما منفصلين على stacks محلية معزولة؛ Juice Shop: 6 candidates، WAPTLab: 4 candidates، وكلاهما 0 confirmed/0 ProofBundles؛ الحالة `NOT_QUALIFIED` |
+| Docker/Celery distributed qualification | **غير مثبتة بالكامل**؛ توجد compose وworker contracts، لكن HA/outage/resume qualification ليست مثبتة |
+| Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة**؛ لا يوجد strict confirmed أو promoted ProofBundle في أحدث تشغيلات اللابات |
 | Auto-submit provider reports | غير مسموح به في هذا المسار |
 
 لذلك قرار promotion الحالي هو **NO** حتى تُجمع الأدلة المطلوبة في بيئة مصرح بها وتُراجع النتائج بصورة مستقلة.
@@ -345,4 +347,4 @@ python scripts/verify_release_artifacts.py \
 
 Source-only archives وملفات SHA-256 الناتجة من release process تُحفظ خارج Git، ويجب توليدها من HEAD المطلوب والتحقق منها بالـmanifest والـoffline verifier قبل التسليم.
 
-> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، وسلسلة proof/report continuity قابلة للتدقيق. لكنه لا يملك بعد دليلًا صادقًا يسمح بإعلان VIP أو تغطية شاملة لكل نوع من الثغرات أو كل provider/target.
+> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، execution telemetry قابلة للتدقيق، وسلسلة proof/report continuity لا تُسقط محاولات التحقق. أقرب فجوة تشغيلية للوصول إلى VIP هي توصيل typed `BrowserActionAdapter` حقيقي بـ`ActionExecutor` عبر transport Playwright محمي بالـSSRF/scope، ثم إثبات causal signal وnegative control وsealed/replayable ProofBundle في جولات qualification مستقلة. لا يجوز إعلان VIP أو تغطية شاملة قبل هذه الأدلة.

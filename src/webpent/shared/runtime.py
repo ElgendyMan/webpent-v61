@@ -179,7 +179,17 @@ class RegisteredAdapter:
             except ValueError:
                 errors.append(f"adapter:{self.name}:expires_at:invalid")
             else:
-                if parsed.date() < datetime.now(UTC).date():
+                now = datetime.now(UTC)
+                if "T" in expiry:
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=UTC)
+                    else:
+                        parsed = parsed.astimezone(UTC)
+                    expired = parsed <= now
+                else:
+                    # Date-only approvals are valid through the stated UTC date.
+                    expired = parsed.date() < now.date()
+                if expired:
                     errors.append(f"adapter:{self.name}:approval_expired")
         return tuple(errors)
 

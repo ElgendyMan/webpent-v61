@@ -3791,7 +3791,7 @@
       "column": 30,
       "file": "src/webpent/shared/runtime.py",
       "kind": "dynamic_resolution",
-      "line": 762,
+      "line": 772,
       "normalized_symbol": "getattr(context.settings.scan_mode, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",

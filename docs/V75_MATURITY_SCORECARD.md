@@ -2,7 +2,7 @@
 
 ## الغرض وحدود الحكم
 
-هذا المستند يعرّف مقياسًا هندسيًا شفافًا للوصول إلى هدف **75% maturity** في مشروع WebPent. الرقم ليس نسبة اكتشاف ثغرات، وليس عددًا تراكميًا للـfindings، وليس بديلًا عن qualification الخاصة بـVIP. لا يُسمح بتحويل candidate أو inventory أو نتيجة human review إلى confirmed finding.
+هذا المستند يعرّف مقياسًا هندسيًا شفافًا لـmaturity مشروع WebPent. الرقم ليس نسبة اكتشاف ثغرات، وليس عددًا تراكميًا للـfindings، وليس بديلًا عن qualification الخاصة بـVIP. لا يُسمح بتحويل candidate أو inventory أو نتيجة human review إلى confirmed finding.
 
 > **الحكم الحالي:** WebPent حقق **76/100 في maturity الهندسية** وفق هذا المقياس، لكنه ما زال **NOT QUALIFIED كـVIP Smart Autonomous Bug Hunter**؛ لأن التشغيلين الحيين المكتملين لم يثبتا أي strict confirmed أو ProofBundle promoted.
 
@@ -17,7 +17,7 @@
 | Discovery وcampaign coverage | 20 | 12 | Partially verified |
 | Validator وproof completeness | 20 | 8 | Contract present; live proof missing |
 | Autonomy وrecovery | 10 | 9 | Verified with end-to-end gap |
-| Runtime qualification | 10 | 7 | Completed smokes; not VIP-qualified |
+| Runtime qualification | 10 | 7 | Completed isolated smokes; not VIP-qualified |
 | **الإجمالي** | **100** | **76** | **Engineering target reached** |
 
 > **الحساب:** `20 + 20 + 12 + 8 + 9 + 7 = 76`.
@@ -26,30 +26,30 @@
 
 | المجال | الدليل القابل للمراجعة |
 |---|---|
-| Regression | `1512 passed` في بوابة Phase 10/12 المسجلة، مع استمرار بوابات Ruff وcompileall و`git diff --check` |
+| Regression | `1637 passed` و`6 skipped` في آخر full regression، مع استمرار بوابات Ruff وcompileall و`git diff --check` |
 | G-02 | direct-I/O inventory deterministic واختبارات G-02 المستهدفة ناجحة |
 | Lifecycle | regression يمنع بقاء child tool orphan عند موت orchestrator الأب، مع parent-death safeguard |
 | Scope وauthority | Security Invariant Suite تغطي dot-segments/encoded traversal، authority denials، ledger states، engagement continuity، وProofBundle promotion |
 | LLM boundary | structured tuple inputs تعامل كبيانات غير موثوقة، وdiagnostics لا تعيد secrets، دون استدعاء provider خارجي في الاختبارات |
 | Benchmark | golden benchmark offline-contract يفصل FDR عن FPR ولا يدّعي live discovery |
-| Runtime smoke | WAPTLab محلي مصرح: target reachable، live target executed، scan completed خلال 172.398 ثانية تحت حد 240 ثانية |
+| Runtime smoke | WAPTLab وJuice Shop محليان مصرحان: target reachable وlive execution؛ التشغيلات الأخيرة أنتجت 4 و6 candidates على الترتيب، مع توثيق infra/target stability gaps |
 | Reports | تم تصدير `report.json` و`report.html` و`report.pdf` و`report.md` في workspace التشغيل |
-| Discovery limit | أحدث تقرير احتوى 4 candidate rows، وليس 4 confirmations |
+| Discovery limit | أحدث تشغيلات منفصلة احتوت 4 candidate rows في WAPTLab و6 في Juice Shop، وليست confirmations تراكمية |
 | Proof limit | `strict_confirmed=0`، و`promoted ProofBundles=0` |
-| Source provenance | أحدث source commit هو `8571c67` ومرفوع إلى `origin/master` |
+| Source provenance | أحدث source commit المنشور قبل patch التوثيق الحالي هو `89a0969`؛ patch الحالي pending review/commit |
 
-## نتيجة WAPTLab Phase 10
+## نتائج اللابات المحلية المصرح بها
 
-تم تشغيل **smoke واحد إضافي فقط** على WAPTLab المحلي المصرح به باستخدام `authorized-active` و`--no-llm` وcampaign inventory المعلن. اكتمل التشغيل دون timeout، ووصل إلى target، ونفّذ live target، وأصدر التقارير. لم يتم احتساب أي candidate كـconfirmed.
+تم تشغيل WAPTLab وJuice Shop في workspaces وengagements منفصلة داخل شبكات Docker داخلية، باستخدام `authorized-active` و`--no-llm` وinventory المعلن لكل هدف. لم يتم استخدام credentials أو signup أو targets عامة. أُصدرت التقارير والـcheckpoints، ولم يتم احتساب أي candidate كـconfirmed.
 
 | مقياس qualification | النتيجة |
 |---|---:|
-| Smoke runs completed | 2 |
+| Lab runs completed | 2 target-separated runs |
 | Qualifying runs completed | 0 |
 | Scan completed | Yes في أحدث smoke |
 | Target reachable | Yes |
 | Live target executed | Yes |
-| Candidate rows | 4 |
+| Candidate rows | WAPTLab: 4؛ Juice Shop: 6 |
 | Strict confirmed | 0 |
 | Promoted ProofBundles | 0 |
 | Qualification status | NOT QUALIFIED |
