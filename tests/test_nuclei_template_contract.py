@@ -32,11 +32,31 @@ def test_default_nuclei_templates_accept_valid_manifest(monkeypatch, tmp_path):
     monkeypatch.setattr(nuclei, "get_settings", lambda: type(
         "Settings",
         (),
-        {"nuclei_path": "nuclei", "http_user_agent": "webpent-test", "nuclei_timeout": 1},
+        {
+            "nuclei_path": "nuclei",
+            "http_user_agent": "webpent-test",
+            "nuclei_timeout": 1,
+            "nuclei_request_timeout": 10,
+            "nuclei_retries": 1,
+            "nuclei_concurrency": 25,
+            "nuclei_rate_limit": 150,
+        },
     )())
-    monkeypatch.setattr(nuclei, "run_command", lambda cmd, timeout: "")
+    captured = {}
+
+    def fake_run_command(cmd, timeout):
+        captured["cmd"] = cmd
+        captured["timeout"] = timeout
+        return ""
+
+    monkeypatch.setattr(nuclei, "run_command", fake_run_command)
 
     assert nuclei.run_nuclei("https://example.test") == []
+    assert captured["timeout"] == 1
+    assert captured["cmd"][captured["cmd"].index("-timeout") + 1] == "10"
+    assert captured["cmd"][captured["cmd"].index("-retries") + 1] == "1"
+    assert captured["cmd"][captured["cmd"].index("-c") + 1] == "25"
+    assert captured["cmd"][captured["cmd"].index("-rl") + 1] == "150"
 
 
 __all__ = []

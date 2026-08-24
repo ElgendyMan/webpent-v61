@@ -305,23 +305,48 @@ class DecisionLogManager:
 # Process-wide singleton — mirrors the LessonsManager / DatabaseManager pattern.
 # ---------------------------------------------------------------------------
 _singleton: DecisionLogManager | None = None
+_scoped_singletons: dict[str, DecisionLogManager] = {}
 _singleton_lock = threading.Lock()
 
 
-def get_decision_log_manager(database_url: str | None = None) -> DecisionLogManager:
-    """Return the process-wide :class:`DecisionLogManager` singleton.
+def _active_workspace_database_url() -> str | None:
+    """Return a workspace-local decision-log URL when a scan is active."""
+    try:
+        from webpent.shared.target_workspace_context import (
+            get_active_target_workspace,
+        )
+    except ImportError:
+        return None
+    workspace = get_active_target_workspace()
+    if workspace is None:
+        return None
+    return f"sqlite:///{workspace.decision_log_database_path.as_posix()}"
 
-    Mirrors :func:`webpent.memory.lessons.get_lessons_manager` /
-    :func:`webpent.memory.db.get_db_manager` — a single shared manager
-    per process so the schema-init flag and in-memory connection are
-    reused across calls.
+
+def get_decision_log_manager(database_url: str | None = None) -> DecisionLogManager:
+    """Return a manager scoped to an explicit or active target database.
+
+    Legacy callers outside a target workspace retain the original process-wide
+    singleton. During a target-scoped execution, an omitted URL resolves to a
+    workspace-local append-only log and is cached by URL, preventing one target
+    from reusing another target's manager or database.
     """
     global _singleton
-    if _singleton is None:
-        with _singleton_lock:
-            if _singleton is None:
-                _singleton = DecisionLogManager(database_url=database_url)
-    return _singleton
+    resolved_url = database_url or _active_workspace_database_url()
+    if resolved_url is None:
+        if _singleton is None:
+            with _singleton_lock:
+                if _singleton is None:
+                    _singleton = DecisionLogManager()
+        return _singleton
+    key = str(resolved_url)
+    with _singleton_lock:
+        manager = _scoped_singletons.get(key)
+        if manager is None:
+            manager = DecisionLogManager(database_url=key)
+            _scoped_singletons[key] = manager
+        return manager
+
 
 
 # ---------------------------------------------------------------------------

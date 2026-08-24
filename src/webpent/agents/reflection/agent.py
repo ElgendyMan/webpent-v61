@@ -156,6 +156,11 @@ def _parse_lessons(raw_response: str) -> list[str]:
     trailing text, or a completely malformed response.
     """
     text = raw_response.strip()
+    # Deterministic/no-LLM runs intentionally provide no model response.
+    # Treat the empty value as an explicit no-op instead of reporting a
+    # malformed LLM response; malformed non-empty responses still warn.
+    if not text:
+        return []
 
     # Strip markdown code fences if present.
     if text.startswith("```"):

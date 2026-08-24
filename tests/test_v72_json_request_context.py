@@ -76,6 +76,7 @@ def test_vip_profile_seeds_missing_post_only_export_erp_surface() -> None:
         "additional_target_origins": [],
         "policy_assumptions": [],
         "profile": "vip-qualification",
+        "campaign_inventory": "waptlab",
         "client_id": "test-client",
         "engagement_id": "test-engagement",
         "thread_id": "test-thread",
@@ -97,6 +98,29 @@ def test_vip_profile_seeds_missing_post_only_export_erp_surface() -> None:
     generated_urls = [item.target_url for item in result["hypotheses"]]
     assert "http://target.test/export-erp" in generated_urls
     assert "http://target.test/" not in generated_urls
+
+
+def test_vip_generic_inventory_does_not_seed_lab_post_only_surfaces() -> None:
+    state = {
+        "target": Target(url="http://juice.test"),
+        "crawled_data": {"endpoints": ["http://juice.test/"]},
+        "application_intent": {},
+        "additional_target_origins": [],
+        "policy_assumptions": [],
+        "profile": "vip-qualification",
+        "campaign_inventory": "generic",
+        "client_id": "test-client",
+        "engagement_id": "test-engagement",
+        "thread_id": "test-thread",
+    }
+
+    result = hypothesis_node(state)
+
+    assert not any(
+        item.target_url.endswith(route)
+        for item in result["hypotheses"]
+        for route in ("/export-erp", "/crm/export", "/training/send-results-email")
+    )
 
 
 def test_non_vip_profile_does_not_seed_lab_post_only_surfaces() -> None:

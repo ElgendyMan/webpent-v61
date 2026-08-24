@@ -801,6 +801,56 @@ class Settings(BaseSettings):
             "scans; lower for fast lab sweeps."
         ),
     )
+    nuclei_request_timeout: int = Field(
+        default=10,
+        gt=0,
+        le=120,
+        validation_alias=AliasChoices(
+            "nuclei_request_timeout",
+            "NUCLEI_REQUEST_TIMEOUT",
+            "WEBPENT_NUCLEI_REQUEST_TIMEOUT",
+        ),
+        description=(
+            "Per-request timeout passed to nuclei templates in seconds. "
+            "The engagement-level nuclei_timeout remains the outer ceiling."
+        ),
+    )
+    nuclei_retries: int = Field(
+        default=1,
+        ge=0,
+        le=3,
+        validation_alias=AliasChoices(
+            "nuclei_retries",
+            "NUCLEI_RETRIES",
+            "WEBPENT_NUCLEI_RETRIES",
+        ),
+        description="Retries for individual nuclei requests.",
+    )
+    nuclei_concurrency: int = Field(
+        default=25,
+        ge=1,
+        le=100,
+        validation_alias=AliasChoices(
+            "nuclei_concurrency",
+            "NUCLEI_CONCURRENCY",
+            "WEBPENT_NUCLEI_CONCURRENCY",
+        ),
+        description="Maximum concurrent nuclei template requests.",
+    )
+    nuclei_rate_limit: int = Field(
+        default=150,
+        ge=0,
+        le=1000,
+        validation_alias=AliasChoices(
+            "nuclei_rate_limit",
+            "NUCLEI_RATE_LIMIT",
+            "WEBPENT_NUCLEI_RATE_LIMIT",
+        ),
+        description=(
+            "Maximum nuclei requests per second; zero leaves nuclei's own "
+            "rate behavior disabled."
+        ),
+    )
     ffuf_timeout: int = Field(
         default=300,
         gt=0,

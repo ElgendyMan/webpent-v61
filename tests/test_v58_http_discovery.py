@@ -181,6 +181,83 @@ def test_crawler_uses_http_fallback_when_katana_is_missing(monkeypatch) -> None:
     assert "opaque-session" not in str(result)
 
 
+def test_crawler_no_llm_skips_provider_factory(monkeypatch) -> None:
+    from webpent.agents.crawler import agent as crawler_agent
+    from webpent.models.targets import Target
+
+    endpoints = [
+        "http://lab.test/",
+        "http://lab.test/api/items?id=1",
+        "http://lab.test/static/app.js",
+    ]
+
+    monkeypatch.setattr(crawler_agent, "run_katana", lambda *_args, **_kwargs: endpoints)
+    monkeypatch.setattr(crawler_agent, "_fetch_and_analyze_js", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(crawler_agent, "_discover_html_forms", lambda *_args, **_kwargs: [])
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("get_llm must not be called when no-LLM is explicit")
+
+    monkeypatch.setattr(crawler_agent, "get_llm", fail_if_called)
+
+    result = crawler_agent.crawler_node(
+        {
+            "target": Target(url="http://lab.test/"),
+            "llm_enabled_override": False,
+        }
+    )
+
+    assert result["crawled_data"]["endpoints"] == endpoints
+
+
+def test_httpx_safe_local_fallback_recovers_single_label_target(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from webpent.shared import engagement_scope
+    from webpent.shared import http as http_module
+    from webpent.tools.recon import httpx as httpx_module
+
+    monkeypatch.setattr(
+        httpx_module,
+        "get_settings",
+        lambda: SimpleNamespace(httpx_path="httpx-pd"),
+    )
+    monkeypatch.setattr(httpx_module, "run_command", lambda *args, **kwargs: "")
+    monkeypatch.setattr(
+        engagement_scope,
+        "is_engagement_target_host",
+        lambda host: host == "app",
+    )
+
+    class FakeResponse:
+        status_code = 403
+        headers = {"content-type": "text/html"}
+        content = b"forbidden"
+        text = "forbidden"
+
+    requested: list[str] = []
+
+    class FakeClient:
+        def get(self, url: str) -> FakeResponse:
+            requested.append(url)
+            return FakeResponse()
+
+        def __enter__(self) -> FakeClient:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(http_module, "make_safe_httpx_client", lambda **_kwargs: FakeClient())
+
+    records = httpx_module.run_httpx(["http://app:8000/", "http://other:8000/"])
+
+    assert requested == ["http://app:8000/"]
+    assert records[0]["url"] == "http://app:8000/"
+    assert records[0]["status_code"] == 403
+    assert records[0]["webpent_probe_fallback"] == "safe_local_http"
+
+
 def test_http_surface_invalid_target_fails_closed() -> None:
     from webpent.shared.http_discovery import discover_http_surface
 

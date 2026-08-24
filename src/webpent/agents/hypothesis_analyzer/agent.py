@@ -1006,7 +1006,11 @@ def hypothesis_node(state: PentestState) -> dict:
     # control before a Finding can be Tool-Confirmed. Ordinary profiles remain
     # target-agnostic and do not receive these seeds.
     profile_value = str(state.get("profile") or "").strip().lower().replace("_", "-")
-    if profile_value in {"vip-qualification", "scanprofile.vip-qualification"}:
+    campaign_inventory = str(state.get("campaign_inventory") or "generic").strip().lower()
+    if (
+        campaign_inventory == "waptlab"
+        and profile_value in {"vip-qualification", "scanprofile.vip-qualification"}
+    ):
         known_surface_paths = (
             "/export-erp",
             "/crm/export",

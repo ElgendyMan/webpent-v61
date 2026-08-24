@@ -138,7 +138,17 @@ def run_katana(
     cmd = [
         settings.katana_path,
         "-u", url,
+        # `-jc` enables JavaScript crawling; `-j` is the separate JSONL
+        # output switch.  The previous wrapper used only `-jc`, so Katana
+        # could complete successfully while emitting plain/empty output that
+        # the JSON parser could not consume.  Keep both switches explicit.
         "-jc",
+        "-j",
+        # Preserve form and XHR observations for downstream endpoint and
+        # hypothesis generation.  These are observations only; validators
+        # still require target-backed proof before confirmation.
+        "-fx",
+        "-xhr",
         "-silent",
         "-d", str(depth),
         # V10 AUDIT FIX (C4): -nc disables katana's built-in crawl
@@ -250,10 +260,12 @@ def run_katana(
         url,
         depth,
     )
-    # V7 Phase 6: Classify tool failure mode.
+    # V7 Phase 6: Classify tool failure mode.  Do not inspect stdout for
+    # words such as ``panic`` or ``fatal``: stdout is target-controlled JSON
+    # and response bodies may legitimately contain those strings.  Non-zero
+    # exits/timeouts are handled by ``run_command`` above; an empty successful
+    # output is the only failure signal available at this layer.
     if not raw_output.strip():
         logger.warning("TOOL_INFRA_FAILURE: katana produced no output.")
-    elif "panic:" in raw_output.lower() or "fatal" in raw_output.lower():
-        logger.warning("TOOL_INFRA_FAILURE: katana crashed.")
 
     return endpoints

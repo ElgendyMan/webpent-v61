@@ -15,8 +15,9 @@ def test_dalfox_keeps_clean_scan_summary(monkeypatch):
 
     def fake_run_command(cmd, timeout=None):
         calls.append((cmd, timeout))
-        assert "--url" in cmd
-        assert cmd[cmd.index("--url") + 1].startswith("http://")
+        assert cmd[0].endswith("/dalfox")
+        assert cmd[1] == "url"
+        assert cmd[2].startswith("http://")
         assert "--no-color" in cmd
         assert "--format" in cmd
         assert cmd[cmd.index("--format") + 1] == "json"
@@ -45,7 +46,8 @@ def test_dalfox_empty_output_remains_infrastructure_failure(monkeypatch):
 
     def fake_run_command(cmd, timeout=None):
         calls.append((cmd, timeout))
-        assert "--url" in cmd
+        assert cmd[1] == "url"
+        assert cmd[2].startswith("http://")
         assert "--deep-domxss" not in cmd
         assert "--context-aware" not in cmd
         assert "--skip-headless" not in cmd

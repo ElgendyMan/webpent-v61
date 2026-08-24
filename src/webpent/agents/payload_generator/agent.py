@@ -703,9 +703,17 @@ def payload_generator_node(state: PentestState) -> dict:
         _validation_requeue = bool(
             _finding_evidence.get("validation_requeue")
         )
+        # ``Needs Human Review`` is an unverified discovery state, not a
+        # terminal validation outcome.  Treating it as terminal here
+        # prevented the first payload-generation pass from ever reaching
+        # the browser validator on the normal no-LLM path.  A finding is
+        # terminal only after an actual validation attempt (handled by the
+        # evidence marker above), or when it is explicitly confirmed/clean/
+        # not-scanned.  This keeps the retry/idempotency guard intact while
+        # allowing a newly discovered XSS candidate to receive its bounded
+        # canary payload and enter the existing proof-gated validator path.
         _terminal_confidence = finding.confidence_level in {
             "Tool-Confirmed",
-            "Needs Human Review",
             "Clean",
             "Not Scanned",
         }

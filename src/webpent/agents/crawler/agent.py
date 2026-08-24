@@ -41,6 +41,7 @@ from webpent.shared.llm import (
     TaskType,
     get_cached_llm,
     get_safety_system_instruction,
+    is_llm_enabled,
     safe_prompt_format,
 )
 from webpent.shared.recon_triage import build_coverage_preserving_queue
@@ -589,63 +590,82 @@ def crawler_node(state: PentestState) -> dict:
         endpoints_for_llm = raw_endpoints[:_MAX_URLS_FOR_LLM]
         fallback = raw_endpoints[:_MAX_URLS_FOR_LLM]
 
-    try:
-        llm = get_llm(TaskType.ANALYSIS)
-    except Exception as exc:
-        logger.info("Crawler LLM unavailable; using deterministic endpoint fallback: %s", exc)
-        llm = None
-    human_prompt = safe_prompt_format(
-        _HUMAN_TEMPLATE,
-        url=url,
-        count=len(raw_endpoints),
-        endpoints=_format_endpoints_for_llm(endpoints_for_llm),
-    )
+    # Respect both the per-run state override and the shared LLM toggle. In
+    # no-LLM mode, do not even construct a provider: deterministic discovery
+    # and the coverage-preserving queue are the complete triage path.
+    llm_disabled = state.get("llm_enabled_override") is False
+    if not llm_disabled:
+        try:
+            llm_disabled = not is_llm_enabled()
+        except Exception:
+            # Preserve the historical provider-fallback behavior if a partial
+            # settings object cannot report the effective LLM state.
+            llm_disabled = False
 
-    llm_selected = list(fallback)
-    try:
-        if llm is None:
-            raise RuntimeError("LLM unavailable")
-        response = llm.invoke(
-            [
-                SystemMessage(content=get_safety_system_instruction()),
-                SystemMessage(content=_SYSTEM_PROMPT),
-                HumanMessage(content=human_prompt),
-            ]
-        )
-        raw_text: str = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        )
-        llm_selected = _parse_llm_url_list(raw_text, fallback)
-        if structure_aware:
-            # Deterministic coverage is authoritative for surface inclusion.
-            # Keep the LLM selection as an advisory ordering hint only when a
-            # slot remains; never replace a selected coverage representative.
-            curated_endpoints = list(coverage_queue)
-            for candidate in llm_selected:
-                if candidate in raw_endpoints and candidate not in curated_endpoints:
-                    if len(curated_endpoints) >= triage_limit:
-                        break
-                    curated_endpoints.append(candidate)
-        else:
-            curated_endpoints = llm_selected
+    if llm_disabled:
+        curated_endpoints = list(fallback)
         logger.info(
-            "LLM supervisor selected %d endpoint(s) from %d candidates; final queue=%d",
-            len(llm_selected),
-            len(raw_endpoints),
+            "Crawler LLM triage disabled; using deterministic endpoint fallback (%d endpoint(s)).",
             len(curated_endpoints),
         )
-    except Exception as exc:  # noqa: BLE001 — all LLM providers failed
-        fallback_label = (
-            "the structure-aware coverage queue"
-            if structure_aware
-            else f"bounded raw discovery sample (max={_MAX_URLS_FOR_LLM})"
+    else:
+        try:
+            llm = get_llm(TaskType.ANALYSIS)
+        except Exception as exc:
+            logger.info("Crawler LLM unavailable; using deterministic endpoint fallback: %s", exc)
+            llm = None
+        human_prompt = safe_prompt_format(
+            _HUMAN_TEMPLATE,
+            url=url,
+            count=len(raw_endpoints),
+            endpoints=_format_endpoints_for_llm(endpoints_for_llm),
         )
-        logger.error(
-            "LLM supervisor failed for crawler triage: %s. Falling back to %s.",
-            exc,
-            fallback_label,
-        )
-        curated_endpoints = fallback
+
+        llm_selected = list(fallback)
+        try:
+            if llm is None:
+                raise RuntimeError("LLM unavailable")
+            response = llm.invoke(
+                [
+                    SystemMessage(content=get_safety_system_instruction()),
+                    SystemMessage(content=_SYSTEM_PROMPT),
+                    HumanMessage(content=human_prompt),
+                ]
+            )
+            raw_text: str = (
+                response.content if isinstance(response.content, str) else str(response.content)
+            )
+            llm_selected = _parse_llm_url_list(raw_text, fallback)
+            if structure_aware:
+                # Deterministic coverage is authoritative for surface inclusion.
+                # Keep the LLM selection as an advisory ordering hint only when a
+                # slot remains; never replace a selected coverage representative.
+                curated_endpoints = list(coverage_queue)
+                for candidate in llm_selected:
+                    if candidate in raw_endpoints and candidate not in curated_endpoints:
+                        if len(curated_endpoints) >= triage_limit:
+                            break
+                        curated_endpoints.append(candidate)
+            else:
+                curated_endpoints = llm_selected
+            logger.info(
+                "LLM supervisor selected %d endpoint(s) from %d candidates; final queue=%d",
+                len(llm_selected),
+                len(raw_endpoints),
+                len(curated_endpoints),
+            )
+        except Exception as exc:  # noqa: BLE001 — all LLM providers failed
+            fallback_label = (
+                "the structure-aware coverage queue"
+                if structure_aware
+                else f"bounded raw discovery sample (max={_MAX_URLS_FOR_LLM})"
+            )
+            logger.error(
+                "LLM supervisor failed for crawler triage: %s. Falling back to %s.",
+                exc,
+                fallback_label,
+            )
+            curated_endpoints = fallback
 
     crawled_data: dict[str, Any] = {"endpoints": curated_endpoints}
     if http_fallback_surface:

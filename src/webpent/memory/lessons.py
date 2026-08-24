@@ -1005,22 +1005,53 @@ class LessonsManager:
 # its own _write_lock and _initialised flag, defeating cross-caller
 # serialisation. Both strategist and reflection construct LessonsManager()
 # directly — they should use this singleton instead.
+#
+# V10 TARGET-ISOLATION FIX: the legacy singleton is retained for callers
+# outside an active TargetWorkspace, while target-scoped calls use a manager
+# cached by the workspace-local database URL. This prevents structured
+# hypotheses and lessons from one target from landing in another target's
+# SQLite file, including when the process previously initialised the legacy
+# global database.
 _LESSONS_SINGLETON: LessonsManager | None = None
+_LESSONS_SINGLETONS: dict[str, LessonsManager] = {}
 _LESSONS_SINGLETON_LOCK = threading.Lock()
 
 
 def get_lessons_manager(database_url: str | None = None) -> LessonsManager:
-    """Return the process-wide LessonsManager singleton.
+    """Return a manager scoped to an explicit or active target database.
 
-    Mirrors the pattern of DatabaseManager.get_db_manager() and
-    DecisionLogManager.get_decision_log_manager(). The first call
-    constructs the instance; subsequent calls return the same object.
+    Outside a target workspace, omitted URLs preserve the historical
+    process-wide singleton semantics. During target-scoped execution, an
+    omitted URL resolves to ``<workspace>/databases/lessons.sqlite3`` and is
+    cached by its normalized SQLite URL, so each target/client/engagement
+    namespace gets an independent manager and schema state.
     """
     global _LESSONS_SINGLETON
-    if _LESSONS_SINGLETON is not None and database_url is None:
+    resolved_url = database_url
+
+    if resolved_url is None:
+        try:
+            from webpent.shared.target_workspace_context import (
+                get_active_target_workspace,
+            )
+
+            workspace = get_active_target_workspace()
+        except ImportError:
+            workspace = None
+        if workspace is not None:
+            resolved_url = f"sqlite:///{workspace.databases_dir / 'lessons.sqlite3'}"
+
+    if resolved_url is None:
+        if _LESSONS_SINGLETON is None:
+            with _LESSONS_SINGLETON_LOCK:
+                if _LESSONS_SINGLETON is None:
+                    _LESSONS_SINGLETON = LessonsManager()
         return _LESSONS_SINGLETON
+
+    key = str(resolved_url)
     with _LESSONS_SINGLETON_LOCK:
-        if _LESSONS_SINGLETON is not None and database_url is None:
-            return _LESSONS_SINGLETON
-        _LESSONS_SINGLETON = LessonsManager(database_url)
-        return _LESSONS_SINGLETON
+        manager = _LESSONS_SINGLETONS.get(key)
+        if manager is None:
+            manager = LessonsManager(key)
+            _LESSONS_SINGLETONS[key] = manager
+        return manager

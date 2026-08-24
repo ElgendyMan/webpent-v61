@@ -5,8 +5,10 @@ from types import SimpleNamespace
 
 from webpent.graph.checkpoints import get_checkpointer
 from webpent.memory.db import get_db_manager
+from webpent.memory.decision_log import get_decision_log_manager
 from webpent.memory.vectorstore import get_vector_store_manager
 from webpent.models.findings import Finding, Severity
+from webpent.models.hypothesis import Hypothesis
 from webpent.shared.target_workspace import build_target_workspace
 from webpent.shared.target_workspace_context import (
     activate_target_workspace,
@@ -48,6 +50,7 @@ def test_target_workspaces_have_distinct_storage_paths(tmp_path: Path) -> None:
     assert workspace_a.root != workspace_b.root
     assert workspace_a.database_url != workspace_b.database_url
     assert workspace_a.sessions_database_path != workspace_b.sessions_database_path
+    assert workspace_a.decision_log_database_path != workspace_b.decision_log_database_path
     assert workspace_a.chroma_path != workspace_b.chroma_path
     assert workspace_a.findings_ledger_path != workspace_b.findings_ledger_path
 
@@ -89,6 +92,60 @@ def test_findings_written_to_target_a_are_not_visible_from_target_b(tmp_path: Pa
     assert (workspace_a.databases_dir / "webpent.sqlite3").read_bytes() != (
         workspace_b.databases_dir / "webpent.sqlite3"
     ).read_bytes()
+
+
+def test_decision_log_manager_is_scoped_by_active_target_path(tmp_path: Path) -> None:
+    workspace_a, workspace_b = _workspace_pair(tmp_path)
+
+    with activate_target_workspace(workspace_a):
+        log_a = get_decision_log_manager()
+        log_a.init_db()
+    with activate_target_workspace(workspace_b):
+        log_b = get_decision_log_manager()
+        log_b.init_db()
+
+    assert log_a is not log_b
+    assert Path(log_a._db_path()).resolve() == (
+        workspace_a.decision_log_database_path
+    ).resolve()
+    assert Path(log_b._db_path()).resolve() == (
+        workspace_b.decision_log_database_path
+    ).resolve()
+    assert workspace_a.decision_log_database_path.exists()
+    assert workspace_b.decision_log_database_path.exists()
+
+
+def test_lessons_manager_and_structured_hypotheses_are_workspace_scoped(
+    tmp_path: Path,
+) -> None:
+    from webpent.memory.lessons import get_lessons_manager
+
+    workspace_a, workspace_b = _workspace_pair(tmp_path)
+    hypothesis = Hypothesis(
+        target_url=workspace_a.target_origin,
+        statement="The target exposes a reflected input surface.",
+    )
+
+    with activate_target_workspace(workspace_a):
+        lessons_a = get_lessons_manager()
+        lessons_a.init_db()
+        assert lessons_a.save_structured_hypothesis(hypothesis) == hypothesis.id
+        assert lessons_a.get_structured_hypotheses()[0]["id"] == str(hypothesis.id)
+
+    with activate_target_workspace(workspace_b):
+        lessons_b = get_lessons_manager()
+        lessons_b.init_db()
+        assert lessons_b.get_structured_hypotheses() == []
+
+    assert lessons_a is not lessons_b
+    assert Path(lessons_a._db_path()).resolve() == (
+        workspace_a.databases_dir / "lessons.sqlite3"
+    ).resolve()
+    assert Path(lessons_b._db_path()).resolve() == (
+        workspace_b.databases_dir / "lessons.sqlite3"
+    ).resolve()
+    assert workspace_a.databases_dir.joinpath("lessons.sqlite3").exists()
+    assert workspace_b.databases_dir.joinpath("lessons.sqlite3").exists()
 
 
 def test_rag_manager_is_scoped_by_active_target_path(tmp_path: Path) -> None:
@@ -204,5 +261,6 @@ def test_resume_workspace_descriptor_round_trip_is_target_scoped(tmp_path: Path)
     assert resumed.reports_dir == workspace_a.reports_dir
     assert resumed.artifacts_dir == workspace_a.artifacts_dir
     assert resumed.sessions_database_path == workspace_a.sessions_database_path
+    assert resumed.decision_log_database_path == workspace_a.decision_log_database_path
     assert resumed.chroma_path == workspace_a.chroma_path
     assert resumed.findings_ledger_path == workspace_a.findings_ledger_path

@@ -186,7 +186,18 @@ def run_nuclei(
         target_url,
         "-silent",
         "-j",  # Nuclei v3.10+ short form of -json; emits JSON Lines output
+        # Keep the full template set, but make the resource envelope explicit
+        # and operator-tunable. These are performance controls only; they do
+        # not promote a match to a finding or bypass validation/evidence gates.
+        "-timeout",
+        str(settings.nuclei_request_timeout),
+        "-retries",
+        str(settings.nuclei_retries),
+        "-c",
+        str(settings.nuclei_concurrency),
     ]
+    if settings.nuclei_rate_limit > 0:
+        cmd.extend(["-rl", str(settings.nuclei_rate_limit)])
 
     if templates:
         for template in templates:
@@ -229,14 +240,10 @@ def run_nuclei(
             )
 
     # V4.5: Handle timeout with partial result processing.
-    # V10 P1-2: timeout is now env-configurable via NUCLEI_TIMEOUT
-    # (settings.nuclei_timeout, default 600). Preserves the previous
-    # hardcoded default as the fallback if settings load fails.
-    try:
-        from webpent.config.settings import get_settings as _get_settings
-        _nuclei_timeout = _get_settings().nuclei_timeout
-    except Exception:
-        _nuclei_timeout = 600
+    # V10 P1-2: timeout is env-configurable via NUCLEI_TIMEOUT
+    # (settings.nuclei_timeout, default 600). Use the same settings object
+    # that supplied the command flags so tests and runtime cannot diverge.
+    _nuclei_timeout = settings.nuclei_timeout
     try:
         raw_output = run_command(cmd, timeout=_nuclei_timeout)
     except ToolExecutionError as exc:

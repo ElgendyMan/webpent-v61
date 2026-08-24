@@ -95,6 +95,7 @@ _NUCLEI_SEVERITY_MAP: dict[str, Severity] = {
 _METHOD_SUBFINDER_HTTPX = "subfinder+httpx"
 _METHOD_HTTPX_LAB = "httpx (lab mode)"
 _METHOD_HTTPX_IP_LITERAL = "httpx (ip-literal)"
+_METHOD_HTTPX_LOCAL_HOST = "httpx (local-hostname)"
 _METHOD_NONE = "none"
 
 
@@ -117,6 +118,30 @@ def _is_ip_literal(host: str | None) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _is_non_public_hostname(host: str | None) -> bool:
+    """Return True for names that cannot be treated as public DNS roots.
+
+    Scanner containers commonly reach an isolated lab through a single-label
+    Docker service name (for example ``app``). Reserved local suffixes are
+    likewise not public DNS targets. Sending these names to passive
+    subdomain-enumeration providers is both useless and an avoidable scope
+    escape. Fully-qualified names containing a dot remain eligible for the
+    normal subfinder pipeline.
+    """
+    if not host or _is_ip_literal(host):
+        return False
+    normalised = host.rstrip(".").lower()
+    reserved_suffixes = (
+        ".localhost",
+        ".local",
+        ".internal",
+        ".test",
+        ".invalid",
+        ".example",
+    )
+    return "." not in normalised or normalised.endswith(reserved_suffixes)
 
 
 def _is_private_ip(host: str | None) -> bool:
@@ -489,7 +514,24 @@ def _run_subdomain_recon(target: Target) -> tuple[list[dict[str, Any]], str]:
     if not target.domain:
         logger.warning("Target has no domain; skipping subdomain enumeration.")
         return [], _METHOD_SUBFINDER_HTTPX
-
+    # Docker/service aliases and reserved local names are not public DNS roots.
+    # Probe the declared URL directly, preserving the explicit port and path,
+    # and never send the alias to an external passive-DNS enumerator.
+    if _is_non_public_hostname(target.domain):
+        logger.info(
+            "Target host %s is a local/reserved hostname — skipping subfinder "
+            "and probing the declared URL directly. Nuclei will still run "
+            "against %s.",
+            target.domain,
+            target.url,
+        )
+        try:
+            run_httpx = _get_run_httpx()
+            if run_httpx:
+                return run_httpx([target.url]), _METHOD_HTTPX_LOCAL_HOST
+        except (ToolNotFoundError, ToolExecutionError) as exc:
+            logger.warning("httpx failed for local hostname %s: %s", target.domain, exc)
+        return [], _METHOD_HTTPX_LOCAL_HOST
     try:
         run_subfinder = _get_run_subfinder()
         if not run_subfinder:

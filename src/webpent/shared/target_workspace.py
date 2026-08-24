@@ -119,6 +119,11 @@ class TargetWorkspace:
         return self.sessions_dir / "checkpoints.sqlite3"
 
     @property
+    def decision_log_database_path(self) -> Path:
+        """Append-only decision log path isolated to this workspace."""
+        return self.databases_dir / "decision_log.sqlite3"
+
+    @property
     def chroma_path(self) -> Path:
         return self.rag_dir / "chroma_db"
 
@@ -145,6 +150,7 @@ class TargetWorkspace:
             "reports_dir": str(self.reports_dir),
             "artifacts_dir": str(self.artifacts_dir),
             "sessions_database_path": str(self.sessions_database_path),
+            "decision_log_database_path": str(self.decision_log_database_path),
             "rag_dir": str(self.rag_dir),
             "database_url": self.database_url,
             "findings_ledger_path": str(self.findings_ledger_path),

@@ -21,6 +21,27 @@ def test_ip_literal_recon_preserves_target_url(monkeypatch):
     assert calls == [["http://127.0.0.1:8000"]]
 
 
+def test_local_hostname_recon_skips_passive_dns(monkeypatch):
+    calls = []
+
+    def fake_httpx(domains):
+        calls.append(("httpx", domains))
+        return [{"url": domains[0]}]
+
+    def forbidden_subfinder(_domain):
+        raise AssertionError("local Docker aliases must never reach subfinder")
+
+    monkeypatch.setattr(recon_agent, "_get_run_httpx", lambda: fake_httpx)
+    monkeypatch.setattr(recon_agent, "_get_run_subfinder", lambda: forbidden_subfinder)
+    target = Target(url="http://app:8000")
+
+    results, method = recon_agent._run_subdomain_recon(target)
+
+    assert method == "httpx (local-hostname)"
+    assert results == [{"url": "http://app:8000"}]
+    assert calls == [("httpx", ["http://app:8000"])]
+
+
 def test_nuclei_includes_configured_user_agent(monkeypatch):
     captured = {}
 
