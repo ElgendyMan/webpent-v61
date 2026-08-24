@@ -284,6 +284,8 @@ binding = factory.create_from_package(
 
 الـLLM اختياري ومحصور في أدوار مثل التلخيص أو ترتيب الفرضيات أو تحسين payloads ضمن policy. مخرجات LLM لا تعتبر evidence ولا confirmation. عند غياب API key أو تجاوز rate limit أو فشل provider، يجب أن يعود النظام إلى deterministic fallback أو يسجل knowledge gap؛ لا يجوز تحويل الخطأ إلى clean.
 
+تمت إضافة provider-aware model overrides في commit `8f83c7a`؛ استخدم `MISTRAL_MODEL` و`GEMINI_MODEL` و`COHERE_MODEL` و`CLOUDFLARE_MODEL` عبر environment/secret manager بدل تعديل source. ملف [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) يوثق أسماء المتغيرات والاختبار المحلي. مفاتيح API الحقيقية لا تُحفظ في Git أو ZIP أو checkpoints أو logs. نتيجة WAPTLab مع LLM في الجولة الأخيرة: `1` candidate SSTI، `0` strict confirmed، `0` evidence-confirmed، و`0` promoted ProofBundles؛ نجاح LLM لا يغيّر proof gates.
+
 بيانات RAG والمصادر الخارجية تعامل كبيانات غير موثوقة داخل trust boundary. لا تُنفذ تعليمات موجودة داخل write-up أو repository أو صفحة خارجية لمجرد أنها ظهرت في المحتوى.
 
 ## الاختبارات وبوابات الإصدار
@@ -326,7 +328,8 @@ python scripts/verify_release_artifacts.py \
 | Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
 | G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
 | Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
-| WAPTLab وJuice Shop live qualification | تم تشغيلهما منفصلين على stacks محلية معزولة؛ Juice Shop: 6 candidates، WAPTLab: 4 candidates، وكلاهما 0 confirmed/0 ProofBundles؛ الحالة `NOT_QUALIFIED` |
+| WAPTLab وJuice Shop live qualification | التشغيلات التاريخية المنفصلة: Juice Shop: 6 candidates، WAPTLab: 4 candidates، وكلاهما 0 confirmed/0 ProofBundles. الجولة الأخيرة مع LLM على WAPTLab: 1 candidate، 0 confirmed، 0 ProofBundles؛ الحالة `NOT_QUALIFIED` |
+| Playwright وexternal tool readiness | Chromium أصبح متاحًا في البيئة الحالية، لكن typed browser handler التنفيذي ما زال غير مربوط؛ `httpx-pd` و`nuclei` و`katana` غير مثبتة في هذه الجولة، لذلك ظهرت coverage gaps صريحة ولم تُعتبر clean |
 | Docker/Celery distributed qualification | **غير مثبتة بالكامل**؛ توجد compose وworker contracts، لكن HA/outage/resume qualification ليست مثبتة |
 | Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة**؛ لا يوجد strict confirmed أو promoted ProofBundle في أحدث تشغيلات اللابات |
 | Auto-submit provider reports | غير مسموح به في هذا المسار |
@@ -341,6 +344,7 @@ python scripts/verify_release_artifacts.py \
 - [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) و[`docs/v75_maturity_scorecard.json`](docs/v75_maturity_scorecard.json) — scorecard هندسي لا يساوي VIP qualification.
 - [`benchmarks/vip_v1/manifest.json`](benchmarks/vip_v1/manifest.json) — metric contract، proof gates، human-review input، وcost denominator.
 - [`docs/WAPTLAB_QUALIFICATION_STATUS.md`](docs/WAPTLAB_QUALIFICATION_STATUS.md) — الحالة الحالية ونتيجة offline proof/replay simulation وحدود live qualification.
+- [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) — provider-aware configuration ونتيجة WAPTLab مع LLM وحدود الاختبار.
 - [`docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md`](docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md) — assessment صادق لحدود single-node والإنتاج الموزع.
 - [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
 - [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — final audit وحدود الادعاء.
