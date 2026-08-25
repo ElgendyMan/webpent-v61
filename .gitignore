@@ -22,3 +22,5 @@ output/
 *.egg-info/
 .ruff_cache/
 .mypy_cache/
+# Local virtual environments are reproducible and must never be committed.
+.venv/
