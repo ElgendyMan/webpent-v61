@@ -393,6 +393,46 @@ def _p10_benchmark_check() -> dict[str, Any]:
     )
 
 
+def _p10_independent_evaluation_check() -> dict[str, Any]:
+    """Require the independent P10 v1 evaluation, without trusting legacy output alone."""
+    path = DOCS / "juice_shop_p10_evaluation_v1.json"
+
+    def predicate(payload: dict[str, Any]) -> tuple[bool, str]:
+        evaluation = payload.get("evaluation")
+        ground_truth = payload.get("ground_truth")
+        if not isinstance(evaluation, dict) or not isinstance(ground_truth, dict):
+            return False, "P10 independent evaluation is missing evaluation or ground-truth status"
+        if evaluation.get("p10_passed") is not True:
+            reasons = evaluation.get("blocking_reasons") or [
+                "P10 independent evaluation is not passed"
+            ]
+            return False, (
+                "P10 independent evaluation not qualified: "
+                + "; ".join(map(str, reasons))
+            )
+        if evaluation.get("run_count", 0) < 3:
+            return False, "P10 independent evaluation requires at least three runs"
+        if ground_truth.get("independent_review_approved") is not True:
+            return False, "P10 independent ground truth has no recorded reviewer approval"
+        metrics = evaluation.get("metrics")
+        if not isinstance(metrics, dict) or any(
+            metrics.get(key) is None for key in ("precision", "recall", "class_coverage")
+        ):
+            return False, "P10 independent precision, recall, and class coverage are incomplete"
+        if evaluation.get("approved_ground_truth_cases", 0) < 10:
+            return False, "P10 requires at least ten approved ground-truth cases"
+        if evaluation.get("approved_vulnerability_classes", 0) < 6:
+            return False, "P10 requires at least six approved vulnerability classes"
+        return True, ""
+
+    return _artifact_check(
+        "p10-independent-evaluation-artifact",
+        path,
+        predicate,
+        "P10 independent evaluation artifact is missing",
+    )
+
+
 def _qualification_checks() -> list[dict[str, Any]]:
     """Build and validate local qualification artifacts without live claims."""
     checks = [
@@ -442,7 +482,14 @@ def _qualification_checks() -> list[dict[str, Any]]:
             }
         )
     checks.append(_preflight_contract())
-    checks.extend([_p8_live_proof_check(), _p9_distributed_check(), _p10_benchmark_check()])
+    checks.extend(
+        [
+            _p8_live_proof_check(),
+            _p9_distributed_check(),
+            _p10_benchmark_check(),
+            _p10_independent_evaluation_check(),
+        ]
+    )
     checks.extend(
         [
             {
@@ -547,6 +594,10 @@ def _build_gate_report(checks: list[dict[str, Any]], safety: dict[str, Any]) -> 
         (
             "p10-juice-shop-benchmark-artifact",
             "P10 Juice Shop benchmark is incomplete or not qualified",
+        ),
+        (
+            "p10-independent-evaluation-artifact",
+            "P10 independent evaluation is incomplete or not qualified",
         ),
     ):
         if not check_by_name.get(name, {}).get("passed", False):

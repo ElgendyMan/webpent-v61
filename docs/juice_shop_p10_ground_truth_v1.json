@@ -1,0 +1,156 @@
+{
+  "schema_version": "p10.ground_truth.v1",
+  "benchmark_id": "juice-shop-p10-v1",
+  "status": "draft_pending_independent_review",
+  "target": {
+    "kind": "authorized_local_lab",
+    "base_url": "http://127.0.0.1:3000",
+    "image_digest": "sha256:73c53fbf442e8337b3ea3d98c7e8550308854701ebdfce4cc39768f36b75430e",
+    "catalog_source": "/api/Challenges",
+    "catalog_snapshot_sha256": "sha256:dcfcd99711749f8354b78e1f2025c654a6db52174b674e9781489af440624c19"
+  },
+  "independence": {
+    "source_is_webpent_output": false,
+    "source_is_target_metadata_snapshot": true,
+    "raw_descriptions_retained": false,
+    "raw_http_data_retained": false,
+    "reviewer_approval": false,
+    "reviewer_approval_required_before_final_metrics": true
+  },
+  "scope": {
+    "planned_case_count": 12,
+    "planned_class_count": 7,
+    "required_isolated_runs": 3,
+    "mapping_policy": "case_and_workflow_mapping_must_be_approved_before_recall_claim"
+  },
+  "cases": [
+    {
+      "case_id": "juice.directory_listing.v1",
+      "challenge_key": "directoryListingChallenge",
+      "category": "Sensitive Data Exposure",
+      "expected": true,
+      "description_sha256": "sha256:329e32f8198056e773f23f94fb1a1a55f6ef31b9e5e3fec49a767c0964ba7b49",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.local_xss.v1",
+      "challenge_key": "localXssChallenge",
+      "category": "XSS",
+      "expected": true,
+      "description_sha256": "sha256:60ffa44475802305548c5ac26fc7f5b7b765413f4b7ec4f5851f99b6efc99b6d",
+      "workflow_id": "pending_local_xss_safe_workflow",
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.deprecated_interface.v1",
+      "challenge_key": "deprecatedInterfaceChallenge",
+      "category": "Security Misconfiguration",
+      "expected": true,
+      "description_sha256": "sha256:49bbdc102e870b126172f69099a5b5344c5fe70a2c73b2b090dabc16fd32f589",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.error_handling.v1",
+      "challenge_key": "errorHandlingChallenge",
+      "category": "Security Misconfiguration",
+      "expected": true,
+      "description_sha256": "sha256:6894fdda5d173dc5fbb9bf0174d047682bc2d4481ecf578314f8026d20838b4f",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.forgotten_backup.v1",
+      "challenge_key": "forgottenBackupChallenge",
+      "category": "Sensitive Data Exposure",
+      "expected": true,
+      "description_sha256": "sha256:737bf5402cb05706d6832be805b812e4e5eb8cd380dbe0674abdcecf6e733aca",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.login_admin.v1",
+      "challenge_key": "loginAdminChallenge",
+      "category": "Injection",
+      "expected": true,
+      "description_sha256": "sha256:8e96ad0333246f4cf8dfa76efd73692211a7f554db2bec5cc823ff38d28835e1",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.basket_manipulate.v1",
+      "challenge_key": "basketManipulateChallenge",
+      "category": "Broken Access Control",
+      "expected": true,
+      "description_sha256": "sha256:17048ed5bfa5d0959e43aec66a3d876603d2363198df5dc923f93c9916aa1d57",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.nosql_command.v1",
+      "challenge_key": "noSqlCommandChallenge",
+      "category": "Injection",
+      "expected": true,
+      "description_sha256": "sha256:4f28231e4b9b9e3de24cd6c0e561a2b7e57bd0869e808ccbf99d576122687518",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.redirect_crypto.v1",
+      "challenge_key": "redirectCryptoCurrencyChallenge",
+      "category": "Unvalidated Redirects",
+      "expected": true,
+      "description_sha256": "sha256:1a679c35a3d09675abf68fe5039aa7d194a6c666e1d12ccf376a53bb2bccba8a",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.negative_order.v1",
+      "challenge_key": "negativeOrderChallenge",
+      "category": "Improper Input Validation",
+      "expected": true,
+      "description_sha256": "sha256:a032b578f9582ff843c506b730046424b46dae85cc8b30788274adab9e78ec17",
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    },
+    {
+      "case_id": "juice.reflected_xss.v1",
+      "challenge_key": "reflectedXssChallenge",
+      "category": "XSS",
+      "expected": true,
+      "description_sha256": "sha256:a17e87f5910679bf2ab4736ddaf34df51ac0338aaeb569361bf8946ce93ce5c6",
+      "workflow_id": "pending_reflected_xss_safe_workflow",
+      "oracle_status": "partial_proof_exists_unmapped",
+      "mapping_status": "not_approved_for_recall"
+    },
+    {
+      "case_id": "juice.persisted_xss_feedback.v1",
+      "challenge_key": "persistedXssFeedbackChallenge",
+      "category": "XSS",
+      "expected": true,
+      "description_sha256": "sha256:53b7273a72494fe3cbf897eb6b16c2c0380680e1abe93693f659c381dd3dae98",
+      "workflow_id": "pending_persisted_xss_safe_workflow",
+      "oracle_status": "pending_safe_oracle",
+      "mapping_status": "pending_independent_review"
+    }
+  ],
+  "acceptance": {
+    "minimum_approved_cases": 10,
+    "minimum_approved_classes": 6,
+    "minimum_runs": 3,
+    "all_runs_must_have_unique_workspace_and_artifact_namespace": true,
+    "metrics_must_be_non_null": true,
+    "p10_passed_requires_reviewer_approval": true
+  }
+}
