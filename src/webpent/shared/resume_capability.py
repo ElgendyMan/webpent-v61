@@ -9,6 +9,7 @@ never written to graph state or SQLite checkpoints.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -86,6 +87,52 @@ def issue_resume_capability(
     )
 
 
+def verify_resume_capability_detailed(
+    token: str,
+    *,
+    thread_id: str,
+    record: dict[str, Any],
+) -> tuple[bool, str]:
+    """Verify a capability and return a safe, non-secret denial reason."""
+    try:
+        payload = _decode(token)
+    except (
+        TypeError,
+        ValueError,
+        KeyError,
+        UnicodeError,
+        binascii.Error,
+        json.JSONDecodeError,
+    ):
+        return False, "invalid_signature_or_format"
+
+    now = int(time.time())
+    if payload.get("aud") != "webpent-resume":
+        return False, "invalid_audience"
+    try:
+        expires_at = int(payload.get("exp", 0))
+        issued_at = int(payload.get("iat", 0))
+    except (TypeError, ValueError):
+        return False, "invalid_timestamps"
+    if expires_at < now:
+        return False, "expired_capability"
+    if issued_at > now + 30:
+        return False, "future_issued_capability"
+
+    expected = {
+        "thread_id": thread_id,
+        "owner_username": str(record.get("owner_username") or ""),
+        "client_id": str(record.get("client_id") or ""),
+        "engagement_id": str(record.get("engagement_id") or thread_id),
+    }
+    for key, value in expected.items():
+        if key == "client_id" and not value:
+            continue
+        if payload.get(key) != value:
+            return False, f"binding_mismatch_{key}"
+    return True, "valid"
+
+
 def verify_resume_capability(
     token: str,
     *,
@@ -93,26 +140,16 @@ def verify_resume_capability(
     record: dict[str, Any],
 ) -> bool:
     """Verify signature, freshness, thread binding, and registry identity."""
-    try:
-        payload = _decode(token)
-        now = int(time.time())
-        if payload.get("aud") != "webpent-resume":
-            return False
-        if int(payload.get("exp", 0)) < now or int(payload.get("iat", 0)) > now + 30:
-            return False
-        expected = {
-            "thread_id": thread_id,
-            "owner_username": str(record.get("owner_username") or ""),
-            "client_id": str(record.get("client_id") or ""),
-            "engagement_id": str(record.get("engagement_id") or thread_id),
-        }
-        return all(
-            payload.get(key) == value
-            for key, value in expected.items()
-            if key != "client_id" or value
-        )
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        return False
+    valid, _reason = verify_resume_capability_detailed(
+        token,
+        thread_id=thread_id,
+        record=record,
+    )
+    return valid
 
 
-__all__ = ["issue_resume_capability", "verify_resume_capability"]
+__all__ = [
+    "issue_resume_capability",
+    "verify_resume_capability",
+    "verify_resume_capability_detailed",
+]

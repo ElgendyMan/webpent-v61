@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -79,6 +79,7 @@ class BrowserProofRun:
     observations: Mapping[str, Mapping[str, Any]]
     attestation: Mapping[str, Any] | None = None
     verifier_result: VerificationResult | None = None
+    diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
 
 def _origin(url: str) -> str:
@@ -236,6 +237,47 @@ class BrowserProofRunner:
                 cleaner(probe.probe_ref)
 
     @staticmethod
+    def _receipt_diagnostic(receipt: ReplayReceipt, role: str) -> dict[str, Any]:
+        observation = _bounded_observation(receipt)
+        status = str(receipt.status or "")[:40]
+        if status not in {"completed", "executed"}:
+            return {
+                "failure_code": "receipt_status_unusable",
+                "role": role,
+                "receipt_status": status,
+                "missing_fields": ["completed_receipt"],
+            }
+        if not observation:
+            return {
+                "failure_code": "observation_missing",
+                "role": role,
+                "receipt_status": status,
+                "missing_fields": ["observation"],
+            }
+        if observation.get("observation_role") != role:
+            return {
+                "failure_code": "observation_role_mismatch",
+                "role": role,
+                "receipt_status": status,
+                "missing_fields": ["observation_role"],
+            }
+        missing_fields: list[str] = []
+        if observation.get("target_backed") is not True:
+            missing_fields.append("target_backed")
+        if observation.get("replayable") is not True:
+            missing_fields.append("replayable")
+        for field_name in ("target_fingerprint", "request_digest", "response_digest"):
+            value = observation.get(field_name)
+            if not isinstance(value, str) or not value.startswith("sha256:"):
+                missing_fields.append(field_name)
+        return {
+            "failure_code": "observation_fields_invalid",
+            "role": role,
+            "receipt_status": status,
+            "missing_fields": missing_fields,
+        }
+
+    @staticmethod
     def _receipt_observation(receipt: ReplayReceipt, role: str) -> dict[str, Any] | None:
         if receipt.status not in {"completed", "executed"}:
             return None
@@ -248,8 +290,8 @@ class BrowserProofRunner:
             return None
         if observation.get("replayable") is not True:
             return None
-        for field in ("target_fingerprint", "request_digest", "response_digest"):
-            value = observation.get(field)
+        for field_name in ("target_fingerprint", "request_digest", "response_digest"):
+            value = observation.get(field_name)
             if not isinstance(value, str) or not value.startswith("sha256:"):
                 return None
         return observation
@@ -318,6 +360,7 @@ class BrowserProofRunner:
                     False,
                     f"{role}_observation_missing_or_unusable",
                     observations,
+                    diagnostics=BrowserProofRunner._receipt_diagnostic(receipt, role),
                 )
             observations[role] = observation
         expected_fingerprint = _target_fingerprint(url)

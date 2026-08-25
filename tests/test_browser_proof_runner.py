@@ -214,6 +214,12 @@ def test_runner_fails_closed_when_observation_is_missing(tmp_path):
     assert result.passed is False
     assert result.attestation is None
     assert result.reason == "baseline_observation_missing_or_unusable"
+    assert result.diagnostics == {
+        "failure_code": "observation_missing",
+        "role": "baseline",
+        "receipt_status": "executed",
+        "missing_fields": ["observation"],
+    }
     assert len(seen) == 3
 
 

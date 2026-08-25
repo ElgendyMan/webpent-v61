@@ -192,6 +192,12 @@ class PlaywrightBrowserHandler:
                     wait_until="domcontentloaded",
                     timeout=timeout_ms,
                 )
+                if response is not None and int(response.status) >= 400:
+                    return self._blocked(
+                        "blocked_http_status",
+                        status_code=int(response.status),
+                        operation=request.operation,
+                    )
                 if request.operation == "validate_input":
                     probe_value = self._resolve_probe(request)
                     if probe_value is None:
@@ -283,13 +289,37 @@ class PlaywrightBrowserHandler:
         digest = "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
         return value if digest == request.probe_digest else None
 
-    @staticmethod
-    def _blocked(reason: str) -> dict[str, Any]:
+    def _blocked(
+        self,
+        reason: str,
+        *,
+        status_code: int | None = None,
+        operation: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_reason = str(reason)[:240]
+        failure_code = normalized_reason.split(":", 1)[0]
+        missing_fields_by_code = {
+            "blocked_http_status": ["successful_http_observation"],
+            "validator_probe_unavailable": ["validated_probe"],
+            "validator_input_field_missing": ["input_field"],
+            "validator_submit_control_missing": ["submit_control"],
+            "account_like_form_denied": ["non_account_form"],
+            "browser_execution_failed": ["browser_observation"],
+        }
+        diagnostic = {
+            "failure_code": failure_code,
+            "missing_fields": missing_fields_by_code.get(failure_code, []),
+            "status_code": status_code,
+            "operation": str(operation or "")[:40],
+        }
         return {
             "handler_status": "blocked",
             "target_backed": False,
             "replayable": False,
-            "reason": str(reason)[:240],
+            "reason": normalized_reason,
+            "failure_code": failure_code,
+            "missing_fields": diagnostic["missing_fields"],
+            "diagnostic": diagnostic,
         }
 
 
