@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "qualification_scope": "local_webpent_dev_stack_only",
+  "target_contacted": false,
+  "target_source_changed": false,
+  "environment": {
+    "api_bind": "127.0.0.1:18000",
+    "compose_project": "webpent-p9",
+    "auth_enabled": true,
+    "environment_profile": "lab",
+    "rag": "offline",
+    "redis_mode": "plaintext_lab_only",
+    "plaintext_redis_override": true,
+    "runtime_process_user": "ubuntu_non_root"
+  },
+  "observed_checks": {
+    "api_health": {
+      "passed": true,
+      "http_status": 200,
+      "evidence": "GET /health returned status=ok and scan_registry.ready=true"
+    },
+    "redis_health": {
+      "passed": true,
+      "evidence": "redis-cli ping returned PONG"
+    },
+    "celery_worker_health": {
+      "passed": true,
+      "evidence": "celery inspect ping returned two nodes online with pong (worker-1 and worker-2)"
+    },
+    "worker_queue_delivery": {
+      "passed": true,
+      "evidence": "two harmless resume_pentest_task messages were delivered to separate workers and each failed closed before target action"
+    },
+    "multi_worker_queue_distribution": {
+      "passed": true,
+      "evidence": "worker-1 and worker-2 each received one distinct invalid resume task; inspect ping reported 2 nodes online"
+    },
+    "fail_closed_resume_guard": {
+      "passed": true,
+      "evidence": "invalid/missing resume capability raised PermissionError before target action"
+    },
+    "api_controlled_restart": {
+      "passed": true,
+      "evidence": "API returned health=200 after restart"
+    },
+    "worker_controlled_restart": {
+      "passed": true,
+      "evidence": "worker process remained running and reconnected after restart"
+    },
+    "redis_controlled_restart": {
+      "passed": true,
+      "evidence": "Redis returned PONG and API health remained 200 after restart"
+    },
+    "runtime_non_root": {
+      "passed": true,
+      "evidence": "docker top showed API and worker application processes owned by ubuntu"
+    }
+  },
+  "qualification_checks": {
+    "docker_health": true,
+    "redis_health": true,
+    "celery_worker_health": true,
+    "multi_worker_queue_distribution": true,
+    "multi_worker_lease_contention": false,
+    "crash_restart_recovery": false,
+    "checkpoint_resume": false,
+    "cross_process_idempotency": false,
+    "secrets_externalized": true,
+    "tls_enforced": false,
+    "logs_redacted": false,
+    "retention_policy_declared": false,
+    "target_unchanged": true
+  },
+  "blockers": [
+    "No two-worker lease contention run has been completed; queue distribution alone is not lease qualification.",
+    "No killed-worker redelivery/resume run has been completed with a real harmless task.",
+    "No cross-process idempotency run has been completed in the distributed stack.",
+    "Redis uses explicit plaintext lab override; this is not TLS qualification.",
+    "Runtime log redaction and retention evidence were not promoted from contract tests to live qualification."
+  ],
+  "qualification_status": "not_qualified",
+  "interpretation": "This artifact records local runtime smoke and controlled restart evidence only. It is not distributed qualification and must not promote the release."
+}

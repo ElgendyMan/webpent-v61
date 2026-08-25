@@ -94,7 +94,7 @@ dev-up:
 	@# comment references it, operators run `docker logs webpent-dev-api`).
 	@# The lifecycle discipline belongs here, not in dropping the names.
 	@$(COMPOSE) -f $(DEV_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
-	$(COMPOSE) -f $(DEV_COMPOSE) up -d --build
+	BASE_IMAGE="$(BASE_IMAGE)" $(COMPOSE) -f $(DEV_COMPOSE) up -d --build
 	@# V7 Phase 3 FIX: poll /health before reporting success. docker-proxy
 	@# accepts and resets connections during the window between "container
 	@# running" and "uvicorn bound to port 8000", which previously surfaced
@@ -130,16 +130,12 @@ dev-down:
 close: dev-down
 	@echo "Dev stack stopped."
 
-# V7 Phase 2 FIX: dev-reset — force-remove all webpent-dev-* containers
-# and the webpent-dev-net network unconditionally. Use this when a
-# previous run left the stack in a state that dev-up's `down
-# --remove-orphans` can't untangle (e.g. orphaned containers from a
-# renamed/duplicated project folder — see Phase 0 of the v7 fix plan).
-# This is intentionally more aggressive than dev-down: it ignores
-# Compose's project-name tracking and removes the named resources
-# directly. Safe because the names are hardcoded and bounded.
+# V7 Phase 2 FIX: dev-reset — tear down the Compose-managed project first,
+# including scaled worker replicas and orphans. Legacy fixed names are then
+# removed for compatibility with stacks created before worker scaling support.
 dev-reset:
-	@echo "Force-removing all webpent-dev-* containers and network..."
+	@echo "Tearing down the Compose-managed dev stack..."
+	@$(COMPOSE) -f $(DEV_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
 	@-docker rm -f webpent-dev-api webpent-dev-worker webpent-dev-redis webpent-dev-tunnel 2>/dev/null || true
 	@-docker network rm webpent-dev-net 2>/dev/null || true
 	@echo "Done. Run 'make dev-up' to start fresh."
@@ -204,7 +200,7 @@ prod-up: prod-config
 	@# taken" conflicts. container_name is intentionally hardcoded in
 	@# docker-compose.yml for the same reasons as the dev compose file.
 	@$(COMPOSE) -f $(PROD_COMPOSE) down --remove-orphans >/dev/null 2>&1 || true
-	$(COMPOSE) -f $(PROD_COMPOSE) up -d --build
+	BASE_IMAGE="$(BASE_IMAGE)" $(COMPOSE) -f $(PROD_COMPOSE) up -d --build
 	@$(MAKE) prod-health
 
 prod-health:

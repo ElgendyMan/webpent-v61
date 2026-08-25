@@ -217,8 +217,12 @@ if dev_compose_path.is_file():
         "AUTH_ENABLED=false" in dev_compose_src,
     )
     check(
-        "F5f. docker-compose.dev.yml sets RATE_LIMIT_ENABLED=false",
-        "RATE_LIMIT_ENABLED=false" in dev_compose_src,
+        "F5f. docker-compose.dev.yml defaults RATE_LIMIT_ENABLED=false",
+        (
+            "RATE_LIMIT_ENABLED=false" in dev_compose_src
+            or "RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}" in dev_compose_src
+            or "RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED-false}" in dev_compose_src
+        ),
     )
     check(
         "F5g. docker-compose.dev.yml uses env_file: .env",

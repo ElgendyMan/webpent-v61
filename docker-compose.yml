@@ -75,6 +75,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-webpent-base:latest}
     container_name: webpent-api
     command: python server.py
     ports:
@@ -151,7 +153,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: webpent-worker
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-webpent-base:latest}
+    # Keep worker names Compose-managed so replicas can be started with
+    # `docker compose --scale worker=N` during distributed qualification.
     command: celery -A worker.celery_app worker --loglevel=info --concurrency=1
     environment:
       - WEBPENT_REDIS_URL=${REDIS_URL:?REDIS_URL must be set to a rediss:// URL}

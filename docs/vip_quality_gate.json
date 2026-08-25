@@ -2,7 +2,7 @@
   "checks": [
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "-m",
         "compileall",
         "-q",
@@ -31,7 +31,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "-m",
         "pytest",
         "-q"
@@ -41,17 +41,17 @@
       "returncode": 0,
       "tail": [
         "........................................................................ [ 61%]",
-        "........................................................................ [ 66%]",
+        "........................................................................ [ 65%]",
         "........................................................................ [ 70%]",
         "........................................................................ [ 74%]",
         "........................................................................ [ 78%]",
         "........................................................................ [ 82%]",
         "........................................................................ [ 86%]",
         "........................................................................ [ 90%]",
-        "........................................................................ [ 95%]",
-        "........................................................................ [ 99%]",
-        "..............                                                           [100%]",
-        "1742 passed in 67.72s (0:01:07)"
+        "........................................................................ [ 94%]",
+        "........................................................................ [ 98%]",
+        "....................                                                     [100%]",
+        "1748 passed in 69.17s (0:01:09)"
       ]
     },
     {
@@ -65,7 +65,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/verify_test_count.py",
         "--minimum",
         "818"
@@ -83,14 +83,14 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1680",
+        "  \"total_test_functions\": 1686",
         "}",
-        "OK: preserved test-function count 1680 >= minimum 818"
+        "OK: preserved test-function count 1686 >= minimum 818"
       ]
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/scan_direct_io.py"
       ],
       "name": "g02-artifact-regeneration",
@@ -102,7 +102,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/check_g02_runtime.py"
       ],
       "name": "g02-static-runtime-contract",
@@ -114,7 +114,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/check_g02_precommit.py"
       ],
       "name": "g02-precommit-contract",
@@ -126,7 +126,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/build_preflight_report.py",
         "--host",
         "127.0.0.1"
@@ -140,7 +140,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/build_capability_report.py"
       ],
       "name": "capability-report",
@@ -152,7 +152,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/build_mock_qualification_report.py"
       ],
       "name": "mock-qualification-report",
@@ -253,7 +253,7 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/check_tracked_secrets.py"
       ],
       "name": "tracked-secret-scan",
@@ -265,18 +265,18 @@
     },
     {
       "command": [
-        "/tmp/webpent-recovered/.venv/bin/python",
+        "/tmp/webpent-recovered/.venv/bin/python3",
         "scripts/build_release_manifest.py"
       ],
       "name": "release-manifest",
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 1015, \"output\": \"/tmp/webpent-recovered/docs/release_manifest.json\"}"
+        "{\"file_count\": 1018, \"output\": \"/tmp/webpent-recovered/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-25T06:50:54.138614+00:00",
+  "generated_at": "2026-08-25T08:32:40.048360+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

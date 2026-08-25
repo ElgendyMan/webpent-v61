@@ -16,7 +16,21 @@
     "contract_tests_passed": 37,
     "contract_tests_failed": 0,
     "distributed_qualification": false,
-    "blocker": "Docker compose build could not complete the required webpent-base image in this environment; API/Redis/Celery controlled restart and resume evidence is absent"
+    "runtime_smoke": {
+      "api_healthy": true,
+      "redis_pong": true,
+      "worker_replicas": 2,
+      "celery_inspect_ping_nodes": 2,
+      "controlled_restart_recovery": {
+        "api": true,
+        "redis": true,
+        "workers": true
+      },
+      "queue_distribution": true,
+      "invalid_resume_fail_closed_before_target_io": true,
+      "runtime_user_non_root": true
+    },
+    "blocker": "Full distributed qualification remains incomplete: no killed-worker redelivery/resume run, lease contention proof, cross-process idempotency proof, TLS qualification, or live log/retention qualification"
   },
   "p10": {
     "target": "http://127.0.0.1:8000",
@@ -30,11 +44,12 @@
     "existing_fixture_report": "docs/waptlab_qualification_report.json",
     "existing_fixture_report_is_live": false,
     "target_contacted_by_fixture_report": false,
-    "blocker": "Natural authenticated workflow and lab-provisioned session were unavailable; no bypass was used"
+    "benchmark_gate_artifact": "docs/p10_benchmark_gate.json",
+    "blocker": "Natural authenticated workflow and lab-provisioned session were unavailable; no bypass was used; P9 full distributed qualification is also a prerequisite"
   },
   "p11": {
-    "full_pytest_passed": 1745,
-    "full_pytest_duration_seconds": 63.54,
+    "full_pytest_passed": 1748,
+    "full_pytest_duration_seconds": 66.43,
     "ruff_passed": true,
     "compileall_passed": true,
     "g02": {

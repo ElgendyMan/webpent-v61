@@ -34,6 +34,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-webpent-base:latest}
     container_name: webpent-dev-api
     # V7 Ready-For-Kali FIX (regression restored): removed the
     # `user: "${UID:-1000}:${GID:-1000}"` directive again. It conflicts
@@ -56,7 +58,7 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      - WEBPENT_REDIS_URL=redis://redis:6379/0
+      - WEBPENT_REDIS_URL=${WEBPENT_REDIS_URL:-redis://redis:6379/0}
       - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
       - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
       - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
@@ -68,9 +70,13 @@ services:
       - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
       - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
       - PYTHONUNBUFFERED=1
+      # Bind-mounted development trees may be mode 0700 and owned by the host UID.
+      # The entrypoint drops to this non-root identity before starting Uvicorn.
+      - WEBPENT_RUN_AS_UID=${WEBPENT_RUN_AS_UID:-1000}
+      - WEBPENT_RUN_AS_GID=${WEBPENT_RUN_AS_GID:-1000}
       # V6 Develop-First: auth + rate limit disabled by default
-      - AUTH_ENABLED=false
-      - RATE_LIMIT_ENABLED=false
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
       - LOG_FORMAT=text
       - LOG_LEVEL=DEBUG
       # V6.1 P2: Uncomment for macOS/Windows live-reload support
@@ -94,9 +100,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: webpent-dev-worker
-    # V7 Ready-For-Kali FIX (regression restored): see the api service's
-    # comment above -- removed for the same reason.
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-webpent-base:latest}
+    # Keep worker identity Compose-managed: P9 must support
+    # `docker compose --scale worker=N` for lease/recovery tests.
+    # The Compose service DNS name remains `worker` for broker URLs.
     # V7 Fix 2.3: Removed reload flags from celery (unsupported natively).
     command: >-
       celery -A worker.celery_app worker
@@ -113,7 +121,7 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      - WEBPENT_REDIS_URL=redis://redis:6379/0
+      - WEBPENT_REDIS_URL=${WEBPENT_REDIS_URL:-redis://redis:6379/0}
       - BBSCOUT_ENABLED=${BBSCOUT_ENABLED:-false}
       - BBSCOUT_PACKAGE_PATH=${BBSCOUT_PACKAGE_PATH:-/run/webpent/bbscout/target-package.json}
       - BBSCOUT_ALLOWED_PROVIDER_IDS=${BBSCOUT_ALLOWED_PROVIDER_IDS:-}
@@ -125,8 +133,11 @@ services:
       - BBSCOUT_SIGNUP_ENABLED=${BBSCOUT_SIGNUP_ENABLED:-false}
       - BBSCOUT_PROVIDER_SUBMISSION_ENABLED=${BBSCOUT_PROVIDER_SUBMISSION_ENABLED:-false}
       - PYTHONUNBUFFERED=1
-      - AUTH_ENABLED=false
-      - RATE_LIMIT_ENABLED=false
+      # Keep API and worker on the same non-root host identity for bind mounts.
+      - WEBPENT_RUN_AS_UID=${WEBPENT_RUN_AS_UID:-1000}
+      - WEBPENT_RUN_AS_GID=${WEBPENT_RUN_AS_GID:-1000}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
       - LOG_FORMAT=text
       - LOG_LEVEL=DEBUG
       # V6.1 P2: Uncomment for macOS/Windows live-reload support

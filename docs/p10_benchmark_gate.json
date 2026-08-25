@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "scope": "WAPTLab_local_authorized_only",
+  "checked_at": "2026-08-25",
+  "target_origin": "http://127.0.0.1:8000",
+  "target_contacted": false,
+  "health_only_probe": true,
+  "observed_http_status": {
+    "/health": 403,
+    "/": 403,
+    "/register": 403
+  },
+  "waptlab_runtime": {
+    "app_container": "running",
+    "mysql_container": "running",
+    "natural_authenticated_identity_available": false
+  },
+  "p9_prerequisite_smoke": {
+    "api": "healthy",
+    "redis": "healthy",
+    "workers": 2,
+    "distributed_qualification_complete": false
+  },
+  "existing_benchmark_artifact": {
+    "run_count": 3,
+    "final_confirmed_counts": [0, 0, 0],
+    "precision_status": "not_measured",
+    "recall_status": "blocked_live",
+    "live_qualification": false,
+    "target_contacted": false
+  },
+  "gate": {
+    "passed": false,
+    "status": "blocked_live",
+    "reason": "P10 requires a natural authenticated lab workflow and completed P9 distributed qualification; neither is available for a valid three-run benchmark.",
+    "bypass_used": false,
+    "mock_promoted": false
+  },
+  "required_to_resume": [
+    "A natural WAPTLab registration/login or lab-provisioned identity workflow that returns authenticated access without bypassing CAPTCHA, MFA, OTP, sessions, or databases.",
+    "Completed P9 lease, killed-worker redelivery/resume, cross-process idempotency, TLS, log-redaction, and retention evidence.",
+    "Three isolated runs with independent artifacts, strict ProofBundles, replay verification, negative controls, and target-backed causal signals."
+  ]
+}

@@ -35,19 +35,27 @@ set -euo pipefail
 
 # Target user/group to run the actual application as. Defaults to the
 # webpent:webpent user baked into the base image (see Dockerfile.base).
-# Can still be overridden via docker-compose's `user:` directive if an
-# operator has a specific reason to (gosu will just use whatever numeric
-# uid:gid docker itself resolved into $(id -u)/$(id -g) at that point —
-# but since this script is now the ENTRYPOINT and runs as root
-# regardless of any `user:` override in compose, we resolve the target
-# explicitly here instead of relying on that mechanism at all).
-TARGET_USER="${WEBPENT_RUN_AS_USER:-webpent}"
-if ! id -u "${TARGET_USER}" >/dev/null 2>&1 || ! id -g "${TARGET_USER}" >/dev/null 2>&1; then
-    echo "entrypoint.sh: ERROR — runtime user does not exist: ${TARGET_USER}" >&2
-    exit 1
+# Development bind mounts may be owned by the host user and mode 0700;
+# WEBPENT_RUN_AS_UID/GID lets Compose select that non-root host identity
+# without chowning the source tree or weakening the root refusal guard.
+TARGET_UID="${WEBPENT_RUN_AS_UID:-}"
+TARGET_GID="${WEBPENT_RUN_AS_GID:-}"
+if [ -n "${TARGET_UID}" ] || [ -n "${TARGET_GID}" ]; then
+    if [ -z "${TARGET_UID}" ] || [ -z "${TARGET_GID}" ] || \
+       ! [[ "${TARGET_UID}" =~ ^[0-9]+$ ]] || \
+       ! [[ "${TARGET_GID}" =~ ^[0-9]+$ ]]; then
+        echo "entrypoint.sh: ERROR — WEBPENT_RUN_AS_UID/GID must be numeric and supplied together" >&2
+        exit 1
+    fi
+else
+    TARGET_USER="${WEBPENT_RUN_AS_USER:-webpent}"
+    if ! id -u "${TARGET_USER}" >/dev/null 2>&1 || ! id -g "${TARGET_USER}" >/dev/null 2>&1; then
+        echo "entrypoint.sh: ERROR — runtime user does not exist: ${TARGET_USER}" >&2
+        exit 1
+    fi
+    TARGET_UID="$(id -u "${TARGET_USER}")"
+    TARGET_GID="$(id -g "${TARGET_USER}")"
 fi
-TARGET_UID="$(id -u "${TARGET_USER}")"
-TARGET_GID="$(id -g "${TARGET_USER}")"
 if [ "${TARGET_UID}" = "0" ] && [ "${WEBPENT_ALLOW_ROOT:-false}" != "true" ]; then
     echo "entrypoint.sh: ERROR — refusing to run the application as root" >&2
     exit 1
