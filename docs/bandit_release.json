@@ -1,6 +1,6 @@
 {
   "errors": [],
-  "generated_at": "2026-08-25T19:19:13Z",
+  "generated_at": "2026-08-25T20:35:09Z",
   "metrics": {
     "_totals": {
       "CONFIDENCE.HIGH": 55,
@@ -11,7 +11,7 @@
       "SEVERITY.LOW": 73,
       "SEVERITY.MEDIUM": 4,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 81783,
+      "loc": 82137,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1130,6 +1130,32 @@
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 100,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/webpent/benchmark/juice_shop_oracles.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 170,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/webpent/benchmark/juice_shop_safe_cases.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 184,
       "nosec": 0,
       "skipped_tests": 0
     },

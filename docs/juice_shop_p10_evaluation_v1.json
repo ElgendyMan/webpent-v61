@@ -7,7 +7,7 @@
       "approved_vulnerability_classes_below_minimum",
       "p10_metrics_withheld_until_all_gates_pass"
     ],
-    "ground_truth_cases": 12,
+    "ground_truth_cases": 11,
     "metrics": {
       "case_coverage": null,
       "class_coverage": null,
