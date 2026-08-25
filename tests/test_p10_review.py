@@ -130,8 +130,8 @@ def test_committed_ground_truth_records_mapping_only_review() -> None:
     assert result["valid"] is True
     assert document["independence"]["reviewer_approval"] is False
     assert document["independence"]["full_p10_qualification_approved"] is False
-    assert document["status"] == "mapping_approved_oracles_frozen_pending_full_runs"
+    assert document["status"] == "oracle_approved_partial_pending_full_set_runs"
     assert (
         document["independence"]["review_status"]
-        == "mapping_approved_pending_oracle_freeze_and_full_runs"
+        == "oracle_approved_partial_pending_full_set_runs"
     )

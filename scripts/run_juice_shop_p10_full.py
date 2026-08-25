@@ -48,6 +48,9 @@ from webpent.shared.semantic_proof_runner import SemanticProofRunner
 ORIGIN = "http://127.0.0.1:3000"
 EXPECTED_MAPPING = "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5"
 EXPECTED_ORACLE = "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c"
+EXECUTION_ORACLE_STATUSES = frozenset(
+    {"frozen_contract_pending_live_proof", "approved_oracle_pending_full_set_metrics"}
+)
 NEUTRAL_PROBE = "p10-neutral-observation"
 TARGET_CONTAINER = "juice-shop-local"
 SEMANTIC_CASE_PROFILES = {
@@ -377,19 +380,25 @@ def main() -> int:
     args = parser.parse_args()
     normalized_origin = origin(args.origin)
     ground_truth = json.loads(args.ground_truth.read_text(encoding="utf-8"))
-    approved = [
+    execution_cases = [
         item for item in ground_truth.get("cases", [])
         if item.get("expected") is True
         and item.get("mapping_status") == "approved"
-        and item.get("oracle_status") == "frozen_contract_pending_live_proof"
+        and item.get("oracle_status") in EXECUTION_ORACLE_STATUSES
     ]
-    approved_ids = [str(item["case_id"]) for item in approved]
+    execution_ids = [str(item["case_id"]) for item in execution_cases]
+    approved_mapping_cases = [
+        item for item in ground_truth.get("cases", [])
+        if item.get("expected") is True
+        and item.get("mapping_status") == "approved"
+    ]
+    approved_mapping_ids = [str(item["case_id"]) for item in approved_mapping_cases]
     mapping_review = ground_truth.get("independence", {}).get("mapping_review", {})
     validation = validate_mapping_review(
         mapping_review,
         expected_mapping_hash=EXPECTED_MAPPING,
         expected_oracle_contract_hash=EXPECTED_ORACLE,
-        expected_case_ids=approved_ids,
+        expected_case_ids=approved_mapping_ids,
         expected_class_count=6,
         expected_out_of_scope_case_ids=mapping_review.get("out_of_scope_confirmed", []),
     )
@@ -409,7 +418,7 @@ def main() -> int:
 
     proof_bundles: dict[str, dict[str, object]] = {}
     proof_states: dict[str, dict[str, object]] = {}
-    for index, item in enumerate(approved, start=1):
+    for index, item in enumerate(execution_cases, start=1):
         case_id = str(item["case_id"])
         case = get_juice_shop_safe_case(case_id)
         engagement_id = f"{workspace_id}-case-{index:02d}"
@@ -665,8 +674,8 @@ def main() -> int:
         "target": normalized_origin,
         "target_contacted": target_contacted,
         "target_integrity": target_integrity,
-        "mapped_case_ids": approved_ids,
-        "executed_case_ids": approved_ids,
+        "mapped_case_ids": approved_mapping_ids,
+        "executed_case_ids": execution_ids,
         "candidate_case_ids": valid_proof_case_ids,
         "proof_case_ids": valid_proof_case_ids,
         "replay_case_ids": valid_proof_case_ids,
@@ -707,7 +716,7 @@ def main() -> int:
         json.dumps(
             {
                 "run_id": run_id,
-                "executed": len(approved_ids),
+                "executed": len(execution_ids),
                 "target_contacted": target_contacted,
                 "proof_cases": len(valid_proof_case_ids),
                 "qualification_claim": "none",

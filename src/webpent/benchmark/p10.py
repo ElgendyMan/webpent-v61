@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 _ALLOWED_MAPPING = {"approved"}
-_ALLOWED_ORACLE = {"ready"}
+_ALLOWED_ORACLE = {"ready", "approved_oracle_pending_full_set_metrics"}
 
 
 def _text(value: Any, limit: int = 160) -> str:
@@ -119,6 +119,11 @@ def evaluate_p10(
         and case.oracle_status in _ALLOWED_ORACLE
     }
     approved_classes = {case.category.lower() for case in approved.values() if case.category}
+    partial_oracle_cases = {
+        case_id
+        for case_id, case in approved.items()
+        if case.oracle_status == "approved_oracle_pending_full_set_metrics"
+    }
     if len(approved) < minimum_approved_cases:
         reasons.append("approved_ground_truth_cases_below_minimum")
     if len(approved_classes) < minimum_approved_classes:
@@ -184,6 +189,8 @@ def evaluate_p10(
         "ground_truth_cases": len(expected),
         "approved_ground_truth_cases": len(approved),
         "approved_vulnerability_classes": len(approved_classes),
+        "partial_oracle_approved_cases": len(partial_oracle_cases),
+        "not_scored_expected_cases": len(expected) - len(approved),
         "run_count": len(runs),
         "metrics": metrics,
     }

@@ -1,7 +1,7 @@
 {
   "evaluation": {
-    "approved_ground_truth_cases": 0,
-    "approved_vulnerability_classes": 0,
+    "approved_ground_truth_cases": 3,
+    "approved_vulnerability_classes": 3,
     "blocking_reasons": [
       "approved_ground_truth_cases_below_minimum",
       "approved_vulnerability_classes_below_minimum",
@@ -20,7 +20,9 @@
       "recall": null,
       "true_positives": 0
     },
+    "not_scored_expected_cases": 8,
     "p10_passed": false,
+    "partial_oracle_approved_cases": 3,
     "run_count": 3
   },
   "ground_truth": {
@@ -29,17 +31,21 @@
     "mapping_review_approved": true,
     "mapping_review_blocking_reasons": [],
     "mapping_review_valid": true,
+    "oracle_review_blocking_reasons": [],
+    "oracle_review_valid": true,
     "path": "docs/juice_shop_p10_ground_truth_v1.json",
-    "status": "mapping_approved_oracles_frozen_pending_full_runs"
+    "status": "oracle_approved_partial_pending_full_set_runs"
   },
   "raw_data_printed": false,
   "raw_data_retained": false,
   "run_metadata": [
     {
       "all_observations_target_backed": false,
-      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-01",
+      "artifact_namespace": "artifact://juice-shop/p10/oracle-v2-01",
       "artifact_namespace_recorded": true,
       "candidate_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "executed_case_ids": [
@@ -71,26 +77,32 @@
       "mapping_status": "mapping_approved_only",
       "operation": "p10_full_run",
       "proof_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "proof_summary_present": true,
       "replay_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
-      "run_id": "adapter-v2-01",
-      "source_log_sha256": "sha256:1a4f626252287b0593e991c8944b06d644f0c081e177e030235f07f417f8519b",
+      "run_id": "oracle-v2-01",
+      "source_log_sha256": "sha256:1d8c3705aebb9c0f2560eb4de163c6251107c5854298bc76557ea242d0d5dc23",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
       "target_unchanged_measured": true,
       "workflow_id": null,
-      "workspace_id": "juice-p10-adapter-v2-01",
+      "workspace_id": "juice-p10-oracle-v2-01",
       "workspace_recorded": true
     },
     {
       "all_observations_target_backed": false,
-      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-02",
+      "artifact_namespace": "artifact://juice-shop/p10/oracle-v2-02",
       "artifact_namespace_recorded": true,
       "candidate_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "executed_case_ids": [
@@ -122,26 +134,32 @@
       "mapping_status": "mapping_approved_only",
       "operation": "p10_full_run",
       "proof_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "proof_summary_present": true,
       "replay_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
-      "run_id": "adapter-v2-02",
-      "source_log_sha256": "sha256:5c9c9a03d3ae620811f7311cf14e654c0a82c74865db690ee311b8b456d2951a",
+      "run_id": "oracle-v2-02",
+      "source_log_sha256": "sha256:001afd0907e3d5a055ca7a5fae03d87504b201942f9001792855e5ae4e5d8d66",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
       "target_unchanged_measured": true,
       "workflow_id": null,
-      "workspace_id": "juice-p10-adapter-v2-02",
+      "workspace_id": "juice-p10-oracle-v2-02",
       "workspace_recorded": true
     },
     {
       "all_observations_target_backed": false,
-      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-03",
+      "artifact_namespace": "artifact://juice-shop/p10/oracle-v2-03",
       "artifact_namespace_recorded": true,
       "candidate_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "executed_case_ids": [
@@ -173,19 +191,23 @@
       "mapping_status": "mapping_approved_only",
       "operation": "p10_full_run",
       "proof_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
       "proof_summary_present": true,
       "replay_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
         "juice.local_xss.v1"
       ],
-      "run_id": "adapter-v2-03",
-      "source_log_sha256": "sha256:ec1ec49f97bf5463294f9613d3e99ada74fb4e67a3bb6c1eb2da67e824c00984",
+      "run_id": "oracle-v2-03",
+      "source_log_sha256": "sha256:be5b6824b547a804ab277fd45caaf53025a81248b4eafe5ce5e5e5d30b5db865",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
       "target_unchanged_measured": true,
       "workflow_id": null,
-      "workspace_id": "juice-p10-adapter-v2-03",
+      "workspace_id": "juice-p10-oracle-v2-03",
       "workspace_recorded": true
     }
   ],

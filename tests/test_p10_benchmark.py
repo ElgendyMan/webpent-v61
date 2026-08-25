@@ -158,3 +158,39 @@ def test_p10_run_mapping_redacts_and_bounds_untrusted_values() -> None:
 
     assert run.run_id == "run-1"
     assert run.confirmed_case_ids == frozenset({"case-1"})
+
+
+def test_partial_oracle_approved_subset_excludes_not_scored_cases_from_fn() -> None:
+    truth = _truth()
+    truth = [
+        P10GroundTruth(
+            case_id=case.case_id,
+            category=case.category,
+            expected=case.expected,
+            mapping_status=case.mapping_status,
+            oracle_status=(
+                "approved_oracle_pending_full_set_metrics"
+                if case.case_id in {"case-0", "case-1", "case-2"}
+                else "pending_safe_oracle"
+            ),
+        )
+        for case in truth
+    ]
+    result = evaluate_p10(
+        truth,
+        [
+            _run(1, confirmed={"case-0", "case-1", "case-2"}),
+            _run(2, confirmed={"case-0", "case-1", "case-2"}),
+            _run(3, confirmed={"case-0", "case-1", "case-2"}),
+        ],
+    )
+
+    assert result["p10_passed"] is False
+    assert result["approved_ground_truth_cases"] == 3
+    assert result["partial_oracle_approved_cases"] == 3
+    assert result["not_scored_expected_cases"] == 7
+    assert result["metrics"]["precision"] is None
+    assert result["metrics"]["recall"] is None
+    assert "approved_ground_truth_cases_below_minimum" in result["blocking_reasons"]
+    assert "approved_vulnerability_classes_below_minimum" in result["blocking_reasons"]
+    assert "case-3" not in result["metrics"]["false_negative_case_ids"]

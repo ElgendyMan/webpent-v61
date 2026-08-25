@@ -19,8 +19,18 @@ from webpent.benchmark.p10_review import validate_mapping_review
 _EXPECTED_MAPPING_HASH = (
     "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5"
 )
-_EXPECTED_ORACLE_HASH = (
+_EXPECTED_MAPPING_ORACLE_HASH = (
     "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c"
+)
+_EXPECTED_CURRENT_ORACLE_HASH = (
+    "sha256:d16e139eebcbe7e88f62058e22aa4ffa31ed96a5af8c5187cc29937304902dee"
+)
+_EXPECTED_PARTIAL_ORACLE_CASES = frozenset(
+    {
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.local_xss.v1",
+    }
 )
 
 
@@ -43,6 +53,53 @@ def _all_observations_target_backed(value: Any) -> bool:
     if "target_backed" in value:
         return value.get("target_backed") is True
     return all(_all_observations_target_backed(item) for item in value.values())
+
+
+def _validate_oracle_review(
+    ground_truth_doc: dict[str, Any],
+    ground_truth_path: Path,
+) -> dict[str, Any]:
+    reasons: list[str] = []
+    independence = ground_truth_doc.get("independence", {})
+    review = independence.get("oracle_review", {})
+    if not isinstance(review, dict):
+        review = {}
+    decision_file = str(review.get("decision_file") or "")
+    decision_path = ground_truth_path.parent.parent / decision_file
+    if not decision_file or not decision_path.is_file():
+        reasons.append("oracle_decision_file_missing")
+        decision = {}
+    else:
+        decision = json.loads(decision_path.read_text())
+        observed_hash = "sha256:" + hashlib.sha256(
+            decision_path.read_bytes()
+        ).hexdigest()
+        if observed_hash != str(review.get("decision_hash") or ""):
+            reasons.append("oracle_decision_hash_mismatch")
+    if not isinstance(decision, dict):
+        reasons.append("oracle_decision_invalid")
+        decision = {}
+    reviewed_hash = (
+        decision.get("reviewed_input_hashes", {}).get("oracle_contract")
+        if isinstance(decision.get("reviewed_input_hashes"), dict)
+        else None
+    )
+    if reviewed_hash != _EXPECTED_CURRENT_ORACLE_HASH:
+        reasons.append("oracle_current_contract_hash_mismatch")
+    decision_cases = {
+        case_id
+        for case_id, value in decision.get("case_decisions", {}).items()
+        if isinstance(value, dict) and value.get("accepted_as_official_gt_oracle") is True
+    }
+    if decision_cases != _EXPECTED_PARTIAL_ORACLE_CASES:
+        reasons.append("oracle_approved_case_set_mismatch")
+    if review.get("approved_case_count") != len(_EXPECTED_PARTIAL_ORACLE_CASES):
+        reasons.append("oracle_approved_case_count_mismatch")
+    if set(review.get("approved_case_ids", [])) != _EXPECTED_PARTIAL_ORACLE_CASES:
+        reasons.append("ground_truth_oracle_case_set_mismatch")
+    if review.get("full_p10_qualification_approved") is True:
+        reasons.append("oracle_review_cannot_claim_full_p10")
+    return {"valid": not reasons, "blocking_reasons": sorted(set(reasons))}
 
 
 def _last_summary(path: Path) -> dict[str, Any]:
@@ -147,7 +204,7 @@ def main() -> int:
     mapping_review_validation = validate_mapping_review(
         mapping_review,
         expected_mapping_hash=_EXPECTED_MAPPING_HASH,
-        expected_oracle_contract_hash=_EXPECTED_ORACLE_HASH,
+        expected_oracle_contract_hash=_EXPECTED_MAPPING_ORACLE_HASH,
         expected_case_ids=approved_case_ids,
         expected_class_count=int(
             ground_truth_doc.get("scope", {}).get("planned_class_count", 6)
@@ -155,6 +212,9 @@ def main() -> int:
         expected_out_of_scope_case_ids=mapping_review.get(
             "out_of_scope_confirmed", []
         ),
+    )
+    oracle_review_validation = _validate_oracle_review(
+        ground_truth_doc, args.ground_truth
     )
     runs = []
     run_metadata = []
@@ -176,13 +236,16 @@ def main() -> int:
             ground_truth_doc.get("acceptance", {}).get("minimum_runs", 3)
         ),
     )
-    if not mapping_review_validation["valid"]:
+    if not mapping_review_validation["valid"] or not oracle_review_validation["valid"]:
         evaluation["p10_passed"] = False
-        evaluation["blocking_reasons"] = sorted(
-            set(evaluation["blocking_reasons"])
-            | {"mapping_review_invalid"}
-            | set(mapping_review_validation["blocking_reasons"])
-        )
+        review_reasons = set(evaluation["blocking_reasons"])
+        if not mapping_review_validation["valid"]:
+            review_reasons |= {"mapping_review_invalid"}
+            review_reasons |= set(mapping_review_validation["blocking_reasons"])
+        if not oracle_review_validation["valid"]:
+            review_reasons |= {"oracle_review_invalid"}
+            review_reasons |= set(oracle_review_validation["blocking_reasons"])
+        evaluation["blocking_reasons"] = sorted(review_reasons)
         evaluation["metrics"] = {
             "true_positives": 0,
             "false_positives": 0,
@@ -213,6 +276,10 @@ def main() -> int:
                 )
             ),
             "mapping_review_blocking_reasons": mapping_review_validation[
+                "blocking_reasons"
+            ],
+            "oracle_review_valid": oracle_review_validation["valid"],
+            "oracle_review_blocking_reasons": oracle_review_validation[
                 "blocking_reasons"
             ],
         },

@@ -32,7 +32,7 @@
       "mapping_status": "approved",
       "operation": "typed_search",
       "oracle_id": "dom.safe_search_sink_observation",
-      "oracle_status": "frozen_contract_pending_live_proof",
+      "oracle_status": "approved_oracle_pending_full_set_metrics",
       "path": "/",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/frontend/src/app/search-result/search-result.component.ts",
       "workflow_id": "juice-shop-mat-search"
@@ -57,7 +57,7 @@
       "mapping_status": "approved",
       "operation": "navigate",
       "oracle_id": "http.read_only.error_disclosure_metadata",
-      "oracle_status": "frozen_contract_pending_live_proof",
+      "oracle_status": "approved_oracle_pending_full_set_metrics",
       "path": "/rest/qwertz",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "workflow_id": "juice-shop-readonly-navigation"
@@ -230,7 +230,7 @@
       "mapping_status": "approved",
       "operation": "navigate",
       "oracle_id": "http.read_only.metrics_publication",
-      "oracle_status": "frozen_contract_pending_live_proof",
+      "oracle_status": "approved_oracle_pending_full_set_metrics",
       "path": "/metrics",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts",
       "workflow_id": "juice-shop-readonly-navigation"
@@ -322,9 +322,31 @@
       "reviewer_type": "external_mapping_reviewer_non_human_identifier"
     },
     "mapping_review_approved": true,
+    "oracle_review": {
+      "approval_decision": "oracle_predicates_accepted_for_three_cases_only",
+      "approved_case_count": 3,
+      "approved_case_ids": [
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.local_xss.v1"
+      ],
+      "decision_file": "docs/p10_oracle_semantics_decision_v1.json",
+      "decision_hash": "sha256:637b1f7e10e4224d60e3bcf29abdcaadb2e87aa66ed03d776668b94f1454a97c",
+      "reviewer_id": "independent-reviewer:grok-p10-oracle",
+      "reviewed_at": "2026-08-25T23:15:00+00:00",
+      "results_seen_by_reviewer": false,
+      "full_p10_qualification_approved": false,
+      "vip_qualification_approved": false
+    },
+    "not_scored_case_policy": {
+      "approved_oracle_case_count": 3,
+      "not_scored_case_count": 8,
+      "not_scored_is_not_fn": true,
+      "not_scored_reason": "No class-specific causal oracle accepted for current predicates"
+    },
     "raw_descriptions_retained": false,
     "raw_http_data_retained": false,
-    "review_status": "mapping_approved_pending_oracle_freeze_and_full_runs",
+    "review_status": "oracle_approved_partial_pending_full_set_runs",
     "reviewer_approval": false,
     "reviewer_approval_required_before_final_metrics": true,
     "source_is_target_metadata_snapshot": true,
@@ -340,7 +362,7 @@
     "required_isolated_runs": 3,
     "total_case_count": 21
   },
-  "status": "mapping_approved_oracles_frozen_pending_full_runs",
+  "status": "oracle_approved_partial_pending_full_set_runs",
   "target": {
     "base_url": "http://127.0.0.1:3000",
     "catalog_snapshot_sha256": "sha256:dcfcd99711749f8354b78e1f2025c654a6db52174b674e9781489af440624c19",
