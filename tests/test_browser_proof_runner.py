@@ -66,6 +66,8 @@ def _build_runner(
     tmp_path: Path,
     *,
     missing_observation: bool = False,
+    browser_operation: str = "validate_input",
+    workflow_id: str | None = None,
 ) -> tuple[BrowserProofRunner, list[dict[str, Any]]]:
     probes: dict[str, str] = {}
     seen: list[dict[str, Any]] = []
@@ -139,6 +141,8 @@ def _build_runner(
         session=session,
         scope=control_plane.scope,
         engagement_id=ENGAGEMENT,
+        browser_operation=browser_operation,
+        workflow_id=workflow_id,
     )
     return runner, seen
 
@@ -158,6 +162,20 @@ def _probes():
         EphemeralProbe.from_value("candidate", "candidate-value"),
         EphemeralProbe.from_value("negative_control", "negative-value"),
     )
+
+
+def test_typed_search_request_is_explicitly_bound_to_allowlisted_workflow(tmp_path):
+    runner, _ = _build_runner(
+        tmp_path,
+        browser_operation="typed_search",
+        workflow_id="juice-shop-mat-search",
+    )
+    request = runner._request(_finding(), _probes()[0], target_url=TARGET_URL)
+
+    assert request.operation == "typed_search"
+    assert request.workflow_id == "juice-shop-mat-search"
+    assert request.probe_ref.startswith("probe://")
+    assert request.probe_digest.startswith("sha256:")
 
 
 def test_runner_executes_three_typed_replays_without_raw_probe_transport(tmp_path):

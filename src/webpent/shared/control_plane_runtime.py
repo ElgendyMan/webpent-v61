@@ -464,6 +464,7 @@ class BrowserActionAdapter:
                 "dom_capture",
                 "observe_network",
                 "validate_input",
+                "typed_search",
             }
         ),
     ) -> ActionOutcome:

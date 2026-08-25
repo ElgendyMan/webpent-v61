@@ -120,6 +120,7 @@ def _bounded_observation(receipt: ReplayReceipt) -> dict[str, Any]:
         "dialog_count",
         "dialog_events",
         "network_event_count",
+        "network_event_shape_digests",
         "dom_digest",
         "screenshot_digest",
         "replayable",
@@ -155,6 +156,8 @@ class BrowserProofRunner:
         engagement_id: str,
         validator_id: str = "webpent.browser-proof",
         validator_version: str = "1.0",
+        browser_operation: str = "validate_input",
+        workflow_id: str | None = None,
         g02_inventory_ref: str = CONTROL_PLANE_BROWSER_INVENTORY_REF,
         g02_proof_contract: str = CONTROL_PLANE_BROWSER_PROOF_CONTRACT,
     ) -> None:
@@ -165,6 +168,8 @@ class BrowserProofRunner:
         self.engagement_id = str(engagement_id or "").strip()
         self.validator_id = str(validator_id or "").strip()
         self.validator_version = str(validator_version or "").strip()
+        self.browser_operation = str(browser_operation or "").strip()
+        self.workflow_id = str(workflow_id or "").strip() or None
         self.g02_inventory_ref = str(g02_inventory_ref or "").strip()
         self.g02_proof_contract = str(g02_proof_contract or "").strip()
         if not self.engagement_id or self.session.engagement_id != self.engagement_id:
@@ -173,6 +178,12 @@ class BrowserProofRunner:
             raise ValueError("browser_proof_scope_engagement_mismatch")
         if not self.validator_id or not self.validator_version:
             raise ValueError("browser_proof_validator_identity_required")
+        if self.browser_operation not in {"validate_input", "typed_search"}:
+            raise ValueError("browser_proof_operation_not_allowlisted")
+        if self.browser_operation == "typed_search" and self.workflow_id != "juice-shop-mat-search":
+            raise ValueError("browser_proof_workflow_not_allowlisted")
+        if self.browser_operation == "validate_input" and self.workflow_id is not None:
+            raise ValueError("browser_proof_workflow_not_allowed")
 
     @staticmethod
     def _action_id(finding: Finding, role: str) -> str:
@@ -190,7 +201,7 @@ class BrowserProofRunner:
             action_id=self._action_id(finding, probe.role),
             engagement_id=self.engagement_id,
             session_id=self.session.session_id,
-            operation="validate_input",
+            operation=self.browser_operation,
             url=target_url,
             scope_decision=decision,
             timeout_ms=15_000,
@@ -198,6 +209,7 @@ class BrowserProofRunner:
             observation_role=probe.role,
             probe_ref=probe.probe_ref,
             probe_digest=probe.probe_digest,
+            workflow_id=self.workflow_id,
         )
 
     def _scope_decision(self, target_url: str):

@@ -26,8 +26,16 @@ from webpent.shared.http import (
 logger = logging.getLogger(__name__)
 
 _ALLOWED_OPERATIONS = frozenset(
-    {"navigate", "dom_capture", "screenshot", "observe_network", "validate_input"}
+    {
+        "navigate",
+        "dom_capture",
+        "screenshot",
+        "observe_network",
+        "validate_input",
+        "typed_search",
+    }
 )
+_TYPED_SEARCH_WORKFLOW = "juice-shop-mat-search"
 _DENIED_OPERATIONS = frozenset({"signup", "login", "create_account", "password_reset", "oauth"})
 
 
@@ -134,8 +142,10 @@ class PlaywrightBrowserHandler:
         context = None
         browser = None
         page = None
+        stage = "before_browser"
         try:
             with sync_playwright() as playwright:
+                stage = "launch_browser"
                 launch_args = build_host_resolver_rules_args(host)
                 launch_kwargs: dict[str, Any] = {
                     "headless": self.headless,
@@ -145,6 +155,7 @@ class PlaywrightBrowserHandler:
                 if executable_path:
                     launch_kwargs["executable_path"] = executable_path
                 browser = playwright.chromium.launch(**launch_kwargs)
+                stage = "create_context"
                 # Do not use a persistent context or load storage_state: every
                 # observation is isolated and cannot retain real cookies.
                 context = browser.new_context()
@@ -152,6 +163,7 @@ class PlaywrightBrowserHandler:
                 timeout_ms = min(self.browser_timeout_ms, int(request.timeout_ms))
                 context.set_default_timeout(timeout_ms)
                 page = context.new_page()
+                stage = "attach_observers"
 
                 def on_dialog(dialog: Any) -> None:
                     dialog_events.append(
@@ -185,8 +197,9 @@ class PlaywrightBrowserHandler:
                         logger.debug("playwright response observation failed", exc_info=True)
 
                 page.on("dialog", on_dialog)
-                if request.operation in {"observe_network", "validate_input"}:
+                if request.operation in {"observe_network", "validate_input", "typed_search"}:
                     page.on("response", on_response)
+                stage = "navigate"
                 response = page.goto(
                     request.url,
                     wait_until="domcontentloaded",
@@ -198,17 +211,44 @@ class PlaywrightBrowserHandler:
                         status_code=int(response.status),
                         operation=request.operation,
                     )
-                if request.operation == "validate_input":
+                if request.operation in {"validate_input", "typed_search"}:
+                    stage = "resolve_probe"
                     probe_value = self._resolve_probe(request)
                     if probe_value is None:
                         return self._blocked("validator_probe_unavailable")
                     password_fields = page.locator("input[type='password']")
                     if password_fields.count() > 0:
                         return self._blocked("account_like_form_denied")
-                    fields = page.locator(
-                        "input[type='text'], input[type='search'], "
-                        "input[type='url'], input[type='email'], input:not([type])"
-                    )
+                    if request.operation == "typed_search":
+                        stage = "locate_typed_search"
+                        if request.workflow_id != _TYPED_SEARCH_WORKFLOW:
+                            return self._blocked("typed_search_workflow_not_allowlisted")
+                        host = page.locator("app-mat-search-bar#searchQuery").first
+                        fields = host.locator("input") if host.count() > 0 else None
+                        field_visible = bool(
+                            fields is not None
+                            and fields.count() > 0
+                            and fields.first.is_visible()
+                        )
+                        if not field_visible:
+                            opener = page.locator("button[aria-label='Open search']").first
+                            if opener.count() == 0 or not opener.is_visible():
+                                return self._blocked("typed_search_opener_missing")
+                            stage = "open_typed_search"
+                            opener.click(timeout=timeout_ms)
+                            page.wait_for_timeout(100)
+                            host = page.locator("app-mat-search-bar#searchQuery").first
+                            fields = host.locator("input") if host.count() > 0 else None
+                        if host.count() == 0 or not host.is_visible():
+                            return self._blocked("typed_search_host_missing")
+                        if fields is None:
+                            return self._blocked("typed_search_input_missing")
+                    else:
+                        fields = page.locator(
+                            "input[type='text'], input[type='search'], "
+                            "input[type='url'], input[type='email'], input:not([type])"
+                        )
+                    stage = "fill_probe"
                     filled = False
                     filled_field: Any | None = None
                     for index in range(min(fields.count(), 20)):
@@ -220,25 +260,34 @@ class PlaywrightBrowserHandler:
                             break
                     if not filled or filled_field is None:
                         return self._blocked("validator_input_field_missing")
-                    submit = page.locator(
-                        "input[type='submit'], button[type='submit'], button:not([type])"
-                    ).first
-                    if submit.count() == 0 or not submit.is_visible():
-                        # Some same-origin SPAs submit an explicitly typed
-                        # search field on Enter and expose
-                        # no button element.  Keep this fallback narrowly typed
-                        # to input[type=search]; account-like forms remain
-                        # denied above and every other form still fails closed.
-                        if not self._is_search_field(filled_field):
-                            return self._blocked("validator_submit_control_missing")
+                    if request.operation == "typed_search":
+                        stage = "submit_typed_search"
                         filled_field.press("Enter", timeout=timeout_ms)
                     else:
-                        submit.click(timeout=timeout_ms)
+                        submit = page.locator(
+                            "input[type='submit'], button[type='submit'], button:not([type])"
+                        ).first
+                        if submit.count() == 0 or not submit.is_visible():
+                            # Some same-origin SPAs submit an explicitly typed
+                            # search field on Enter and expose no button element.
+                            # Keep this fallback narrowly typed to input[type=search].
+                            if not self._is_search_field(filled_field):
+                                return self._blocked("validator_submit_control_missing")
+                            filled_field.press("Enter", timeout=timeout_ms)
+                        else:
+                            submit.click(timeout=timeout_ms)
+                    stage = "settle_after_action"
                     page.wait_for_timeout(min(1000, timeout_ms))
+                stage = "build_observation"
                 if response is not None:
                     response_status = int(response.status)
                 final_url = _origin(page.url) + urlsplit(page.url).path
-                if request.operation in {"dom_capture", "screenshot", "observe_network"}:
+                if request.operation in {
+                    "dom_capture",
+                    "screenshot",
+                    "observe_network",
+                    "typed_search",
+                }:
                     dom_digest = _safe_text_digest(page.content())
                 if request.operation == "screenshot":
                     screenshot_digest = _digest(page.screenshot(type="png"))
@@ -271,13 +320,21 @@ class PlaywrightBrowserHandler:
                     "dialog_count": len(dialog_events),
                     "dialog_events": dialog_events,
                     "network_event_count": len(network_events),
+                    "network_event_shape_digests": [
+                        str(event.get("url_shape_digest", ""))
+                        for event in network_events
+                    ],
                     "dom_digest": dom_digest,
                     "screenshot_digest": screenshot_digest,
                     "replayable": True,
                 }
         except Exception as exc:
-            logger.warning("Playwright observation failed: %s", type(exc).__name__)
-            return self._blocked(f"browser_execution_failed:{type(exc).__name__}")
+            logger.warning("Playwright observation failed at %s: %s", stage, type(exc).__name__)
+            return self._blocked(
+                f"browser_execution_failed:{type(exc).__name__}",
+                operation=request.operation,
+                stage=stage,
+            )
         finally:
             for resource in (page, context, browser):
                 if resource is not None:
@@ -313,6 +370,7 @@ class PlaywrightBrowserHandler:
         *,
         status_code: int | None = None,
         operation: str | None = None,
+        stage: str | None = None,
     ) -> dict[str, Any]:
         normalized_reason = str(reason)[:240]
         failure_code = normalized_reason.split(":", 1)[0]
@@ -320,6 +378,9 @@ class PlaywrightBrowserHandler:
             "blocked_http_status": ["successful_http_observation"],
             "validator_probe_unavailable": ["validated_probe"],
             "validator_input_field_missing": ["input_field"],
+            "typed_search_host_missing": ["typed_search_host"],
+            "typed_search_opener_missing": ["typed_search_opener"],
+            "typed_search_input_missing": ["typed_search_input"],
             "validator_submit_control_missing": ["submit_control"],
             "account_like_form_denied": ["non_account_form"],
             "browser_execution_failed": ["browser_observation"],
@@ -330,6 +391,8 @@ class PlaywrightBrowserHandler:
             "status_code": status_code,
             "operation": str(operation or "")[:40],
         }
+        if stage:
+            diagnostic["stage"] = str(stage)[:40]
         return {
             "handler_status": "blocked",
             "target_backed": False,

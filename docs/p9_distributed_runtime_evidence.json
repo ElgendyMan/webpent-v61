@@ -1,106 +1,105 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "qualification_scope": "local_webpent_dev_stack_only",
   "target_contacted": false,
   "target_source_changed": false,
   "environment": {
-    "api_bind": "127.0.0.1:18000",
+    "api_bind": "loopback_only",
     "compose_project": "webpent-p9",
     "auth_enabled": true,
     "environment_profile": "lab",
     "rag": "offline",
     "redis_mode": "plaintext_lab_only",
     "plaintext_redis_override": true,
-    "runtime_process_user": "ubuntu_non_root"
+    "runtime_process_user": "ubuntu_non_root",
+    "worker_count": 2,
+    "worker_concurrency": 1
   },
   "observed_checks": {
-    "api_health": {
-      "passed": true,
-      "http_status": 200,
-      "evidence": "GET /health returned status=ok and scan_registry.ready=true"
-    },
     "redis_health": {
       "passed": true,
-      "evidence": "redis-cli ping returned PONG"
+      "evidence": "redis-cli ping returned PONG on 127.0.0.1:16379"
     },
     "celery_worker_health": {
       "passed": true,
-      "evidence": "celery inspect ping returned two nodes online with pong (worker-1 and worker-2)"
-    },
-    "worker_queue_delivery": {
-      "passed": true,
-      "evidence": "two harmless resume_pentest_task messages were delivered to separate workers and each failed closed before target action"
-    },
-    "multi_worker_queue_distribution": {
-      "passed": true,
-      "evidence": "worker-1 and worker-2 each received one distinct invalid resume task; inspect ping reported 2 nodes online"
-    },
-    "cross_process_idempotency_ledger_probe": {
-      "passed": true,
-      "evidence": "Two independent local processes contended for one SQLiteActionLedger reservation; allowed_count=1, duplicate_count=1, complete_once=true, complete_twice=false, used_actions=1, target_contacted=false"
-    },
-    "cross_process_package_admission": {
-      "passed": true,
-      "evidence": "Two independent Python processes attempted the same signed package admission against one SQLite lease database; exactly one success and one package_already_consumed denial, with status=consumed and no target I/O"
+      "evidence": "Two named workers were online on the loopback Redis broker"
     },
     "fail_closed_resume_guard": {
       "passed": true,
-      "evidence": "invalid/missing resume capability raised PermissionError before target action"
+      "evidence": "Invalid or missing resume capability raised PermissionError before target action"
     },
-    "api_controlled_restart": {
+    "cross_process_idempotency_ledger_probe": {
       "passed": true,
-      "evidence": "API returned health=200 after restart"
+      "evidence": "Two independent local processes contended for one SQLiteActionLedger reservation; exactly one reservation succeeded and the duplicate was denied"
     },
-    "worker_controlled_restart": {
+    "cross_process_package_admission": {
       "passed": true,
-      "evidence": "worker process remained running and reconnected after restart"
+      "evidence": "Two independent processes attempted the same signed package admission; exactly one succeeded and one received package_already_consumed"
     },
-    "redis_controlled_restart": {
+    "positive_checkpoint_resume_task": {
       "passed": true,
-      "evidence": "Redis returned PONG and API health remained 200 after restart"
+      "evidence": "Target-free p9_qualification_task created a durable checkpoint, recorded one deterministic side effect, and completed through Celery using an issued task identity"
     },
-    "runtime_non_root": {
+    "killed_worker_redelivery": {
       "passed": true,
-      "evidence": "docker top showed API and worker application processes owned by ubuntu"
+      "evidence": "A child worker was SIGKILLed after checkpoint/side-effect; the same task was redelivered and completed with side_effect_count=1, not duplicated"
+    },
+    "retry_exhaustion_projection": {
+      "passed": true,
+      "evidence": "p9_retry_qualification_task reached retry budget 2 and produced a durable redacted DLQ projection with reason retry_budget_exhausted"
+    },
+    "runtime_non_root_contract": {
+      "passed": true,
+      "evidence": "Entrypoint refuses UID 0 by default and execs application as webpent; production/dev deployment contracts passed"
+    },
+    "redis_tls_live": {
+      "passed": false,
+      "evidence": "Current lab broker is redis://127.0.0.1:16379/0; preflight reports DEGRADED plaintext Redis transport"
+    },
+    "live_redaction_retention": {
+      "passed": false,
+      "evidence": "Contract-level safeguards exist, but a production-like live retention/redaction run was not completed"
+    },
+    "backup_restore": {
+      "passed": false,
+      "evidence": "No live restore drill for the registry/checkpoint/ledger was completed in this run"
     }
   },
   "latest_live_execution": {
     "redis_endpoint": "redis://127.0.0.1:16379/0",
     "worker_names": [
-      "webpent-proof-a@305f57cac429",
-      "webpent-proof-b@305f57cac429"
+      "p9a@305f57cac429",
+      "p9b@305f57cac429"
     ],
-    "redis_ping": "PONG",
-    "celery_ping": {
-      "nodes_online": 2,
-      "worker_a": "pong",
-      "worker_b": "pong"
-    },
-    "dispatch": {
-      "task_name": "resume_pentest_task",
-      "task_count": 4,
-      "states": ["FAILURE", "FAILURE", "FAILURE", "FAILURE"],
-      "failure_type": "PermissionError",
-      "failure_reason": "resume capability is missing or invalid",
+    "positive_resume": {
+      "task_name": "p9_qualification_task",
       "target_contacted": false,
-      "worker_assignment": {
-        "worker_a": 2,
-        "worker_b": 2
-      }
+      "checkpoint_created": true,
+      "completed": true,
+      "side_effect_count": 1
     },
-    "controlled_worker_restart": {
-      "worker_a_stopped_and_restarted": true,
-      "post_restart_celery_ping_nodes_online": 2,
+    "killed_worker_redelivery": {
+      "task_name": "p9_qualification_task",
+      "target_contacted": false,
+      "worker_killed": true,
+      "redelivered_same_task": true,
+      "completed_after_redelivery": true,
+      "side_effect_count": 1
+    },
+    "retry_exhaustion": {
+      "task_name": "p9_retry_qualification_task",
+      "task_state": "FAILURE",
+      "failure_type": "MaxRetriesExceededError",
+      "retry_budget_observed": 2,
+      "dead_letter_projection": {
+        "present": true,
+        "reason": "retry_budget_exhausted",
+        "payload_raw_saved": false,
+        "payload_sha256_present": true
+      },
       "target_contacted": false
     },
-    "qualification_impact": "live broker/worker smoke and fail-closed dispatch evidence only; not distributed qualification",
-    "additional_validation_run": {
-      "redis_endpoint": "redis://127.0.0.1:16379/0",
-      "redis_ping": "PONG",
-      "celery_workers": {"nodes_online": 2, "worker_a": "pong", "worker_b": "pong"},
-      "worker_log_policy": "startup metadata only; no task payloads or secrets",
-      "target_contacted": false
-    }
+    "qualification_impact": "Positive checkpoint/resume, killed-worker redelivery, exactly-once side-effect behavior, and retry exhaustion are now live on the local target-free qualification task; this does not by itself qualify production P9 because TLS, backup/restore, live redaction/retention, and full lease/broker idempotency evidence remain incomplete."
   },
   "qualification_checks": {
     "docker_health": true,
@@ -108,23 +107,28 @@
     "celery_worker_health": true,
     "multi_worker_queue_distribution": true,
     "multi_worker_lease_contention": false,
-    "crash_restart_recovery": false,
-    "checkpoint_resume": false,
-    "cross_process_idempotency": false,
+    "crash_restart_recovery": true,
+    "checkpoint_resume": true,
+    "killed_worker_redelivery": true,
+    "cross_process_idempotency": true,
+    "broker_idempotency": false,
     "cross_process_package_admission": true,
+    "retry_exhaustion": true,
+    "dlq_projection": true,
     "secrets_externalized": true,
     "tls_enforced": false,
     "logs_redacted": false,
-    "retention_policy_declared": false,
+    "retention_policy_verified": false,
+    "backup_restore": false,
     "target_unchanged": true
   },
   "blockers": [
-    "No two-worker lease contention run has been completed; queue distribution alone is not lease qualification.",
-    "No killed-worker redelivery/resume run has been completed with a real harmless task.",
-    "A cross-process SQLite action ledger and signed-package admission probe passed, but no broker-level distributed idempotency run has been completed in the distributed stack.",
-    "Redis uses explicit plaintext lab override; this is not TLS qualification.",
-    "Runtime log redaction and retention evidence were not promoted from contract tests to live qualification."
+    "No independent two-worker lease-contention run has been completed against the real distributed lease path.",
+    "Broker-level idempotency has not been separately proven beyond the durable task ledger projection.",
+    "Redis uses the explicit plaintext lab override; a rediss:// live run is still required for production qualification.",
+    "Live redaction and retention evidence has not been promoted from contract tests to a production-like runtime run.",
+    "A live backup/restore drill for the registry, checkpoint, and qualification ledger is still missing."
   ],
   "qualification_status": "not_qualified",
-  "interpretation": "This artifact records local runtime smoke and controlled restart evidence only. It is not distributed qualification and must not promote the release."
+  "interpretation": "This artifact records real local distributed-runtime progress and target-free recovery evidence. It is not a production P9 qualification certificate and must not promote VIP_QUALIFIED."
 }

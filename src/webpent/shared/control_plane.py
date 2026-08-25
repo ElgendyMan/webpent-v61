@@ -587,10 +587,13 @@ class BrowserActionRequest(BaseModel):
     # transport contract or enters checkpoints/records.
     probe_ref: str | None = Field(default=None, max_length=240)
     probe_digest: str | None = Field(default=None, min_length=71, max_length=71)
+    # Explicit workflow selector for narrowly typed SPA operations.  It is
+    # metadata only; the ephemeral probe value never crosses this contract.
+    workflow_id: str | None = Field(default=None, max_length=120)
 
     @model_validator(mode="after")
     def _validate_probe_metadata(self) -> BrowserActionRequest:
-        if self.operation == "validate_input":
+        if self.operation in {"validate_input", "typed_search"}:
             if not self.probe_ref or not self.probe_digest:
                 raise ValueError("validator_probe_reference_and_digest_required")
             if not self.probe_ref.startswith("probe://"):
@@ -599,6 +602,10 @@ class BrowserActionRequest(BaseModel):
                 raise ValueError("validator_probe_digest_invalid")
         elif self.probe_ref is not None or self.probe_digest is not None:
             raise ValueError("probe_metadata_not_allowed_for_operation")
+        if self.operation == "typed_search" and self.workflow_id != "juice-shop-mat-search":
+            raise ValueError("typed_search_workflow_not_allowlisted")
+        if self.operation != "typed_search" and self.workflow_id is not None:
+            raise ValueError("workflow_metadata_not_allowed_for_operation")
         return self
 
 

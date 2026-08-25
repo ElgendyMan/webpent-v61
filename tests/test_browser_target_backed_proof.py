@@ -133,3 +133,63 @@ def test_false_causal_signal_never_reaches_bundle_creation():
     assert result.passed is False
     assert result.reason == "causal_signal_and_negative_control_required"
     assert result.proof_bundle is None
+
+
+def test_root_target_fingerprint_normalizes_missing_trailing_slash():
+    assert _target_fingerprint("http://127.0.0.1:3000") == _target_fingerprint(
+        "http://127.0.0.1:3000/"
+    )
+    assert _target_fingerprint("http://127.0.0.1:3000/#/") == _target_fingerprint(
+        "http://127.0.0.1:3000/"
+    )
+
+
+def test_root_target_backed_verifier_accepts_normalized_browser_shape():
+    target = "http://127.0.0.1:3000"
+    finding = Finding(
+        title="Root target-backed browser proof",
+        severity=Severity.HIGH,
+        description="Regression fixture for root-origin normalization.",
+        tool_name="fixture.browser.validator",
+        url=target,
+        vuln_class=VulnClass.XSS,
+    )
+    def observation(role: str, marker: str) -> dict[str, object]:
+        return {
+            "target_backed": True,
+            "observation_role": role,
+            "target_fingerprint": _target_fingerprint(target + "/"),
+            "request_digest": f"sha256:{marker * 64}",
+            "response_digest": f"sha256:{marker * 64}",
+            "status_code": 200,
+            "replayable": True,
+        }
+    result = verify_replay_evidence(
+        finding,
+        baseline=observation("baseline", "a"),
+        candidate=observation("candidate", "b"),
+        negative_control=observation("negative_control", "c"),
+        causal_signal=True,
+        negative_control_complete=True,
+        validator_id="fixture.browser.validator",
+        validator_version="1.0",
+        causal_basis="target-backed response differential",
+        engagement_id=ENGAGEMENT,
+        hypothesis_id=HYPOTHESIS,
+        scope_context={"allowed_origin": target},
+        identity_context={"session_ref": "session-fixture"},
+        replay_metadata={"replayable": True},
+        require_target_backed=True,
+    )
+    assert result.passed is True
+    assert result.proof_bundle is not None
+    assert result.proof_bundle.verify_seal() is True
+    assert result.proof_bundle.replay(
+        [
+            result.evidence["baseline"],
+            result.evidence["candidate"],
+            result.evidence["negative_control"],
+        ],
+        result.evidence["negative_control"],
+        replay_context=result.evidence["promotion_guard"]["replay_context"],
+    ) is True

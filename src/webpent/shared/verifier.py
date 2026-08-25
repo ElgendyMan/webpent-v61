@@ -36,9 +36,12 @@ class VerificationResult:
 
 
 def _target_fingerprint(url: str) -> str:
-    """Hash only the stable origin/path shape; never persist query values."""
+    """Hash one stable origin/path shape consistently with browser adapters."""
     parsed = urlparse(str(url))
-    shape = urlunparse(parsed._replace(query="", fragment=""))
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+    path = parsed.path or "/"
+    shape = urlunparse((scheme, netloc, path, "", "", ""))
     return f"sha256:{hashlib.sha256(shape.encode('utf-8', 'replace')).hexdigest()}"
 
 
