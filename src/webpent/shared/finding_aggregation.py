@@ -71,14 +71,37 @@ def default_engagement_id(target_url: str, client_id: str | None = None) -> str:
 def finding_fingerprint(finding: Finding) -> str:
     """Return the stable logical identity used for cross-run deduplication.
 
-    The identity intentionally includes vulnerability class, title, and
-    normalised affected URL.  It does not include UUIDs, timestamps, payloads,
-    or tool names, because those commonly change between repeated scans of the
-    same issue.
+    IDOR/BAC findings are endpoint-scoped rather than title-scoped because the
+    strategist and access-control paths may use different titles for the same
+    resource. Other vulnerability classes retain the existing title-sensitive
+    identity so unrelated findings cannot be merged.
     """
     vuln_class = _value(finding.vuln_class) or "unknown"
     title = " ".join(str(finding.title).lower().split())
+    evidence = finding.evidence if isinstance(finding.evidence, dict) else {}
+    is_idor_claim = (
+        vuln_class == "idor"
+        or "idor" in title
+        or _value(evidence.get("vulnerability_class")) == "idor"
+        or bool(evidence.get("access_control"))
+        or bool(evidence.get("idor"))
+    )
+    if is_idor_claim:
+        return "idor|" + _normalise_url(finding.url)
     return "|".join((vuln_class, _normalise_url(finding.url), title))
+
+
+def _selection_key(finding: Finding) -> tuple[object, ...]:
+    """Prefer equally strong records that carry the current proof context."""
+    evidence = finding.evidence if isinstance(finding.evidence, dict) else {}
+    richness = (
+        bool(finding.evidence_bundle),
+        bool(evidence.get("proof_bundle")),
+        bool(finding.business_impact),
+        bool(finding.cvss_score),
+        len(evidence),
+    )
+    return (*_strength(finding), *richness, finding.created_at.isoformat(), str(finding.id))
 
 
 def _strength(finding: Finding) -> tuple[int, int, int, int, float]:
@@ -118,7 +141,7 @@ def aggregate_findings(findings: Iterable[Finding]) -> list[Finding]:
     for finding in findings:
         key = finding_fingerprint(finding)
         current = selected.get(key)
-        if current is None or _strength(finding) > _strength(current):
+        if current is None or _selection_key(finding) > _selection_key(current):
             selected[key] = finding
     return sorted(
         selected.values(),

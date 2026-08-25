@@ -645,6 +645,10 @@ def _deterministic_promotion_allowed(
     """Return whether a hypothesis has a safe downstream validator."""
     try:
         from webpent.models.findings import EXPLOITABLE_CLASSES
+        # IDOR/BAC requires live owner-vs-foreign observations and the
+        # central verifier; a path match alone is never a safe validator.
+        if vuln_class == VulnClass.IDOR.value:
+            return False
         return vuln_class in EXPLOITABLE_CLASSES or (
             deterministic_match and vuln_class in _DETERMINISTIC_STRUCTURAL_CLASSES
         )
@@ -688,11 +692,11 @@ def recommend_action(
 
     V9 P0 Fix 2-B: hypotheses with ``deterministic_match=True`` (set
     by hypothesis_analyzer_node's ``_classify_by_url_path`` — a known
-    vuln-path signature, e.g. ``/vulnerabilities/sqli/``) are promoted
-    unconditionally, bypassing the ``score >= PROMOTION_THRESHOLD``
-    comparison below. This is still a deterministic, non-LLM decision
-    — it substitutes one deterministic gate (regex path match) for
-    another (weighted score formula) rather than removing a gate.
+    vuln-path signature, e.g. ``/vulnerabilities/sqli/``) may bypass the
+    weighted threshold only when a safe downstream validator exists.
+    IDOR is deliberately excluded: it requires live owner/foreign BAC
+    observations and the central ProofBundle verifier, so path evidence
+    remains a deferred hypothesis rather than a reportable finding.
     It exists because the probabilistic formula was calibrated for
     genuinely uncertain heuristic beliefs and can mathematically never
     clear 0.5 for a path-classified hypothesis under the current
@@ -728,7 +732,16 @@ def recommend_action(
     is_deterministic = getattr(hypothesis, "deterministic_match", False)
 
     vuln_class = str(getattr(hypothesis, "vuln_class", ""))
-    if is_deterministic and _deterministic_promotion_allowed(vuln_class, deterministic_match=True):
+    if vuln_class == VulnClass.IDOR.value:
+        action = PrioritizationAction.DEFER
+        rule = (
+            "IDOR/BAC promotion guard: live owner/foreign observations and "
+            "central ProofBundle verifier are required; hypothesis retained "
+            f"for access-control coverage, score={score:.4f}"
+        )
+    elif is_deterministic and _deterministic_promotion_allowed(
+        vuln_class, deterministic_match=True
+    ):
         action = PrioritizationAction.PROMOTE
         rule = (
             f"deterministic_match=True (path-classified, validator-available) — "
@@ -901,11 +914,10 @@ def promote_hypothesis_to_finding(
                 )
                 return None
             # If is_deterministic is True, fall through to promotion
-            # even for non-EXPLOITABLE_CLASSES vuln classes (including
-            # INFO_DISCLOSURE, CSP,
-            # WEAK_SESSION, JAVASCRIPT, AUTH_BYPASS, API_ISSUE,
-            # CRYPTOGRAPHY, CAPTCHA, BRUTE_FORCE, IDOR,
-            # MASS_ASSIGNMENT, REQUEST_SMUGGLING, RACE_CONDITION).
+            # for non-EXPLOITABLE_CLASSES classes with a safe structural
+            # validator. IDOR is intentionally excluded because its
+            # validator is the strict BAC access-control path, not this
+            # evidence-free hypothesis promotion path.
             # The structural validator will run and produce either a
             # Tool-Confirmed finding or an explicit Not Scanned signal.
         except ImportError:

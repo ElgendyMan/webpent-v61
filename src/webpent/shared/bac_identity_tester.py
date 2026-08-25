@@ -14,7 +14,7 @@ import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from webpent.models.evidence import RelationalEvidence
 
@@ -198,6 +198,22 @@ def response_fingerprint(
     return hashlib.sha256(material).hexdigest()
 
 
+def target_fingerprint(url: str) -> str:
+    """Return a stable, non-reversible fingerprint for the declared target URL."""
+    parsed = urlparse(str(url or ""))
+    canonical = urlunparse(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path or "/",
+            "",
+            "",
+            "",
+        )
+    )
+    return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+
 def sanitise_probe_result(
     *,
     profile: IdentityProfile,
@@ -206,12 +222,22 @@ def sanitise_probe_result(
     content_length: int,
     response_headers: dict[str, Any] | None = None,
     body_hash: str | None = None,
+    request_digest: str | None = None,
+    response_digest: str | None = None,
+    target_backed: bool | None = None,
+    observation_role: str | None = None,
+    target_url: str | None = None,
+    target_fingerprint_value: str | None = None,
 ) -> dict[str, Any]:
-    """Build report-safe observation data from a probe result."""
+    """Build report-safe observation data from a probe result.
+
+    The optional transport provenance fields are intentionally additive so old
+    tuple-based test probes remain valid but can never satisfy strict proof.
+    """
     headers = response_headers or {}
     safe_headers = repr(sorted(_sanitised_headers(headers).items()))
     fingerprint_material = f"{status_code}|{content_length}|{body_hash or ''}|{safe_headers}"
-    return {
+    result: dict[str, Any] = {
         "identity": profile.name,
         "role": profile.role,
         "url": url,
@@ -221,6 +247,19 @@ def sanitise_probe_result(
         "response_fingerprint": hashlib.sha256(fingerprint_material.encode()).hexdigest(),
         "headers": _sanitised_headers(headers),
     }
+    if request_digest:
+        result["request_digest"] = str(request_digest)
+    if response_digest:
+        result["response_digest"] = str(response_digest)
+    if target_backed is not None:
+        result["target_backed"] = bool(target_backed)
+    if observation_role:
+        result["observation_role"] = str(observation_role)
+    if target_fingerprint_value:
+        result["target_fingerprint"] = str(target_fingerprint_value)
+    elif target_url:
+        result["target_fingerprint"] = target_fingerprint(target_url)
+    return result
 
 
 def build_relational_evidence(

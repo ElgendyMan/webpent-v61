@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from webpent.agents.access_control import agent as access_agent
 from webpent.models.targets import Target
 from webpent.shared.bac_identity_tester import (
@@ -8,6 +10,7 @@ from webpent.shared.bac_identity_tester import (
     build_relational_evidence,
     normalise_identity_profiles,
     sanitise_probe_result,
+    target_fingerprint,
 )
 
 
@@ -70,15 +73,23 @@ def test_assessment_confirms_only_with_foreign_denied_negative_control():
 
 def test_access_control_node_emits_confirmed_finding_only_with_owner_metadata(monkeypatch):
     target = Target(url="http://lab.local")
-    monkeypatch.setattr(
-        access_agent,
-        "_probe_url",
-        lambda url, cookies=None, timeout=10.0, headers=None: (
-            (200, 123)
-            if cookies and cookies.get("session") in {"alice-secret", "bob-secret"}
-            else (403, 0)
-        ),
-    )
+    def target_backed_probe(url, **kwargs):
+        identity = str(kwargs.get("identity_label") or "anonymous")
+        statuses = {"alice": (200, 123), "bob": (200, 123)}
+        status_code, content_length = statuses.get(identity, (403, 0))
+        digest = hashlib.sha256(identity.encode()).hexdigest()
+        return {
+            "status_code": status_code,
+            "content_length": content_length,
+            "response_headers": {"content-type": "application/octet-stream"},
+            "body_hash": f"sha256:{digest}",
+            "request_digest": f"sha256:request-{identity}",
+            "response_digest": f"sha256:response-{identity}",
+            "target_backed": True,
+            "target_fingerprint": target_fingerprint(url),
+        }
+
+    monkeypatch.setattr(access_agent, "_probe_url", target_backed_probe)
     state = {
         "target": target,
         "engagement_id": "bac-test-engagement",
@@ -109,6 +120,10 @@ def test_access_control_node_emits_confirmed_finding_only_with_owner_metadata(mo
     assert "alice-secret" not in str(finding.evidence)
     assert "bob-secret" not in str(finding.evidence)
     assert result["relational_evidence"]
+    assert len(result["proof_bundles"]) == 1
+    assert result["proof_bundles"][0]["sealed"] is True
+    assert result["proof_bundles"][0]["replay_metadata"]["replayable"] is True
+    assert finding.evidence["promotion_guard"]["replay_verified"] is True
 
 
 def test_access_control_node_records_coverage_gap_with_one_identity(monkeypatch):

@@ -930,6 +930,8 @@ def make_safe_httpx_client(**kwargs: Any) -> httpx.Client:
         raise ValueError("TLS certificate verification cannot be disabled")
     kwargs["verify"] = True
 
+    guard_redirects = bool(kwargs.pop("guard_redirects", True))
+
     # Pop the caller's event_hooks (if any) so we can merge ours in
     # without clobbering them.
     user_hooks: dict[str, list[Any]] = dict(kwargs.pop("event_hooks", None) or {})
@@ -937,7 +939,8 @@ def make_safe_httpx_client(**kwargs: Any) -> httpx.Client:
     # Build the merged response hook list: caller's response hooks
     # first (so they observe the original 3xx), then our SSRF guard.
     response_hooks: list[Any] = list(user_hooks.get("response", []))
-    response_hooks.append(_redirect_guard)
+    if guard_redirects:
+        response_hooks.append(_redirect_guard)
     user_hooks["response"] = response_hooks
 
     # Wrap any caller-supplied transport in the SSRF-pinning transport

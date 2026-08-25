@@ -107,6 +107,27 @@ class TestDeterministicPromotionBypass:
         assert score < 0.5
         assert action != PrioritizationAction.PROMOTE
 
+    def test_idor_path_classification_stays_deferred_until_bac_proof(self):
+        """A path label must not create an evidence-free IDOR Finding."""
+        h = self._make_hypothesis(
+            deterministic_match=True,
+            vuln_class="idor",
+            confidence_score=0.9,
+        )
+        state = {"findings": [], "mental_model": {}, "scan_mode": "authorized-active"}
+        action, _score, rule = recommend_action(h, state, rabbit_hole_available=False)
+
+        assert action == PrioritizationAction.DEFER
+        assert "idor" in rule.lower()
+        assert "bac" in rule.lower()
+        assert "verifier" in rule.lower()
+
+    def test_idor_hypothesis_cannot_be_directly_promoted_without_bac(self):
+        h = self._make_hypothesis(deterministic_match=True, vuln_class="idor")
+        finding = promote_hypothesis_to_finding(h, {"findings": [], "mental_model": {}})
+
+        assert finding is None
+
     def test_promoted_finding_has_correct_vuln_class_for_validator_dispatch(self):
         h = self._make_hypothesis(deterministic_match=True, vuln_class="sqli")
         state = {"findings": [], "mental_model": {}}

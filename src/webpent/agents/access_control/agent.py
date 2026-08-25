@@ -31,6 +31,7 @@ from webpent.shared.bac_identity_tester import (
     normalise_identity_profiles,
     profile_owns_resource,
     sanitise_probe_result,
+    target_fingerprint,
 )
 from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
@@ -307,7 +308,6 @@ def _replace_candidate_id(url: str, old_id: str, new_id: str) -> str:
 
 
 def _probe_url(
-
     url: str,
     cookies: dict[str, str] | None = None,
     timeout: float = 10.0,
@@ -315,11 +315,16 @@ def _probe_url(
     method: str = "GET",
     allow_state_changing: bool = False,
     target_scope: tuple[str, ...] = (),
-) -> tuple[int, int]:
-    """Probe a URL and return ``(status_code, content_length)``.
+    capture_observation: bool = False,
+    identity_label: str | None = None,
+    guard_redirects: bool = True,
+) -> tuple[int, int] | dict[str, Any]:
+    """Probe a URL and optionally return redacted transport provenance.
 
     GET/HEAD/OPTIONS are always read-only. State-changing methods are denied
-    unless the caller explicitly opts in through the BAC safety gate.
+    unless the caller explicitly opts in through the BAC safety gate. The
+    default return remains the legacy tuple; strict BAC uses the observation
+    form, which contains digests only and never raw cookies or response bodies.
     """
     method = str(method or "GET").upper()
     if method not in {"GET", "HEAD", "OPTIONS"} and not allow_state_changing:
@@ -328,7 +333,20 @@ def _probe_url(
             method,
             url,
         )
-        return 0, 0
+        return (
+            {"status_code": 0, "content_length": 0, "target_backed": False}
+            if capture_observation
+            else (0, 0)
+        )
+    request_digest = None
+    if capture_observation:
+        safe_header_names = sorted(str(key).lower() for key in (headers or {}))
+        request_material = "|".join(
+            [str(identity_label or "unknown"), method, str(url), repr(safe_header_names)]
+        )
+        import hashlib
+
+        request_digest = f"sha256:{hashlib.sha256(request_material.encode()).hexdigest()}"
     try:
         from webpent.config.settings import get_settings
         from webpent.shared.engagement_scope import (
@@ -382,15 +400,71 @@ def _probe_url(
                 timeout=timeout,
                 follow_redirects=False,
                 verify=not allow_insecure_tls,
+                guard_redirects=guard_redirects,
             ) as client:
                 response = client.request(method, url, headers=request_headers)
-            return response.status_code, len(response.content)
+            if not capture_observation:
+                return response.status_code, len(response.content)
+            import hashlib
+
+            response_digest = f"sha256:{hashlib.sha256(bytes(response.content)).hexdigest()}"
+            return {
+                "status_code": int(response.status_code),
+                "content_length": len(response.content),
+                "response_headers": dict(response.headers),
+                "body_hash": response_digest,
+                "request_digest": request_digest,
+                "response_digest": response_digest,
+                "target_backed": True,
+                "target_fingerprint": target_fingerprint(url),
+            }
         finally:
             if scope_token is not None:
                 clear_engagement_target_hosts(scope_token)
     except Exception as exc:
         logger.debug("BAC probe failed for %s: %s", url, exc)
+        if capture_observation:
+            return {
+                "status_code": 0,
+                "content_length": 0,
+                "request_digest": request_digest,
+                "target_backed": False,
+                "target_fingerprint": target_fingerprint(url),
+                "error_type": type(exc).__name__,
+            }
         return 0, 0
+
+
+def _coerce_probe_result(
+    result: tuple[int, int] | dict[str, Any],
+    *,
+    url: str,
+    profile: IdentityProfile,
+) -> dict[str, Any]:
+    """Convert real or legacy probe output into a sanitised observation."""
+    if isinstance(result, dict):
+        return sanitise_probe_result(
+            profile=profile,
+            url=url,
+            status_code=int(result.get("status_code") or 0),
+            content_length=int(result.get("content_length") or 0),
+            response_headers=result.get("response_headers") or {},
+            body_hash=result.get("body_hash"),
+            request_digest=result.get("request_digest"),
+            response_digest=result.get("response_digest"),
+            target_backed=result.get("target_backed"),
+            target_url=url,
+            target_fingerprint_value=result.get("target_fingerprint"),
+        )
+    status_code, content_length = result
+    return sanitise_probe_result(
+        profile=profile,
+        url=url,
+        status_code=int(status_code),
+        content_length=int(content_length),
+        target_backed=False,
+        target_url=url,
+    )
 
 
 def _create_idor_finding(
@@ -630,6 +704,20 @@ def access_control_node(state: PentestState) -> dict:
         or {}
     )
     records = _extract_candidate_records(crawled_data, javascript_intelligence)
+    target_url = str(getattr(target, "url", "") or "")
+    if isinstance(target, dict):
+        target_url = str(target.get("url") or target_url)
+    if not records and target_url:
+        direct_object_id = extract_object_id(target_url)
+        records = [
+            {
+                "url": target_url,
+                "object_id": direct_object_id,
+                "method": "GET",
+                "candidate_sources": ["declared_target_url"],
+            }
+        ]
+        logger.info("Access Control Mapper: using declared target URL as bounded candidate")
     if not records:
         logger.info("Access Control Mapper: no IDOR candidates found")
         return {
@@ -663,9 +751,6 @@ def access_control_node(state: PentestState) -> dict:
         enumeration_enabled = False
         enumeration_neighbors = 0
     records = records[:max_candidates]
-    target_url = str(getattr(target, "url", "") or "")
-    if isinstance(target, dict):
-        target_url = str(target.get("url") or target_url)
     try:
         from webpent.shared.engagement_scope import normalize_declared_origins
 
@@ -704,6 +789,7 @@ def access_control_node(state: PentestState) -> dict:
     gaps_out: list[dict[str, Any]] = []
     relational_out: list[dict[str, Any]] = []
     matrix_inputs: list[dict[str, Any]] = []
+    proof_bundles_out: list[dict[str, Any]] = []
     confirmed_count = 0
     # Give an authorized lab target an optional bounded idle window after
     # discovery/authentication traffic and before the first ownership probe.
@@ -757,45 +843,63 @@ def access_control_node(state: PentestState) -> dict:
                     or state.get("bac_allow_state_changing_probes") is True
                 ),
                 "target_scope": scope_origins,
+                "capture_observation": True,
+                "identity_label": profile.name,
+                "guard_redirects": False,
             }
             try:
-                status, content_length = _probe_url(url, **probe_kwargs)
+                raw_probe = _probe_url(url, **probe_kwargs)
             except TypeError as exc:
                 # Preserve compatibility with injected legacy probes that only
-                # accept url/cookies/timeout/headers; the real probe retains
-                # the explicit state-changing-method gate above.
+                # accept url/cookies/timeout/headers; their tuple result is
+                # explicitly review-only and cannot satisfy strict proof.
                 if "unexpected keyword argument" not in str(exc):
                     raise
-                status, content_length = _probe_url(
+                raw_probe = _probe_url(
                     url,
                     cookies=profile.cookies or None,
                     headers=profile.headers or None,
                 )
-            if status in {429, 503}:
+            row = _coerce_probe_result(raw_probe, url=url, profile=profile)
+            row["observation_role"] = (
+                "baseline"
+                if profile.name == owner_identity
+                else "negative_control"
+                if profile.name == "anonymous"
+                else "candidate"
+            )
+            if int(row.get("status_code") or 0) in {429, 503}:
                 # First retry with the already validated session after the
-                # server-side cooldown.  Re-authentication is intentionally
-                # deferred: a browser login may itself visit periodic-detect
-                # routes as the same user and recreate the throttle window.
+                # server-side cooldown. Re-authentication is intentionally
+                # deferred until the bounded recovery path below.
                 _wait_after_throttle(url)
-                status, content_length = _probe_url(url, **probe_kwargs)
-                if status in {429, 503} and state.get("thread_id"):
-                    # Only use the worker-only vault as a second-line recovery
-                    # path.  It never promotes a finding and is followed by a
-                    # fresh bounded cooldown before the final retry.
+                raw_probe = _probe_url(url, **probe_kwargs)
+                row = _coerce_probe_result(raw_probe, url=url, profile=profile)
+                row["observation_role"] = (
+                    "baseline"
+                    if profile.name == owner_identity
+                    else "negative_control"
+                    if profile.name == "anonymous"
+                    else "candidate"
+                )
+                if int(row.get("status_code") or 0) in {429, 503} and state.get("thread_id"):
                     refreshed = _refresh_profile_after_throttle(state, target, profile)
                     if refreshed is not None:
                         effective_profiles[profile_index] = refreshed
                         profile = refreshed
                         probe_kwargs["cookies"] = profile.cookies or None
                         probe_kwargs["headers"] = profile.headers or None
+                        probe_kwargs["identity_label"] = profile.name
                     _wait_after_throttle(url)
-                    status, content_length = _probe_url(url, **probe_kwargs)
-            row = sanitise_probe_result(
-                profile=profile,
-                url=url,
-                status_code=status,
-                content_length=content_length,
-            )
+                    raw_probe = _probe_url(url, **probe_kwargs)
+                    row = _coerce_probe_result(raw_probe, url=url, profile=profile)
+                    row["observation_role"] = (
+                        "baseline"
+                        if profile.name == owner_identity
+                        else "negative_control"
+                        if profile.name == "anonymous"
+                        else "candidate"
+                    )
             rows.append(row)
             matrix_inputs.append(
                 {
@@ -899,6 +1003,9 @@ def access_control_node(state: PentestState) -> dict:
             if isinstance(target, dict):
                 target_url = target.get("url") or target_url
             parsed_target = urlparse(str(target_url or url))
+            strict_target_backed = bool(
+                state.get("require_target_backed_proof", True)
+            )
             verification = verify_replay_evidence(
                 finding,
                 baseline=owner_row,
@@ -932,6 +1039,7 @@ def access_control_node(state: PentestState) -> dict:
                     "candidate_status_code": int(foreign.get("status_code") or 0),
                     "negative_control_status_code": int(negative_control.get("status_code") or 0),
                 },
+                require_target_backed=strict_target_backed,
                 **package_continuity_kwargs(state),
             )
             finding = finding.model_copy(
@@ -956,8 +1064,14 @@ def access_control_node(state: PentestState) -> dict:
                 }
             )
             new_findings.append(finding)
-            if finding.confidence_level == "Tool-Confirmed":
+            if (
+                finding.confidence_level == "Tool-Confirmed"
+                and verification.proof_bundle is not None
+            ):
                 confirmed_count += 1
+                proof_bundles_out.append(
+                    verification.proof_bundle.model_dump(mode="json")
+                )
                 audit_logger.warning("Tool-confirmed BAC differential for %s", url)
         elif assessment["status"] in {"coverage_gap", "needs_review", "inconclusive"}:
             gaps_out.append(
@@ -1152,6 +1266,7 @@ def access_control_node(state: PentestState) -> dict:
         "bac_observations": observations_out,
         "bac_coverage_gaps": gaps_out,
         "relational_evidence": relational_out,
+        "proof_bundles": proof_bundles_out,
         "authorization_matrix": matrix_update,
         "mental_model": mental_model_update,
         "messages": [

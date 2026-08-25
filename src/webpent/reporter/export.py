@@ -28,6 +28,7 @@ from typing import Any
 
 from webpent.models.evidence import redact_sensitive
 from webpent.models.findings import Finding
+from webpent.models.proof_bundle import validate_proof_bundle
 from webpent.shared.report_quality import (
     enforce_report_quality,
     evaluate_report_quality,
@@ -81,6 +82,13 @@ def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
         created_at_value = str(created_at) if created_at is not None else ""
 
     hypothesis_id = model_get(finding, "hypothesis_id")
+    proof_bundle = model_get(finding, "proof_bundle")
+    # Pydantic Finding intentionally forbids an ad-hoc top-level proof_bundle;
+    # preserve a valid central bundle that survived in evidence_bundle instead
+    # of silently exporting proof_bundle=null. Invalid/ordinary evidence is not
+    # promoted by this compatibility fallback.
+    if proof_bundle is None and validate_proof_bundle(evidence_bundle):
+        proof_bundle = evidence_bundle
     return {
         "id": str(finding_id) if finding_id is not None else "",
         "title": model_get(finding, "title", "") or "",
@@ -95,6 +103,10 @@ def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
         "request_method": model_get(finding, "request_method", "GET") or "GET",
         "request_data": model_get(finding, "request_data", {}) or {},
         "target_param": model_get(finding, "target_param"),
+        # BAC causal/negative-control observations are structured evidence,
+        # not raw transport material. Preserve them in the canonical export;
+        # _redact_report_value() removes sensitive nested values below.
+        "evidence": model_get(finding, "evidence"),
         "url": model_get(finding, "url", "") or "",
         "confidence": str(model_get(finding, "confidence", "") or ""),
         "confidence_level": model_get(finding, "confidence_level", "") or "",
@@ -106,7 +118,7 @@ def _finding_to_dict(finding: Finding | dict[str, Any]) -> dict[str, Any]:
         "compliance_tags": tags or [],
         "evidence_bundle": evidence_bundle,
         "evidence_hash": ev_hash,
-        "proof_bundle": model_get(finding, "proof_bundle"),
+        "proof_bundle": proof_bundle,
         "created_at": created_at_value,
         # V7 Cognitive Upgrade — Phase 4: surface the new informational
         # fields so the audit trail (belief -> investigation -> finding)

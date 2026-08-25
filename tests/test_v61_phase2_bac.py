@@ -72,6 +72,76 @@ def test_bac_probe_rejects_state_changing_method_without_explicit_gate(monkeypat
     assert called is False
 
 
+def test_bac_probe_keeps_bounded_login_redirect_as_observation(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class Response:
+        status_code = 302
+        content = b"redirect"
+        headers = {"location": "/login"}
+
+    class Client:
+        def request(self, *args, **kwargs):
+            return Response()
+
+    class Context:
+        def __enter__(self):
+            return Client()
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_client(**kwargs):
+        captured.update(kwargs)
+        return Context()
+
+    monkeypatch.setattr(shared_http, "make_safe_httpx_client", fake_client)
+    result = access_agent._probe_url(
+        "https://lab.local/v1/crm/download/1",
+        target_scope=("https://lab.local/v1/crm/download/1",),
+        capture_observation=True,
+        identity_label="anonymous",
+        guard_redirects=False,
+    )
+
+    assert result["status_code"] == 302
+    assert result["content_length"] == len(b"redirect")
+    assert result["target_fingerprint"].startswith("sha256:")
+    assert captured["follow_redirects"] is False
+    assert captured["guard_redirects"] is False
+
+
+def test_bac_probe_observation_digests_match_strict_verifier_format(monkeypatch):
+    class Response:
+        status_code = 200
+        content = b"authorized"
+        headers = {"content-type": "text/plain"}
+
+    class Client:
+        def request(self, *args, **kwargs):
+            return Response()
+
+    class Context:
+        def __enter__(self):
+            return Client()
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(shared_http, "make_safe_httpx_client", lambda **kwargs: Context())
+    result = access_agent._probe_url(
+        "https://lab.local/v1/crm/download/1",
+        target_scope=("https://lab.local/v1/crm/download/1",),
+        capture_observation=True,
+        identity_label="candidate",
+    )
+
+    assert result["request_digest"].startswith("sha256:")
+    assert result["response_digest"].startswith("sha256:")
+    assert result["body_hash"].startswith("sha256:")
+    assert "authorized" not in result
+
+
 def test_bac_probe_allows_state_changing_method_only_with_explicit_gate(monkeypatch):
     class Response:
         status_code = 204

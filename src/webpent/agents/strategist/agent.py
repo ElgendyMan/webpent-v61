@@ -439,8 +439,11 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
         # have been explicitly deprioritized by self-critique.  The promoted
         # Finding still enters the existing payload/validator pipeline, where
         # causal evidence and negative-control gates remain mandatory.
+        hypothesis_vuln_class = str(model_get(hypothesis, "vuln_class", ""))
+        idor_bac_promotion_guard = hypothesis_vuln_class == "idor"
         bounded_validator_execution = (
             validator_route is not None
+            and not idor_bac_promotion_guard
             and action in (
                 PrioritizationAction.DEFER,
                 PrioritizationAction.RABBIT_HOLE,
@@ -480,10 +483,14 @@ def strategist_node(state: PentestState) -> dict[str, Any]:
                 status="blocked",
                 action=str(action.value),
                 reason=(
-                    "self_critique_deprioritized"
-                    if self_critique_rule
-                    and action == PrioritizationAction.DEFER
-                    else "prioritization_gate_deferred"
+                    "idor_requires_target_backed_bac_evidence"
+                    if idor_bac_promotion_guard
+                    else (
+                        "self_critique_deprioritized"
+                        if self_critique_rule
+                        and action == PrioritizationAction.DEFER
+                        else "prioritization_gate_deferred"
+                    )
                 ),
                 validator_route=validator_route,
                 score_value=score,

@@ -22,6 +22,7 @@ from webpent.api.scan_registry import get_thread_ids_by_engagement_id
 from webpent.config.settings import get_settings, profile_requires_proof_bundle
 from webpent.memory.db import get_db_manager
 from webpent.models.findings import Finding, Severity
+from webpent.shared.bac_identity_tester import target_fingerprint
 from webpent.shared.coverage_ledger import project_coverage_ledger
 from webpent.shared.ensemble import apply_ensemble_review
 from webpent.shared.finding_aggregation import aggregate_findings
@@ -128,20 +129,51 @@ _REPORT_BUG_BOUNTY_MD_FILENAME = "bug_bounty_report.md"
 def _findings_with_proof_bundles(
     findings: Iterable[Any],
     proof_bundles: Iterable[Any] | None,
+    *,
+    engagement_id: str = "",
+    target_url: str = "",
 ) -> list[Any]:
-    """Attach matching state-level proof bundles to report-only finding views."""
+    """Attach only current, finding-bound proof bundles to report views.
+
+    A bundle is not portable evidence: it must belong to the current engagement
+    and the current target fingerprint. Historical or cross-target bundles are
+    deliberately ignored, preserving the strict fail-closed report gate.
+    """
+    current_target_fingerprint = target_fingerprint(target_url) if target_url else ""
     bundle_by_ref: dict[str, dict[str, Any]] = {}
     for raw_bundle in proof_bundles or ():
         if not isinstance(raw_bundle, Mapping):
             continue
         bundle_ref = str(raw_bundle.get("finding_id") or "").strip()
-        if bundle_ref:
-            bundle_by_ref[bundle_ref] = dict(raw_bundle)
+        if not bundle_ref:
+            continue
+        bundle_engagement = str(raw_bundle.get("engagement_id") or "").strip()
+        bundle_target = str(raw_bundle.get("target_fingerprint") or "").strip()
+        if engagement_id and bundle_engagement != engagement_id:
+            continue
+        if current_target_fingerprint and bundle_target != current_target_fingerprint:
+            continue
+        bundle_by_ref[bundle_ref] = dict(raw_bundle)
     views: list[Any] = []
     for finding in findings:
         finding_id = str(model_get(finding, "id", "") or "").strip()
         hypothesis_id = str(model_get(finding, "hypothesis_id", "") or "").strip()
-        bundle = bundle_by_ref.get(finding_id) or bundle_by_ref.get(hypothesis_id)
+        embedded = model_get(finding, "evidence_bundle")
+        bundle = None
+        if isinstance(embedded, Mapping):
+            embedded_ref = str(embedded.get("finding_id") or "").strip()
+            embedded_engagement = str(embedded.get("engagement_id") or "").strip()
+            embedded_target = str(embedded.get("target_fingerprint") or "").strip()
+            if (
+                embedded_ref in {finding_id, hypothesis_id}
+                and (not engagement_id or embedded_engagement == engagement_id)
+                and (
+                    not current_target_fingerprint
+                    or embedded_target == current_target_fingerprint
+                )
+            ):
+                bundle = dict(embedded)
+        bundle = bundle or bundle_by_ref.get(finding_id) or bundle_by_ref.get(hypothesis_id)
         if bundle is None:
             views.append(finding)
             continue
@@ -153,6 +185,9 @@ def _findings_with_proof_bundles(
             views.append(finding)
             continue
         view["proof_bundle"] = bundle
+        evidence = view.get("evidence")
+        if isinstance(evidence, Mapping) and evidence.get("proof_bundle") is None:
+            view["evidence"] = {**evidence, "proof_bundle": bundle}
         views.append(view)
     return views
 
@@ -500,6 +535,8 @@ def reporter_node(state: PentestState) -> dict:
     report_findings = _findings_with_proof_bundles(
         findings,
         state.get("proof_bundles") or [],
+        engagement_id=engagement_id,
+        target_url=target_url,
     )
     quality_result = evaluate_report_quality(
         report_findings,
@@ -817,11 +854,14 @@ def reporter_node_bug_bounty(state: PentestState) -> dict:
     findings: list[Finding] = list(state.get("findings") or [])
     crawled_data: dict[str, Any] = state.get("crawled_data") or {}
     target_url = str(model_get(target, "url", "") or "")
+    engagement_id = str(state.get("engagement_id") or "")
     settings = get_settings()
     proof_required = _proof_required_for_state(state, settings)
     report_findings = _findings_with_proof_bundles(
         findings,
         state.get("proof_bundles") or [],
+        engagement_id=engagement_id,
+        target_url=target_url,
     )
     quality_result = evaluate_report_quality(
         report_findings,
