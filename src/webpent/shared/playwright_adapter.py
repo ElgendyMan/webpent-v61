@@ -210,20 +210,30 @@ class PlaywrightBrowserHandler:
                         "input[type='url'], input[type='email'], input:not([type])"
                     )
                     filled = False
+                    filled_field: Any | None = None
                     for index in range(min(fields.count(), 20)):
                         field = fields.nth(index)
                         if field.is_visible():
                             field.fill(probe_value, timeout=timeout_ms)
                             filled = True
+                            filled_field = field
                             break
-                    if not filled:
+                    if not filled or filled_field is None:
                         return self._blocked("validator_input_field_missing")
                     submit = page.locator(
                         "input[type='submit'], button[type='submit'], button:not([type])"
                     ).first
                     if submit.count() == 0 or not submit.is_visible():
-                        return self._blocked("validator_submit_control_missing")
-                    submit.click(timeout=timeout_ms)
+                        # Some same-origin SPAs submit an explicitly typed
+                        # search field on Enter and expose
+                        # no button element.  Keep this fallback narrowly typed
+                        # to input[type=search]; account-like forms remain
+                        # denied above and every other form still fails closed.
+                        if not self._is_search_field(filled_field):
+                            return self._blocked("validator_submit_control_missing")
+                        filled_field.press("Enter", timeout=timeout_ms)
+                    else:
+                        submit.click(timeout=timeout_ms)
                     page.wait_for_timeout(min(1000, timeout_ms))
                 if response is not None:
                     response_status = int(response.status)
@@ -275,6 +285,14 @@ class PlaywrightBrowserHandler:
                         resource.close()
                     except Exception:
                         logger.debug("playwright resource close failed", exc_info=True)
+
+    @staticmethod
+    def _is_search_field(field: Any) -> bool:
+        """Return true only for an explicitly typed search input."""
+        try:
+            return str(field.get_attribute("type") or "").lower() == "search"
+        except Exception:
+            return False
 
     def _resolve_probe(self, request: BrowserActionRequest) -> str | None:
         if self._probe_resolver is None or not request.probe_ref or not request.probe_digest:

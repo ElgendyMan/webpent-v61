@@ -55,3 +55,27 @@ def test_missing_observation_diagnostics_remain_fail_closed():
     assert result["missing_fields"] == ["input_field"]
     assert result["diagnostic"]["status_code"] is None
     assert result["diagnostic"]["operation"] == ""
+
+
+class _FakeField:
+    def __init__(self, field_type, *, raises=False):
+        self.field_type = field_type
+        self.raises = raises
+
+    def get_attribute(self, name):
+        if self.raises:
+            raise RuntimeError("field unavailable")
+        assert name == "type"
+        return self.field_type
+
+
+def test_search_enter_fallback_is_narrowly_typed():
+    assert PlaywrightBrowserHandler._is_search_field(_FakeField("search")) is True
+    assert PlaywrightBrowserHandler._is_search_field(_FakeField("text")) is False
+    assert PlaywrightBrowserHandler._is_search_field(_FakeField(None)) is False
+    assert PlaywrightBrowserHandler._is_search_field(_FakeField("search", raises=True)) is False
+
+
+def test_search_enter_fallback_does_not_reclassify_account_or_generic_forms():
+    for field_type in ("password", "email", "text", "url", None):
+        assert PlaywrightBrowserHandler._is_search_field(_FakeField(field_type)) is False
