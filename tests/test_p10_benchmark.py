@@ -1,5 +1,7 @@
 from webpent.benchmark.p10 import P10GroundTruth, P10Run, evaluate_p10
 
+ALL_CASE_IDS = {f"case-{index}" for index in range(10)}
+
 
 def _truth(*, approved: bool = True) -> list[P10GroundTruth]:
     categories = [
@@ -22,14 +24,22 @@ def _truth(*, approved: bool = True) -> list[P10GroundTruth]:
     ]
 
 
-def _run(index: int, *, confirmed: set[str] | None = None, **overrides: object) -> P10Run:
+def _run(
+    index: int,
+    *,
+    confirmed: set[str] | None = None,
+    executed: set[str] | None = None,
+    **overrides: object,
+) -> P10Run:
     confirmed = confirmed or set()
+    executed = ALL_CASE_IDS if executed is None else executed
     values: dict[str, object] = {
         "run_id": f"run-{index}",
         "workspace_id": f"workspace-{index}",
         "artifact_namespace": f"artifact-{index}",
         "target_ref": "http://127.0.0.1:3000",
         "candidate_case_ids": frozenset(confirmed),
+        "executed_case_ids": frozenset(executed),
         "proof_case_ids": frozenset(confirmed),
         "replay_case_ids": frozenset(confirmed),
         "target_unchanged": True,
@@ -71,6 +81,22 @@ def test_complete_approved_benchmark_calculates_metrics_and_fp_fn() -> None:
             "case-9",
         ],
     }
+
+
+def test_xss_only_runs_with_broad_mapping_withhold_metrics() -> None:
+    result = evaluate_p10(
+        _truth(),
+        [
+            _run(1, confirmed={"case-0"}, executed={"case-0"}),
+            _run(2, confirmed={"case-0"}, executed={"case-0"}),
+            _run(3, confirmed={"case-0"}, executed={"case-0"}),
+        ],
+    )
+
+    assert result["p10_passed"] is False
+    assert result["metrics"]["precision"] is None
+    assert result["metrics"]["recall"] is None
+    assert "approved_case_set_not_exercised_in_all_runs" in result["blocking_reasons"]
 
 
 def test_pending_ground_truth_withholds_metrics_fail_closed() -> None:

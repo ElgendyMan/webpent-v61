@@ -5,7 +5,11 @@
     "blocking_reasons": [
       "approved_ground_truth_cases_below_minimum",
       "approved_vulnerability_classes_below_minimum",
-      "p10_metrics_withheld_until_all_gates_pass"
+      "artifact_namespaces_not_isolated",
+      "live_findings_not_proven_for_all_runs",
+      "p10_metrics_withheld_until_all_gates_pass",
+      "target_mutation_detected_or_unproven",
+      "workspaces_not_isolated"
     ],
     "ground_truth_cases": 11,
     "metrics": {
@@ -23,96 +27,79 @@
     "run_count": 3
   },
   "ground_truth": {
+    "full_p10_qualification_approved": false,
     "independent_review_approved": false,
+    "mapping_review_approved": true,
+    "mapping_review_blocking_reasons": [],
+    "mapping_review_valid": true,
     "path": "docs/juice_shop_p10_ground_truth_v1.json",
-    "status": "draft_pending_independent_review"
+    "status": "mapping_approved_oracles_frozen_pending_full_runs"
   },
   "raw_data_printed": false,
   "raw_data_retained": false,
   "run_metadata": [
     {
       "all_observations_target_backed": true,
-      "artifact_namespace": "sha256:82a318512f6e1bd4b3f5c57b88d4b19143ce9edc2992a2de04146b45e39b2986",
-      "artifact_namespace_recorded": true,
-      "candidate_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapped_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapping_status": "pending_independent_review",
+      "artifact_namespace": "",
+      "artifact_namespace_recorded": false,
+      "candidate_case_ids": [],
+      "executed_case_ids": [],
+      "mapped_case_ids": [],
+      "mapping_status": "not_claimed_by_source_run",
       "operation": "typed_search",
-      "proof_case_ids": [
-        "juice.local_xss.v1"
-      ],
+      "proof_case_ids": [],
       "proof_summary_present": true,
-      "replay_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "run_id": "p10iso01",
-      "source_log_sha256": "sha256:6c5a085fc791fa4a68c031438e506a38846e247ad32d5304e80c746427179e0f",
+      "replay_case_ids": [],
+      "run_id": "p10_juice_run01",
+      "source_log_sha256": "sha256:c10fdeaab4b3a033eb2db13539b411981b746aed19fd3ebf0e904af792cea446",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": true,
+      "target_unchanged_measured": false,
       "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "sha256:b3d1b4bee8dbbd11f8fd69c2330529adb3fb226c2ce4bcbd3dad8db8dd38a010",
-      "workspace_recorded": true
+      "workspace_id": "",
+      "workspace_recorded": false
     },
     {
       "all_observations_target_backed": true,
-      "artifact_namespace": "sha256:62ddbb51c949f5eaea53079ee1e771ae220b423f1097c2a38821276398bda245",
-      "artifact_namespace_recorded": true,
-      "candidate_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapped_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapping_status": "pending_independent_review",
+      "artifact_namespace": "",
+      "artifact_namespace_recorded": false,
+      "candidate_case_ids": [],
+      "executed_case_ids": [],
+      "mapped_case_ids": [],
+      "mapping_status": "not_claimed_by_source_run",
       "operation": "typed_search",
-      "proof_case_ids": [
-        "juice.local_xss.v1"
-      ],
+      "proof_case_ids": [],
       "proof_summary_present": true,
-      "replay_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "run_id": "p10iso02",
-      "source_log_sha256": "sha256:f0bbb9e38d0362724219761faa6695af30278dcc6007703bd47666c5caa51adb",
+      "replay_case_ids": [],
+      "run_id": "p10_juice_run02",
+      "source_log_sha256": "sha256:bfc2acdb68dead6135e875672b4a34eaac49c7a084eb3957d01ea8026eb02b31",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": true,
+      "target_unchanged_measured": false,
       "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "sha256:3349cb0af22cd2ec3997885727d4939107933d4e966f0470b704f4da145b2bfe",
-      "workspace_recorded": true
+      "workspace_id": "",
+      "workspace_recorded": false
     },
     {
       "all_observations_target_backed": true,
-      "artifact_namespace": "sha256:96fc259a13e9128e0aa1b116ae9a0d82aa756eebe39f63287487f86320235840",
-      "artifact_namespace_recorded": true,
-      "candidate_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapped_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "mapping_status": "pending_independent_review",
+      "artifact_namespace": "",
+      "artifact_namespace_recorded": false,
+      "candidate_case_ids": [],
+      "executed_case_ids": [],
+      "mapped_case_ids": [],
+      "mapping_status": "not_claimed_by_source_run",
       "operation": "typed_search",
-      "proof_case_ids": [
-        "juice.local_xss.v1"
-      ],
+      "proof_case_ids": [],
       "proof_summary_present": true,
-      "replay_case_ids": [
-        "juice.local_xss.v1"
-      ],
-      "run_id": "p10iso03",
-      "source_log_sha256": "sha256:1fe43f36e26e897a1e3535111977ea66d8ef5e304626379a4e80720f865f4a10",
+      "replay_case_ids": [],
+      "run_id": "p10_juice_run03",
+      "source_log_sha256": "sha256:f20d772b22dd8b26200c5751a54c3a82ec463fe654027143b51894a7fdbaba57",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": true,
+      "target_unchanged_measured": false,
       "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "sha256:44dea2a3e07481010baec2f4aa00d1497fe3b33d77f0ecf3434f0041a9f0e128",
-      "workspace_recorded": true
+      "workspace_id": "",
+      "workspace_recorded": false
     }
   ],
   "schema_version": "p10.juice_shop.evaluation.v1",

@@ -86,8 +86,8 @@
         "........................................................................ [ 91%]",
         "........................................................................ [ 95%]",
         "........................................................................ [ 99%]",
-        ".                                                                        [100%]",
-        "1801 passed in 71.08s (0:01:11)"
+        "..........                                                               [100%]",
+        "1810 passed in 73.96s (0:01:13)"
       ]
     },
     {
@@ -119,9 +119,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1737",
+        "  \"total_test_functions\": 1746",
         "}",
-        "OK: preserved test-function count 1737 >= minimum 818"
+        "OK: preserved test-function count 1746 >= minimum 818"
       ]
     },
     {
@@ -210,7 +210,7 @@
       "passed": false,
       "returncode": 1,
       "tail": [
-        "P10 independent evaluation not qualified: approved_ground_truth_cases_below_minimum; approved_vulnerability_classes_below_minimum; p10_metrics_withheld_until_all_gates_pass"
+        "P10 independent evaluation not qualified: approved_ground_truth_cases_below_minimum; approved_vulnerability_classes_below_minimum; artifact_namespaces_not_isolated; live_findings_not_proven_for_all_runs; p10_metrics_withheld_until_all_gates_pass; target_mutation_detected_or_unproven; workspaces_not_isolated"
       ]
     },
     {
@@ -314,11 +314,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 1051, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
+        "{\"file_count\": 1053, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-25T20:35:42.471485+00:00",
+  "generated_at": "2026-08-25T21:22:39.293642+00:00",
   "hard_checks_passed": false,
   "known_blockers": [
     "P9 distributed qualification is incomplete",

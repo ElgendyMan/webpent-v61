@@ -14,6 +14,14 @@ from pathlib import Path
 from typing import Any
 
 from webpent.benchmark.p10 import P10GroundTruth, P10Run, evaluate_p10
+from webpent.benchmark.p10_review import validate_mapping_review
+
+_EXPECTED_MAPPING_HASH = (
+    "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5"
+)
+_EXPECTED_ORACLE_HASH = (
+    "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c"
+)
 
 
 def _ids(value: Any) -> frozenset[str]:
@@ -64,6 +72,7 @@ def _run_from_summary(path: Path) -> tuple[P10Run, dict[str, Any]]:
     workspace_id = str(summary.get("workspace_id") or "")
     artifact_namespace = str(summary.get("artifact_namespace") or "")
     candidate_case_ids = _ids(summary.get("candidate_case_ids"))
+    executed_case_ids = _ids(summary.get("executed_case_ids"))
     proof_case_ids = _ids(summary.get("proof_case_ids"))
     replay_case_ids = _ids(summary.get("replay_case_ids"))
     mapped_case_ids = _ids(summary.get("mapped_case_ids"))
@@ -79,6 +88,7 @@ def _run_from_summary(path: Path) -> tuple[P10Run, dict[str, Any]]:
         "all_observations_target_backed": all_target_backed,
         "mapped_case_ids": sorted(mapped_case_ids),
         "candidate_case_ids": sorted(candidate_case_ids),
+        "executed_case_ids": sorted(executed_case_ids),
         "proof_case_ids": sorted(proof_case_ids),
         "replay_case_ids": sorted(replay_case_ids),
         "mapping_status": mapping_status,
@@ -97,6 +107,7 @@ def _run_from_summary(path: Path) -> tuple[P10Run, dict[str, Any]]:
         ),
         target_ref=str(summary.get("target") or ""),
         candidate_case_ids=candidate_case_ids,
+        executed_case_ids=executed_case_ids,
         proof_case_ids=proof_case_ids,
         replay_case_ids=replay_case_ids,
         target_unchanged=target_unchanged,
@@ -122,6 +133,23 @@ def main() -> int:
         P10GroundTruth.from_mapping(case)
         for case in ground_truth_doc.get("cases", [])
     ]
+    independence = ground_truth_doc.get("independence", {})
+    mapping_review = independence.get("mapping_review", {})
+    approved_case_ids = [
+        case.case_id for case in ground_truth if case.mapping_status == "approved"
+    ]
+    mapping_review_validation = validate_mapping_review(
+        mapping_review,
+        expected_mapping_hash=_EXPECTED_MAPPING_HASH,
+        expected_oracle_contract_hash=_EXPECTED_ORACLE_HASH,
+        expected_case_ids=approved_case_ids,
+        expected_class_count=int(
+            ground_truth_doc.get("scope", {}).get("planned_class_count", 6)
+        ),
+        expected_out_of_scope_case_ids=mapping_review.get(
+            "out_of_scope_confirmed", []
+        ),
+    )
     runs = []
     run_metadata = []
     for path in args.logs:
@@ -142,6 +170,24 @@ def main() -> int:
             ground_truth_doc.get("acceptance", {}).get("minimum_runs", 3)
         ),
     )
+    if not mapping_review_validation["valid"]:
+        evaluation["p10_passed"] = False
+        evaluation["blocking_reasons"] = sorted(
+            set(evaluation["blocking_reasons"])
+            | {"mapping_review_invalid"}
+            | set(mapping_review_validation["blocking_reasons"])
+        )
+        evaluation["metrics"] = {
+            "true_positives": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "precision": None,
+            "recall": None,
+            "case_coverage": None,
+            "class_coverage": None,
+            "false_positive_case_ids": [],
+            "false_negative_case_ids": [],
+        }
     output = {
         "schema_version": "p10.juice_shop.evaluation.v1",
         "target": ground_truth_doc.get("target"),
@@ -151,6 +197,18 @@ def main() -> int:
             "independent_review_approved": bool(
                 ground_truth_doc.get("independence", {}).get("reviewer_approval")
             ),
+            "mapping_review_valid": mapping_review_validation["valid"],
+            "mapping_review_approved": bool(
+                ground_truth_doc.get("independence", {}).get("mapping_review_approved")
+            ),
+            "full_p10_qualification_approved": bool(
+                ground_truth_doc.get("independence", {}).get(
+                    "full_p10_qualification_approved"
+                )
+            ),
+            "mapping_review_blocking_reasons": mapping_review_validation[
+                "blocking_reasons"
+            ],
         },
         "run_metadata": run_metadata,
         "evaluation": evaluation,

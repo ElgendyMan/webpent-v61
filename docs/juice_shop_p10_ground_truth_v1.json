@@ -1,7 +1,7 @@
 {
   "schema_version": "p10.ground_truth.v1",
   "benchmark_id": "juice-shop-p10-v1",
-  "status": "draft_pending_independent_review",
+  "status": "mapping_approved_oracles_frozen_pending_full_runs",
   "target": {
     "kind": "authorized_local_lab",
     "base_url": "http://127.0.0.1:3000",
@@ -15,7 +15,53 @@
     "raw_descriptions_retained": false,
     "raw_http_data_retained": false,
     "reviewer_approval": false,
-    "reviewer_approval_required_before_final_metrics": true
+    "reviewer_approval_required_before_final_metrics": true,
+    "mapping_review_approved": true,
+    "review_status": "mapping_approved_pending_oracle_freeze_and_full_runs",
+    "full_p10_qualification_approved": false,
+    "mapping_review": {
+      "reviewer_id": "independent-reviewer:grok-p10-mapping",
+      "reviewer_type": "external_mapping_reviewer_non_human_identifier",
+      "reviewed_at": "2026-08-25T21:00:00+00:00",
+      "mapping_hash": "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5",
+      "oracle_contract_hash": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
+      "approved_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "approved_case_count": 11,
+      "approved_class_count": 6,
+      "approved": true,
+      "approval_scope": "case_mapping_and_safety_posture_only",
+      "full_p10_qualification_approved": false,
+      "explicitly_not_approving": [
+        "live_precision_recall",
+        "p10_qualification",
+        "vip_qualification",
+        "http_200_as_finding",
+        "blocked_inventory_rows_as_tp"
+      ],
+      "out_of_scope_confirmed": [
+        "juice.application_version_surface.v1",
+        "juice.redirect_local.v1"
+      ],
+      "conditions": [
+        "Oracles remain metadata/DOM-safe; no raw body/header/cookie retention",
+        "Ground truth maps only the approved cases and freezes oracle contracts",
+        "Metrics require three isolated reruns covering every approved case",
+        "P9 remains independent fail-closed"
+      ],
+      "results_seen_by_reviewer": false
+    }
   },
   "scope": {
     "planned_case_count": 11,
@@ -34,8 +80,8 @@
       "expected": true,
       "description_sha256": "sha256:329e32f8198056e773f23f94fb1a1a55f6ef31b9e5e3fec49a767c0964ba7b49",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
@@ -45,8 +91,8 @@
       "expected": true,
       "description_sha256": "sha256:60ffa44475802305548c5ac26fc7f5b7b765413f4b7ec4f5851f99b6efc99b6d",
       "workflow_id": "pending_local_xss_safe_workflow",
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/frontend/src/app/search-result/search-result.component.ts"
     },
     {
@@ -67,8 +113,8 @@
       "expected": true,
       "description_sha256": "sha256:6894fdda5d173dc5fbb9bf0174d047682bc2d4481ecf578314f8026d20838b4f",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
@@ -78,8 +124,8 @@
       "expected": true,
       "description_sha256": "sha256:737bf5402cb05706d6832be805b812e4e5eb8cd380dbe0674abdcecf6e733aca",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
@@ -166,8 +212,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
     },
     {
@@ -177,8 +223,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
     },
     {
@@ -200,8 +246,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
@@ -211,8 +257,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
@@ -222,8 +268,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
     },
     {
@@ -233,8 +279,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
     },
     {
@@ -256,8 +302,8 @@
       "expected": true,
       "description_sha256": null,
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle_review",
-      "mapping_status": "pending_independent_review",
+      "oracle_status": "frozen_contract_pending_live_proof",
+      "mapping_status": "approved",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     }
   ],

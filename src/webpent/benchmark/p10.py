@@ -56,6 +56,7 @@ class P10Run:
     artifact_namespace: str
     target_ref: str
     candidate_case_ids: frozenset[str]
+    executed_case_ids: frozenset[str]
     proof_case_ids: frozenset[str]
     replay_case_ids: frozenset[str]
     target_unchanged: bool
@@ -69,6 +70,7 @@ class P10Run:
             artifact_namespace=_text(value.get("artifact_namespace")),
             target_ref=_text(value.get("target_ref"), 320),
             candidate_case_ids=_ids(value.get("candidate_case_ids")),
+            executed_case_ids=_ids(value.get("executed_case_ids")),
             proof_case_ids=_ids(value.get("proof_case_ids")),
             replay_case_ids=_ids(value.get("replay_case_ids")),
             target_unchanged=bool(value.get("target_unchanged", False)),
@@ -123,6 +125,9 @@ def evaluate_p10(
         reasons.append("approved_vulnerability_classes_below_minimum")
     if len(runs) < minimum_runs:
         reasons.append("minimum_isolated_runs_not_met")
+
+    if any(not set(approved).issubset(run.executed_case_ids) for run in runs):
+        reasons.append("approved_case_set_not_exercised_in_all_runs")
 
     run_ids = [run.run_id for run in runs]
     workspace_ids = [run.workspace_id for run in runs]
