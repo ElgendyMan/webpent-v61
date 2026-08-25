@@ -36,6 +36,15 @@ def _ids(value: Any) -> frozenset[str]:
         return frozenset()
 
 
+def _all_observations_target_backed(value: Any) -> bool:
+    """Require target-backed metadata at every redacted observation leaf."""
+    if not isinstance(value, dict) or not value:
+        return False
+    if "target_backed" in value:
+        return value.get("target_backed") is True
+    return all(_all_observations_target_backed(item) for item in value.values())
+
+
 def _last_summary(path: Path) -> dict[str, Any]:
     for line in reversed(path.read_text().splitlines()):
         line = line.strip()
@@ -54,10 +63,7 @@ def _run_from_summary(path: Path) -> tuple[P10Run, dict[str, Any]]:
     summary = _last_summary(path)
     observations = summary.get("observations")
     observations = observations if isinstance(observations, dict) else {}
-    all_target_backed = all(
-        isinstance(item, dict) and bool(item.get("target_backed"))
-        for item in observations.values()
-    )
+    all_target_backed = _all_observations_target_backed(observations)
     proof_ok = bool(
         summary.get("central_store_put")
         and summary.get("central_verify_seal")

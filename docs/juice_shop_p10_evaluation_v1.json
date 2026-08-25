@@ -5,11 +5,8 @@
     "blocking_reasons": [
       "approved_ground_truth_cases_below_minimum",
       "approved_vulnerability_classes_below_minimum",
-      "artifact_namespaces_not_isolated",
       "live_findings_not_proven_for_all_runs",
-      "p10_metrics_withheld_until_all_gates_pass",
-      "target_mutation_detected_or_unproven",
-      "workspaces_not_isolated"
+      "p10_metrics_withheld_until_all_gates_pass"
     ],
     "ground_truth_cases": 11,
     "metrics": {
@@ -39,67 +36,157 @@
   "raw_data_retained": false,
   "run_metadata": [
     {
-      "all_observations_target_backed": true,
-      "artifact_namespace": "",
-      "artifact_namespace_recorded": false,
-      "candidate_case_ids": [],
-      "executed_case_ids": [],
-      "mapped_case_ids": [],
-      "mapping_status": "not_claimed_by_source_run",
-      "operation": "typed_search",
-      "proof_case_ids": [],
+      "all_observations_target_backed": false,
+      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-01",
+      "artifact_namespace_recorded": true,
+      "candidate_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "executed_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapped_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapping_status": "mapping_approved_only",
+      "operation": "p10_full_run",
+      "proof_case_ids": [
+        "juice.local_xss.v1"
+      ],
       "proof_summary_present": true,
-      "replay_case_ids": [],
-      "run_id": "p10_juice_run01",
-      "source_log_sha256": "sha256:c10fdeaab4b3a033eb2db13539b411981b746aed19fd3ebf0e904af792cea446",
+      "replay_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "run_id": "adapter-v2-01",
+      "source_log_sha256": "sha256:1a4f626252287b0593e991c8944b06d644f0c081e177e030235f07f417f8519b",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": false,
-      "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "",
-      "workspace_recorded": false
+      "target_unchanged_measured": true,
+      "workflow_id": null,
+      "workspace_id": "juice-p10-adapter-v2-01",
+      "workspace_recorded": true
     },
     {
-      "all_observations_target_backed": true,
-      "artifact_namespace": "",
-      "artifact_namespace_recorded": false,
-      "candidate_case_ids": [],
-      "executed_case_ids": [],
-      "mapped_case_ids": [],
-      "mapping_status": "not_claimed_by_source_run",
-      "operation": "typed_search",
-      "proof_case_ids": [],
+      "all_observations_target_backed": false,
+      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-02",
+      "artifact_namespace_recorded": true,
+      "candidate_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "executed_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapped_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapping_status": "mapping_approved_only",
+      "operation": "p10_full_run",
+      "proof_case_ids": [
+        "juice.local_xss.v1"
+      ],
       "proof_summary_present": true,
-      "replay_case_ids": [],
-      "run_id": "p10_juice_run02",
-      "source_log_sha256": "sha256:bfc2acdb68dead6135e875672b4a34eaac49c7a084eb3957d01ea8026eb02b31",
+      "replay_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "run_id": "adapter-v2-02",
+      "source_log_sha256": "sha256:5c9c9a03d3ae620811f7311cf14e654c0a82c74865db690ee311b8b456d2951a",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": false,
-      "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "",
-      "workspace_recorded": false
+      "target_unchanged_measured": true,
+      "workflow_id": null,
+      "workspace_id": "juice-p10-adapter-v2-02",
+      "workspace_recorded": true
     },
     {
-      "all_observations_target_backed": true,
-      "artifact_namespace": "",
-      "artifact_namespace_recorded": false,
-      "candidate_case_ids": [],
-      "executed_case_ids": [],
-      "mapped_case_ids": [],
-      "mapping_status": "not_claimed_by_source_run",
-      "operation": "typed_search",
-      "proof_case_ids": [],
+      "all_observations_target_backed": false,
+      "artifact_namespace": "artifact://juice-shop/p10/adapter-v2-03",
+      "artifact_namespace_recorded": true,
+      "candidate_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "executed_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapped_case_ids": [
+        "juice.access_log_disclosure.v1",
+        "juice.directory_listing.v1",
+        "juice.error_handling.v1",
+        "juice.exposed_metrics.v1",
+        "juice.forgotten_backup.v1",
+        "juice.local_xss.v1",
+        "juice.misplaced_signature_file.v1",
+        "juice.privacy_policy_proof.v1",
+        "juice.public_scoreboard_route.v1",
+        "juice.security_policy.v1",
+        "juice.well_known_security_policy.v1"
+      ],
+      "mapping_status": "mapping_approved_only",
+      "operation": "p10_full_run",
+      "proof_case_ids": [
+        "juice.local_xss.v1"
+      ],
       "proof_summary_present": true,
-      "replay_case_ids": [],
-      "run_id": "p10_juice_run03",
-      "source_log_sha256": "sha256:f20d772b22dd8b26200c5751a54c3a82ec463fe654027143b51894a7fdbaba57",
+      "replay_case_ids": [
+        "juice.local_xss.v1"
+      ],
+      "run_id": "adapter-v2-03",
+      "source_log_sha256": "sha256:ec1ec49f97bf5463294f9613d3e99ada74fb4e67a3bb6c1eb2da67e824c00984",
       "target_contacted": true,
       "target_ref": "http://127.0.0.1:3000",
-      "target_unchanged_measured": false,
-      "workflow_id": "juice-shop-mat-search",
-      "workspace_id": "",
-      "workspace_recorded": false
+      "target_unchanged_measured": true,
+      "workflow_id": null,
+      "workspace_id": "juice-p10-adapter-v2-03",
+      "workspace_recorded": true
     }
   ],
   "schema_version": "p10.juice_shop.evaluation.v1",
