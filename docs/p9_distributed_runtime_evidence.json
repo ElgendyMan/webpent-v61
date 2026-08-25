@@ -39,6 +39,10 @@
       "passed": true,
       "evidence": "Two independent local processes contended for one SQLiteActionLedger reservation; allowed_count=1, duplicate_count=1, complete_once=true, complete_twice=false, used_actions=1, target_contacted=false"
     },
+    "cross_process_package_admission": {
+      "passed": true,
+      "evidence": "Two independent Python processes attempted the same signed package admission against one SQLite lease database; exactly one success and one package_already_consumed denial, with status=consumed and no target I/O"
+    },
     "fail_closed_resume_guard": {
       "passed": true,
       "evidence": "invalid/missing resume capability raised PermissionError before target action"
@@ -89,7 +93,14 @@
       "post_restart_celery_ping_nodes_online": 2,
       "target_contacted": false
     },
-    "qualification_impact": "live broker/worker smoke and fail-closed dispatch evidence only; not distributed qualification"
+    "qualification_impact": "live broker/worker smoke and fail-closed dispatch evidence only; not distributed qualification",
+    "additional_validation_run": {
+      "redis_endpoint": "redis://127.0.0.1:16379/0",
+      "redis_ping": "PONG",
+      "celery_workers": {"nodes_online": 2, "worker_a": "pong", "worker_b": "pong"},
+      "worker_log_policy": "startup metadata only; no task payloads or secrets",
+      "target_contacted": false
+    }
   },
   "qualification_checks": {
     "docker_health": true,
@@ -100,6 +111,7 @@
     "crash_restart_recovery": false,
     "checkpoint_resume": false,
     "cross_process_idempotency": false,
+    "cross_process_package_admission": true,
     "secrets_externalized": true,
     "tls_enforced": false,
     "logs_redacted": false,
@@ -109,7 +121,7 @@
   "blockers": [
     "No two-worker lease contention run has been completed; queue distribution alone is not lease qualification.",
     "No killed-worker redelivery/resume run has been completed with a real harmless task.",
-    "A cross-process SQLite ledger probe passed, but no broker-level distributed idempotency run has been completed in the distributed stack.",
+    "A cross-process SQLite action ledger and signed-package admission probe passed, but no broker-level distributed idempotency run has been completed in the distributed stack.",
     "Redis uses explicit plaintext lab override; this is not TLS qualification.",
     "Runtime log redaction and retention evidence were not promoted from contract tests to live qualification."
   ],

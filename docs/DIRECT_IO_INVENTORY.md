@@ -199,8 +199,8 @@ Total records: **321**.
 | `src/webpent/shared/agent_harness.py` | 308 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/agent_harness.py` | 620 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/behavior_scenarios/__init__.py` | 54 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/browser_proof_runner.py` | 215 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/browser_proof_runner.py` | 216 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/browser_proof_runner.py` | 217 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/campaign_executor.py` | 516 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/campaign_manager.py` | 36 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/capability_manifest.py` | 14 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
@@ -339,14 +339,14 @@ Total records: **321**.
 | `src/webpent/tools/utils/subprocess.py` | 288 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
 | `src/webpent/utils/compliance.py` | 154 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/utils/task_crypto.py` | 134 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 102 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 116 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 135 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 136 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 137 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 235 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 1086 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 1191 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 111 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 125 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 144 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 145 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 244 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1107 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1218 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 
 ## Enforcement rules
 
