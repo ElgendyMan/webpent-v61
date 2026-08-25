@@ -35,6 +35,10 @@
       "passed": true,
       "evidence": "worker-1 and worker-2 each received one distinct invalid resume task; inspect ping reported 2 nodes online"
     },
+    "cross_process_idempotency_ledger_probe": {
+      "passed": true,
+      "evidence": "Two independent local processes contended for one SQLiteActionLedger reservation; allowed_count=1, duplicate_count=1, complete_once=true, complete_twice=false, used_actions=1, target_contacted=false"
+    },
     "fail_closed_resume_guard": {
       "passed": true,
       "evidence": "invalid/missing resume capability raised PermissionError before target action"
@@ -74,7 +78,7 @@
   "blockers": [
     "No two-worker lease contention run has been completed; queue distribution alone is not lease qualification.",
     "No killed-worker redelivery/resume run has been completed with a real harmless task.",
-    "No cross-process idempotency run has been completed in the distributed stack.",
+    "A cross-process SQLite ledger probe passed, but no broker-level distributed idempotency run has been completed in the distributed stack.",
     "Redis uses explicit plaintext lab override; this is not TLS qualification.",
     "Runtime log redaction and retention evidence were not promoted from contract tests to live qualification."
   ],
