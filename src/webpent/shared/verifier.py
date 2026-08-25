@@ -78,6 +78,7 @@ def verify_replay_evidence(
     baseline: dict[str, Any] | None,
     candidate: dict[str, Any] | None,
     negative_control: dict[str, Any] | None,
+    target_fingerprint: str | None = None,
     causal_signal: bool,
     negative_control_complete: bool,
     validator_id: str,
@@ -132,12 +133,20 @@ def verify_replay_evidence(
             "causal_signal_and_negative_control_required",
             evidence,
         )
-    target_fingerprint = _target_fingerprint(finding.url)
+    expected_target_fingerprint = str(
+        target_fingerprint or _target_fingerprint(finding.url)
+    ).strip()
+    if not expected_target_fingerprint.startswith("sha256:"):
+        evidence["promotion_guard"] = {
+            "status": "blocked",
+            "reason": "target_fingerprint_invalid",
+        }
+        return VerificationResult(False, "target_fingerprint_invalid", evidence)
     if require_target_backed:
         if not _target_observation_ok(
-            baseline, role="baseline", target_fingerprint=target_fingerprint
+            baseline, role="baseline", target_fingerprint=expected_target_fingerprint
         ) or not _target_observation_ok(
-            candidate, role="candidate", target_fingerprint=target_fingerprint
+            candidate, role="candidate", target_fingerprint=expected_target_fingerprint
         ):
             evidence["promotion_guard"] = {
                 "status": "blocked",
@@ -149,7 +158,9 @@ def verify_replay_evidence(
                 evidence,
             )
         if not _target_observation_ok(
-            negative_control, role="negative_control", target_fingerprint=target_fingerprint
+            negative_control,
+            role="negative_control",
+            target_fingerprint=expected_target_fingerprint,
         ):
             evidence["promotion_guard"] = {
                 "status": "blocked",
@@ -218,7 +229,7 @@ def verify_replay_evidence(
         engagement_id=engagement_id,
         finding_id=str(finding.id),
         hypothesis_id=hypothesis_id or f"finding:{finding.id}",
-        target_fingerprint=target_fingerprint,
+        target_fingerprint=expected_target_fingerprint,
         target_package_id=target_package_id,
         target_package_sha256=target_package_sha256,
         target_package_scope_digest=target_package_scope_digest,
@@ -259,7 +270,7 @@ def verify_replay_evidence(
         "engagement_id": str(engagement_id),
         "finding_id": str(finding.id),
         "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
-        "target_fingerprint": target_fingerprint,
+        "target_fingerprint": expected_target_fingerprint,
         "scope_context": clean_scope,
         "identity_context": clean_identity,
     }
@@ -332,7 +343,7 @@ def verify_replay_evidence(
             "cleanup_status": "not_applicable",
             "finding_id": str(finding.id),
             "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
-            "target_fingerprint": target_fingerprint,
+            "target_fingerprint": expected_target_fingerprint,
             "replay_context": replay_context,
             "replay_metadata": clean_replay_metadata,
             "promotion_guard": {

@@ -110,6 +110,21 @@ _BROWSER_OBSERVATION_SCALARS = frozenset(
         "screenshot_digest",
         "replayable",
         "reason",
+        "semantic_profile",
+        "semantic_observation_version",
+        "content_type_family",
+        "response_length_bucket",
+        "semantic_path_digest",
+        "metric_line_count_bucket",
+        "policy_directive_count_bucket",
+        "log_record_count_bucket",
+        "signature_field_count_bucket",
+        "semantic_reason",
+        "semantic_match",
+        "semantic_oracle_ready",
+        "directory_shape",
+        "verbose_error_shape",
+        "scoreboard_shape",
     }
 )
 
@@ -129,9 +144,27 @@ def project_browser_observation(value: Any) -> dict[str, Any]:
         }:
             if isinstance(item, bool):
                 projected[key] = item
-        elif key in {"status_code", "dialog_count", "network_event_count"}:
+        elif key in {
+            "status_code",
+            "dialog_count",
+            "network_event_count",
+            "response_length_bucket",
+            "metric_line_count_bucket",
+            "policy_directive_count_bucket",
+            "log_record_count_bucket",
+            "signature_field_count_bucket",
+        }:
             if isinstance(item, int) and not isinstance(item, bool):
                 projected[key] = max(0, min(1_000_000, item))
+        elif key in {
+            "semantic_match",
+            "semantic_oracle_ready",
+            "directory_shape",
+            "verbose_error_shape",
+            "scoreboard_shape",
+        }:
+            if isinstance(item, bool):
+                projected[key] = item
         else:
             text = str(item or "")[:240]
             if key.endswith("_digest") or key in {

@@ -22,6 +22,7 @@ from webpent.shared.http import (
     build_host_resolver_rules_args,
     install_playwright_ssrf_guard,
 )
+from webpent.shared.semantic_observations import derive_semantic_observation
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +206,11 @@ class PlaywrightBrowserHandler:
                     wait_until="domcontentloaded",
                     timeout=timeout_ms,
                 )
-                if response is not None and int(response.status) >= 400:
+                if (
+                    response is not None
+                    and int(response.status) >= 400
+                    and request.semantic_profile is None
+                ):
                     return self._blocked(
                         "blocked_http_status",
                         status_code=int(response.status),
@@ -279,9 +284,30 @@ class PlaywrightBrowserHandler:
                     stage = "settle_after_action"
                     page.wait_for_timeout(min(1000, timeout_ms))
                 stage = "build_observation"
+                semantic_observation: dict[str, Any] = {}
                 if response is not None:
                     response_status = int(response.status)
                 final_url = _origin(page.url) + urlsplit(page.url).path
+                if request.semantic_profile is not None:
+                    transient_body: bytes | None = None
+                    transient_content_type = ""
+                    try:
+                        if response is not None:
+                            transient_body = response.body()
+                            transient_content_type = str(
+                                response.headers.get("content-type", "")
+                            )
+                        semantic_observation = derive_semantic_observation(
+                            request.semantic_profile,
+                            status_code=response_status,
+                            content_type=transient_content_type,
+                            body=transient_body,
+                            final_path=urlsplit(page.url).path or "/",
+                        )
+                    finally:
+                        # The raw response is never returned, logged, or retained
+                        # beyond this transient derivation boundary.
+                        del transient_body, transient_content_type
                 if request.operation in {
                     "dom_capture",
                     "screenshot",
@@ -297,13 +323,19 @@ class PlaywrightBrowserHandler:
                     "handler_version": self.handler_version,
                     "target_backed": True,
                     "observation_role": request.observation_role,
-                    "target_fingerprint": _target_fingerprint(request.url),
+                    "target_fingerprint": (
+                        _origin_fingerprint(request.url)
+                        if request.semantic_profile is not None
+                        else _target_fingerprint(request.url)
+                    ),
                     "request_digest": _digest(
                         {
                             "method": "GET",
                             "origin": self.target_origin,
                             "path": urlsplit(request.url).path or "/",
+                            "query": urlsplit(request.url).query,
                             "operation": request.operation,
+                            "semantic_profile": request.semantic_profile or "",
                             "probe_digest": request.probe_digest or "",
                         }
                     ),
@@ -327,6 +359,7 @@ class PlaywrightBrowserHandler:
                     "dom_digest": dom_digest,
                     "screenshot_digest": screenshot_digest,
                     "replayable": True,
+                    **semantic_observation,
                 }
         except Exception as exc:
             logger.warning("Playwright observation failed at %s: %s", stage, type(exc).__name__)
@@ -407,6 +440,12 @@ class PlaywrightBrowserHandler:
 def _target_fingerprint(url: str) -> str:
     parsed = urlsplit(str(url))
     shape = f"{parsed.scheme}://{parsed.netloc}{parsed.path or '/'}"
+    return "sha256:" + hashlib.sha256(shape.encode("utf-8", "replace")).hexdigest()
+
+
+def _origin_fingerprint(url: str) -> str:
+    parsed = urlsplit(str(url))
+    shape = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
     return "sha256:" + hashlib.sha256(shape.encode("utf-8", "replace")).hexdigest()
 
 

@@ -263,10 +263,10 @@ Total records: **324**.
 | `src/webpent/shared/planner_decisions.py` | 70 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 250 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 132 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 157 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 171 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 173 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 133 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 158 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 172 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 174 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 44 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 80 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 84 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

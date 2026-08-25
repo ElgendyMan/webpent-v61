@@ -590,6 +590,9 @@ class BrowserActionRequest(BaseModel):
     # Explicit workflow selector for narrowly typed SPA operations.  It is
     # metadata only; the ephemeral probe value never crosses this contract.
     workflow_id: str | None = Field(default=None, max_length=120)
+    # Target-adapter semantic selector.  It names a reviewed, read-only
+    # redaction profile; it never carries a body, header, payload, or secret.
+    semantic_profile: str | None = Field(default=None, max_length=160)
 
     @model_validator(mode="after")
     def _validate_probe_metadata(self) -> BrowserActionRequest:
@@ -606,6 +609,12 @@ class BrowserActionRequest(BaseModel):
             raise ValueError("typed_search_workflow_not_allowlisted")
         if self.operation != "typed_search" and self.workflow_id is not None:
             raise ValueError("workflow_metadata_not_allowed_for_operation")
+        if self.semantic_profile is not None:
+            if self.operation != "navigate":
+                raise ValueError("semantic_profile_requires_navigate")
+            profile = str(self.semantic_profile).strip()
+            if not profile or "/" in profile or "\\\\" in profile:
+                raise ValueError("semantic_profile_invalid")
         return self
 
 

@@ -43,12 +43,17 @@ from webpent.shared.runtime import (
     AdapterRegistry,
     RegisteredAdapter,
 )
+from webpent.shared.semantic_proof_runner import SemanticProofRunner
 
 ORIGIN = "http://127.0.0.1:3000"
 EXPECTED_MAPPING = "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5"
 EXPECTED_ORACLE = "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c"
 NEUTRAL_PROBE = "p10-neutral-observation"
 TARGET_CONTAINER = "juice-shop-local"
+SEMANTIC_CASE_PROFILES = {
+    "juice.exposed_metrics.v1": "juice.exposed_metrics.v1",
+    "juice.error_handling.v1": "juice.error_disclosure.v1",
+}
 
 
 def target_integrity_snapshot() -> dict[str, object]:
@@ -151,6 +156,12 @@ def redacted_observation(outcome) -> dict[str, object]:
         "target_fingerprint", "request_digest", "response_digest", "status_code",
         "final_url_shape_digest", "dialog_count", "network_event_count",
         "network_event_shape_digests", "dom_digest", "screenshot_digest", "replayable",
+        "semantic_profile", "semantic_observation_version", "content_type_family",
+        "response_length_bucket", "semantic_path_digest", "metric_line_count_bucket",
+        "policy_directive_count_bucket", "log_record_count_bucket",
+        "signature_field_count_bucket", "semantic_reason", "semantic_match",
+        "semantic_oracle_ready", "directory_shape", "verbose_error_shape",
+        "scoreboard_shape",
     }
     result = {key: observation[key] for key in allowed if key in observation}
     result.update(
@@ -218,6 +229,25 @@ def xss_finding(case_id: str, target_url: str) -> Finding:
     )
 
 
+def semantic_profile_for_case(case_id: str) -> str | None:
+    """Return an explicitly registered semantic profile or keep the case blocked."""
+    return SEMANTIC_CASE_PROFILES.get(case_id)
+
+
+def semantic_finding(case_id: str, target_url: str) -> Finding:
+    """Create an info-disclosure context; no response content enters the finding."""
+    return Finding(
+        title=f"Juice Shop {case_id} semantic proof context",
+        severity=Severity.MEDIUM,
+        description="Local redacted semantic response validation context.",
+        tool_name="juice-shop-p10-semantic-adapter",
+        url=target_url,
+        vuln_class=VulnClass.INFO_DISCLOSURE,
+        payload=None,
+        evidence=None,
+    )
+
+
 def xss_causal_predicate(baseline, candidate, negative_control):
     """Require a target-backed sink effect plus independent neutral control."""
     signal = (
@@ -237,6 +267,71 @@ def xss_causal_predicate(baseline, candidate, negative_control):
 def blocked_metadata_proof(reason: str) -> tuple[None, dict[str, object]]:
     """Explicitly refuse to promote route/resource metadata to a vulnerability."""
     return None, {"status": "blocked_by_precondition", "reason": reason}
+
+
+def record_proof_result(
+    case_id: str,
+    proof_result,
+    *,
+    observations: dict[str, dict[str, object]],
+    statuses: dict[str, str],
+    proof_states: dict[str, dict[str, object]],
+    proof_bundles: dict[str, dict[str, object]],
+) -> None:
+    """Record an attestation only when every central promotion guard passes."""
+    observations[case_id] = {
+        role: dict(value) for role, value in proof_result.observations.items()
+    }
+    if proof_result.passed and proof_result.attestation:
+        attestation = dict(proof_result.attestation)
+        nested_bundle = attestation.get("proof_bundle")
+        nested_bundle = nested_bundle if isinstance(nested_bundle, dict) else {}
+        promotion_guard = attestation.get("promotion_guard")
+        promotion_guard = (
+            promotion_guard if isinstance(promotion_guard, dict) else {}
+        )
+        sealed = (
+            attestation.get("proof_bundle_sealed") is True
+            and nested_bundle.get("sealed") is True
+        )
+        replay_status = (
+            "passed"
+            if promotion_guard.get("replay_verified") is True
+            and promotion_guard.get("replayable") is True
+            and promotion_guard.get("status") == "passed"
+            else "not_verified"
+        )
+        proof_verified = attestation.get("proof_verified") is True
+        causal_signal = attestation.get("causal_signal") is True
+        negative_control_complete = (
+            attestation.get("negative_control_complete") is True
+        )
+        promotion_ready = (
+            proof_verified
+            and sealed
+            and replay_status == "passed"
+            and causal_signal
+            and negative_control_complete
+        )
+        proof_bundles[case_id] = attestation
+        statuses[case_id] = (
+            "confirmed_proof" if promotion_ready else "confirmed_metadata_only"
+        )
+        proof_states[case_id] = {
+            "status": statuses[case_id],
+            "verify_seal": sealed,
+            "replay_status": replay_status,
+            "promotion_ready": promotion_ready,
+            "causal_signal": causal_signal,
+            "negative_control_complete": negative_control_complete,
+        }
+        return
+    statuses[case_id] = "blocked_by_precondition"
+    proof_states[case_id] = {
+        "status": "blocked_by_precondition",
+        "reason": proof_result.reason,
+        "diagnostics": dict(proof_result.diagnostics),
+    }
 
 
 def execute_navigation(
@@ -408,55 +503,79 @@ def main() -> int:
                 value.get("target_backed") is True
                 for value in proof_result.observations.values()
             )
-            if proof_result.passed and proof_result.attestation:
-                attestation = dict(proof_result.attestation)
-                nested_bundle = attestation.get("proof_bundle")
-                nested_bundle = nested_bundle if isinstance(nested_bundle, dict) else {}
-                promotion_guard = attestation.get("promotion_guard")
-                promotion_guard = (
-                    promotion_guard if isinstance(promotion_guard, dict) else {}
+            record_proof_result(
+                case_id,
+                proof_result,
+                observations=observations,
+                statuses=statuses,
+                proof_states=proof_states,
+                proof_bundles=proof_bundles,
+            )
+            continue
+
+        semantic_profile = semantic_profile_for_case(case_id)
+        if case.operation == "navigate" and semantic_profile:
+            try:
+                target_url = urljoin(normalized_origin + "/", case.path.lstrip("/"))
+                semantic_runner = SemanticProofRunner(
+                    replay_engine=control_plane.replay_engine,
+                    adapter=adapter,
+                    session=current_session,
+                    scope=current_scope,
+                    engagement_id=engagement_id,
+                    semantic_profile=semantic_profile,
+                    validator_id="juice-shop-p10-semantic-adapter",
+                    validator_version="1",
                 )
-                sealed = (
-                    attestation.get("proof_bundle_sealed") is True
-                    and nested_bundle.get("sealed") is True
+                proof_result = semantic_runner.run(
+                    semantic_finding(case_id, target_url),
+                    baseline_url=urljoin(normalized_origin + "/", ""),
+                    candidate_url=target_url,
+                    negative_control_url=urljoin(
+                        normalized_origin + "/",
+                        "p10-negative-control-not-found",
+                    ),
+                    scope_context={
+                        "target_origin": normalized_origin,
+                        "target_path": case.path,
+                        "scope_bound": True,
+                    },
+                    identity_context={
+                        "mode": "anonymous",
+                        "session_ref": current_session.session_id,
+                        "credentials_retained": False,
+                    },
+                    replay_metadata={
+                        "case_id": case_id,
+                        "oracle_id": case.oracle_id,
+                    },
                 )
-                replay_status = (
-                    "passed"
-                    if promotion_guard.get("replay_verified") is True
-                    and promotion_guard.get("replayable") is True
-                    and promotion_guard.get("status") == "passed"
-                    else "not_verified"
+                target_contacted = target_contacted or any(
+                    value.get("target_backed") is True
+                    for value in proof_result.observations.values()
                 )
-                proof_verified = attestation.get("proof_verified") is True
-                causal_signal = attestation.get("causal_signal") is True
-                negative_control_complete = (
-                    attestation.get("negative_control_complete") is True
+                record_proof_result(
+                    case_id,
+                    proof_result,
+                    observations=observations,
+                    statuses=statuses,
+                    proof_states=proof_states,
+                    proof_bundles=proof_bundles,
                 )
-                promotion_ready = (
-                    proof_verified
-                    and sealed
-                    and replay_status == "passed"
-                    and causal_signal
-                    and negative_control_complete
-                )
-                proof_bundles[case_id] = attestation
-                statuses[case_id] = (
-                    "confirmed_proof" if promotion_ready else "confirmed_metadata_only"
-                )
+            except Exception as exc:
+                statuses[case_id] = "adapter_error"
                 proof_states[case_id] = {
-                    "status": statuses[case_id],
-                    "verify_seal": sealed,
-                    "replay_status": replay_status,
-                    "promotion_ready": promotion_ready,
-                    "causal_signal": causal_signal,
-                    "negative_control_complete": negative_control_complete,
+                    "status": "adapter_error",
+                    "reason": type(exc).__name__,
                 }
-            else:
-                statuses[case_id] = "blocked_by_precondition"
-                proof_states[case_id] = {
-                    "status": "blocked_by_precondition",
-                    "reason": proof_result.reason,
-                    "diagnostics": dict(proof_result.diagnostics),
+                observations[case_id] = {
+                    "target_backed": False,
+                    "reason": "semantic_adapter_execution_failed",
+                    "error_type": type(exc).__name__,
+                    "has_raw_response": False,
+                    "has_raw_headers": False,
+                    "has_cookies": False,
+                    "has_probe_value": False,
                 }
             continue
 
