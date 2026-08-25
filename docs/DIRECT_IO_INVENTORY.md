@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **321**.
+Total records: **324**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -199,8 +199,8 @@ Total records: **321**.
 | `src/webpent/shared/agent_harness.py` | 308 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/agent_harness.py` | 620 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/behavior_scenarios/__init__.py` | 54 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/browser_proof_runner.py` | 216 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/browser_proof_runner.py` | 217 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/browser_proof_runner.py` | 228 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/browser_proof_runner.py` | 229 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/campaign_executor.py` | 516 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/campaign_manager.py` | 36 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/capability_manifest.py` | 14 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
@@ -263,10 +263,10 @@ Total records: **321**.
 | `src/webpent/shared/planner_decisions.py` | 70 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 250 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 124 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 147 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 161 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 132 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 157 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 171 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 173 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 44 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 80 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 84 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -339,14 +339,17 @@ Total records: **321**.
 | `src/webpent/tools/utils/subprocess.py` | 288 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
 | `src/webpent/utils/compliance.py` | 154 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/utils/task_crypto.py` | 134 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 111 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 125 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 144 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 145 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 113 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 127 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/workers/pentest_worker.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 244 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 1107 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/workers/pentest_worker.py` | 1218 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 147 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 148 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 246 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1109 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1220 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1464 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1506 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/workers/pentest_worker.py` | 1508 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 
 ## Enforcement rules
 

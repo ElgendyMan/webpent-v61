@@ -6,18 +6,6 @@
         "reason": "blocked_by_precondition"
       },
       {
-        "capability": "httpx",
-        "reason": "infrastructure_failure"
-      },
-      {
-        "capability": "katana",
-        "reason": "infrastructure_failure"
-      },
-      {
-        "capability": "nuclei",
-        "reason": "infrastructure_failure"
-      },
-      {
         "capability": "active_workflow",
         "reason": "disabled_by_profile"
       }
@@ -63,14 +51,14 @@
         "status": "available"
       },
       "httpx": {
-        "available": false,
+        "available": true,
         "configured": "httpx-pd",
-        "status": "infrastructure_failure"
+        "status": "available"
       },
       "katana": {
-        "available": false,
+        "available": true,
         "configured": "katana",
-        "status": "infrastructure_failure"
+        "status": "available"
       },
       "llm": {
         "available": true,
@@ -96,9 +84,9 @@
         "timeout_seconds": 0
       },
       "nuclei": {
-        "available": false,
+        "available": true,
         "configured": "nuclei",
-        "status": "infrastructure_failure"
+        "status": "available"
       },
       "oob": {
         "available": false,
@@ -122,9 +110,9 @@
       "status": "ok for dev — set CELERY_PAYLOAD_KEY for any non-local deployment"
     },
     "embeddings": {
-      "cache_present": true,
+      "cache_present": false,
       "mode": "online (first-run may download ~80MB from huggingface.co)",
-      "status": "ok — model cached locally, no network needed"
+      "status": "degraded — model NOT cached; first RAG query will hit huggingface.co (set EMBEDDINGS_OFFLINE=true to skip, or pre-populate the cache)"
     },
     "llm": {
       "configured_count": 1,

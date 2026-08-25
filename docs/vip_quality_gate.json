@@ -32,6 +32,42 @@
     {
       "command": [
         "/tmp/webpent-review/.venv/bin/python",
+        "scripts/scan_direct_io.py"
+      ],
+      "name": "g02-artifact-regeneration",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "wrote /tmp/webpent-review/docs/direct_io_inventory.json and /tmp/webpent-review/docs/DIRECT_IO_INVENTORY.md (324 records)"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/.venv/bin/python",
+        "scripts/check_g02_runtime.py"
+      ],
+      "name": "g02-static-runtime-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 324}"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/.venv/bin/python",
+        "scripts/check_g02_precommit.py"
+      ],
+      "name": "g02-precommit-contract",
+      "passed": true,
+      "returncode": 0,
+      "tail": [
+        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true}"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/.venv/bin/python",
         "-m",
         "pytest",
         "-q"
@@ -40,18 +76,18 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "........................................................................ [ 61%]",
-        "........................................................................ [ 65%]",
-        "........................................................................ [ 69%]",
-        "........................................................................ [ 74%]",
-        "........................................................................ [ 78%]",
-        "........................................................................ [ 82%]",
-        "........................................................................ [ 86%]",
-        "........................................................................ [ 90%]",
-        "........................................................................ [ 94%]",
-        "........................................................................ [ 98%]",
-        ".....................                                                    [100%]",
-        "1749 passed in 54.39s"
+        "........................................................................ [ 60%]",
+        "........................................................................ [ 64%]",
+        "........................................................................ [ 68%]",
+        "........................................................................ [ 73%]",
+        "........................................................................ [ 77%]",
+        "........................................................................ [ 81%]",
+        "........................................................................ [ 85%]",
+        "........................................................................ [ 89%]",
+        "........................................................................ [ 93%]",
+        "........................................................................ [ 97%]",
+        "..............................................                           [100%]",
+        "1774 passed in 65.40s (0:01:05)"
       ]
     },
     {
@@ -83,45 +119,9 @@
         "    \"tests/test_workflow_surface_wiring.py\": 1",
         "  },",
         "  \"minimum\": 818,",
-        "  \"total_test_functions\": 1687",
+        "  \"total_test_functions\": 1710",
         "}",
-        "OK: preserved test-function count 1687 >= minimum 818"
-      ]
-    },
-    {
-      "command": [
-        "/tmp/webpent-review/.venv/bin/python",
-        "scripts/scan_direct_io.py"
-      ],
-      "name": "g02-artifact-regeneration",
-      "passed": true,
-      "returncode": 0,
-      "tail": [
-        "wrote /tmp/webpent-review/docs/direct_io_inventory.json and /tmp/webpent-review/docs/DIRECT_IO_INVENTORY.md (321 records)"
-      ]
-    },
-    {
-      "command": [
-        "/tmp/webpent-review/.venv/bin/python",
-        "scripts/check_g02_runtime.py"
-      ],
-      "name": "g02-static-runtime-contract",
-      "passed": true,
-      "returncode": 0,
-      "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true, \"primary_records\": 321}"
-      ]
-    },
-    {
-      "command": [
-        "/tmp/webpent-review/.venv/bin/python",
-        "scripts/check_g02_precommit.py"
-      ],
-      "name": "g02-precommit-contract",
-      "passed": true,
-      "returncode": 0,
-      "tail": [
-        "{\"errors\": [], \"external_target_contacted\": false, \"passed\": true}"
+        "OK: preserved test-function count 1710 >= minimum 818"
       ]
     },
     {
@@ -170,6 +170,37 @@
       "passed": true,
       "returncode": 0,
       "tail": []
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/docs/juice_shop_qualification_report.json"
+      ],
+      "name": "p8-live-proof-artifact",
+      "passed": true,
+      "returncode": 0,
+      "tail": []
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/docs/p9_distributed_runtime_evidence.json"
+      ],
+      "name": "p9-distributed-qualification-artifact",
+      "passed": false,
+      "returncode": 1,
+      "tail": [
+        "P9 required checks incomplete: backup_restore, broker_idempotency, logs_redacted, multi_worker_lease_contention, retention_policy_verified, tls_enforced"
+      ]
+    },
+    {
+      "command": [
+        "/tmp/webpent-review/docs/juice_shop_qualification_report.json"
+      ],
+      "name": "p10-juice-shop-benchmark-artifact",
+      "passed": false,
+      "returncode": 1,
+      "tail": [
+        "P10 benchmark not qualified: ground_truth case mapping is partial and recall/precision cannot be computed; only one XSS workflow/class was exercised; benchmark runs are proof runs, not a complete catalog benchmark"
+      ]
     },
     {
       "command": [
@@ -272,15 +303,15 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 1019, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
+        "{\"file_count\": 1028, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-25T11:17:06.183333+00:00",
-  "hard_checks_passed": true,
+  "generated_at": "2026-08-25T17:27:30.525287+00:00",
+  "hard_checks_passed": false,
   "known_blockers": [
-    "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
-    "worker critical-path qualification and live Docker qualification remain environment-blocked"
+    "P9 distributed qualification is incomplete",
+    "P10 Juice Shop benchmark is incomplete or not qualified"
   ],
   "passed": false,
   "project": "WebPent v72",

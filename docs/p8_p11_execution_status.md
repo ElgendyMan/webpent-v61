@@ -1,50 +1,70 @@
 # P8–P11 Execution Status
 
-**Release posture:** `NOT_QUALIFIED` for VIP promotion. This document records the bounded execution performed against the WebPent checkout and the authorized local WAPTLab only. It does not promote mock evidence to live qualification.
+**Release posture:** `NOT_QUALIFIED` for VIP promotion. The current evidence scope is the authorized local OWASP Juice Shop at `http://127.0.0.1:3000`; no public target, provider traffic, OAST, OTP/MFA bypass, session bypass, or raw secret/body retention was used.
 
-## Evidence summary
+## Current evidence summary
 
-| Area | Evidence obtained | Result | Qualification meaning |
+| Area | Current evidence | Result | Qualification meaning |
 |---|---|---:|---|
-| P8 browser/session contracts | Targeted browser, proof, identity, and control-plane tests | 32 passed in 0.39s for the current regression set; earlier P8 suite 33 passed in 0.67s | Contract hardening passed locally; no authenticated target workflow was claimed |
-| P8 live proof attempt | Real Chromium/control-plane harness against local WAPTLab on `127.0.0.1:18080` | Stopped at `baseline_observation_missing_or_unusable` | No causal signal, negative control, sealed ProofBundle, seal verification, or replay status was created; no bypass was used |
-| P8 additive fixes | Session ID binding in `BrowserActionAdapter`; safe engagement/profile path segments | Implemented | Prevents cross-session execution and profile path traversal |
-| P9 recovery contracts | Checkpoint, runtime context, deployment, production qualification, retry, recovery, worker-loop, and idempotency tests, including the cross-process ledger regression | 38 passed in 2.08s | Contract/reliability evidence only; not distributed qualification |
-| P11 full regression | Complete project pytest suite after the P9 ledger regression and live evidence updates | 1749 passed in 54.39s | Source regression suite passed locally |
-| P9 runtime smoke | Prior auth-enabled local stack smoke on isolated port 18000 plus current Redis loopback runtime on port 16379 with two real Celery workers; current run returned Redis PONG, two worker pongs, four fail-closed resume tasks distributed 2/2, and worker-A controlled restart recovery | Partial | Ledger-layer cross-process idempotency and live broker/worker smoke passed locally, but broker-level idempotency, multi-worker lease, killed-worker redelivery/resume, TLS, and live log/retention qualification remain unproven |
-| P10 WAPTLab availability | Authorized local WAPTLab runtime was contacted only through health-only requests on `127.0.0.1:18080`; three rounds returned HTTP 403 for `/health`, `/`, and `/login` with identical response size/hash | Blocked | Natural authenticated workflow and target-backed three-run benchmark were not available; no login, registration, bypass, or scan was attempted |
-| P10 benchmark artifact | `docs/waptlab_qualification_report.json` | `live_qualification=false`, `target_contacted=false`, `run_count=3`, `final_confirmed_counts=[0,0,0]` | Mock/contract fixture output only; not a finding or confirmation |
+| P8 browser and proof contracts | Typed `juice-shop-mat-search` workflow, target binding, causal differential, negative control, sealed central bundle, seal verification, and central replay | Passed for the explicitly allowlisted workflow | Demonstrates the strict P8 proof path for one local XSS workflow; it is not full catalog qualification |
+| P8 live Juice Shop proof | Runs `xss02`, `xss03`, and `xss04` passed; `xss01` naturally failed with `causal_signal_not_demonstrated` | Partial live evidence | The failed run remains recorded; successful runs do not become a P10 benchmark by themselves |
+| P9 distributed runtime | Two-worker Celery/Redis loopback run, killed-worker redelivery, checkpoint resume, retry exhaustion with redacted DLQ projection, and cross-process ledger probe | Partial; `not_qualified` | Lease contention, broker-level idempotency, live TLS, live redaction/retention, and backup/restore remain unproven |
+| P10 Juice Shop benchmark | Independent challenge metadata summary: 116 challenges; one XSS class/workflow exercised; three successful strict proof runs | `p10_passed=false` | Mapping is not approved for recall; precision, recall, class coverage, FP, and FN remain null |
+| P11 release gate | Dynamic artifact checks now evaluate P8/P9/P10; P8 passes and P9/P10 fail closed | `passed=false`, `hard_checks_passed=false` | Correctly blocks promotion with precise P9/P10 blockers; release manifest verification passed |
 
-## P8 changes
+## P8 boundary and provenance
 
-The browser adapter now rejects a request when `request.session_id` differs from the session object supplied to execution. This binding is checked after engagement binding and before handler invocation, so a mismatched request cannot reach the injected browser handler.
+The browser adapter accepts the typed search operation only for the named Juice Shop workflow and scopes interaction to the known search component. Generic form input remains fail-closed. The strict proof runner requires baseline, candidate, and independent negative-control observations tied to the same engagement and target, then requires a target-backed causal predicate, central storage, a sealed bundle, `verify_seal()`, and central replay.
 
-The session manager now validates engagement and profile identifiers as single safe path segments before creating directories. Empty values, traversal segments, separators, and unsupported characters are rejected. This protects the per-engagement/profile directory boundary without persisting raw browser state.
+The machine-readable P8/P10 artifact is [`docs/juice_shop_qualification_report.json`](juice_shop_qualification_report.json). It records the four isolated runs, retains no raw response bodies or headers, and includes SHA-256 hashes for the source logs. The consolidated status artifact is [`docs/p8_p11_execution_evidence.json`](p8_p11_execution_evidence.json). The central-bundle source log is referenced by hash only; raw logs remain outside the repository.
 
-No cookies, passwords, OTPs, reset links, Gmail data, provider credentials, or external target profiles were created or committed.
+## P9 boundary
 
-## P9 and P10 gates
+The P9 runtime artifact is [`docs/p9_distributed_runtime_evidence.json`](p9_distributed_runtime_evidence.json). It records real target-free local runtime progress. The Redis broker used for that lab run was plaintext loopback (`redis://127.0.0.1:16379/0`), so it cannot satisfy the live `rediss://` requirement. The artifact also truthfully marks multi-worker lease contention, broker idempotency, live redaction/retention, and backup/restore as incomplete.
 
-The P9 contract suite and the isolated runtime smoke pass. In the current run, Redis returned `PONG`; two independent Celery workers returned `pong`; four malformed `resume_pentest_task` messages were distributed 2/2 and failed with `PermissionError` before target I/O; and worker-A was stopped and restarted before both workers returned to `ping`. The target-free two-process SQLiteActionLedger probe also passed with `allowed_count=1`, `duplicate_count=1`, `complete_once=true`, and `complete_twice=false`. This is useful live broker/worker and ledger-layer evidence, but it still does not satisfy the distributed gate: broker-level idempotency, multi-worker lease contention, killed-worker redelivery/resume, TLS, and live log/retention qualification require dedicated runtime evidence.
+The live P9 tasks are target-free qualification tasks. They did not contact Juice Shop or any external target. A killed child worker was redelivered and resumed without duplicating the recorded side effect, and the retry task produced a durable redacted dead-letter projection. These observations improve reliability confidence but do not substitute for the missing production-like checks.
 
-The P8 live harness and P10 gate are recorded in the machine-readable artifacts. The harness contacted only the local WAPTLab origin and stopped before candidate/negative-control execution because the baseline observation was missing or unusable. Separately, WAPTLab was checked only through three rounds of safe health-only requests; all `/health`, `/`, and `/login` requests returned HTTP 403. Because natural authentication remained unavailable, no authenticated workflow, target-backed causal signal, negative control, sealed replayable ProofBundle, or three-run live benchmark was claimed.
+## P10 boundary
 
-## P11 final gate outputs
+The local Juice Shop `/api/Challenges` metadata was used as a discovery-independent catalog reference and reduced to a count, ID-set digest, and XSS catalog keys; raw response bodies were not retained. The current mapping status remains `partial_not_approved_for_recall`. Only the `juice-shop-mat-search` XSS workflow was exercised, so the three passing proof runs are not a complete benchmark. P10 must remain unqualified until an approved ground-truth mapping, broader class/workflow coverage, isolated target-state measurement, and computed precision/recall/class-coverage/FP/FN metrics exist.
 
-The latest clean-environment validation produced `1749 passed` in 54.39s, Ruff passed, compileall passed, G-02 precommit passed with `{"errors": [], "external_target_contacted": false, "passed": true}`, and offline release verification passed with `{"errors": [], "offline_only": true, "passed": true, "signature_status": "operator_key_required", "target_contacted": false}`. The isolated P9 runtime smoke also produced API health 200, Redis PONG, two Celery worker pongs, successful API/worker/Redis controlled restarts, two-worker queue distribution, and fail-closed invalid resume handling. The VIP quality gate remains `passed=false` and `hard_checks_passed=true`; its failed-check list is empty, while the WAPTLab live campaign gate and full distributed worker qualification remain blockers.
+Historical WAPTLab health-only observations remain separate from the Juice Shop artifacts. They are not used as the current live P10 benchmark and are not an unconditional VIP blocker in the dynamic P11 gate.
+
+## P11 gate result
+
+The release gate is [`docs/vip_quality_gate.json`](vip_quality_gate.json). It executed compileall, Ruff, G-02 regeneration and checks, the full test/security/release checks, and dynamic P8/P9/P10 artifact validation. Its final state is:
+
+```text
+p8-live-proof-artifact: passed
+p9-distributed-qualification-artifact: failed
+p10-juice-shop-benchmark-artifact: failed
+hard_checks_passed: false
+passed: false
+release_manifest_verify: true
+```
+
+The gate now reports only the relevant dynamic blockers for this evidence set:
+
+```text
+P9 distributed qualification is incomplete
+P10 Juice Shop benchmark is incomplete or not qualified
+```
+
+The P11 contract regression includes positive P8 validation, named P9/P10 failure reasons, malformed-JSON fail-closed behavior, and a guard that rejects the old unconditional WAPTLab blocker. The targeted contract file currently passes 12 tests after the new validators were added.
 
 ## Promotion decision
 
-The scorecard now exposes the conservative promotion ladder `NOT_READY → ENGINEERING_READY → EVIDENCE_READY → BENCHMARK_QUALIFIED → DISTRIBUTED_QUALIFIED → VIP_QUALIFIED`. The current offline scorecard can reach `ENGINEERING_READY` only when the regression and behavior contracts pass; it cannot reach `BENCHMARK_QUALIFIED` without three independent live runs, cannot reach `DISTRIBUTED_QUALIFIED` without distributed runtime evidence, and cannot reach `VIP_QUALIFIED` without consistent release artifacts and independent review.
-
-`VIP_QUALIFIED` is **not** assigned. Promotion remains blocked by the live WAPTLab workflow gate and the distributed Docker/Redis/Celery qualification gate. The existing VIP report must remain `passed=false` until those gates have real, reproducible evidence.
+The conservative ladder remains `NOT_READY → ENGINEERING_READY → EVIDENCE_READY → BENCHMARK_QUALIFIED → DISTRIBUTED_QUALIFIED → VIP_QUALIFIED`. The defensible current state is `ENGINEERING_READY_WITH_PARTIAL_LIVE_EVIDENCE`. `VIP_QUALIFIED` is **not** assigned because P9 and P10 are still incomplete and P11 correctly fails closed.
 
 ## Reproduction commands
 
 ```text
-PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_control_plane_local_harness.py tests/test_browser_target_backed_proof.py tests/test_browser_proof_runner.py tests/test_identity_matrix_facade.py tests/test_cli_identity_profiles_ownership.py
-
-PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_cross_process_action_ledger.py tests/test_checkpoint_redaction.py tests/test_checkpoint_runtime_context.py tests/test_production_deployment_contract.py tests/test_production_qualification.py tests/test_structural_rate_limit_retry.py tests/test_superagentic_recovery_contracts.py tests/test_vip_recovery_loop.py tests/test_v58_validator_idempotency.py
+cd /tmp/webpent-review
+export PYTHONPATH=src:integrations/bbscout/src
+.venv/bin/pytest -q tests/test_vip_quality_gate_contract.py
+.venv/bin/ruff check scripts/run_vip_quality_gate.py tests/test_vip_quality_gate_contract.py
+.venv/bin/python -m compileall -q scripts/run_vip_quality_gate.py tests/test_vip_quality_gate_contract.py
+.venv/bin/python scripts/run_vip_quality_gate.py
 ```
 
-These commands validate source contracts only. They do not authorize or perform provider I/O, public-target testing, CAPTCHA/OTP bypass, session/database bypass, or live qualification claims. The promotion-state ladder is a governance classification; it does not convert offline or mock evidence into target-backed qualification.
+These commands validate the current local source and release gate. They do not authorize provider I/O, public-target testing, CAPTCHA/OTP bypass, session/database bypass, or promotion of offline/mock evidence to live qualification.

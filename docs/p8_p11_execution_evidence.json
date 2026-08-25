@@ -1,140 +1,120 @@
 {
-  "schema_version": "webpent-p8-p11-execution-v2",
+  "schema_version": "webpent-p8-p11-execution-v3",
   "qualification_status": "NOT_QUALIFIED",
+  "scope": {
+    "authorized_targets_only": true,
+    "active_target": "http://127.0.0.1:3000",
+    "target_name": "OWASP Juice Shop local",
+    "loopback_only": true,
+    "waptlab_live_workflow_used": false,
+    "raw_response_bodies_saved": false,
+    "raw_headers_saved": false,
+    "secrets_saved": false
+  },
   "p8": {
-    "targeted_test_command": "PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_control_plane_local_harness.py tests/test_browser_target_backed_proof.py tests/test_browser_proof_runner.py tests/test_identity_matrix_facade.py tests/test_cli_identity_profiles_ownership.py",
-    "targeted_tests_passed": 33,
-    "targeted_tests_failed": 0,
-    "implemented_invariants": [
-      "browser request session_id must match the supplied BrowserSessionRef",
-      "engagement_id and profile_ref are safe single path segments before profile directory creation"
-    ],
-    "live_authenticated_workflow": false,
-    "live_proof_attempt": {
-      "target_origin": "http://127.0.0.1:18080",
-      "target_contacted": true,
-      "harness": "BrowserProofRunner with real Chromium/control-plane",
-      "candidate_and_negative_control": "not_reached",
-      "causal_signal": null,
-      "negative_control": null,
-      "proof_bundle": null,
-      "verify_seal": null,
-      "replay_status": null,
-      "stop_reason": "baseline_observation_missing_or_unusable",
-      "bypass_used": false,
-      "raw_response_bodies_saved": false
-    }
+    "status": "demonstrated_for_one_typed_local_workflow",
+    "workflow_id": "juice-shop-mat-search",
+    "vulnerability_class": "XSS",
+    "strict_requirements_observed": {
+      "baseline_candidate_negative_control": true,
+      "target_backed_observations": true,
+      "causal_signal": true,
+      "central_store_put": true,
+      "proof_bundle_sealed": true,
+      "verify_seal": true,
+      "central_replay": true,
+      "replay_status": "passed"
+    },
+    "successful_run_ids": ["xss02", "xss03", "xss04"],
+    "failed_run_ids": ["xss01"],
+    "qualification_boundary": "This demonstrates the strict P8 proof path for one explicitly allowlisted Juice Shop search workflow; it is not full P10 catalog qualification or VIP qualification.",
+    "source_artifact": "docs/juice_shop_qualification_report.json",
+    "central_bundle_log_sha256": "a8744906fe74003f5291f49bb44d289053dfe4722b579059fc246a49cd3c0d8b"
   },
   "p9": {
-    "contract_test_command": "PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_cross_process_action_ledger.py tests/test_checkpoint_redaction.py tests/test_checkpoint_runtime_context.py tests/test_production_deployment_contract.py tests/test_production_qualification.py tests/test_structural_rate_limit_retry.py tests/test_superagentic_recovery_contracts.py tests/test_vip_recovery_loop.py tests/test_v58_validator_idempotency.py",
-    "contract_tests_passed": 38,
-    "contract_tests_failed": 0,
-    "distributed_qualification": false,
-    "runtime_smoke": {
-      "latest_live_execution": {
-        "redis_endpoint": "redis://127.0.0.1:16379/0",
-        "worker_nodes_online": 2,
-        "dispatch_task_count": 4,
-        "dispatch_states": ["FAILURE", "FAILURE", "FAILURE", "FAILURE"],
-        "dispatch_failure_type": "PermissionError",
-        "worker_assignment": {"worker_a": 2, "worker_b": 2},
-        "controlled_worker_restart_and_recovery": true,
-        "target_contacted": false
-      },
-      "api_healthy": true,
-      "redis_pong": true,
-      "worker_replicas": 2,
-      "celery_inspect_ping_nodes": 2,
-      "controlled_restart_recovery": {
-        "api": true,
-        "redis": true,
-        "workers": true
-      },
-      "queue_distribution": true,
-      "cross_process_ledger_idempotency_probe": {
-        "passed": true,
-        "allowed_count": 1,
-        "duplicate_count": 1,
-        "complete_once": true,
-        "complete_twice": false,
-        "target_contacted": false
-      },
-      "invalid_resume_fail_closed_before_target_io": true,
-      "runtime_user_non_root": true
+    "status": "not_qualified",
+    "source_artifact": "docs/p9_distributed_runtime_evidence.json",
+    "observed_progress": {
+      "two_workers": true,
+      "killed_worker_redelivery": true,
+      "checkpoint_resume": true,
+      "retry_exhaustion_and_redacted_dlq": true,
+      "cross_process_ledger_idempotency": true,
+      "target_contacted": false
     },
-    "blocker": "Full distributed qualification remains incomplete: broker-level idempotency, killed-worker redelivery/resume, lease contention proof, TLS qualification, and live log/retention qualification remain unproven; the target-free SQLite ledger probe is not broker qualification"
+    "required_checks_still_false": [
+      "multi_worker_lease_contention",
+      "broker_idempotency",
+      "tls_enforced",
+      "logs_redacted",
+      "retention_policy_verified",
+      "backup_restore"
+    ],
+    "qualification_boundary": "The target-free local runtime evidence is real progress but does not qualify production-like distributed P9."
   },
   "p10": {
-    "target": "http://127.0.0.1:18080",
-    "target_scope": "authorized local WAPTLab only",
-    "health_only_status_codes": {
-      "/health": 403,
-      "/": 403,
-      "/login": 403
+    "status": "not_qualified",
+    "source_artifact": "docs/juice_shop_qualification_report.json",
+    "independent_ground_truth": {
+      "challenge_count": 116,
+      "challenge_id_set_digest": "sha256:48eb75e272c91e6ec03d9a33d9fa856beba4dc13eb1383bbde3fb33754aec34f",
+      "mapping_status": "partial_not_approved_for_recall"
     },
-    "health_only_rounds": {
-      "round_count": 3,
-      "status_by_path": {
-        "/health": [403, 403, 403],
-        "/": [403, 403, 403],
-        "/login": [403, 403, 403]
-      },
-      "all_rounds_identical": true,
-      "login_attempted": false,
-      "bypass_used": false,
-      "scan_started": false
+    "proof_run_summary": {
+      "isolated_runs": 4,
+      "successful_strict_proof_runs": 3,
+      "failed_strict_proof_runs": 1,
+      "classes_exercised": ["XSS"],
+      "workflow_count": 1
     },
-    "live_benchmark_runs": 0,
-    "existing_fixture_report": "docs/waptlab_qualification_report.json",
-    "existing_fixture_report_is_live": false,
-    "target_contacted_by_fixture_report": false,
-    "benchmark_gate_artifact": "docs/p10_benchmark_gate.json",
-    "blocker": "Natural authenticated workflow and lab-provisioned session were unavailable; no bypass was used; P9 full distributed qualification is also a prerequisite"
+    "metrics": {
+      "precision": null,
+      "recall": null,
+      "class_coverage": null,
+      "false_positives": null,
+      "false_negatives": null
+    },
+    "blocking_reasons": [
+      "ground-truth case mapping is partial and recall/precision cannot be computed",
+      "only one XSS workflow/class was exercised",
+      "benchmark runs are proof runs, not a complete catalog benchmark"
+    ]
   },
   "p11": {
-    "full_pytest_passed": 1749,
-    "full_pytest_duration_seconds": 54.39,
-    "ruff_passed": true,
-    "compileall_passed": true,
-    "g02": {
-      "errors": [],
-      "external_target_contacted": false,
-      "passed": true
+    "status": "fail_closed_not_qualified",
+    "source_artifact": "docs/vip_quality_gate.json",
+    "source_checks": "engineering and security checks executed by the release gate",
+    "dynamic_checks": {
+      "p8_live_proof_artifact": true,
+      "p9_distributed_qualification_artifact": false,
+      "p10_juice_shop_benchmark_artifact": false
     },
-    "latest_validation": {
-      "pytest_passed": 1749,
-      "pytest_duration_seconds": 54.39,
-      "ruff_passed": true,
-      "compileall_passed": true,
-      "g02_passed": true,
-      "release_verify_passed": true,
-      "vip_gate_exit": 1,
-      "vip_gate_passed": false,
-      "vip_gate_hard_checks_passed": true
+    "hard_checks_passed": false,
+    "passed": false,
+    "blockers": [
+      "P9 distributed qualification is incomplete",
+      "P10 Juice Shop benchmark is incomplete or not qualified"
+    ],
+    "release_manifest_verification": true
+  },
+  "provenance": {
+    "project_commit_at_capture": "26634eabb75671dcb2a89632c0e0b07f9a4e79b7",
+    "source_log_sha256": {
+      "p10_juice_xss01.log": "8724bba5886997e93a8704994242043ef44b9eba108b573cdc401a61c82011b6",
+      "p10_juice_xss02.log": "824baeef462bb2edd3483f6cca8d48913b9d1586db73d96adeaa9f57cc4c28d1",
+      "p10_juice_xss03.log": "d17db7781a0be13785451e8f8946d962867bde33d31fe3cccf3c628f7e286bab",
+      "p10_juice_xss04.log": "c78c0f8ac99b841813bf57aa17aa7d44818987a920578fd8de66f18b216685f8",
+      "p8_typed_juice_central_bundle2.log": "a8744906fe74003f5291f49bb44d289053dfe4722b579059fc246a49cd3c0d8b"
     },
-    "release_verify": {
-      "errors": [],
-      "offline_only": true,
-      "passed": true,
-      "signature_status": "operator_key_required",
-      "target_contacted": false
-    }
+    "retained_raw_logs_in_repository": false
   },
   "promotion": {
-    "promotion_ladder": [
-      "NOT_READY",
-      "ENGINEERING_READY",
-      "EVIDENCE_READY",
-      "BENCHMARK_QUALIFIED",
-      "DISTRIBUTED_QUALIFIED",
-      "VIP_QUALIFIED"
-    ],
-    "current_promotion_state": "ENGINEERING_READY",
+    "current_state": "ENGINEERING_READY_WITH_PARTIAL_LIVE_EVIDENCE",
     "vip_qualified": false,
-    "required_gates_still_blocked": [
-      "P9 distributed runtime qualification",
-      "P10 authenticated WAPTLab three-run benchmark"
-    ],
-    "note": "Promotion states are governance classifications and do not convert offline or mock evidence into target-backed qualification."
+    "required_before_promotion": [
+      "Complete P9 distributed runtime evidence",
+      "Approved Juice Shop ground-truth mapping and complete P10 metrics",
+      "Independent review of final evidence and release artifacts"
+    ]
   }
 }

@@ -258,6 +258,141 @@ def _g02_checks() -> list[dict[str, Any]]:
     ]
 
 
+def _artifact_check(
+    name: str,
+    path: Path,
+    predicate: Any,
+    missing_reason: str,
+) -> dict[str, Any]:
+    """Evaluate a JSON qualification artifact without treating it as proof by itself."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "name": name,
+            "command": [str(path)],
+            "passed": False,
+            "returncode": 1,
+            "tail": [f"{type(exc).__name__}: {exc}"],
+        }
+    try:
+        passed, reason = predicate(payload)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        passed, reason = False, f"invalid artifact shape: {type(exc).__name__}"
+    return {
+        "name": name,
+        "command": [str(path)],
+        "passed": bool(passed),
+        "returncode": 0 if passed else 1,
+        "tail": [] if passed else [reason or missing_reason],
+    }
+
+
+def _p8_live_proof_check() -> dict[str, Any]:
+    path = DOCS / "juice_shop_qualification_report.json"
+
+    def predicate(payload: dict[str, Any]) -> tuple[bool, str]:
+        runs = payload.get("runs")
+        if not isinstance(runs, list):
+            return False, "P8 live proof runs are missing"
+        valid = [
+            run
+            for run in runs
+            if isinstance(run, dict)
+            and run.get("passed") is True
+            and run.get("verifier_passed") is True
+            and run.get("central_store_put") is True
+            and run.get("central_verify_seal") is True
+            and run.get("central_replay") is True
+            and run.get("proof_bundle_sealed") is True
+            and run.get("replay_status") == "passed"
+            and run.get("target_backed_all") is True
+            and run.get("replayable_all") is True
+            and run.get("raw_response_bodies_saved") is False
+        ]
+        if not valid:
+            return False, "no target-backed sealed and centrally replayed P8 run"
+        return True, ""
+
+    return _artifact_check(
+        "p8-live-proof-artifact",
+        path,
+        predicate,
+        "P8 live proof artifact is missing",
+    )
+
+
+def _p9_distributed_check() -> dict[str, Any]:
+    path = DOCS / "p9_distributed_runtime_evidence.json"
+
+    def predicate(payload: dict[str, Any]) -> tuple[bool, str]:
+        checks = payload.get("qualification_checks")
+        if not isinstance(checks, dict):
+            return False, "P9 qualification checks are missing"
+        required = {
+            "docker_health",
+            "redis_health",
+            "celery_worker_health",
+            "multi_worker_queue_distribution",
+            "multi_worker_lease_contention",
+            "crash_restart_recovery",
+            "checkpoint_resume",
+            "killed_worker_redelivery",
+            "cross_process_idempotency",
+            "broker_idempotency",
+            "retry_exhaustion",
+            "dlq_projection",
+            "secrets_externalized",
+            "tls_enforced",
+            "logs_redacted",
+            "retention_policy_verified",
+            "backup_restore",
+            "target_unchanged",
+        }
+        missing = sorted(name for name in required if checks.get(name) is not True)
+        if missing:
+            return False, "P9 required checks incomplete: " + ", ".join(missing)
+        return True, ""
+
+    return _artifact_check(
+        "p9-distributed-qualification-artifact",
+        path,
+        predicate,
+        "P9 distributed qualification artifact is missing",
+    )
+
+
+def _p10_benchmark_check() -> dict[str, Any]:
+    path = DOCS / "juice_shop_qualification_report.json"
+
+    def predicate(payload: dict[str, Any]) -> tuple[bool, str]:
+        gate = payload.get("gate")
+        metrics = payload.get("metrics")
+        ground_truth = payload.get("ground_truth")
+        if not isinstance(gate, dict) or not isinstance(metrics, dict):
+            return False, "P10 benchmark artifact is missing gate or metrics"
+        if gate.get("p10_passed") is not True:
+            reasons = gate.get("blocking_reasons") or ["P10 gate is not passed"]
+            return False, "P10 benchmark not qualified: " + "; ".join(map(str, reasons))
+        if metrics.get("run_count", 0) < 3 or metrics.get("successful_proof_runs", 0) < 3:
+            return False, "P10 requires at least three successful isolated proof runs"
+        if (
+            not isinstance(ground_truth, dict)
+            or ground_truth.get("case_mapping_status") != "approved"
+        ):
+            return False, "P10 ground-truth case mapping is not approved"
+        if any(metrics.get(key) is None for key in ("precision", "recall", "class_coverage")):
+            return False, "P10 precision, recall, and class coverage are incomplete"
+        return True, ""
+
+    return _artifact_check(
+        "p10-juice-shop-benchmark-artifact",
+        path,
+        predicate,
+        "P10 benchmark artifact is missing",
+    )
+
+
 def _qualification_checks() -> list[dict[str, Any]]:
     """Build and validate local qualification artifacts without live claims."""
     checks = [
@@ -307,6 +442,7 @@ def _qualification_checks() -> list[dict[str, Any]]:
             }
         )
     checks.append(_preflight_contract())
+    checks.extend([_p8_live_proof_check(), _p9_distributed_check(), _p10_benchmark_check()])
     checks.extend(
         [
             {
@@ -397,12 +533,24 @@ def _security_checks() -> list[dict[str, Any]]:
 def _build_gate_report(checks: list[dict[str, Any]], safety: dict[str, Any]) -> dict[str, Any]:
     """Build a report from checks without mutating release artifacts."""
     hard_checks_passed = all(check["passed"] for check in checks) and safety["passed"]
-    blockers = [
-        "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",
-        "worker critical-path qualification and live Docker qualification remain "
-        "environment-blocked",
-    ]
+    blockers: list[str] = []
     check_by_name = {check["name"]: check for check in checks}
+    for name, message in (
+        (
+            "p8-live-proof-artifact",
+            "P8 has no target-backed sealed and centrally replayed live proof",
+        ),
+        (
+            "p9-distributed-qualification-artifact",
+            "P9 distributed qualification is incomplete",
+        ),
+        (
+            "p10-juice-shop-benchmark-artifact",
+            "P10 Juice Shop benchmark is incomplete or not qualified",
+        ),
+    ):
+        if not check_by_name.get(name, {}).get("passed", False):
+            blockers.append(message)
     if not check_by_name.get("pip-audit-strict", {}).get("passed", False):
         blockers.append(
             "pip-audit strict did not pass; dependency advisories remain a release blocker"
@@ -443,19 +591,26 @@ def _write_gate_report(report: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    # Regenerate deterministic G-02 artifacts before pytest: the tests intentionally
+    # reject stale inventories, so the gate must establish the current artifact first.
     checks = [
         _run("compileall", [PYTHON, "-m", "compileall", "-q", "src", "scripts"]),
         _run("ruff", [RUFF, "check", *RUFF_PATHS]),
-        _run("pytest", [*PYTEST], timeout=420),
-        _bbscout_integration_check(),
-        _run(
-            "test-function-count",
-            # This is a static function-preservation guard; pytest's passed count is checked above.
-            [PYTHON, "scripts/verify_test_count.py", "--minimum", "818"],
-            timeout=60,
-        ),
     ]
     checks.extend(_g02_checks())
+    checks.extend(
+        [
+            _run("pytest", [*PYTEST], timeout=420),
+            _bbscout_integration_check(),
+            _run(
+                "test-function-count",
+                # Static function-preservation guard; pytest's passed count
+                # is checked above.
+                [PYTHON, "scripts/verify_test_count.py", "--minimum", "818"],
+                timeout=60,
+            ),
+        ]
+    )
     checks.extend(_qualification_checks())
     checks.extend(_security_checks())
     safety = _artifact_safety()
