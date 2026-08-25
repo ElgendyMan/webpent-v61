@@ -112,6 +112,16 @@ class ScoreDimension:
         }
 
 
+PROMOTION_STATES = (
+    "NOT_READY",
+    "ENGINEERING_READY",
+    "EVIDENCE_READY",
+    "BENCHMARK_QUALIFIED",
+    "DISTRIBUTED_QUALIFIED",
+    "VIP_QUALIFIED",
+)
+
+
 _DEFAULT_DIMENSIONS = (
     (
         "reproducible_build_and_packaging",
@@ -189,6 +199,11 @@ class QualificationScorecard:
     readiness_threshold: int = 75
     readiness_status: str = "below-threshold"
     qualification_status: str = "blocked"
+    promotion_state: str = "NOT_READY"
+    evidence_ready: bool = False
+    distributed_qualification_passed: bool = False
+    release_artifacts_consistent: bool = False
+    independent_review_approved: bool = False
     integrity_signature: str = ""
     operator_signature_required: bool = True
 
@@ -203,6 +218,10 @@ class QualificationScorecard:
         live_qualification_passed: bool = False,
         blockers: Iterable[str] = (),
         dimensions: Iterable[ScoreDimension] | None = None,
+        evidence_ready: bool = False,
+        distributed_qualification_passed: bool = False,
+        release_artifacts_consistent: bool = False,
+        independent_review_approved: bool = False,
     ) -> QualificationScorecard:
         reasons = list(dict.fromkeys(str(item)[:240] for item in blockers if str(item).strip()))
         if live_qualification_runs < 3:
@@ -243,6 +262,25 @@ class QualificationScorecard:
             else "below-threshold"
         )
         status = "qualified" if not reasons else "blocked"
+        promotion_state = "NOT_READY"
+        if full_regression_passed and behavior.safe and not has_hard_safety_failure:
+            promotion_state = "ENGINEERING_READY"
+        if promotion_state == "ENGINEERING_READY" and evidence_ready:
+            promotion_state = "EVIDENCE_READY"
+        if (
+            promotion_state == "EVIDENCE_READY"
+            and live_qualification_runs >= 3
+            and live_qualification_passed
+        ):
+            promotion_state = "BENCHMARK_QUALIFIED"
+        if promotion_state == "BENCHMARK_QUALIFIED" and distributed_qualification_passed:
+            promotion_state = "DISTRIBUTED_QUALIFIED"
+        if (
+            promotion_state == "DISTRIBUTED_QUALIFIED"
+            and release_artifacts_consistent
+            and independent_review_approved
+        ):
+            promotion_state = "VIP_QUALIFIED"
         unsigned = {
             "schema_version": "superagentic-scorecard-v2",
             "revision": revision[:80],
@@ -256,6 +294,11 @@ class QualificationScorecard:
             "readiness_threshold": 75,
             "readiness_status": readiness_status,
             "qualification_status": status,
+            "promotion_state": promotion_state,
+            "evidence_ready": bool(evidence_ready),
+            "distributed_qualification_passed": bool(distributed_qualification_passed),
+            "release_artifacts_consistent": bool(release_artifacts_consistent),
+            "independent_review_approved": bool(independent_review_approved),
             "operator_signature_required": True,
         }
         integrity_signature = hashlib.sha256(
@@ -274,6 +317,11 @@ class QualificationScorecard:
             readiness_threshold=75,
             readiness_status=readiness_status,
             qualification_status=status,
+            promotion_state=promotion_state,
+            evidence_ready=bool(evidence_ready),
+            distributed_qualification_passed=bool(distributed_qualification_passed),
+            release_artifacts_consistent=bool(release_artifacts_consistent),
+            independent_review_approved=bool(independent_review_approved),
             integrity_signature=integrity_signature,
             operator_signature_required=True,
         )
@@ -293,6 +341,11 @@ class QualificationScorecard:
                 "readiness_threshold": self.readiness_threshold,
                 "readiness_status": self.readiness_status,
                 "qualification_status": self.qualification_status,
+                "promotion_state": self.promotion_state,
+                "evidence_ready": self.evidence_ready,
+                "distributed_qualification_passed": self.distributed_qualification_passed,
+                "release_artifacts_consistent": self.release_artifacts_consistent,
+                "independent_review_approved": self.independent_review_approved,
                 "integrity_signature": self.integrity_signature,
                 "operator_signature_required": self.operator_signature_required,
                 "signature_note": (
@@ -307,6 +360,7 @@ __all__ = [
     "BehaviorEvaluation",
     "ObservabilityRecorder",
     "QualificationScorecard",
+    "PROMOTION_STATES",
     "ScoreDimension",
     "evaluate_behavior_results",
 ]

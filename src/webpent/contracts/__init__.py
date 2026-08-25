@@ -11,7 +11,11 @@ from webpent.shared.agent_harness import (
     HarnessOutcome,
     ProposedAction,
 )
-from webpent.shared.evaluation import QualificationScorecard, ScoreDimension
+from webpent.shared.evaluation import (
+    PROMOTION_STATES,
+    QualificationScorecard,
+    ScoreDimension,
+)
 from webpent.shared.governed_artifacts import (
     ExperimentPlan,
     Hypothesis,
@@ -27,6 +31,7 @@ __all__ = [
     "Hypothesis",
     "ProofBundle",
     "QualificationScorecard",
+    "PROMOTION_STATES",
     "ScoreDimension",
     "ValidationResult",
 ]

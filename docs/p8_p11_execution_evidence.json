@@ -1,5 +1,5 @@
 {
-  "schema_version": "webpent-p8-p11-execution-v1",
+  "schema_version": "webpent-p8-p11-execution-v2",
   "qualification_status": "NOT_QUALIFIED",
   "p8": {
     "targeted_test_command": "PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_control_plane_local_harness.py tests/test_browser_target_backed_proof.py tests/test_browser_proof_runner.py tests/test_identity_matrix_facade.py tests/test_cli_identity_profiles_ownership.py",
@@ -32,11 +32,39 @@
     "target_contacted_by_fixture_report": false,
     "blocker": "Natural authenticated workflow and lab-provisioned session were unavailable; no bypass was used"
   },
+  "p11": {
+    "full_pytest_passed": 1745,
+    "full_pytest_duration_seconds": 63.54,
+    "ruff_passed": true,
+    "compileall_passed": true,
+    "g02": {
+      "errors": [],
+      "external_target_contacted": false,
+      "passed": true
+    },
+    "release_verify": {
+      "errors": [],
+      "offline_only": true,
+      "passed": true,
+      "signature_status": "operator_key_required",
+      "target_contacted": false
+    }
+  },
   "promotion": {
+    "promotion_ladder": [
+      "NOT_READY",
+      "ENGINEERING_READY",
+      "EVIDENCE_READY",
+      "BENCHMARK_QUALIFIED",
+      "DISTRIBUTED_QUALIFIED",
+      "VIP_QUALIFIED"
+    ],
+    "current_promotion_state": "ENGINEERING_READY",
     "vip_qualified": false,
     "required_gates_still_blocked": [
       "P9 distributed runtime qualification",
       "P10 authenticated WAPTLab three-run benchmark"
-    ]
+    ],
+    "note": "Promotion states are governance classifications and do not convert offline or mock evidence into target-backed qualification."
   }
 }

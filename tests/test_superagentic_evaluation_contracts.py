@@ -69,3 +69,98 @@ def test_scorecard_integrity_seal_is_deterministic_for_same_inputs() -> None:
     )
     assert first.integrity_signature == second.integrity_signature
     assert first.qualification_status == "blocked"
+
+
+def test_promotion_state_requires_successive_evidence_gates() -> None:
+    behavior = evaluate_behavior_results((_result(),))
+
+    engineering = QualificationScorecard.build(
+        revision="abc123", behavior=behavior, full_regression_passed=True
+    )
+    assert engineering.promotion_state == "ENGINEERING_READY"
+
+    evidence = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+    )
+    assert evidence.promotion_state == "EVIDENCE_READY"
+
+    benchmark = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+        live_qualification_runs=3,
+        live_qualification_passed=True,
+    )
+    assert benchmark.promotion_state == "BENCHMARK_QUALIFIED"
+
+    distributed = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+        live_qualification_runs=3,
+        live_qualification_passed=True,
+        distributed_qualification_passed=True,
+    )
+    assert distributed.promotion_state == "DISTRIBUTED_QUALIFIED"
+
+    vip = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+        live_qualification_runs=3,
+        live_qualification_passed=True,
+        distributed_qualification_passed=True,
+        release_artifacts_consistent=True,
+        independent_review_approved=True,
+    )
+    assert vip.promotion_state == "VIP_QUALIFIED"
+    assert vip.qualification_status == "qualified"
+
+
+def test_promotion_state_never_skips_live_benchmark_or_distributed_gate() -> None:
+    behavior = evaluate_behavior_results((_result(),))
+    scorecard = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+        live_qualification_runs=3,
+        live_qualification_passed=False,
+        distributed_qualification_passed=True,
+        release_artifacts_consistent=True,
+        independent_review_approved=True,
+    )
+    assert scorecard.promotion_state == "EVIDENCE_READY"
+    assert scorecard.promotion_state != "VIP_QUALIFIED"
+    assert scorecard.qualification_status == "blocked"
+
+
+def test_promotion_state_is_serialized_and_integrity_bound() -> None:
+    behavior = evaluate_behavior_results((_result(),))
+    scorecard = QualificationScorecard.build(
+        revision="abc123",
+        behavior=behavior,
+        full_regression_passed=True,
+        evidence_ready=True,
+    )
+    payload = scorecard.as_dict()
+    assert payload["promotion_state"] == "EVIDENCE_READY"
+    assert payload["evidence_ready"] is True
+    assert len(payload["integrity_signature"]) == 64
+    assert {
+        "NOT_READY",
+        "ENGINEERING_READY",
+        "EVIDENCE_READY",
+        "BENCHMARK_QUALIFIED",
+        "DISTRIBUTED_QUALIFIED",
+        "VIP_QUALIFIED",
+    } >= {payload["promotion_state"]}
+
+
+# End of appended promotion-state contract tests.
