@@ -58,6 +58,7 @@ from webpent.shared.persistent_finding_ledger import (
     PersistentFindingLedger,
     current_release_id,
 )
+from webpent.shared.target_spec import TargetSpec, load_target_spec
 from webpent.shared.target_workspace import build_target_workspace
 from webpent.shared.target_workspace_context import activate_target_workspace
 from webpent.state.initial_state import build_initial_state
@@ -336,8 +337,14 @@ def _perform_preflight_check() -> bool:
 
 @app.command()
 def scan(
-    url: str = typer.Option(
-        ..., "--url", "-u", help="Target URL (must include http:// or https://)."
+    url: str | None = typer.Option(
+        None, "--url", "-u", help="Target URL (must include http:// or https://)."
+    ),
+    target_spec_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--target-spec",
+        "--config",
+        help="Local JSON/YAML TargetSpec with explicit authorization and bounded scope.",
     ),
     creds: str | None = typer.Option(
         None, "--creds", "-c", help="Credentials in 'user:pass' format for authenticated scanning."
@@ -382,8 +389,8 @@ def scan(
         None,
         "--profile",
         help=(
-            "Composition profile: legacy, smart, smart-observe, authorized-active, "
-            "or vip-qualification."
+            "Composition profile: legacy, smart, smart-observe, single-target-safe, "
+            "authenticated-single-target, authorized-active, or vip-qualification."
         ),
     ),
     thread_id: str | None = typer.Option(
@@ -487,6 +494,11 @@ def scan(
         "--no-llm",
         help="Disable LLM assistance for this run without changing .env.",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate configuration and print the execution plan without target I/O.",
+    ),
     payload_file: Path | None = typer.Option(  # noqa: B008
         None,
         "--payload-file",
@@ -513,9 +525,30 @@ def scan(
 ) -> None:
     """Trigger a full pentest engagement against a target."""
 
-    # --- Validate URL and optional per-run authority profile ---
-    if not url.startswith(("http://", "https://")):
-        err_console.print("[red]Error:[/red] URL must start with http:// or https://")
+    # --- Admit an optional TargetSpec before any target-facing preflight ---
+    admitted_spec: TargetSpec | None = None
+    if target_spec_file is not None:
+        try:
+            admitted_spec = load_target_spec(target_spec_file)
+        except ValueError as exc:
+            err_console.print(f"[red]Error:[/red] invalid target spec: {exc}")
+            raise typer.Exit(1) from exc
+        if url is not None and url != admitted_spec.base_url:
+            err_console.print("[red]Error:[/red] --url does not match TargetSpec.base_url")
+            raise typer.Exit(1)
+        url = admitted_spec.base_url
+        if profile is None:
+            profile = admitted_spec.profile.replace("_", "-")
+        if engagement_id is None:
+            engagement_id = admitted_spec.engagement_id
+        decision = admitted_spec.scope_validator().decide(url)
+        if not decision.allowed:
+            err_console.print(
+                f"[red]Error:[/red] TargetSpec rejected base URL: {decision.reason_code}"
+            )
+            raise typer.Exit(1)
+    if url is None or not url.startswith(("http://", "https://")):
+        err_console.print("[red]Error:[/red] provide a valid --url or --target-spec")
         raise typer.Exit(1)
     try:
         configured_mode = get_settings().scan_mode
@@ -551,7 +584,8 @@ def scan(
     except ValueError as exc:
         err_console.print(
             "[red]Error:[/red] choose --profile legacy, smart, smart-observe, "
-            "authorized-active, vip-qualification; or a compatible --mode"
+            "single-target-safe, authenticated-single-target, authorized-active, "
+            "vip-qualification; or a compatible --mode"
         )
         raise typer.Exit(1) from exc
 
@@ -634,6 +668,33 @@ def scan(
     if any(not isinstance(item, (str, dict)) for item in disclosed_report_corpus):
         err_console.print("[red]Error:[/red] disclosed reports must be strings or JSON objects")
         raise typer.Exit(1)
+
+    if dry_run:
+        plan = {
+            "dry_run": True,
+            "target": {
+                "base_url": url,
+                "engagement_id": engagement_id,
+                "target_spec": str(target_spec_file) if target_spec_file else None,
+                "target_spec_admitted": admitted_spec is not None,
+            },
+            "profile": resolved_profile.value,
+            "authority_mode": resolved_mode.value,
+            "scope": {
+                "additional_origins": declared_additional_origins,
+                "private_target_opt_in": bool(
+                    admitted_spec.allow_private_target if admitted_spec else False
+                ),
+            },
+            "budgets": {
+                "action_budget": get_settings().smart_action_budget,
+                "max_actions": get_settings().smart_max_actions,
+                "request_budget": "runtime-configured",
+            },
+            "target_io_performed": False,
+        }
+        console.print_json(json.dumps(plan, sort_keys=True))
+        return
 
     # --- Pre-flight health check ---
     playwright_enabled = _perform_preflight_check()
@@ -1101,6 +1162,12 @@ def preflight() -> None:
         console.print("\n[yellow]⚠ Playwright is disabled — sandbox will skip gracefully.[/yellow]")
 
 
+@app.command("doctor")
+def doctor() -> None:
+    """Run local environment diagnostics without scanning a target."""
+    preflight()
+
+
 @app.command("status")
 def status(
     profile: str = typer.Option(
@@ -1108,7 +1175,8 @@ def status(
         "--profile",
         help=(
             "Composition profile to inspect: legacy, smart, smart-observe, "
-            "authorized-active, vip-qualification."
+            "single-target-safe, authenticated-single-target, authorized-active, "
+            "vip-qualification."
         ),
     ),
 ) -> None:
@@ -1516,19 +1584,49 @@ def investigate_command(
 def report_command(
     manifest: str = typer.Option("webpent-engagement.json", "--manifest", "-f"),
     output: str | None = typer.Option(None, "--output", "-o"),
-    format: str = typer.Option("json", "--format", help="json or html"),
+    format: str = typer.Option("json", "--format", help="json, md, or html"),
+    run_id: str | None = typer.Option(None, "--run-id"),
 ) -> None:
     """Export a redacted manifest-backed report in JSON or HTML."""
     import html
 
     _path, document = _manifest_or_exit(manifest)
-    if format not in {"json", "html"}:
-        err_console.print("[red]Error:[/red] report format must be json or html")
+    if format not in {"json", "md", "html"}:
+        err_console.print("[red]Error:[/red] report format must be json, md, or html")
         raise typer.Exit(1)
+    if run_id:
+        runs = document.get("runs", [])
+        selected = [
+            item for item in runs if isinstance(item, dict) and str(item.get("id")) == run_id
+        ]
+        if not selected:
+            err_console.print(f"[red]Error:[/red] run id not found: {run_id}")
+            raise typer.Exit(1)
+        document = {**document, "runs": selected}
     output_path = Path(output).expanduser() if output else Path("webpent-report." + format)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if format == "json":
         output_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    elif format == "md":
+        engagement = document.get("engagement", {})
+        scope = document.get("scope", [])
+        findings = document.get("findings", [])
+        lines = [
+            f"# {engagement.get('name', 'WebPent Report')}",
+            "",
+            f"- Engagement ID: `{engagement.get('id', 'unknown')}`",
+            f"- Scope entries: {len(scope) if isinstance(scope, list) else 0}",
+            f"- Findings: {len(findings) if isinstance(findings, list) else 0}",
+            "",
+            "## Findings",
+            "",
+        ]
+        for item in findings if isinstance(findings, list) else []:
+            if isinstance(item, dict):
+                title = item.get("title", item.get("id", ""))
+                status = item.get("status", "unknown")
+                lines.append(f"- **{title}** — {status}")
+        output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     else:
         title = html.escape(str(document.get("engagement", {}).get("name", "WebPent Report")))
         findings = document.get("findings", [])
@@ -1668,9 +1766,49 @@ def knowledge_command(
     _emit_artifact_json(knowledge, output)
 
 
+@app.command("verify-run")
+def verify_run_command(
+    run_id: str = typer.Option(..., "--run-id"),
+    artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    output: str = typer.Option("table", "--output", "-o"),
+) -> None:
+    """Verify recorded run metadata locally; no target request or PoC is executed."""
+    _path, document = _artifact_document(artifact)
+    runs = document.get("runs", [])
+    run = next(
+        (item for item in runs if isinstance(item, dict) and str(item.get("id")) == run_id),
+        None,
+    )
+    if run is None:
+        err_console.print(f"[red]Error:[/red] run id not found: {run_id}")
+        raise typer.Exit(1)
+    bundles = document.get("proof_bundles", [])
+    matching = [
+        item
+        for item in bundles if isinstance(item, dict) and str(item.get("run_id", "")) == run_id
+    ]
+    complete = bool(matching) and all(
+        bool(item.get("sealed"))
+        and bool(item.get("verify_seal"))
+        and str(item.get("replay_status", "")).lower() == "passed"
+        for item in matching
+    )
+    result = {
+        "artifact": str(_path),
+        "run_id": run_id,
+        "recorded_status": run.get("status", "unknown"),
+        "proof_bundle_count": len(matching),
+        "proof_contract_complete": complete,
+        "live_verification_performed": False,
+        "qualification_decision": "confirmed" if complete else "not_confirmed",
+    }
+    _emit_artifact_json(result, output)
+
+
 @app.command("replay")
 def replay_command(
     artifact: str = typer.Option("webpent-engagement.json", "--artifact", "-f"),
+    run_id: str | None = typer.Option(None, "--run-id"),
     evidence_id: str | None = typer.Option(None, "--evidence-id"),
     output: str = typer.Option("table", "--output", "-o"),
 ) -> None:
@@ -1681,6 +1819,8 @@ def replay_command(
     rows: list[dict[str, Any]] = []
     for item in bundles if isinstance(bundles, list) else []:
         if not isinstance(item, dict):
+            continue
+        if run_id and str(item.get("run_id", "")) != run_id:
             continue
         if evidence_id and str(item.get("evidence_id", item.get("id", ""))) != evidence_id:
             continue

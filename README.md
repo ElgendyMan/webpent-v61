@@ -227,24 +227,53 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ## التشغيل المحلي
 
-تحقق من options الفعلية في النسخة التي ستشغلها:
+ابدأ دائمًا بـTargetSpec يصف هدفًا واحدًا وتصريحًا واحدًا ونطاقًا واحدًا. لا يُعتبر وجود عنوان loopback تفويضًا تلقائيًا؛ يجب أن يكون opt-in صريحًا للـlocal lab، مع canonical origin وhost وport وpath وredirect policy وrequest budget.
 
 ```bash
 python main.py --help
 python main.py scan --help
-python main.py status --profile smart-observe
-python main.py preflight
+python main.py status --profile single-target-safe
+python main.py doctor
 ```
 
-مثال على local lab مصرح به:
+مثال آمن على Juice Shop محلي مصرح به، باستخدام ملف `/tmp/juice-target-spec.json` خارج Git:
 
 ```bash
 python main.py scan \
-  --url http://127.0.0.1:4280 \
-  --profile smart-observe
+  --config /tmp/juice-target-spec.json \
+  --profile single-target-safe \
+  --dry-run
+
+python main.py scan \
+  --config /tmp/juice-target-spec.json \
+  --profile single-target-safe \
+  --no-llm \
+  --report-format json
 ```
 
-`--profile` يحدد composition والسياسة الفعلية للحملة. لا تستخدم `--auto-approve` إلا على lab مصرح به وبعد مراجعة scope والسياسة. الوضع الافتراضي يحافظ على Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
+`--dry-run` يطبع admission وscope والميزانيات ولا يرسل أي request ولا يفتح browser. استخدم `single-target-safe` للمسار المقيد، وراجع نتيجة `doctor` قبل التشغيل. عند غياب capability مثل `dalfox` أو `sqlmap` أو `subfinder` يجب أن يظهر `Missing` أو `blocked`/`coverage gap`، وليس `clean`.
+
+للتدقيق المحلي في artifact مسجل، بدون target I/O أو تشغيل PoC:
+
+```bash
+python main.py verify-run \
+  --artifact /path/to/webpent-engagement.json \
+  --run-id RUN_ID \
+  --output json
+
+python main.py replay \
+  --artifact /path/to/webpent-engagement.json \
+  --run-id RUN_ID \
+  --output json
+
+python main.py report \
+  --artifact /path/to/webpent-engagement.json \
+  --run-id RUN_ID \
+  --format md \
+  --output webpent-report.md
+```
+
+`--profile` يحدد composition والسياسة الفعلية للحملة. لا تستخدم `--auto-approve` إلا على lab مصرح به وبعد مراجعة scope والسياسة. الوضع الافتراضي يحافظ على Human-in-the-Loop قبل العمليات النشطة أو الحساسة. لا تضع credentials أو cookies أو OTPs أو API keys داخل TargetSpec أو logs أو reports.
 
 ## الاختبارات وبوابات الإصدار
 
@@ -287,16 +316,18 @@ manifest hashes == current tracked source hashes
 
 هذه الخطوة ضرورية لإغلاق provenance، ولا تعني أن source code الحالي غير صالح.
 
-### 2. Live VIP qualification على WAPTLab
+### 2. Live qualification على Juice Shop والمسار المنفصل لـWAPTLab
 
-لم يتم اجتياز qualification الحية. WAPTLab المحلي أعاد `HTTP 403` على health/register وCatalog #6 في الجولة الأخيرة، ولذلك لم يتم استخدام bypass أو قراءة database أو sessions أو OTPs.
+تم تنفيذ validation محلي محدود على Juice Shop loopback. نجح P8 للـtyped search workflow المسموح، كما أنتجت جولة bounded discovery تقريرًا redacted فيه 12 ملاحظة، لكن `confirmed_count=0` و`evidence_confirmed_count=0`؛ الملاحظات غير المؤكدة أو المحجوبة لا تُحسب qualification.
 
-المطلوب بعد عودة التدفقات الطبيعية للعمل:
+تقرير Juice Shop الحالي يظل `P10 not qualified`: تم توثيق أربع جولات XSS مع فشل طبيعي في `xss01` وثلاث proofs ناجحة، لكن mapping المستقل جزئي، والـcoverage ما زال workflow/class واحدًا، لذلك لا يجوز حساب precision/recall أو ترقية النتيجة إلى catalog benchmark.
+
+أما WAPTLab فهو **مسار مستقل لاحق** ببيئة وengagement وartifacts منفصلة. لا تُخلط نتائجه مع Juice Shop، ولا يوقف فشل WAPTLab تشغيل الـcore scanner. أي qualification حية مستقبلية يجب أن تحقق على الأقل:
 
 | الشرط | المطلوب |
 |---|---|
 | Independent repetitions | 3 جولات مستقلة مع reset نظيف لكل جولة |
-| Coverage | على الأقل 15 confirmed findings من catalog المطلوب في كل جولة |
+| Coverage | على الأقل 15 confirmed findings من catalog المعتمد في كل جولة |
 | Precision | لا تقل عن 90% |
 | Reproducibility | لا تقل عن 95% |
 | Proof coverage | 100% من confirmations لديها causal signal وnegative control وsealed/replayable ProofBundle |
@@ -304,7 +335,7 @@ manifest hashes == current tracked source hashes
 | Deduplication | صفر duplicates تؤثر على metric |
 | Scope safety | صفر scope violations |
 
-لا يجوز استخدام candidates أو offline fixtures أو نتائج تراكمية من engagements مختلفة بدل هذه الشروط.
+لا يجوز استخدام candidates أو offline fixtures أو نتائج تراكمية من engagements مختلفة بدل هذه الشروط، ولا يجوز تجاوز 403 أو signup/login/OTP/auth barriers بطرق غير مصرح بها.
 
 ### 3. Distributed production qualification
 
@@ -320,7 +351,7 @@ manifest hashes == current tracked source hashes
 
 ### 4. Runtime discovery capabilities
 
-بعض أدوات discovery الخارجية capability-dependent. عند عدم وجود الأداة يجب أن يظهر gap أو blocked state صريح، لا clean. يلزم اختبار runtime حقيقي لكل أداة يريد المستخدم اعتبارها جزءًا من autonomous workflow، خصوصًا typed browser handler وPlaywright proof plane وأدوات discovery المساندة.
+بعض أدوات discovery الخارجية capability-dependent. `doctor` الحالي يؤكد أن Playwright وLLM provider متاحان، بينما `subfinder` و`dalfox` و`sqlmap` قد تظهر كـ`Missing` في البيئة الحالية. عند عدم وجود الأداة يجب أن يظهر gap أو blocked state صريح، لا clean. يلزم تثبيت واختبار runtime حقيقي لكل أداة يريد المستخدم اعتبارها جزءًا من autonomous workflow، خصوصًا typed browser handler وPlaywright proof plane وأدوات discovery المساندة.
 
 ### 5. Live provider adapters وauto-submission
 

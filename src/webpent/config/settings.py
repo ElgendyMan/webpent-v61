@@ -54,6 +54,8 @@ class ScanProfile(str, Enum):
     LEGACY = "legacy"
     SMART = "smart"
     SMART_OBSERVE = "smart-observe"
+    SINGLE_TARGET_SAFE = "single-target-safe"
+    AUTHENTICATED_SINGLE_TARGET = "authenticated-single-target"
     AUTHORIZED_ACTIVE = "authorized-active"
     VIP_QUALIFICATION = "vip-qualification"
 
@@ -62,6 +64,8 @@ _PROFILE_TO_SCAN_MODE: dict[ScanProfile, ScanMode] = {
     ScanProfile.LEGACY: ScanMode.LEGACY,
     ScanProfile.SMART: ScanMode.SAFE_SMART,
     ScanProfile.SMART_OBSERVE: ScanMode.SAFE_SMART,
+    ScanProfile.SINGLE_TARGET_SAFE: ScanMode.SAFE_SMART,
+    ScanProfile.AUTHENTICATED_SINGLE_TARGET: ScanMode.SAFE_SMART,
     ScanProfile.AUTHORIZED_ACTIVE: ScanMode.AUTHORIZED_ACTIVE,
     ScanProfile.VIP_QUALIFICATION: ScanMode.AUTHORIZED_ACTIVE,
 }
