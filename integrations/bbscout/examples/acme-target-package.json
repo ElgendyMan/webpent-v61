@@ -1,0 +1,209 @@
+{
+  "authorization": {
+    "confirmed_at": "2026-08-22T13:56:04Z",
+    "package_expires_at": "2026-08-29T13:56:04Z",
+    "read_only_discovery": true,
+    "revoked": false,
+    "user_confirmed": true
+  },
+  "capability_profile": {
+    "confirmation": {
+      "negative_controls": true,
+      "oob": false,
+      "replay": true,
+      "second_identity": true
+    },
+    "generated_at": "2026-08-22T10:00:00Z",
+    "profile_version": "webpent-local-qualification-v1",
+    "qualified_capabilities": {
+      "api": true,
+      "browser": true,
+      "graphql": false,
+      "identity": true,
+      "upload": false
+    },
+    "validators": {
+      "business_logic": true,
+      "csrf": true,
+      "idor": true,
+      "injections": false,
+      "mass_assignment": true,
+      "ssrf": false,
+      "tenant_isolation": true,
+      "xss": true
+    }
+  },
+  "integrity": {
+    "content_sha256": "ae5522e1fb337d6f3474e6951af2e97ea35750fd77c67a436f28e32afdf6e88e",
+    "detached_signature": null,
+    "signature_state": "unsigned-local-mvp"
+  },
+  "package_status": "ready",
+  "package_version": "target-package.schema.v2",
+  "policy": {
+    "enforcement_state": "reviewed_as_provider_source_only",
+    "policy_present": true,
+    "raw_policy_sha256": "daae09639f5641fb8d68a83c4dd0d282ab21c2d0b5a44957fcb25ad5f58d0039"
+  },
+  "program": {
+    "handle": "acme-api",
+    "name": "Acme API",
+    "stable_program_id": "1001",
+    "status": "open",
+    "visibility": "public_mode"
+  },
+  "provider": "hackerone",
+  "redaction": {
+    "artifact_classification": "internal-authorized-target-metadata",
+    "secret_scan": "passed"
+  },
+  "scope": {
+    "exclusion_count": 1,
+    "include_count": 3,
+    "normalized_rules": [
+      {
+        "action": "include",
+        "asset_type": "url",
+        "decision_reason": "Structured provider URL scope; apex remains excluded for wildcard rules unless separately included.",
+        "host": "api.acme.example",
+        "path": "/v1",
+        "port": null,
+        "raw_value": "https://api.acme.example/v1",
+        "rule_id": "include:501",
+        "scheme": "https",
+        "source_asset_id": "501",
+        "wildcard": false
+      },
+      {
+        "action": "include",
+        "asset_type": "url",
+        "decision_reason": "Structured provider URL scope; apex remains excluded for wildcard rules unless separately included.",
+        "host": "app.acme.example",
+        "path": "/",
+        "port": null,
+        "raw_value": "https://app.acme.example/",
+        "rule_id": "include:502",
+        "scheme": "https",
+        "source_asset_id": "502",
+        "wildcard": false
+      },
+      {
+        "action": "include",
+        "asset_type": "domain",
+        "decision_reason": "Structured provider domain scope; wildcard does not include apex unless separately listed.",
+        "host": "*.sandbox.acme.example",
+        "path": null,
+        "port": null,
+        "raw_value": "*.sandbox.acme.example",
+        "rule_id": "include:503",
+        "scheme": null,
+        "source_asset_id": "503",
+        "wildcard": true
+      },
+      {
+        "action": "exclude",
+        "asset_type": "url",
+        "decision_reason": "Structured provider URL scope; apex remains excluded for wildcard rules unless separately included.",
+        "host": "status.acme.example",
+        "path": "/",
+        "port": null,
+        "raw_value": "https://status.acme.example/",
+        "rule_id": "exclude:504",
+        "scheme": "https",
+        "source_asset_id": "504",
+        "wildcard": false
+      }
+    ],
+    "redirect_policy": "Every redirect destination must independently match a ready package rule.",
+    "status": "ready",
+    "warnings": [],
+    "wildcard_policy": "Wildcard includes subdomains only; apex requires an explicit include rule."
+  },
+  "selection": {
+    "confidence": "high",
+    "features": {
+      "attack_surface_richness": {
+        "confidence": "medium",
+        "evidence": [
+          "api",
+          "browser"
+        ],
+        "value": 0.5
+      },
+      "auth_workflow_testability": {
+        "confidence": "medium",
+        "evidence": [
+          "browser"
+        ],
+        "value": 0.5
+      },
+      "confirmation_feasibility": {
+        "confidence": "high",
+        "evidence": [
+          "negative_controls",
+          "replay"
+        ],
+        "value": 1.0
+      },
+      "historical_calibration": {
+        "confidence": "low",
+        "evidence": [
+          "local profile calibration"
+        ],
+        "value": 0.0
+      },
+      "scope_clarity": {
+        "confidence": "high",
+        "evidence": [
+          "3 include rules",
+          "1 exclusion rules"
+        ],
+        "value": 0.9
+      },
+      "stability_operational_cost": {
+        "confidence": "medium",
+        "evidence": [
+          "status=open"
+        ],
+        "value": 0.7
+      },
+      "validator_coverage": {
+        "confidence": "high",
+        "evidence": [
+          "business_logic",
+          "csrf",
+          "idor",
+          "mass_assignment",
+          "xss"
+        ],
+        "value": 0.714
+      },
+      "webpent_capability_fit": {
+        "confidence": "high",
+        "evidence": [
+          "api",
+          "browser"
+        ],
+        "value": 1.0
+      }
+    },
+    "ranking_model_version": "bbscout-score-v1",
+    "reasons": [
+      "قدرات مؤهلة متوافقة: api, browser",
+      "إشارات surface موثقة: api, browser",
+      "يوجد wildcard؛ الـ apex والـ redirects يظلوا خارج التصريح إلا بقواعد مستقلة."
+    ],
+    "score": 72.71,
+    "uncertainty_interval": [
+      65.71,
+      79.71
+    ]
+  },
+  "source": {
+    "adapter_version": "hackerone-fixture-v1",
+    "provider_schema_version": "adapter-controlled",
+    "retrieved_at": "2026-08-22T13:56:04Z",
+    "source_response_sha256": "bde54e2536d99d4c6e670a706f4e31254ce53e7d0bb6299a688120ce284acae2",
+    "source_url": "https://hackerone.com/acme-api"
+  }
+}

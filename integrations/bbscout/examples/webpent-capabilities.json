@@ -1,0 +1,27 @@
+{
+  "profile_version": "webpent-local-qualification-v1",
+  "generated_at": "2026-08-22T10:00:00Z",
+  "qualified_capabilities": {
+    "api": true,
+    "graphql": false,
+    "browser": true,
+    "upload": false,
+    "identity": true
+  },
+  "validators": {
+    "idor": true,
+    "tenant_isolation": true,
+    "mass_assignment": true,
+    "ssrf": false,
+    "xss": true,
+    "injections": false,
+    "csrf": true,
+    "business_logic": true
+  },
+  "confirmation": {
+    "replay": true,
+    "negative_controls": true,
+    "second_identity": true,
+    "oob": false
+  }
+}

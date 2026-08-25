@@ -15,7 +15,7 @@
 #   make clean         # Remove containers + volumes
 # =============================================================================
 
-.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor prod-config prod-up prod-health prod-down test test-count test-unit coverage lint security ci g02-check install-hooks clean
+.PHONY: build-base build-app build dev-init dev-up dev-down close dev-reset dev-logs dev-reinstall doctor prod-config prod-up prod-health prod-down test test-count test-unit coverage lint security ci g02-check release-manifest release-verify vip-quality-gate install-hooks clean
 
 # Docker image names. Override RELEASE_TAG/BASE_IMAGE/APP_IMAGE in CI when
 # publishing to a registry; the default is immutable for the current commit.
@@ -229,6 +229,17 @@ prod-down:
 # =============================================================================
 # Testing and quality gates
 # =============================================================================
+
+PYTHON ?= python3
+
+release-manifest:
+	@$(PYTHON) scripts/build_release_manifest.py
+
+release-verify: release-manifest
+	@$(PYTHON) scripts/verify_release_artifacts.py --repo . --manifest docs/release_manifest.json
+
+vip-quality-gate:
+	@$(PYTHON) scripts/run_vip_quality_gate.py
 
 test-count:
 	@PYTHONPATH=src python3 scripts/verify_test_count.py --minimum 368

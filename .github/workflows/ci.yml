@@ -129,6 +129,13 @@ jobs:
           tests/test_v61_remaining_plan_artifacts.py
           --strict-markers --tb=short
 
+      - name: Build and verify release manifest against checkout
+        run: |
+          uv run python scripts/build_release_manifest.py
+          uv run python scripts/verify_release_artifacts.py \
+            --repo . \
+            --manifest docs/release_manifest.json
+
       - name: Upload quality artifacts
         if: always()
         uses: actions/upload-artifact@v4

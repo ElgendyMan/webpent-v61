@@ -45,9 +45,6 @@ dependencies = [
     # Providers are imported lazily, so offline mode remains available;
     # these floors keep configured online paths reproducible and patched.
     "langchain-anthropic>=1.4.6,<2.0",
-    "langchain-chroma>=0.2.3,<1.0",
-    "chromadb>=0.5.0,<1.0",
-    "sentence-transformers>=2.7.0",
     # Security floor: PYSEC-2026-3655/PYSEC-2026-3656 are fixed in 6.15.0.
     "pypdf>=6.15.0",
     "pydantic>=2.7.0",
@@ -86,13 +83,22 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=8.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.5.0",
     "mypy>=1.10.0",
     "bandit>=1.7.0,<2.0",
     "pip-audit>=2.7.0,<3.0",
+]
+# RAG is opt-in. WebPent uses Chroma only through a local embedded client;
+# it never starts or connects to a Chroma server. The default/core install
+# therefore does not carry the server package. Install this extra only after
+# reviewing current Chroma advisories and keep DISABLE_RAG=true in release CI.
+rag = [
+    "langchain-chroma>=0.2.3,<1.0",
+    "chromadb>=1.0.0,<2.0",
+    "sentence-transformers>=2.7.0",
 ]
 
 [project.scripts]
@@ -108,7 +114,7 @@ webpent = ["templates/**/*.j2"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-pythonpath = ["src", "."]
+pythonpath = ["src", ".", "integrations/bbscout/src"]
 addopts = "-ra --strict-markers --strict-config"
 asyncio_mode = "auto"
 

@@ -1,191 +1,83 @@
 # WebPent
 
-**Current release candidate:** `0.3.1` — tested on Python `3.12.3`; resolved LangGraph `1.2.11` and `langgraph-checkpoint-sqlite` `3.1.1`. The current source revision is recorded by Git and the release manifest; the latest additive patch fixes adapter timestamp expiry handling and preserves execution telemetry through the final CLI export. The canonical identity and qualification boundary are maintained in [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md), and the phase-by-phase delivery matrix is in [`docs/PASTED_CONTENT_3_EXECUTION_STATUS.md`](docs/PASTED_CONTENT_3_EXECUTION_STATUS.md).
+**WebPent** هو إطار عمل Python لاختبار اختراق تطبيقات الويب داخل نطاق مصرح ومحدد. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، تحليل الهوية والصلاحيات، التخطيط bounded، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، التقارير redacted، والتكامل الاختياري مع LLM. التصميم يفصل بوضوح بين **الملاحظة** و**الفرضية** و**التنفيذ** و**الدليل** و**الـFinding**.
 
-WebPent هو إطار عمل لاختبار اختراق تطبيقات الويب مبني على Python وFastAPI وCelery وLangGraph وPydantic. يجمع بين الاكتشاف الحتمي، إدارة الفرضيات، التحقق القابل لإعادة التشغيل، الذاكرة وRAG، والتحليل الاختياري بالـLLM، مع فصل واضح بين الملاحظة والفرضية والدليل والـFinding.
+> **الحالة الحالية:** WebPent هو **Evidence-Aware Bounded Autonomous Bug-Hunting Framework** وليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد. لديه authority وscope وidentity isolation وProofBundle وreplay وnegative-control gates، لكن qualification الحية المستقلة لم تكتمل بعد.
 
-> **الحالة الحالية:** نسخة **Evidence-Aware Bounded Autonomous Bug Hunter** مع تكامل `bbscout Target Package v2`. التكامل موصول ومختبر offline عبر CLI وFastAPI/Celery first-run وresume، بالإضافة إلى Target Brain وKnowledge/Attack Graph وbounded research planning وspecialized researcher contracts وmemory/LLM boundaries وadmission وengagement binding وscope/action authorization وcapability preflight وvalidator continuity وProofBundle والتقارير. أضيفت الآن execution observations منزوعة الحساسية من `execution_sandbox` إلى checkpoint وJSON/Markdown/HTML، مع digest فقط للـpayload وعدم ترقيته إلى دليل. المشروع **ليس VIP Smart Autonomous Bug Hunter مؤهلًا رسميًا بعد**؛ راجع قسم القيود قبل أي تشغيل حي.
+> **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه على أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح. هذا المشروع لا يرسل تقارير تلقائيًا إلى منصات bug bounty ولا ينفذ signup/login أو أي إجراء خارجي دون policy وauthorization وHuman-in-the-Loop مناسبة.
 
-> **تنبيه قانوني:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه ضد أهداف عامة أو أنظمة طرف ثالث دون تفويض صريح.
+## الحكم التنفيذي الحالي
 
-## الحكم الحالي والنتائج الموثقة
+التقييم الهندسي الموثق هو **76/100 Engineering Maturity**. هذه النسبة تقيس نضج البنية، سلامة النطاق، authority، جودة الإثبات، orchestration، recovery، والـruntime readiness. لا تعني أن النظام يكتشف 76% من الثغرات، ولا تعني أنه اجتاز qualification حيًا.
 
-الحكم الهندسي الحالي هو **Evidence-Aware Bounded Autonomous Bug Hunter — 76/100 engineering maturity**، وليس ادعاءً بتغطية شاملة أو تأهل VIP. آخر مراجعة للطلبات والتنفيذ موثقة في [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md)، وسجل المراحل في [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md). التقييم 76/100 هو maturity هندسية، وليس نسبة اكتشاف ثغرات ولا عدد findings ولا qualification.
+الحكم التشغيلي الحالي هو:
 
-الـGit source revision والأدلة المرتبطة به مثبتة في `docs/release_manifest.json` وملفات التتبع داخل هذه النسخة؛ الهوية الحالية نفسها موثقة في [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md). الـmetadata commit النهائي مسجل في manifest، ولا يُخلط ذلك مع implementation source revision المسجل في canonical release identity.
+> **Bounded Autonomous Bug-Hunting Framework — NOT VIP-qualified.**
 
-| البوابة | النتيجة |
+المشروع يستطيع تنظيم حملة داخل scope، توليد hypotheses، ترتيب actions، تشغيل validators، ربط findings بالأهداف والهويات، بناء ProofBundle مختومة، وإصدار تقارير redacted. لكنه لم يثبت بعد في ثلاث جولات حية مستقلة أنه يكتشف ويؤكد العدد المطلوب من الثغرات على target حقيقي مصرح به مع thresholds المطلوبة.
+
+| المعيار | الحالة الحالية |
 |---|---|
-| bbscout source/contract checks | External reviewed source configured; no vendoring |
-| WebPent clean checkout regression | full serial regression: 253 test files؛ 252 files passed، و`tests/test_target_package_v2_hardening.py` فقط optional bbscout skip (rc=5)؛ Ruff وcompileall وsecret audit وG-02 checker ناجحة |
-| Docker Compose dev smoke | Passed؛ API health، Redis PONG، Celery worker، Playwright 1.48.0، Nuclei 3.9.0، Chromium headless |
-| bbscout/WebPent bridge + settings contracts | Passed |
-| Release/plan-artifact audit suite | Passed |
-| G-02 inventory/runtime/precommit gate | Passed؛ direct-I/O inventory محفوظ في بوابة Phase 12 |
-| Ruff | Passed |
-| compileall | Passed |
-| `git diff --check` | Passed |
-| tracked-secret scan | Passed؛ لا high-confidence secrets في source/config المتتبع |
-| Offline release verifier | Passed؛ يرفض DB/WAL/SHM/journal/log artifacts؛ لا target contact |
-| Production API/worker bbscout parity | Passed؛ نفس policy variables وread-only mount؛ لا تعني distributed qualification |
-| Execution telemetry/report continuity | Passed؛ observations redacted تصل إلى checkpoint والتقرير النهائي، ولا تغيّر confirmation gate |
-| Research/Intelligence/Identity/Business Logic/Validation projections | Passed؛ passive, target/engagement-scoped، ولا تملك execution أو promotion authority |
-| VIP v2 offline qualification contract | Passed؛ يفرض 3 independent repetitions ويحسب metrics من runs supplied فقط؛ لا توجد نتائج live محفوظة |
-| Production qualification projection | Passed؛ fail-closed checks للـhealth/recovery/idempotency/secrets/TLS/logging/retention؛ distributed qualification نفسها غير مثبتة |
-| Browser adapter expiry contract | Passed؛ timestamp منتهي يُرفض، وdate-only صالح حتى نهاية يوم UTC |
+| Engineering maturity | `76/100` |
+| VIP qualification | `NOT_QUALIFIED` |
+| Qualification runs | `0/3` جولات حية مؤهلة مثبتة |
+| WAPTLab live qualification | غير مكتملة؛ التحقق الأخير تعطل بـ`HTTP 403` في التدفقات الطبيعية |
+| Strict live confirmed findings في qualification الحالية | `0` |
+| Promoted live ProofBundles في qualification الحالية | `0` |
+| G-02 direct-I/O gate | ناجح؛ `external_target_contacted=false` |
+| Full regression في آخر تحقق | `1739 passed, 6 skipped, 62 warnings` |
+| Release manifest | verifier ناجح على الشجرة الحالية؛ provenance يعاد توليده ضمن release gate |
 
-هذه النتائج تثبت العقود والـregressions وruntime smoke التي تم اختبارها محليًا، لكنها لا تثبت اكتشاف كل الثغرات على كل هدف، ولا تثبت qualification حيًا أو موزعًا. آخر scans منفصلة للابات المحلية المصرح بها أنتجت 6 candidates في Juice Shop و4 candidates في WAPTLab؛ كلّها بقيت unconfirmed، مع 0 ProofBundle promoted. التشغيلات لا تُجمع تراكميًا بين الأهداف أو الـengagements. Target Intelligence وAttack Graph وhypothesis bridge وspecialist routing وValidationStatus وHITL levels تعمل كطبقات advisory فوق الـKernel. Adapters الـproviders والـbenchmark profiles في هذه النسخة تعمل عبر fixtures محلية Offline فقط؛ لا يُدّعى live compatibility أو live smoke لـBugcrowd أو Intigriti أو YesWeHack، وHackerOne live adapter ليس مشغّلًا في هذه الجولة.
+## ما الذي نُفذ في الخطة؟
 
-## ما هو Target Package v2؟
+### 1. Foundation وTarget Package v2
 
-`Target Package v2` هو عقد intake يصف البرنامج والهدف والنطاق والسياسة والقدرات ومصدر البيانات. الحزمة **تصف القيود ولا تمنح صلاحيات إضافية**. لا يمكن للحزمة أن توسع target scope أو تتجاوز `ActionAuthority` أو شروط الإثبات.
+تم بناء عقد intake يصف البرنامج والهدف والنطاق والسياسة والقدرات ومصدر البيانات. الحزمة تصف القيود ولا تمنح صلاحيات إضافية، ولا تستطيع توسيع scope أو تجاوز `ActionAuthority` أو شروط الإثبات.
 
-تمر الحزمة التنفيذية بالمسار التالي:
+تم تنفيذ والتحقق من العناصر التالية:
 
-```mermaid
-flowchart LR
-    source[bbscout package] --> digest[Canonical digest check]
-    digest --> signature[Detached Ed25519 verification]
-    signature --> confirm[Explicit confirmation]
-    confirm --> lease[One-time engagement lease]
-    lease --> scope[ScopeCompiler and policy decision]
-    scope --> capability[Capability preflight]
-    capability --> authority[Central ActionAuthority]
-    authority --> proof[Verifier and ProofBundle]
-    proof --> report[Redacted report continuity]
-```
+- canonical `content_sha256` مع فصل `source_response_sha256` عن hash محتوى الحزمة.
+- detached Ed25519 signature verification للحزم التنفيذية.
+- `EngagementFactory` مع one-time engagement lease في SQLite صغير لا يحفظ raw package أو secrets.
+- رفض package ID أو digest غير المطابق، والهدف الخارج عن النطاق، والحزمة المنتهية أو الملغاة، وإعادة استهلاك package أو engagement.
+- `ScopeCompiler` موحد يفحص scheme وhost وport وpath وwildcard وexclusion وmethod وaction class وredirect chain.
+- capability preflight يحول غياب capability إلى `blocked` أو `inconclusive` أو knowledge gap، وليس إلى `clean`.
 
-### قواعد admission والتنفيذ
+المكونات المركزية موجودة في [`src/webpent/shared/target_package_context.py`](src/webpent/shared/target_package_context.py)، و[`src/webpent/shared/engagement_factory.py`](src/webpent/shared/engagement_factory.py)، و[`src/webpent/shared/package_scope.py`](src/webpent/shared/package_scope.py)، و[`src/webpent/shared/package_preflight.py`](src/webpent/shared/package_preflight.py).
 
-يتم إعادة حساب `content_sha256` للتمثيل canonical داخل WebPent، بينما يبقى `source_response_sha256` دليلًا مستقلًا لمصدر الحزمة. لا يتم مقارنة hash المصدر مع hash محتوى الحزمة لأنهما يمثلان شيئَين مختلفين.
+### 2. Central Action Authority وsafe execution
 
-التنفيذ package-backed يتطلب detached Ed25519 signature بحالة `verified`، ومفتاحًا عامًا موثوقًا يمرره المستدعي وقت التشغيل. الحالة `unsigned-local-mvp` صالحة للمراجعة المحلية فقط، وليست صالحة لإنشاء engagement تنفيذي.
+كل action تنفيذي يجب أن يمر عبر authority المركزية. طبقات intelligence وRAG وLLM والـresearchers لا تملك صلاحية مستقلة لتنفيذ HTTP أو browser navigation أو توسيع scope أو ترقية candidate إلى confirmed.
 
-`EngagementFactory` ينشئ binding أحادي الاستهلاك في SQLite صغير لا يحفظ raw package أو secrets. يتم رفض confirmation الناقصة، ومخالفة package ID أو digest، والهدف الخارج عن النطاق، وانتهاء الحزمة أو إلغائها، وإعادة استهلاك الحزمة أو engagement ID.
+`ActionAuthority` وpolicy gates يحافظان على الفصل بين:
 
-### تشغيل الحزمة عبر نقاط التشغيل الفعلية
+| الطبقة | الدور | ما لا تستطيع فعله |
+|---|---|---|
+| Target Intelligence | بناء صورة عن الهدف والكيانات والـworkflows | لا تنفذ actions ولا تمنح confirmation |
+| Research/RAG | اقتراح knowledge أو hypotheses | لا تعتبر المحتوى تعليمات تنفيذ |
+| Attack Graph | ترتيب المسارات والاعتماديات | لا يتجاوز scope أو authority |
+| LLM | تلخيص وترتيب وتحسين proposals ضمن policy | لا ينتج evidence أو confirmation |
+| Action Executor | تنفيذ action مصرح ومراقب | لا يعمل خارج authority |
+| Validators | تحليل النتيجة وقرار الحالة | لا يحول missing evidence إلى clean |
+| Reporter | إصدار finding/report redacted | لا يرفع التقرير تلقائيًا لمزود خارجي |
 
-في CLI يمكن تشغيل الحزمة الموقعة باستخدام `--target-package` و`--target-package-confirmation` و`--target-package-trust-map`. يقرأ CLI الملفات transiently، ويتحقق من Ed25519 عبر public-key map يقدمه المشغّل وقت التشغيل، ثم ينشئ lease قبل دخول graph؛ لا يُحفظ raw package أو trust material في checkpoint.
+### 3. Identity isolation وtarget isolation
 
-في API تُرسل الحقول نفسها داخل `ScanRequest` بحدود حجم ونوع، وتُجرى validation أولية قبل dispatch. العامل يعيد التحقق من التوقيع والـscope والـconfirmation قبل أول graph node، ولا يعتمد على `signature_state` المرسل أو على تحقق API وحده. عند redelivery/resume يستعيد binding redacted ويتحقق من lease continuity دون استهلاك lease ثانية. الطلبات القديمة بلا Target Package تستمر في legacy flow وفق سياساتها الحالية.
+تم تعزيز عزل engagements وtargets وfindings والهويات. الـmemory والـlessons والـRAG projections ترتبط بالسياق المناسب، ولا يجوز أن تنتقل cookies أو credentials أو ownership claims من target أو identity إلى آخر.
 
-يستخدم `ScopeCompiler` قواعد normalized scope مرة واحدة داخل WebPent، ويفحص scheme وhost وport وpath وwildcard وexclusion وmethod وaction class وredirect chain. القرارات typed وتشمل `allow` و`allow_with_constraints` و`deny_out_of_scope` و`deny_policy` و`deny_expired` و`deny_revoked` و`deny_ambiguous`.
+مسار BAC/IDOR يستخدم `IdentityProfile` وownership provenance وobservations منزوعة الحساسية. confirmation لا تعتمد على اختلاف response فقط، بل تحتاج إلى target-backed causal signal مع baseline وcandidate وindependent negative control.
 
-### استمرارية الإثبات والتقرير
+### 4. Target Brain وAttack Graph وbounded research
 
-أي confirmation قابلة للتقرير يجب أن تعتمد على **causal signal** و**neutral negative control** وProofBundle مختوم وقابل لإعادة التشغيل. candidate أو heuristic أو mock أو timeout أو 403/429 أو missing capability لا يتحول إلى confirmed أو clean.
+تمت إضافة طبقات advisory لتحليل target entities والـworkflows والـpermissions والـstate transitions، مع bounded planning وspecialist researcher contracts وhypothesis bridge. هذه الطبقات تفيد في ترتيب الاختبارات وتحديد gaps، لكنها لا تملك execution authority ولا تستطيع توسيع النطاق.
 
-تنتقل package identity والـdigests من action metadata إلى verifier ثم ProofBundle ثم التقرير. التقرير يحتوي على `target_package_continuity` redacted ويدخل هذا الجزء في audit/master hash. لا يتم وضع private keys أو provider credentials أو cookies أو OTPs داخل state أو checkpoint أو prompt أو report أو archive.
+المحتوى القادم من RAG أو write-ups أو repositories يعامل كبيانات غير موثوقة داخل trust boundary. لا يتم تنفيذ تعليمات موجودة داخل هذه المصادر لمجرد ظهورها في النص.
 
-## ابدأ من هنا
+### 5. BBScout integration
 
-للتعرف على النظام، ابدأ بالملفات التالية:
+WebPent يقرأ bbscout كمصدر advisory لـ`Target Package v2` فقط عبر [`src/webpent/shared/bbscout_bridge.py`](src/webpent/shared/bbscout_bridge.py)، مع bundled source مراجع تحت [`integrations/bbscout`](integrations/bbscout) لا يعتمد على مسار خارجي. التكامل لا يرسل HTTP أو browser navigation أو signup/login أو provider submission من تلقاء نفسه؛ provider-live qualification تظل منفصلة عن fixtures والعقود.
 
-1. [`docs/architecture_simple.md`](docs/architecture_simple.md) — النموذج الذهني المختصر.
-2. [`docs/architecture_detailed.md`](docs/architecture_detailed.md) — topology الـLangGraph وحدود الأمان.
-3. [`src/webpent/state/initial_state.py`](src/webpent/state/initial_state.py) — bootstrap والحالة canonical.
-4. [`src/webpent/graph/builder.py`](src/webpent/graph/builder.py) — العقد ومسارات التوجيه وpackage preflight.
-5. [`src/webpent/shared/action_authority.py`](src/webpent/shared/action_authority.py) — بوابة التنفيذ المركزية.
-6. [`src/webpent/shared/target_package_context.py`](src/webpent/shared/target_package_context.py) — admission وredaction-safe projection.
-7. [`src/webpent/shared/engagement_factory.py`](src/webpent/shared/engagement_factory.py) — confirmation وone-time lease.
-8. [`src/webpent/shared/package_scope.py`](src/webpent/shared/package_scope.py) — canonical scope/policy compiler.
-9. [`src/webpent/shared/package_preflight.py`](src/webpent/shared/package_preflight.py) — package/capability preflight.
-10. [`src/webpent/models/proof_bundle.py`](src/webpent/models/proof_bundle.py) و[`src/webpent/shared/verifier.py`](src/webpent/shared/verifier.py) — قواعد الإثبات وإعادة التشغيل.
-11. [`src/webpent/reporter/export.py`](src/webpent/reporter/export.py) — التقرير وaudit hash.
-12. [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
-13. [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — الحكم النهائي والقيود.
-
-## المكونات الأساسية
-
-| المكوّن | وظيفته |
-|---|---|
-| LangGraph workflow | التخطيط والاكتشاف وفهم الهدف وتوليد الفرضيات والتنفيذ والتحقق والتقرير. |
-| ActionAuthority | نقطة التحكم المركزية لكل action؛ لا يوجد transport خفي يتجاوزها. |
-| Validators | فحوص structural وcausal وreplay مع حالات confirmed وcandidate وinconclusive وblocked. |
-| ProofBundle | ختم proof قابل للتحقق، يتضمن continuity الخاصة بالحزمة عندما يكون engagement package-backed. |
-| Knowledge Pack/RAG | منهجيات وتقارير وwrite-ups وauthorized scenarios ضمن trust boundary؛ محتوى RAG بيانات وليس تعليمات تنفيذ. |
-| Memory isolation | عزل lessons حسب `client_id` و`engagement_id` عند الحاجة. |
-| Smart campaigns | تخطيط bounded وإعادة تخطيط عند المعرفة الناقصة دون تحويل الفشل إلى clean. |
-| Reporter | إخراج redacted متعدد الصيغ مع audit trail وpackage continuity. |
-| Celery/Redis | مسار worker موجود، لكن qualification الموزعة الكاملة تحتاج بيئة staging قابلة لإعادة الإنتاج. |
-
-## هيكل المشروع
-
-```text
-.
-├── src/webpent/
-│   ├── agents/              # عقد LangGraph والـvalidators
-│   │   └── specialists/     # passive proposal planners فقط
-│   ├── api/                 # FastAPI routes
-│   ├── cli/                 # CLI وعمليات الإدخال
-│   ├── config/              # الإعدادات وسياسات الأمان
-│   ├── graph/               # بناء الرسم ومسارات التوجيه
-│   ├── memory/              # Chroma وlessons وretrieval
-│   ├── models/              # النماذج وعقود الأدلة
-│   ├── shared/              # authority وscope وproof وLLM helpers
-│   ├── research_engine/     # bounded planning وprojection adapter
-│   ├── intelligence/        # target brain وentity/workflow/permission/state projections
-│   ├── security_models/     # identity matrix وauthorization facade
-│   ├── business_logic/      # workflow/state/invariant/abuse analysis facades
-│   ├── validation/          # validator facades وstate-diff/identity checks
-│   ├── production/          # fail-closed production qualification projection
-│   ├── state/               # PentestState وreducers
-│   ├── tools/               # adapters واكتشاف الأدوات
-│   └── workers/             # Celery task entrypoints
-├── tests/                   # unit وintegration وsafety وregression
-├── scripts/                 # doctor وG-02 وingestion وverification
-├── knowledge_pack/          # corpus المحلي المنظم للـRAG
-├── docs/                    # architecture وaudit وrelease records
-├── Makefile
-└── pyproject.toml
-```
-
-يتم تسليم bbscout وschemas المشتركة في archive التكامل بجانب WebPent:
-
-```text
-bbscout/src/bbscout/
-contracts/target-package.schema.v2.json
-contracts/capability-profile.schema.v1.json
-```
-
-## المتطلبات والتثبيت
-
-- Python 3.12.
-- Redis وDocker Compose فقط لمسارات Celery/stack الكامل.
-- Playwright/Chromium لمسارات browser-based فقط.
-- `cryptography` مطلوب لمسار Ed25519 في bbscout.
-- LLM provider وembedding model اختياريان.
-
-من جذر مشروع WebPent:
-
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e .
-playwright install chromium  # لمسارات المتصفح فقط
-```
-
-للتشغيل الحتمي بدون LLM:
-
-```bash
-export LLM_ENABLED=false
-export WEBPENT_LLM_ENABLED=false
-```
-
-أنشئ secrets محلية قوية وقت التشغيل فقط، ولا تضع `.env` أو المفاتيح في Git أو التقارير أو archive:
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-استخدم القيم الناتجة مع `JWT_SECRET_KEY` و`AUDIT_SECRET_KEY` و`CELERY_PAYLOAD_KEY` حسب مسار التشغيل. لا تضع API keys أو cookies أو credentials داخل source أو prompts أو checkpoints.
-
-## تكامل bbscout وتشغيل الـworker
-
-WebPent يقرأ bbscout كـ**مصدر advisory لـTarget Package v2 فقط** عبر [`src/webpent/shared/bbscout_bridge.py`](src/webpent/shared/bbscout_bridge.py). الـbridge لا ينفذ HTTP أو browser navigation أو signup أو login أو إرسال تقارير لمنصات bug bounty؛ كل action تنفيذي يظل خلف `ActionAuthority` و`ActionExecutor`. تفاصيل الـschema والـrunbook موجودة في [`docs/integration/BBSCOUT_INTEGRATION.md`](docs/integration/BBSCOUT_INTEGRATION.md).
-
-الإعدادات الآمنة الافتراضية هي:
+الإعدادات الآمنة الافتراضية:
 
 ```dotenv
 BBSCOUT_ENABLED=false
@@ -197,9 +89,54 @@ BBSCOUT_SIGNUP_ENABLED=false
 BBSCOUT_PROVIDER_SUBMISSION_ENABLED=false
 ```
 
-لا تضع Gmail passwords أو cookies أو OTPs أو API keys داخل `.env` أو source أو checkpoints أو prompts أو reports. `BBSCOUT_CREDENTIALS_REF` — إن استُخدم مستقبلًا — يجب أن يكون reference opaque داخل secret manager فقط، مع human-approved session handoff.
+لا تضع Gmail passwords أو cookies أو OTPs أو API keys داخل `.env` أو source أو checkpoints أو prompts أو reports. إذا استُخدم `BBSCOUT_CREDENTIALS_REF` مستقبلًا، يجب أن يكون reference opaque إلى secret manager مع human-approved session handoff.
 
-الـlocal Docker stack موجود في `docker-compose.dev.yml` ويشغّل Redis داخليًا، FastAPI API، وCelery worker. صورة التطبيق تعتمد على `webpent-base` المبنية من `Dockerfile.base`، والتي تتضمن Playwright/Chromium. التشغيل يحتاج Docker-capable environment:
+### 6. ProofBundle وstrict verification
+
+تم بناء ProofBundle مركزي immutable وقابل للختم والتحقق وإعادة التشغيل. أي confirmation قابلة للتقرير يجب أن تحتوي على:
+
+1. baseline request/response.
+2. candidate request/response.
+3. causal signal target-backed.
+4. independent neutral negative control.
+5. baseline/candidate/response digests.
+6. validator وreplayable metadata.
+7. sealed bundle و`verify_seal() == true`.
+8. replay ناجح على نفس engagement/finding/target.
+9. cleanup status مناسب عند الحاجة.
+
+في Phase 4 تم تنفيذ hardening إضافي:
+
+- إلزام `hypothesis_id` و`scope_context` و`identity_context` عندما تكون موجودة في الحزمة.
+- مقارنة replay metadata بعد redaction وبـdigest ثابت.
+- رفض replay context الذي يحتوي على حقول غير معروفة.
+- رفض اختلاف engagement أو finding أو target أو scope أو identity أو target package.
+- منع mutation أثناء replay المتكرر.
+- استكمال metadata الناقصة من نفس الـbundle في `CampaignExecutor` و`evidence_quality` فقط، مع إبقاء أي mismatch مقدم مرفوضًا fail-closed.
+
+المسارات المركزية هي [`src/webpent/models/proof_bundle.py`](src/webpent/models/proof_bundle.py)، و[`src/webpent/shared/verifier.py`](src/webpent/shared/verifier.py)، و[`src/webpent/shared/campaign_executor.py`](src/webpent/shared/campaign_executor.py)، و[`src/webpent/shared/evidence_quality.py`](src/webpent/shared/evidence_quality.py).
+
+### 7. Aggregation وreporting
+
+تم الحفاظ على aggregation وعدم خلط findings بين engagements أو targets. يتم استخدام endpoint-scoped fingerprints عند الحاجة، خصوصًا في IDOR/BAC، مع منع تحويل تكرار تاريخي أو finding مشابه من target آخر إلى evidence جديد.
+
+التقارير الحالية تدعم JSON وHTML وMarkdown وPDF عندما تكون المخرجات مفعلة في النسخة المستخدمة. التقرير redaction-safe ويحتوي على audit trail وpackage continuity عند وجود package-backed engagement. الـProofBundle لا يصعد إلى التقرير top-level إلا بعد validation ناجح.
+
+### 8. G-02 direct-I/O inventory
+
+تم تنفيذ direct-I/O inventory deterministic لتتبع transports ومسارات الاتصال المباشر. آخر artifact متولد يحتوي على `321 records`، ونجح checker بدون اتصال بهدف خارجي:
+
+```text
+{"errors": [], "external_target_contacted": false, "passed": true}
+```
+
+الملفات هي [`docs/direct_io_inventory.json`](docs/direct_io_inventory.json) و[`docs/DIRECT_IO_INVENTORY.md`](docs/DIRECT_IO_INVENTORY.md).
+
+### 9. Docker وRedis وCelery وPlaywright
+
+يوجد مسار Docker/Compose وRedis وCelery worker وPlaywright/Chromium. تم اختبار contracts وdev smoke محليًا في بيئات سابقة، لكن **distributed production qualification** ليست مكتملة. نجاح SQLite المحلي أو تشغيل worker واحد لا يثبت HA أو outage recovery أو multi-worker checkpoint qualification.
+
+تشغيل dev stack يحتاج بيئة Docker-capable:
 
 ```bash
 make build-base
@@ -208,11 +145,89 @@ docker compose -f docker-compose.dev.yml ps
 docker compose -f docker-compose.dev.yml logs -f api worker
 ```
 
-الإعداد ده للتطوير والـauthorized local labs فقط، وليس production. الـproduction compose يعتمد على Redis خارجي بـ`rediss://` وأسرار قوية ويفشل مغلقًا عند غياب متطلبات الأمان. إعدادات API والworker متطابقة في bbscout، والـpackage source mounted read-only فقط، مع بقاء bbscout default-off. عدم توفر Docker في sandbox يمنع ادعاء أن stack live أو HA تم تأهيله هنا.
+### 10. Phase 3: BAC/IDOR proof validation
 
-## تشغيل WebPent
+تم تنفيذ وإثبات BAC/IDOR حي على WAPTLab المحلي المصرح فقط للهدف Catalog #6:
 
-تحقق من options الفعلية في النسخة التي تشغلها:
+```text
+GET /v1/crm/download/1
+```
+
+الإثبات السابق استخدم owner وforeign مستقلين، baseline وcandidate وanonymous negative control، target-backed causal signal، ProofBundle sealed، `verify_seal()==true`، وreplay passed/replay_verified. تم رفع التغييرات في commit:
+
+```text
+dceca57fea222a1ca5851dc98eaccffc9661c27f
+```
+
+### 11. Phase 4: proof/replay hardening
+
+تم تنفيذ hardening محافظ في ProofBundle وstrict verifier وCampaignExecutor وevidence_quality، مع regression tests للعزل وunknown fields وidempotent replay. نتائج التحقق الأخيرة:
+
+```text
+Targeted regression: passed
+G-02 tests: 18 passed
+Full pytest: 1739 passed, 6 skipped, 62 warnings
+Ruff: All checks passed!
+compileall: passed
+git diff --check: passed
+```
+
+تم رفع Phase 4 في commit:
+
+```text
+5e12aeadf1dbab0ce35c73845ec69c781ce583cf
+```
+
+### 12. Phase 5: release verification
+
+تمت مراجعة local/remote SHA، الحذفات، الملفات الحساسة، G-02، Ruff، compileall، targeted tests، وfull pytest. النتيجة:
+
+```text
+HEAD=5e12aeadf1dbab0ce35c73845ec69c781ce583cf
+ORIGIN_MASTER=5e12aeadf1dbab0ce35c73845ec69c781ce583cf
+working_tree_clean
+DELETED_FILES_FROM_PHASE3=[empty]
+CURRENT_DELETED_FILES=[empty]
+```
+
+لكن التحقق اللاحق من `scripts/verify_release_artifacts.py` كشف أن [`docs/release_manifest.json`](docs/release_manifest.json) يحمل commit/hash metadata قديمة، ولذلك يجب اعتبار **release provenance غير مغلق** إلى أن يعاد توليد manifest من HEAD الحالي ويعاد تشغيل verifier بنجاح.
+
+## المتطلبات والتثبيت
+
+- Python 3.12.
+- Docker Compose وRedis لمسارات Celery والـstack الكامل.
+- Playwright/Chromium لمسارات browser-based.
+- `cryptography` لمسار Ed25519.
+- LLM provider وembedding model اختياريان.
+
+من جذر المشروع:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e .
+playwright install chromium
+```
+
+للتشغيل الحتمي بدون LLM:
+
+```bash
+export LLM_ENABLED=false
+export WEBPENT_LLM_ENABLED=false
+```
+
+أنشئ secrets محلية وقت التشغيل فقط، ولا تضعها في Git أو logs أو reports:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+استخدم قيمًا مختلفة وقوية مع `JWT_SECRET_KEY` و`AUDIT_SECRET_KEY` و`CELERY_PAYLOAD_KEY` عند الحاجة. لا تضع API keys أو cookies أو credentials داخل source أو prompts أو checkpoints.
+
+## التشغيل المحلي
+
+تحقق من options الفعلية في النسخة التي ستشغلها:
 
 ```bash
 python main.py --help
@@ -221,7 +236,7 @@ python main.py status --profile smart-observe
 python main.py preflight
 ```
 
-مثال local lab مصرح به:
+مثال على local lab مصرح به:
 
 ```bash
 python main.py scan \
@@ -229,78 +244,24 @@ python main.py scan \
   --profile smart-observe
 ```
 
-`--profile` يحدد composition والسياسة الفعلية للحملة. `--auto-approve` لا يجب استخدامه إلا على lab مصرح به وبعد مراجعة الـscope والـpolicy. الوضع الافتراضي يحافظ على Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
-
-مسار API يتطلب authentication مضبوطًا صراحةً:
-
-```bash
-curl -X POST http://localhost:8000/token \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=<configured-user>&password=<strong-password>'
-
-curl -X POST http://localhost:8000/api/v1/scans \
-  -H 'Authorization: Bearer <TOKEN>' \
-  -H 'Content-Type: application/json' \
-  -d '{"url":"http://127.0.0.1:4280","auto_approve":false}'
-```
-
-## استخدام package موقعة من bbscout
-
-التوقيع detached يتم بالمفتاح الخاص الذي يمرره المستدعي في الذاكرة فقط. المثال التالي توضيحي ويجب ألا يحوي private key ثابتًا أو حقيقيًا داخل source:
-
-```python
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from bbscout.signatures import sign_target_package, verify_detached_signature
-from webpent.shared.engagement_factory import EngagementFactory
-
-private_key = Ed25519PrivateKey.generate()  # مثال offline فقط؛ لا تخزن المفتاح
-public_key = private_key.public_key()
-signed_package = sign_target_package(
-    package,
-    private_key=private_key,
-    key_id="runtime-fixture-key",
-)
-
-factory = EngagementFactory(
-    "/tmp/webpent-engagement-leases.sqlite",
-    signature_verifier=lambda value: verify_detached_signature(
-        value,
-        trusted_public_keys={"runtime-fixture-key": public_key},
-    ),
-)
-binding = factory.create_from_package(
-    signed_package,
-    {
-        "user_confirmed": True,
-        "package_id": signed_package["package_id"],
-        "package_sha256": signed_package["integrity"]["content_sha256"],
-        "engagement_id": "local-lab-engagement",
-        "target_url": "http://example.test/app",
-    },
-)
-```
-
-في بيئة حقيقية يجب أن يأتي trusted public-key map من configuration آمنة ومراجعة. لا يكفي تغيير `signature_state` يدويًا إلى `verified`؛ WebPent يعيد حساب digest ويتحقق من التوقيع فعليًا.
-
-## Scope وcapability preflight
-
-قبل التخطيط والتنفيذ، يفحص package preflight حالة الحزمة والتوقيع والانتهاء والإلغاء وnormalized scope، ثم يقطع متطلبات capability مع local manifest. الحالات غير المتاحة أو المحجوبة بالسياسة أو غير المؤهلة تتحول إلى knowledge gaps وblocked/inconclusive tasks، ولا تتحول إلى clean.
-
-غياب Target Package يبقي legacy flow متاحًا وفق سياساته القديمة، لكن أي package-backed engagement يجب أن يمر بكل بوابات admission وlease وscope وauthority. لا يمكن استخدام package لتجاوز origin policy أو G-02 أو confirmation أو proof requirements.
-
-## التقارير وLLM وRAG
-
-يدعم WebPent مسارات التقارير الحالية مثل JSON وHTML وMarkdown وPDF عندما تكون مفعلة في النسخة المستخدمة. التقرير redaction-safe ويشمل package continuity والـaudit hash عند وجود package. لا يتم auto-submit لأي provider report؛ discovery والقراءة فقط ما لم توجد عملية مصرح بها ومنفصلة مع confirmation صريحة.
-
-الـLLM اختياري ومحصور في أدوار مثل التلخيص أو ترتيب الفرضيات أو تحسين payloads ضمن policy. مخرجات LLM لا تعتبر evidence ولا confirmation. عند غياب API key أو تجاوز rate limit أو فشل provider، يجب أن يعود النظام إلى deterministic fallback أو يسجل knowledge gap؛ لا يجوز تحويل الخطأ إلى clean.
-
-تمت إضافة provider-aware model overrides في commit `8f83c7a`؛ استخدم `MISTRAL_MODEL` و`GEMINI_MODEL` و`COHERE_MODEL` و`CLOUDFLARE_MODEL` عبر environment/secret manager بدل تعديل source. ملف [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) يوثق أسماء المتغيرات والاختبار المحلي. مفاتيح API الحقيقية لا تُحفظ في Git أو ZIP أو checkpoints أو logs. نتيجة WAPTLab مع LLM في الجولة الأخيرة: `1` candidate SSTI، `0` strict confirmed، `0` evidence-confirmed، و`0` promoted ProofBundles؛ نجاح LLM لا يغيّر proof gates.
-
-بيانات RAG والمصادر الخارجية تعامل كبيانات غير موثوقة داخل trust boundary. لا تُنفذ تعليمات موجودة داخل write-up أو repository أو صفحة خارجية لمجرد أنها ظهرت في المحتوى.
+`--profile` يحدد composition والسياسة الفعلية للحملة. لا تستخدم `--auto-approve` إلا على lab مصرح به وبعد مراجعة scope والسياسة. الوضع الافتراضي يحافظ على Human-in-the-Loop قبل العمليات النشطة أو الحساسة.
 
 ## الاختبارات وبوابات الإصدار
 
-من archive التكامل، حيث مجلدا `bbscout` و`webpent` متجاوران:
+من جذر WebPent وبعد تثبيت dev dependencies:
+
+```bash
+PYTHONPATH=src python -m pytest -q
+ruff check src tests scripts
+python -m compileall -q src scripts tests
+PYTHONPATH=src python scripts/scan_direct_io.py
+python scripts/check_g02_precommit.py
+python scripts/verify_release_artifacts.py \
+  --repo . \
+  --manifest docs/release_manifest.json
+```
+
+في archive التكامل الذي يحتوي bbscout وWebPent متجاورين:
 
 ```bash
 cd bbscout
@@ -308,59 +269,172 @@ PYTHONPATH=src python -m pytest -q
 
 cd ../webpent
 PYTHONPATH=../bbscout/src:src python -m pytest tests/ -q --tb=short
-ruff check src tests scripts
-python -m compileall -q src scripts tests
-PYTHONPATH=../bbscout/src:src python -m pytest \
-  tests/test_g02_adversarial_indirection.py \
-  tests/test_g02_direct_io_inventory.py \
-  tests/test_g02_execution_plane.py \
-  tests/test_g02_precommit_enforcement.py \
-  tests/test_g02_runtime_invariants.py \
-  tests/test_g02_scanner_expansion.py -q
-
-python scripts/verify_release_artifacts.py \
-  --repo . \
-  --manifest docs/release_manifest.json
 ```
 
-شغّل `make doctor` و`preflight` قبل stack الكامل. نجاح الاختبارات المحلية لا يثبت أن Docker أو Redis أو Celery أو checkpoint resume مؤهل إنتاجيًا؛ اختبارات worker الحالية تستخدم graph/storage mocks ولا تمثل multi-worker أو broker qualification. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials في release.
+نجاح الاختبارات لا يثبت qualification حيًا أو موزعًا. يجب حفظ logs خارج archive وعدم إدخال SQLite أو cookies أو credentials أو `.env` في release.
 
-## Docker وCelery وproduction
+## ما الذي ما زال ناقصًا؟
 
-يوجد مسار Docker/Compose وCelery، لكن qualification الموزعة الكاملة تحتاج staging حقيقيًا يثبت image smoke test وworker/Redis/checkpoint-resume وbackup/restore والتعامل مع outages. لا تعتبر حالة `READY_WITH_WARNING` أو نجاح SQLite المحلي دليلًا على production qualification. طبقة persistence الفعلية في هذا التكامل SQLite؛ وجود profile آخر لا يعني أن backend آخر مدعوم إنتاجيًا.
+### 1. Release manifest drift — blocker فوري
 
-قبل أي تعريض خارج localhost، استخدم secrets قوية وCORS origins صريحة وTLS، واضبط `ALLOW_INSECURE_TLS=false`. لا تنشر `.env` أو قواعد SQLite أو service logs أو تقارير تحتوي على credentials.
+يجب إعادة توليد `docs/release_manifest.json` من HEAD النهائي `5e12aeadf1dbab0ce35c73845ec69c781ce583cf`، ثم تشغيل verifier الرسمي والتأكد من:
 
-## القيود والميزات غير المؤهلة
+```text
+passed=true
+manifest_git_commit == HEAD
+manifest hashes == current tracked source hashes
+```
 
-| البند | الحالة |
+هذه الخطوة ضرورية لإغلاق provenance، ولا تعني أن source code الحالي غير صالح.
+
+### 2. Live VIP qualification على WAPTLab
+
+لم يتم اجتياز qualification الحية. WAPTLab المحلي أعاد `HTTP 403` على health/register وCatalog #6 في الجولة الأخيرة، ولذلك لم يتم استخدام bypass أو قراءة database أو sessions أو OTPs.
+
+المطلوب بعد عودة التدفقات الطبيعية للعمل:
+
+| الشرط | المطلوب |
 |---|---|
-| Target Package v2 admission/signature/lease/scope/proof continuity | منفذ ومختبر offline |
-| G-02 direct-I/O inventory | regenerated وruntime-checked؛ لا target contact في التحقق الأخير |
-| Provider adapters | HackerOne live adapter موجود كـGET-only؛ HackerOne/Bugcrowd/Intigriti/YesWeHack لديهم offline fixtures؛ Bugcrowd/Intigriti/YesWeHack **ليس لديهم live support** |
-| WAPTLab وJuice Shop live qualification | التشغيلات التاريخية المنفصلة: Juice Shop: 6 candidates، WAPTLab: 4 candidates، وكلاهما 0 confirmed/0 ProofBundles. الجولة الأخيرة مع LLM على WAPTLab: 1 candidate، 0 confirmed، 0 ProofBundles؛ الحالة `NOT_QUALIFIED` |
-| Playwright وexternal tool readiness | typed BrowserActionAdapter/Playwright proof plane موجود ومختبر offline عبر authority؛ availability لبعض أدوات discovery runtime تبقى capability-dependent وتنتج gaps صريحة ولا تُعتبر clean |
-| Docker/Celery distributed qualification | **غير مثبتة بالكامل**؛ توجد compose وworker contracts، لكن HA/outage/resume qualification ليست مثبتة |
-| Formal VIP thresholds، مثل precision/reproducibility وثلاث جولات مستقلة | **غير مستوفاة**؛ لا يوجد strict confirmed أو promoted ProofBundle في أحدث تشغيلات اللابات |
-| Auto-submit provider reports | غير مسموح به في هذا المسار |
+| Independent repetitions | 3 جولات مستقلة مع reset نظيف لكل جولة |
+| Coverage | على الأقل 15 confirmed findings من catalog المطلوب في كل جولة |
+| Precision | لا تقل عن 90% |
+| Reproducibility | لا تقل عن 95% |
+| Proof coverage | 100% من confirmations لديها causal signal وnegative control وsealed/replayable ProofBundle |
+| Isolation | صفر cross-target أو cross-engagement contamination |
+| Deduplication | صفر duplicates تؤثر على metric |
+| Scope safety | صفر scope violations |
 
-لذلك قرار promotion الحالي هو **NO** حتى تُجمع الأدلة المطلوبة في بيئة مصرح بها وتُراجع النتائج بصورة مستقلة.
+لا يجوز استخدام candidates أو offline fixtures أو نتائج تراكمية من engagements مختلفة بدل هذه الشروط.
 
-## ملفات التوثيق والتسليم
+### 3. Distributed production qualification
 
-- [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md) — سجل تنفيذ مراحل الخطة التكاملية وحدود qualification.
-- [`docs/RECENT_THREE_REQUESTS_AUDIT.md`](docs/RECENT_THREE_REQUESTS_AUDIT.md) — مراجعة آخر ثلاثة طلبات والتحقق من عدم حذف ملفات tracked.
-- [`docs/release_manifest.json`](docs/release_manifest.json) — manifest وبصمات source-only release.
-- [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) و[`docs/v75_maturity_scorecard.json`](docs/v75_maturity_scorecard.json) — scorecard هندسي لا يساوي VIP qualification.
-- [`benchmarks/vip_v1/manifest.json`](benchmarks/vip_v1/manifest.json) — metric contract، proof gates، human-review input، وcost denominator.
-- [`benchmarks/vip_v2/manifest.json`](benchmarks/vip_v2/manifest.json) — offline-only three-run qualification contract وhonest reporting gates.
-- [`docs/integration/production_qualification.md`](docs/integration/production_qualification.md) — checks المطلوبة للإنتاج وحدود distributed qualification.
-- [`docs/WAPTLAB_QUALIFICATION_STATUS.md`](docs/WAPTLAB_QUALIFICATION_STATUS.md) — الحالة الحالية ونتيجة offline proof/replay simulation وحدود live qualification.
-- [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) — provider-aware configuration ونتيجة WAPTLab مع LLM وحدود الاختبار.
-- [`docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md`](docs/PHASE10_PRODUCTION_ARCHITECTURE_ASSESSMENT.md) — assessment صادق لحدود single-node والإنتاج الموزع.
-- [`docs/integration/integration_manifest.md`](docs/integration/integration_manifest.md) — mapping المتطلبات إلى التنفيذ والاختبارات.
+وجود Docker وRedis وCelery contracts لا يثبت production readiness. ما زال يلزم staging قابل لإعادة الإنتاج يثبت:
+
+- worker/Redis broker behavior.
+- checkpoint resume بعد redelivery.
+- idempotency مع أكثر من worker.
+- outage وretry وbackpressure.
+- backup/restore وretention.
+- secrets وTLS وCORS وlogging بدون تسريب.
+- عدم اختلاف policy variables بين API وworker.
+
+### 4. Runtime discovery capabilities
+
+بعض أدوات discovery الخارجية capability-dependent. عند عدم وجود الأداة يجب أن يظهر gap أو blocked state صريح، لا clean. يلزم اختبار runtime حقيقي لكل أداة يريد المستخدم اعتبارها جزءًا من autonomous workflow، خصوصًا typed browser handler وPlaywright proof plane وأدوات discovery المساندة.
+
+### 5. Live provider adapters وauto-submission
+
+HackerOne adapter الحالي محدود، بينما تكاملات Bugcrowd وIntigriti وYesWeHack تعمل كـoffline fixtures أو advisory contracts وليست live qualification. Auto-submit غير مفعّل في المسار الحالي ويجب ألا يفعّل بدون authorization منفصل وconfirmation صريحة وaudit كامل.
+
+### 6. Live LLM provider qualification
+
+LLM اختياري. deterministic fallback هو المسار الآمن عند غياب API key أو rate limit أو provider failure. يلزم اختبار كل provider فعليًا إذا كان مطلوبًا تشغيله، مع التأكد أن مخرجات LLM تظل proposals أو summaries ولا تتحول إلى evidence أو confirmation.
+
+## التقييم النهائي
+
+| البعد | التقييم |
+|---|---:|
+| Safety وscope enforcement | قوي |
+| Proof/replay reliability | قوي offline وcontract-wise |
+| Identity/target isolation | قوي في الاختبارات المركزية |
+| Aggregation/report integrity | جيد ومربوط بالسياق |
+| Discovery coverage الحية | غير مثبتة كفاية |
+| Live confirmation | غير مؤهلة حاليًا |
+| Distributed runtime | غير مؤهل بالكامل |
+| Provider/browser ecosystem | جزئي وcapability-dependent |
+| Engineering maturity | `76/100` |
+| Autonomous Bug Hunter qualification | **لا، NOT_QUALIFIED** |
+
+لو استخدمنا رقمًا واحدًا للقرب من الهدف، فالمشروع عند **76% نضج هندسيًا**. لكن هذا الرقم لا يساوي 76% من qualification الحية؛ qualification الرسمية ما زالت `0/3` جولات مؤهلة، والهدف لا يُعلن محققًا إلا بعد تنفيذ live matrix بالأدلة الصارمة.
+
+## المراجع الداخلية
+
+- [`docs/CURRENT_RELEASE.md`](docs/CURRENT_RELEASE.md) — canonical release identity.
+- [`docs/VIP_INTEGRATED_EXECUTION_STATUS.md`](docs/VIP_INTEGRATED_EXECUTION_STATUS.md) — سجل تنفيذ المراحل والقيود.
+- [`docs/PASTED_CONTENT_3_EXECUTION_STATUS.md`](docs/PASTED_CONTENT_3_EXECUTION_STATUS.md) — مصفوفة phases والـsource paths والاختبارات.
+- [`docs/V75_MATURITY_SCORECARD.md`](docs/V75_MATURITY_SCORECARD.md) — engineering maturity scorecard.
+- [`docs/vip_quality_gate.json`](docs/vip_quality_gate.json) — شروط بوابة VIP الآلية.
+- [`docs/WAPTLAB_QUALIFICATION_STATUS.md`](docs/WAPTLAB_QUALIFICATION_STATUS.md) — حالة qualification الخاصة بـWAPTLab.
 - [`docs/integration/final_audit.md`](docs/integration/final_audit.md) — final audit وحدود الادعاء.
+- [`docs/release_manifest.json`](docs/release_manifest.json) — release provenance وhashes؛ تم التحقق منه على الشجرة الحالية عبر `verify_release_artifacts.py`.
+- [`docs/integration/production_qualification.md`](docs/integration/production_qualification.md) — متطلبات production/distributed qualification.
+- [`docs/integration/BBSCOUT_INTEGRATION.md`](docs/integration/BBSCOUT_INTEGRATION.md) — تكامل bbscout وحدوده.
+- [`docs/LLM_PROVIDER_READINESS_2026-08-24.md`](docs/LLM_PROVIDER_READINESS_2026-08-24.md) — provider-aware LLM configuration.
 
-Source-only archives وملفات SHA-256 الناتجة من release process تُحفظ خارج Git، ويجب توليدها من HEAD المطلوب والتحقق منها بالـmanifest والـoffline verifier قبل التسليم.
+## License and authorized use
 
-> **الخلاصة:** WebPent الآن يملك intake package محكومًا، authorization مركزيًا، scope compiler target-agnostic، capability gaps منظمة، execution telemetry قابلة للتدقيق، طبقات identity/business-logic/research/validation passive، وسلسلة proof/report continuity لا تُسقط محاولات التحقق. typed `BrowserActionAdapter` وPlaywright proof plane موجودان كمسار محمي ومختبر offline؛ الفجوة المتبقية هي إثبات causal signal وnegative control وsealed/replayable ProofBundle في جولات qualification مستقلة، إضافة إلى distributed Docker/Redis/Celery evidence. لا يجوز إعلان VIP أو تغطية شاملة قبل هذه الأدلة.
+راجع ملف الترخيص وسياسات المشروع قبل التوزيع. الاستخدام يجب أن يظل داخل أنظمة مصرح بها، مع احترام scope وrate limits وprivacy وretention وسياسات البرنامج المختبر.
+
+> **الخلاصة:** WebPent أصبح إطارًا أمنيًا قويًا، bounded، وfail-closed مع ProofBundle وreplay وidentity isolation وreport continuity. ما ينقصه للوصول إلى وصف **VIP Smart Autonomous Bug Hunter** هو إثبات qualification حي مستقل وقابل للتكرار، ثم تأهيل distributed runtime وcapability-dependent adapters بصورة واقعية لا تعتمد على fixtures فقط.
+
+---
+
+**آخر حالة موثقة:** source hardening بدأ من commit `5e12aeadf1dbab0ce35c73845ec69c781ce583cf`، والـrelease manifest الحالي يمر بالـoffline verifier؛ أي commit release جديد يجب أن يعيد توليد manifest ويعيد تشغيل verifier.
+
+**المشروع على GitHub:** [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)
+**إعداد الوثيقة:** Manus AI
+
+
+## Dependency Security Boundary: RAG and ChromaDB
+
+The core WebPent installation does not require ChromaDB, `langchain-chroma`, or `sentence-transformers`. These packages are available only through the opt-in `rag` extra:
+
+```bash
+python -m pip install -e ".[dev,rag]"
+```
+
+WebPent uses Chroma through a local embedded `persist_directory` path and does not use `HttpClient`, `PersistentClient`, or a Chroma network server. The default release and CI posture keeps `DISABLE_RAG=true` and `EMBEDDINGS_OFFLINE=true`; SQLite and deterministic fallback paths remain available when RAG is unavailable.
+
+The `rag` extra must not be deployed with an exposed Chroma server. Current Chroma advisories affecting the 1.x server line remain a release blocker for an RAG-enabled deployment until an upstream fixed version and a fresh dependency audit are available. Moving the extra out of core prevents the vulnerable server package from being installed by default, but it does not claim that the optional extra is fully security-qualified.
+
+## Plan Execution Status
+
+The implemented roadmap focused on bounded autonomy rather than unsafe broad scanning. Phase 1 established explicit scope, target identity, engagement identity, authorization, HITL, rate-limit, redaction, and fail-closed execution contracts. Phase 2 added target intelligence, endpoint and parameter normalization, target brain metadata, attack-graph planning, and deterministic fallbacks while keeping LLM output advisory-only. Phase 3 added research and memory isolation, bounded RAG retrieval, provenance, reusable methodology packs, and target-scoped persistence. Phase 4 added validation state transitions, causal-signal and negative-control requirements, sealed and replayable `ProofBundle` evidence, aggregation, report linkage, and strict cross-target/cross-identity binding. Phase 5 added release artifacts, preflight/capability reports, G-02 direct-I/O inventory, security scans, CI/Make release entry points, dependency boundary controls, bundled bbscout contracts, and final provenance verification. The remaining qualification work is explicitly separated from these offline/contract accomplishments.
+
+The most recent hardening also makes release-manifest freshness a real gate. The quality gate rebuilds and verifies the manifest against the final source tree instead of accepting generation alone. The CI workflow and Makefile expose the same release verification path.
+
+## Current Evidence
+
+The current validation includes the dependency-boundary and bundled-bbscout work after `5e12aeadf1dbab0ce35c73845ec69c781ce583cf`. Regression evidence includes `1739 passed, 6 skipped, 62 warnings`, successful Ruff and `compileall`, G-02 with `external_target_contacted=false`, a passing offline release-manifest verifier, and no live qualification claim. The local WAPTLab run remains limited to the authorized environment; Docker is available but the natural application flow returned HTTP 403.
+
+After any change to dependencies or release scripts, regenerate `uv.lock`, run the focused deployment/release tests, run the complete quality gate, regenerate `docs/release_manifest.json`, and execute the manifest verifier. Do not interpret a passing offline contract report as live WAPTLab qualification.
+
+## Remaining Blockers to VIP Qualification
+
+WebPent is a bounded autonomous bug-hunting framework, but it is not yet VIP-qualified as an autonomous bug hunter. The remaining blockers are:
+
+1. Any release commit must regenerate the manifest from that tree and pass the official offline verifier with matching hashes.
+2. WAPTLab qualification requires three independent natural-flow resets, with baseline, candidate, independent negative control, target-backed causal signal, sealed ProofBundle, `verify_seal()==true`, and successful replay for every promoted finding.
+3. Each qualification run must meet the documented thresholds: at least 15 of 20 distinct catalog findings, at least 90% precision, at least 95% reproducibility, 100% proof coverage, no scope violations, and no duplicate inflation.
+4. The bundled bbscout boundary is now reproducible and covered by fixtures/contracts; provider-live qualification remains separate and must not be inferred from fixtures.
+5. Docker/Redis/Celery worker critical-path qualification and the typed browser/discovery runtime path still require a real, authorized environment check; their contracts alone are not live proof.
+6. The optional RAG extra remains security-gated until the remaining ChromaDB advisory is resolved or a reviewed, supported alternative is used.
+
+The honest current label is **Bounded Autonomous Bug-Hunting Framework — NOT VIP-qualified**. The engineering maturity score is approximately 76/100, but that score must not be converted into a live vulnerability-discovery or qualification percentage.
+
+## Release Checklist
+
+```bash
+# Core development environment
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+
+# Optional local-only RAG, after reviewing current advisories
+.venv/bin/pip install -e ".[dev,rag]"
+
+# Static and focused checks
+.venv/bin/ruff check src tests scripts
+PYTHONPATH=src .venv/bin/python -m compileall -q src scripts
+PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_production_deployment_contract.py tests/test_release_artifact_audit.py tests/security_invariants
+
+# Release artifacts and provenance
+PYTHONPATH=src .venv/bin/python scripts/scan_direct_io.py
+PYTHONPATH=src .venv/bin/python scripts/check_g02_precommit.py
+PYTHONPATH=src .venv/bin/python scripts/build_release_manifest.py
+PYTHONPATH=src .venv/bin/python scripts/verify_release_artifacts.py --repo . --manifest docs/release_manifest.json
+
+# Full suite
+PYTHONPATH=src .venv/bin/python -m pytest -q
+```
+
+Never add `.venv`, local profiles, cookies, sessions, OTPs, reset URLs, API keys, mail logs, or target secrets to Git. Never use database/session/OTP bypasses, broad external scanning, OAST, or live bug-bounty submission as a substitute for the documented authorization and evidence gates.

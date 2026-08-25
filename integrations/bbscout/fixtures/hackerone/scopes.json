@@ -1,0 +1,80 @@
+{
+  "acme-api": {
+    "data": [
+      {
+        "id": "501",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "URL",
+          "asset_identifier": "https://api.acme.example/v1",
+          "eligible_for_submission": true,
+          "instruction": "REST API for authorized researcher testing.",
+          "updated_at": "2026-08-18T10:00:00Z"
+        }
+      },
+      {
+        "id": "502",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "URL",
+          "asset_identifier": "https://app.acme.example/",
+          "eligible_for_submission": true,
+          "instruction": "Authenticated browser application. Test only with authorized accounts.",
+          "updated_at": "2026-08-18T10:00:00Z"
+        }
+      },
+      {
+        "id": "503",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "DOMAIN",
+          "asset_identifier": "*.sandbox.acme.example",
+          "eligible_for_submission": true,
+          "instruction": "Sandbox subdomains only; apex excluded unless listed separately.",
+          "updated_at": "2026-08-18T10:00:00Z"
+        }
+      },
+      {
+        "id": "504",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "URL",
+          "asset_identifier": "https://status.acme.example/",
+          "eligible_for_submission": false,
+          "instruction": "Out of scope status service.",
+          "updated_at": "2026-08-18T10:00:00Z"
+        }
+      }
+    ]
+  },
+  "old-assets": {
+    "data": [
+      {
+        "id": "601",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "URL",
+          "asset_identifier": "https://legacy.example/",
+          "eligible_for_submission": true,
+          "instruction": "Legacy application.",
+          "updated_at": "2025-01-01T10:00:00Z"
+        }
+      }
+    ]
+  },
+  "ambiguous-example": {
+    "data": [
+      {
+        "id": "701",
+        "type": "structured-scope",
+        "attributes": {
+          "asset_type": "OTHER",
+          "asset_identifier": "all company assets",
+          "eligible_for_submission": true,
+          "instruction": "Review required.",
+          "updated_at": "2026-08-18T10:00:00Z"
+        }
+      }
+    ]
+  }
+}

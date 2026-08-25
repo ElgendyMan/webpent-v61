@@ -2,6 +2,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import tomllib
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_COMPOSE = PROJECT_ROOT / "docker-compose.yml"
 DOCKERFILE = PROJECT_ROOT / "Dockerfile"
@@ -108,6 +110,24 @@ def test_ci_security_environment_contract_is_explicit() -> None:
         assert f"{key}: {value}" in content
     assert "verify_test_count.py --minimum 498" in content
     assert "tests/test_vip_audit_gap_closure.py" in content
+
+
+def test_rag_dependency_is_opt_in_and_chroma_boundary_is_local_only() -> None:
+    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    core_dependencies = set(pyproject["project"]["dependencies"])
+    rag_dependencies = set(pyproject["project"]["optional-dependencies"]["rag"])
+
+    assert not any(dep.startswith("chromadb") for dep in core_dependencies)
+    assert not any(dep.startswith("langchain-chroma") for dep in core_dependencies)
+    assert not any(dep.startswith("sentence-transformers") for dep in core_dependencies)
+    assert any(dep.startswith("chromadb") for dep in rag_dependencies)
+    assert any(dep.startswith("langchain-chroma") for dep in rag_dependencies)
+    assert any(dep.startswith("sentence-transformers") for dep in rag_dependencies)
+
+    vectorstore = (PROJECT_ROOT / "src/webpent/memory/vectorstore.py").read_text(encoding="utf-8")
+    assert "HttpClient" not in vectorstore
+    assert "PersistentClient" not in vectorstore
+    assert "persist_directory=self._persist_path" in vectorstore
 
 
 def test_unified_verifier_accepts_arg_based_base_image() -> None:

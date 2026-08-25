@@ -43,8 +43,9 @@ def test_artifact_safety_rejects_incomplete_or_invalid_summary(monkeypatch, tmp_
     assert gate._artifact_safety()["passed"] is False
 
 
-def test_optional_bbscout_check_is_explicit_and_fail_closed(monkeypatch):
+def test_optional_bbscout_check_is_explicit_and_fail_closed(monkeypatch, tmp_path):
     monkeypatch.delenv("BBSCOUT_SOURCE_ROOT", raising=False)
+    monkeypatch.setattr(gate, "BUNDLED_BBSCOUT_ROOT", tmp_path / "missing-bbscout")
     monkeypatch.setattr(gate.importlib.util, "find_spec", lambda name: None)
 
     result = gate._bbscout_integration_check()
@@ -55,8 +56,23 @@ def test_optional_bbscout_check_is_explicit_and_fail_closed(monkeypatch):
     assert "source" in result["reason"]
 
 
-def test_optional_bbscout_check_reports_available_without_importing_code(monkeypatch):
+def test_bundled_bbscout_check_is_reproducible(monkeypatch, tmp_path):
+    package_dir = tmp_path / "bbscout"
+    package_dir.mkdir()
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
     monkeypatch.delenv("BBSCOUT_SOURCE_ROOT", raising=False)
+    monkeypatch.setattr(gate, "BUNDLED_BBSCOUT_ROOT", tmp_path)
+
+    result = gate._bbscout_integration_check()
+
+    assert result["passed"] is True
+    assert result["status"] == "bundled-reviewed-source"
+    assert result["source_root"] == "integrations/bbscout/src"
+
+
+def test_optional_bbscout_check_reports_available_without_importing_code(monkeypatch, tmp_path):
+    monkeypatch.delenv("BBSCOUT_SOURCE_ROOT", raising=False)
+    monkeypatch.setattr(gate, "BUNDLED_BBSCOUT_ROOT", tmp_path / "missing-bbscout")
     monkeypatch.setattr(gate.importlib.util, "find_spec", lambda name: object())
 
     result = gate._bbscout_integration_check()

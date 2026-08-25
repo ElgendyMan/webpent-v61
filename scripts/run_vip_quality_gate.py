@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DOCS = PROJECT_ROOT / "docs"
 OUTPUT_PATH = DOCS / "vip_quality_gate.json"
 PYTHON = sys.executable
+BUNDLED_BBSCOUT_ROOT = PROJECT_ROOT / "integrations" / "bbscout" / "src"
 
 def _local_or_path(tool: str) -> str:
     """Prefer the executable installed beside the interpreter running the gate."""
@@ -28,6 +29,14 @@ BANDIT = _local_or_path("bandit")
 PIP_AUDIT = _local_or_path("pip-audit")
 UV = shutil.which("uv")
 PYTEST = [PYTHON, "-m", "pytest", "-q"]
+
+
+def _bundled_bbscout_source() -> Path | None:
+    """Return the reviewed, reproducible bbscout source bundled with this checkout."""
+    package_dir = BUNDLED_BBSCOUT_ROOT / "bbscout"
+    if (package_dir / "__init__.py").is_file():
+        return BUNDLED_BBSCOUT_ROOT
+    return None
 
 
 def _configured_bbscout_source() -> Path | None:
@@ -54,6 +63,17 @@ def _bbscout_integration_check() -> dict[str, Any]:
             "required_for_full_gate": True,
             "source_root": "external:BBSCOUT_SOURCE_ROOT",
             "reason": "bbscout source is explicitly configured outside the WebPent checkout",
+        }
+    bundled_root = _bundled_bbscout_source()
+    if bundled_root is not None:
+        return {
+            "name": "bbscout-integration-source",
+            "passed": True,
+            "returncode": 0,
+            "status": "bundled-reviewed-source",
+            "required_for_full_gate": True,
+            "source_root": "integrations/bbscout/src",
+            "reason": "reviewed bbscout source is bundled in the checkout",
         }
     try:
         available = importlib.util.find_spec("bbscout") is not None
@@ -84,6 +104,9 @@ def _gate_pythonpath() -> str:
     external_root = _configured_bbscout_source()
     if external_root is not None:
         parts.append(str(external_root))
+    bundled_root = _bundled_bbscout_source()
+    if bundled_root is not None and bundled_root not in [Path(part) for part in parts]:
+        parts.append(str(bundled_root))
     inherited = os.environ.get("PYTHONPATH", "")
     if inherited:
         parts.append(inherited)
@@ -469,8 +492,39 @@ def main() -> int:
         report["passed"] = False
         report["hard_checks_passed"] = False
         _write_gate_report(report)
-    print(json.dumps({"passed": report["passed"], "output": str(OUTPUT_PATH)}, sort_keys=True))
-    return 0 if report["passed"] else 1
+
+    # Generation alone is not an integrity check. Verify the final manifest
+    # against the current tree after the last refresh; this remains offline-only.
+    manifest_verify = _run(
+        "release-manifest-verify",
+        [
+            PYTHON,
+            "scripts/verify_release_artifacts.py",
+            "--repo",
+            str(PROJECT_ROOT),
+            "--manifest",
+            str(DOCS / "release_manifest.json"),
+        ],
+        timeout=60,
+    )
+    if not manifest_verify["passed"]:
+        report["known_blockers"].append(
+            "release manifest does not verify against the final source tree"
+        )
+        report["passed"] = False
+        report["hard_checks_passed"] = False
+        _write_gate_report(report)
+    print(
+        json.dumps(
+            {
+                "passed": report["passed"] and manifest_verify["passed"],
+                "release_manifest_verify": manifest_verify["passed"],
+                "output": str(OUTPUT_PATH),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0 if report["passed"] and manifest_verify["passed"] else 1
 
 
 if __name__ == "__main__":

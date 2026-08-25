@@ -1,0 +1,44 @@
+{
+  "data": [
+    {
+      "id": "1001",
+      "type": "program",
+      "attributes": {
+        "handle": "acme-api",
+        "name": "Acme API",
+        "policy": "Authorized testing only. Do not use denial of service. API and web application testing are allowed only on in-scope assets.",
+        "submission_state": "open",
+        "state": "public_mode",
+        "open_scope": true,
+        "gold_standard_safe_harbor": true
+      }
+    },
+    {
+      "id": "1002",
+      "type": "program",
+      "attributes": {
+        "handle": "old-assets",
+        "name": "Old Assets",
+        "policy": "Test only assets listed in structured scope.",
+        "submission_state": "open",
+        "state": "public_mode",
+        "open_scope": true,
+        "gold_standard_safe_harbor": false
+      }
+    },
+    {
+      "id": "1003",
+      "type": "program",
+      "attributes": {
+        "handle": "ambiguous-example",
+        "name": "Ambiguous Example",
+        "policy": "All company assets are in scope.",
+        "submission_state": "open",
+        "state": "public_mode",
+        "open_scope": false,
+        "gold_standard_safe_harbor": false
+      }
+    }
+  ],
+  "links": {}
+}
