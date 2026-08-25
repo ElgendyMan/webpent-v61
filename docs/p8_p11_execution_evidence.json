@@ -9,7 +9,21 @@
       "browser request session_id must match the supplied BrowserSessionRef",
       "engagement_id and profile_ref are safe single path segments before profile directory creation"
     ],
-    "live_authenticated_workflow": false
+    "live_authenticated_workflow": false,
+    "live_proof_attempt": {
+      "target_origin": "http://127.0.0.1:18080",
+      "target_contacted": true,
+      "harness": "BrowserProofRunner with real Chromium/control-plane",
+      "candidate_and_negative_control": "not_reached",
+      "causal_signal": null,
+      "negative_control": null,
+      "proof_bundle": null,
+      "verify_seal": null,
+      "replay_status": null,
+      "stop_reason": "baseline_observation_missing_or_unusable",
+      "bypass_used": false,
+      "raw_response_bodies_saved": false
+    }
   },
   "p9": {
     "contract_test_command": "PYTHONPATH=src:integrations/bbscout/src .venv/bin/python -m pytest -q tests/test_cross_process_action_ledger.py tests/test_checkpoint_redaction.py tests/test_checkpoint_runtime_context.py tests/test_production_deployment_contract.py tests/test_production_qualification.py tests/test_structural_rate_limit_retry.py tests/test_superagentic_recovery_contracts.py tests/test_vip_recovery_loop.py tests/test_v58_validator_idempotency.py",
@@ -17,6 +31,16 @@
     "contract_tests_failed": 0,
     "distributed_qualification": false,
     "runtime_smoke": {
+      "latest_live_execution": {
+        "redis_endpoint": "redis://127.0.0.1:16379/0",
+        "worker_nodes_online": 2,
+        "dispatch_task_count": 4,
+        "dispatch_states": ["FAILURE", "FAILURE", "FAILURE", "FAILURE"],
+        "dispatch_failure_type": "PermissionError",
+        "worker_assignment": {"worker_a": 2, "worker_b": 2},
+        "controlled_worker_restart_and_recovery": true,
+        "target_contacted": false
+      },
       "api_healthy": true,
       "redis_pong": true,
       "worker_replicas": 2,
@@ -41,12 +65,24 @@
     "blocker": "Full distributed qualification remains incomplete: broker-level idempotency, killed-worker redelivery/resume, lease contention proof, TLS qualification, and live log/retention qualification remain unproven; the target-free SQLite ledger probe is not broker qualification"
   },
   "p10": {
-    "target": "http://127.0.0.1:8000",
+    "target": "http://127.0.0.1:18080",
     "target_scope": "authorized local WAPTLab only",
     "health_only_status_codes": {
       "/health": 403,
       "/": 403,
-      "/register": 403
+      "/login": 403
+    },
+    "health_only_rounds": {
+      "round_count": 3,
+      "status_by_path": {
+        "/health": [403, 403, 403],
+        "/": [403, 403, 403],
+        "/login": [403, 403, 403]
+      },
+      "all_rounds_identical": true,
+      "login_attempted": false,
+      "bypass_used": false,
+      "scan_started": false
     },
     "live_benchmark_runs": 0,
     "existing_fixture_report": "docs/waptlab_qualification_report.json",
@@ -57,13 +93,24 @@
   },
   "p11": {
     "full_pytest_passed": 1749,
-    "full_pytest_duration_seconds": 71.23,
+    "full_pytest_duration_seconds": 54.39,
     "ruff_passed": true,
     "compileall_passed": true,
     "g02": {
       "errors": [],
       "external_target_contacted": false,
       "passed": true
+    },
+    "latest_validation": {
+      "pytest_passed": 1749,
+      "pytest_duration_seconds": 54.39,
+      "ruff_passed": true,
+      "compileall_passed": true,
+      "g02_passed": true,
+      "release_verify_passed": true,
+      "vip_gate_exit": 1,
+      "vip_gate_passed": false,
+      "vip_gate_hard_checks_passed": true
     },
     "release_verify": {
       "errors": [],

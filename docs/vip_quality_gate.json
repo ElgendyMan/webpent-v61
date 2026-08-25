@@ -51,7 +51,7 @@
         "........................................................................ [ 94%]",
         "........................................................................ [ 98%]",
         ".....................                                                    [100%]",
-        "1749 passed in 68.73s (0:01:08)"
+        "1749 passed in 54.39s"
       ]
     },
     {
@@ -272,11 +272,11 @@
       "passed": true,
       "returncode": 0,
       "tail": [
-        "{\"file_count\": 1020, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
+        "{\"file_count\": 1019, \"output\": \"/tmp/webpent-review/docs/release_manifest.json\"}"
       ]
     }
   ],
-  "generated_at": "2026-08-25T09:52:11.306162+00:00",
+  "generated_at": "2026-08-25T11:17:06.183333+00:00",
   "hard_checks_passed": true,
   "known_blockers": [
     "WAPTLab regression is local contract-only; no campaign is confirmed by this gate",

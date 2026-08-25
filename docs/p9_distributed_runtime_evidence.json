@@ -60,6 +60,37 @@
       "evidence": "docker top showed API and worker application processes owned by ubuntu"
     }
   },
+  "latest_live_execution": {
+    "redis_endpoint": "redis://127.0.0.1:16379/0",
+    "worker_names": [
+      "webpent-proof-a@305f57cac429",
+      "webpent-proof-b@305f57cac429"
+    ],
+    "redis_ping": "PONG",
+    "celery_ping": {
+      "nodes_online": 2,
+      "worker_a": "pong",
+      "worker_b": "pong"
+    },
+    "dispatch": {
+      "task_name": "resume_pentest_task",
+      "task_count": 4,
+      "states": ["FAILURE", "FAILURE", "FAILURE", "FAILURE"],
+      "failure_type": "PermissionError",
+      "failure_reason": "resume capability is missing or invalid",
+      "target_contacted": false,
+      "worker_assignment": {
+        "worker_a": 2,
+        "worker_b": 2
+      }
+    },
+    "controlled_worker_restart": {
+      "worker_a_stopped_and_restarted": true,
+      "post_restart_celery_ping_nodes_online": 2,
+      "target_contacted": false
+    },
+    "qualification_impact": "live broker/worker smoke and fail-closed dispatch evidence only; not distributed qualification"
+  },
   "qualification_checks": {
     "docker_health": true,
     "redis_health": true,
