@@ -28,6 +28,10 @@
   "waptlab_runtime": {
     "app_container": "running",
     "mysql_container": "running",
+    "natural_browser_verification": "passed",
+    "registration_email": "synthetic_example_test_address",
+    "registration_verification_code_sent": true,
+    "registration_otp_entered": false,
     "natural_authenticated_identity_available": false
   },
   "p9_prerequisite_smoke": {
@@ -47,12 +51,12 @@
   "gate": {
     "passed": false,
     "status": "blocked_live",
-    "reason": "Health-only access was reproducibly 403 in three rounds; no natural authenticated lab workflow is available, and completed P9 distributed qualification is still absent, so no valid three-run benchmark was run.",
+    "reason": "Natural browser verification passed and a synthetic registration verification code was sent, but OTP entry was not completed; no natural authenticated lab identity is available, and completed P9 distributed qualification is still absent, so no valid three-run benchmark was run.",
     "bypass_used": false,
     "mock_promoted": false
   },
   "required_to_resume": [
-    "A natural WAPTLab registration/login or lab-provisioned identity workflow that returns authenticated access without bypassing CAPTCHA, MFA, OTP, sessions, or databases.",
+    "Complete the natural WAPTLab registration by entering the verification code through the user-controlled browser step, or obtain a lab-provisioned identity without bypassing CAPTCHA, MFA, OTP, sessions, or databases.",
     "Completed P9 lease, killed-worker redelivery/resume, cross-process idempotency, TLS, log-redaction, and retention evidence.",
     "Three isolated runs with independent artifacts, strict ProofBundles, replay verification, negative controls, and target-backed causal signals."
   ]
