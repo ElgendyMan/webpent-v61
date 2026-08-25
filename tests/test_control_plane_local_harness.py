@@ -624,3 +624,85 @@ def test_expired_otp_correlation_window_is_quarantined():
     assert parsed.quarantined is True
     assert parsed.artifact is None
     assert "correlation_window_expired" in parsed.reasons
+
+
+def test_browser_adapter_rejects_request_bound_to_different_session(tmp_path):
+    scope = _scope()
+    runtime = build_control_plane_runtime(
+        engagement_id=ENGAGEMENT,
+        scope=scope,
+        executor=_browser_executor(),
+        profile_root=str(tmp_path),
+    )
+    first = runtime.session_manager.create_session(
+        engagement_id=ENGAGEMENT,
+        profile_ref="profile-one",
+        authenticated_origins=(ORIGIN,),
+        cookie_fingerprint="sha256:" + "d" * 64,
+    )
+    second = runtime.session_manager.create_session(
+        engagement_id=ENGAGEMENT,
+        profile_ref="profile-two",
+        authenticated_origins=(ORIGIN,),
+        cookie_fingerprint="sha256:" + "e" * 64,
+    )
+    request = BrowserActionRequest(
+        action_id="browser-session-binding",
+        engagement_id=ENGAGEMENT,
+        session_id=second.session_id,
+        operation="navigate",
+        url=f"{ORIGIN}/object/1",
+        scope_decision=evaluate_scope(scope, f"{ORIGIN}/object/1"),
+        idempotency_key="browser-session-binding-idem",
+    )
+    calls: list[str] = []
+    adapter = BrowserActionAdapter(
+        lambda current: (calls.append(current.action_id) or {"dom_digest": "sha256:" + "f" * 64})
+    )
+
+    outcome = adapter.execute(request, first)
+
+    assert outcome.status == "blocked_by_precondition"
+    assert outcome.reason == "session_id_mismatch"
+    assert calls == []
+
+
+def test_browser_session_manager_rejects_path_traversal_segments(tmp_path):
+    from webpent.shared.control_plane_runtime import BrowserSessionManager
+
+    manager = BrowserSessionManager(tmp_path)
+    with pytest.raises(ValueError, match="profile_ref_path_segment_invalid"):
+        manager.create_session(
+            engagement_id=ENGAGEMENT,
+            profile_ref="../foreign-profile",
+            cookie_fingerprint="sha256:" + "1" * 64,
+        )
+    with pytest.raises(ValueError, match="engagement_id_path_segment_invalid"):
+        manager.create_session(
+            engagement_id="../foreign-engagement",
+            profile_ref="profile-safe",
+            cookie_fingerprint="sha256:" + "2" * 64,
+        )
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_browser_session_manager_keeps_engagement_profile_directories_isolated(tmp_path):
+    from webpent.shared.control_plane_runtime import BrowserSessionManager
+
+    manager = BrowserSessionManager(tmp_path)
+    manager.create_session(
+        engagement_id="engagement-a",
+        profile_ref="profile-a",
+        cookie_fingerprint="sha256:" + "3" * 64,
+    )
+    manager.create_session(
+        engagement_id="engagement-b",
+        profile_ref="profile-a",
+        cookie_fingerprint="sha256:" + "4" * 64,
+    )
+
+    assert (tmp_path / "engagement-a" / "profile-a").is_dir()
+    assert (tmp_path / "engagement-b" / "profile-a").is_dir()
+    assert (tmp_path / "engagement-a" / "profile-a").resolve() != (
+        tmp_path / "engagement-b" / "profile-a"
+    ).resolve()

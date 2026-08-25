@@ -58,6 +58,20 @@ _INJECTION_PATTERNS = (
 )
 _URL_RE = re.compile(r"https?://[^\s<>\"']+", re.I)
 _OTP_RE = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+_PROFILE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
+
+
+def _safe_profile_segment(value: str, *, field_name: str) -> str:
+    segment = str(value or "").strip()
+    if (
+        not segment
+        or segment in {".", ".."}
+        or "/" in segment
+        or "\\" in segment
+        or not _PROFILE_SEGMENT_RE.fullmatch(segment)
+    ):
+        raise ValueError(f"{field_name}_path_segment_invalid")
+    return segment
 
 
 def _digest(value: Any) -> str:
@@ -371,9 +385,13 @@ class BrowserSessionManager:
     ) -> BrowserSessionRef:
         if ttl <= timedelta(0):
             raise ValueError("session_ttl_invalid")
+        safe_engagement_id = _safe_profile_segment(
+            engagement_id, field_name="engagement_id"
+        )
+        safe_profile_ref = _safe_profile_segment(profile_ref, field_name="profile_ref")
         session_id = f"session-{secrets.token_hex(12)}"
         context_id = f"context-{secrets.token_hex(12)}"
-        directory = self.profile_root / engagement_id / profile_ref
+        directory = self.profile_root / safe_engagement_id / safe_profile_ref
         directory.mkdir(mode=0o700, parents=True, exist_ok=False)
         session = BrowserSessionRef(
             session_id=session_id,
@@ -460,6 +478,12 @@ class BrowserActionAdapter:
                 action_id=request.action_id,
                 status="blocked_by_precondition",
                 reason="session_engagement_mismatch",
+            )
+        if request.session_id != session.session_id:
+            return ActionOutcome(
+                action_id=request.action_id,
+                status="blocked_by_precondition",
+                reason="session_id_mismatch",
             )
         if session.expires_at <= datetime.now(timezone.utc):
             return ActionOutcome(
