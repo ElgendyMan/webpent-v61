@@ -257,6 +257,8 @@ def verify_replay_evidence(
         "finding_id": str(finding.id),
         "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
         "target_fingerprint": target_fingerprint,
+        "scope_context": clean_scope,
+        "identity_context": clean_identity,
     }
     if target_package_id:
         replay_context.update(

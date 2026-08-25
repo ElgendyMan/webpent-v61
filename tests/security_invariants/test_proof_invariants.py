@@ -90,6 +90,60 @@ def test_replay_rejects_cross_engagement_or_target_binding() -> None:
     ) is False
 
 
+def test_replay_binding_requires_hypothesis_scope_and_identity_context() -> None:
+    bundle = _complete_bundle(
+        scope_context={"target_url": "https://lab.test/resource"},
+        identity_context={"owner_ref": "identity:owner", "foreign_ref": "identity:foreign"},
+    )
+    evidence = [{"status": 200, "marker": "candidate"}]
+    control = {"status": 403, "marker": "control"}
+    context = {
+        "engagement_id": "engagement-proof",
+        "finding_id": "finding-proof",
+        "hypothesis_id": "hypothesis-proof",
+        "target_fingerprint": "target-fingerprint",
+        "scope_context": {"target_url": "https://lab.test/resource"},
+        "identity_context": {"owner_ref": "identity:owner", "foreign_ref": "identity:foreign"},
+    }
+
+    assert bundle.replay(evidence, control, replay_context=context) is True
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={key: value for key, value in context.items() if key != "hypothesis_id"},
+    ) is False
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**context, "identity_context": {"owner_ref": "identity:other"}},
+    ) is False
+    assert bundle.replay(
+        evidence,
+        control,
+        replay_context={**context, "scope_context": {"target_url": "https://other.test/resource"}},
+    ) is False
+    assert bundle.replay(
+        evidence, control, replay_context={**context, "untrusted_hint": "ignored-before-hardening"}
+    ) is False
+
+
+def test_replay_is_idempotent_and_does_not_mutate_sealed_bundle() -> None:
+    bundle = _complete_bundle()
+    evidence = [{"status": 200, "marker": "candidate"}]
+    control = {"status": 403, "marker": "control"}
+    context = {
+        "engagement_id": "engagement-proof",
+        "finding_id": "finding-proof",
+        "hypothesis_id": "hypothesis-proof",
+        "target_fingerprint": "target-fingerprint",
+    }
+    before = bundle.model_dump(mode="json")
+
+    assert bundle.replay(evidence, control, replay_context=context) is True
+    assert bundle.replay(evidence, control, replay_context=context) is True
+    assert bundle.model_dump(mode="json") == before
+
+
 def test_replay_binding_requires_package_identity_when_bundle_is_package_bound() -> None:
     bundle = _complete_bundle(
         target_package_id="package-proof",

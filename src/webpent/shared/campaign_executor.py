@@ -492,7 +492,30 @@ class CampaignExecutor:
                         replay_metadata=output.get("replay_metadata"),
                         cleanup_status=str(output.get("cleanup_status") or "not_recorded")[:80],
                     ).seal(actor="action_executor")
-                    replay_context = output.get("replay_context")
+                    supplied_replay_context = output.get("replay_context")
+                    replay_context = (
+                        dict(supplied_replay_context)
+                        if isinstance(supplied_replay_context, Mapping)
+                        else {}
+                    )
+                    # The executor owns the canonical bundle inputs. Complete
+                    # omitted binding metadata from the same output, but never
+                    # overwrite caller-supplied values so cross-context replay
+                    # remains fail-closed.
+                    for field_name in (
+                        "engagement_id",
+                        "finding_id",
+                        "hypothesis_id",
+                        "target_fingerprint",
+                        "scope_context",
+                        "identity_context",
+                    ):
+                        if field_name not in replay_context:
+                            value = output.get(field_name)
+                            if value is None:
+                                value = getattr(bundle, field_name, None)
+                            if value is not None:
+                                replay_context[field_name] = value
                     bundle_ready = bool(
                         proof_bundle_promotion_ready(bundle)
                         and bundle.verify_seal()
@@ -503,11 +526,7 @@ class CampaignExecutor:
                         and bundle.replay(
                             list(evidence),
                             output.get("negative_control"),
-                            replay_context=(
-                                replay_context
-                                if isinstance(replay_context, Mapping)
-                                else None
-                            ),
+                            replay_context=replay_context or None,
                         )
                     )
                     if not bundle_ready:

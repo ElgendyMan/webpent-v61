@@ -147,6 +147,7 @@ def _root_cause_present(
 
 def _replay_inputs(
     evidence: dict[str, Any],
+    proof_bundle: Any,
 ) -> tuple[Sequence[Any], Any, Mapping[str, Any] | None]:
     replay = evidence.get("replay")
     if not isinstance(replay, Mapping):
@@ -154,12 +155,29 @@ def _replay_inputs(
     payloads = replay.get("evidence_payloads")
     if not isinstance(payloads, (list, tuple)):
         payloads = ()
-    context = replay.get("context")
-    return (
-        payloads,
-        replay.get("negative_control"),
-        context if isinstance(context, Mapping) else None,
-    )
+    supplied_context = replay.get("context")
+    context = dict(supplied_context) if isinstance(supplied_context, Mapping) else {}
+
+    # Older report envelopes may carry only the scalar IDs. Complete missing
+    # binding fields from the sealed bundle; never overwrite supplied values,
+    # so stale or cross-target context remains fail-closed in validate_replay.
+    bundle_data = _as_dict(proof_bundle)
+    for field in (
+        "engagement_id",
+        "finding_id",
+        "hypothesis_id",
+        "target_fingerprint",
+        "target_package_id",
+        "target_package_sha256",
+        "target_package_scope_digest",
+        "target_package_policy_digest",
+        "scope_context",
+        "identity_context",
+    ):
+        if field not in context and bundle_data.get(field) is not None:
+            context[field] = bundle_data[field]
+
+    return payloads, replay.get("negative_control"), context or None
 
 
 def build_validation_status(finding: Any) -> ValidationStatus:
@@ -169,7 +187,7 @@ def build_validation_status(finding: Any) -> ValidationStatus:
     evidence_bundle = _as_dict(finding_data.get("evidence_bundle"))
     proof_bundle = _proof_bundle(finding_data, evidence)
     assessment = assess_finding_evidence(finding)
-    payloads, negative_control, replay_context = _replay_inputs(evidence)
+    payloads, negative_control, replay_context = _replay_inputs(evidence, proof_bundle)
     replay_verified = bool(
         payloads
         and negative_control is not None

@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **319**.
+Total records: **321**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -186,8 +186,9 @@ Total records: **319**.
 | `src/webpent/memory/embeddings.py` | 66 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 121 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 129 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/models/proof_bundle.py` | 218 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/models/proof_bundle.py` | 229 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 238 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 253 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 261 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/production/qualification.py` | 69 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/action_authority.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 71 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -200,6 +201,7 @@ Total records: **319**.
 | `src/webpent/shared/behavior_scenarios/__init__.py` | 54 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/browser_proof_runner.py` | 215 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/browser_proof_runner.py` | 216 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/campaign_executor.py` | 516 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/campaign_manager.py` | 36 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/capability_manifest.py` | 14 | `import` | `subprocess` | `subprocess_implementation` | `approved` |
 | `src/webpent/shared/capability_manifest.py` | 59 | `call` | `subprocess.run` | `subprocess` | `approved` |

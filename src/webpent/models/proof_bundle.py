@@ -201,31 +201,63 @@ class ProofBundle(BaseModel):
         if not isinstance(replay_context, Mapping):
             return False
 
-        required = {"engagement_id", "finding_id"}
-        if self.target_fingerprint:
-            required.add("target_fingerprint")
         package_fields = (
             "target_package_id",
             "target_package_sha256",
             "target_package_scope_digest",
             "target_package_policy_digest",
         )
+        scalar_fields = {
+            "engagement_id",
+            "finding_id",
+            "hypothesis_id",
+            "target_fingerprint",
+            *package_fields,
+        }
+        metadata_fields = {"scope_context", "identity_context"}
+        allowed_fields = scalar_fields | metadata_fields
+        if set(replay_context) - allowed_fields:
+            return False
+
+        required = {"engagement_id", "finding_id"}
+        if self.hypothesis_id:
+            required.add("hypothesis_id")
+        if self.target_fingerprint:
+            required.add("target_fingerprint")
         if self.target_package_id:
             required.update(package_fields)
+        if self.scope_context:
+            required.add("scope_context")
+        if self.identity_context:
+            required.add("identity_context")
 
         for field in required:
-            expected = replay_context.get(field)
-            stored = getattr(self, field, None)
-            if expected is None or stored is None or str(expected) != str(stored):
+            if field not in replay_context:
                 return False
+            expected = replay_context[field]
+            stored = getattr(self, field, None)
+            if expected is None or stored is None:
+                return False
+            if field in metadata_fields:
+                if not isinstance(expected, Mapping):
+                    return False
+                clean_expected, _ = redact_sensitive(dict(expected))
+                clean_stored, _ = redact_sensitive(stored)
+                if sha256_text(clean_expected) != sha256_text(clean_stored):
+                    return False
+            elif str(expected) != str(stored):
+                return False
+
         for field, expected in replay_context.items():
-            if field in {
-                "engagement_id",
-                "finding_id",
-                "hypothesis_id",
-                "target_fingerprint",
-                *package_fields,
-            }:
+            if field in metadata_fields:
+                stored = getattr(self, field, None)
+                if not isinstance(expected, Mapping) or stored is None:
+                    return False
+                clean_expected, _ = redact_sensitive(dict(expected))
+                clean_stored, _ = redact_sensitive(stored)
+                if sha256_text(clean_expected) != sha256_text(clean_stored):
+                    return False
+            elif field in scalar_fields:
                 stored = getattr(self, field, None)
                 if stored is None or str(expected) != str(stored):
                     return False
