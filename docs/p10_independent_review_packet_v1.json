@@ -15,6 +15,9 @@
       "https://github.com/juice-shop/juice-shop/tree/master/routes"
     ],
     "results_seen_by_reviewer": false,
+    "oracle_contracts_source": "src/webpent/benchmark/juice_shop_oracles.py",
+    "canonical_mapping_sha256": "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5",
+    "canonical_oracle_contract_sha256": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
     "review_status": "pending_external_reviewer"
   },
   "safety_contract": {
@@ -40,7 +43,7 @@
       "category": "Sensitive Data Exposure",
       "surface": "/ftp",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.resource_existence_and_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -50,7 +53,7 @@
       "category": "Sensitive Data Exposure",
       "surface": "/ftp/coupons_2013.md.bak",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.resource_existence_and_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -60,7 +63,7 @@
       "category": "Observability Failures",
       "surface": "/ftp/access.log",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.log_resource_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -70,7 +73,7 @@
       "category": "Observability Failures",
       "surface": "/ftp/suspicious_errors.yml",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.signature_resource_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -80,17 +83,17 @@
       "category": "Observability Failures",
       "surface": "/metrics",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.metrics_publication",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
     {
       "case_id": "juice.security_policy.v1",
       "challenge_key": "securityPolicyChallenge",
-      "category": "Security Misconfiguration",
+      "category": "Miscellaneous",
       "surface": "/security.txt",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.policy_resource_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -100,7 +103,7 @@
       "category": "Security Misconfiguration",
       "surface": "/rest/qwertz",
       "operation": "navigate",
-      "oracle_id": "http.read_only.error_status_shape",
+      "oracle_id": "http.read_only.error_disclosure_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -110,9 +113,10 @@
       "category": "Unvalidated Redirects",
       "surface": "/redirect?to=http://127.0.0.1:3000/",
       "operation": "navigate",
-      "oracle_id": "http.read_only.same_origin_redirect",
+      "oracle_id": "out_of_scope.external_destination_control",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
-      "review_decision": "pending"
+      "review_decision": "out_of_scope",
+      "review_reason": "external_destination_control_not_in_local_only_contract"
     },
     {
       "case_id": "juice.privacy_policy_proof.v1",
@@ -120,7 +124,7 @@
       "category": "Security through Obscurity",
       "surface": "/we/may/also/instruct/you/to/refuse/all/reasonably/necessary/responsibility",
       "operation": "navigate",
-      "oracle_id": "http.read_only.status_and_shape",
+      "oracle_id": "http.read_only.policy_resource_metadata",
       "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
       "review_decision": "pending"
     },
@@ -130,9 +134,40 @@
       "category": "XSS",
       "surface": "/",
       "operation": "typed_search",
-      "oracle_id": "dom.safe_search_observation",
-      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/data/static/challenges.yml",
+      "oracle_id": "dom.safe_search_sink_observation",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/frontend/src/app/search-result/search-result.component.ts",
       "review_decision": "pending"
+    },
+    {
+      "case_id": "juice.well_known_security_policy.v1",
+      "challenge_key": "securityPolicyChallenge",
+      "category": "Miscellaneous",
+      "surface": "/.well-known/security.txt",
+      "operation": "navigate",
+      "oracle_id": "http.read_only.policy_resource_metadata",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts",
+      "review_decision": "pending"
+    },
+    {
+      "case_id": "juice.public_scoreboard_route.v1",
+      "challenge_key": "scoreBoardChallenge",
+      "category": "Miscellaneous",
+      "surface": "/score-board",
+      "operation": "navigate",
+      "oracle_id": "http.read_only.public_route_metadata",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts",
+      "review_decision": "pending"
+    },
+    {
+      "case_id": "juice.application_version_surface.v1",
+      "challenge_key": "adminSectionChallenge",
+      "category": "Sensitive Data Exposure",
+      "surface": "/rest/admin/application-version",
+      "operation": "navigate",
+      "oracle_id": "http.read_only.version_disclosure_metadata",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts",
+      "review_decision": "out_of_scope",
+      "review_reason": "authenticated_admin_surface_not_in_local_read_only_contract"
     }
   ],
   "approval_record": {

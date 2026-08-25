@@ -10,15 +10,30 @@ def test_review_packet_is_pre_result_and_fail_closed() -> None:
     packet = json.loads(_PACKET.read_text(encoding="utf-8"))
     cases = packet["candidate_cases"]
     categories = {case["category"] for case in cases}
+    in_scope_categories = {
+        case["category"]
+        for case in cases
+        if case["case_id"] != "juice.redirect_local.v1"
+    }
 
-    assert len(cases) == 10
-    assert len(categories) == 6
+    assert len(cases) == 13
+    assert len(categories) == 7
+    assert len(in_scope_categories) == 6
     assert packet["independence"]["results_seen_by_reviewer"] is False
     assert packet["independence"]["review_status"] == "pending_external_reviewer"
     assert packet["approval_record"]["approved"] is False
     assert packet["approval_record"]["approved_case_count"] == 0
     assert packet["approval_record"]["approved_class_count"] == 0
-    assert all(case["review_decision"] == "pending" for case in cases)
+    assert all(
+        case["review_decision"] in {"pending", "out_of_scope"}
+        for case in cases
+    )
+    assert {
+        case["case_id"] for case in cases if case["review_decision"] == "out_of_scope"
+    } == {
+        "juice.application_version_surface.v1",
+        "juice.redirect_local.v1",
+    }
 
 
 def test_review_packet_is_loopback_get_only_and_redacted() -> None:

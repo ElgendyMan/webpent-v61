@@ -18,10 +18,13 @@
     "reviewer_approval_required_before_final_metrics": true
   },
   "scope": {
-    "planned_case_count": 12,
-    "planned_class_count": 7,
+    "planned_case_count": 11,
+    "planned_class_count": 6,
     "required_isolated_runs": 3,
-    "mapping_policy": "case_and_workflow_mapping_must_be_approved_before_recall_claim"
+    "mapping_policy": "case_and_workflow_mapping_must_be_approved_before_recall_claim",
+    "total_case_count": 21,
+    "out_of_scope_case_count": 10,
+    "canonical_case_registry": "src/webpent/benchmark/juice_shop_safe_cases.py"
   },
   "cases": [
     {
@@ -32,7 +35,8 @@
       "description_sha256": "sha256:329e32f8198056e773f23f94fb1a1a55f6ef31b9e5e3fec49a767c0964ba7b49",
       "workflow_id": null,
       "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
       "case_id": "juice.local_xss.v1",
@@ -42,17 +46,19 @@
       "description_sha256": "sha256:60ffa44475802305548c5ac26fc7f5b7b765413f4b7ec4f5851f99b6efc99b6d",
       "workflow_id": "pending_local_xss_safe_workflow",
       "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/frontend/src/app/search-result/search-result.component.ts"
     },
     {
       "case_id": "juice.deprecated_interface.v1",
       "challenge_key": "deprecatedInterfaceChallenge",
       "category": "Security Misconfiguration",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:49bbdc102e870b126172f69099a5b5344c5fe70a2c73b2b090dabc16fd32f589",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.error_handling.v1",
@@ -62,7 +68,8 @@
       "description_sha256": "sha256:6894fdda5d173dc5fbb9bf0174d047682bc2d4481ecf578314f8026d20838b4f",
       "workflow_id": null,
       "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
       "case_id": "juice.forgotten_backup.v1",
@@ -72,77 +79,186 @@
       "description_sha256": "sha256:737bf5402cb05706d6832be805b812e4e5eb8cd380dbe0674abdcecf6e733aca",
       "workflow_id": null,
       "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     },
     {
       "case_id": "juice.login_admin.v1",
       "challenge_key": "loginAdminChallenge",
       "category": "Injection",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:8e96ad0333246f4cf8dfa76efd73692211a7f554db2bec5cc823ff38d28835e1",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.basket_manipulate.v1",
       "challenge_key": "basketManipulateChallenge",
       "category": "Broken Access Control",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:17048ed5bfa5d0959e43aec66a3d876603d2363198df5dc923f93c9916aa1d57",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.nosql_command.v1",
       "challenge_key": "noSqlCommandChallenge",
       "category": "Injection",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:4f28231e4b9b9e3de24cd6c0e561a2b7e57bd0869e808ccbf99d576122687518",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.redirect_crypto.v1",
       "challenge_key": "redirectCryptoCurrencyChallenge",
       "category": "Unvalidated Redirects",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:1a679c35a3d09675abf68fe5039aa7d194a6c666e1d12ccf376a53bb2bccba8a",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.negative_order.v1",
       "challenge_key": "negativeOrderChallenge",
       "category": "Improper Input Validation",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:a032b578f9582ff843c506b730046424b46dae85cc8b30788274adab9e78ec17",
       "workflow_id": null,
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.reflected_xss.v1",
       "challenge_key": "reflectedXssChallenge",
       "category": "XSS",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:a17e87f5910679bf2ab4736ddaf34df51ac0338aaeb569361bf8946ce93ce5c6",
       "workflow_id": "pending_reflected_xss_safe_workflow",
-      "oracle_status": "partial_proof_exists_unmapped",
-      "mapping_status": "not_approved_for_recall"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
     },
     {
       "case_id": "juice.persisted_xss_feedback.v1",
       "challenge_key": "persistedXssFeedbackChallenge",
       "category": "XSS",
-      "expected": true,
+      "expected": false,
       "description_sha256": "sha256:53b7273a72494fe3cbf897eb6b16c2c0380680e1abe93693f659c381dd3dae98",
       "workflow_id": "pending_persisted_xss_safe_workflow",
-      "oracle_status": "pending_safe_oracle",
-      "mapping_status": "pending_independent_review"
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "out_of_scope_reason": "legacy_case_not_in_bounded_get_only_registry"
+    },
+    {
+      "case_id": "juice.well_known_security_policy.v1",
+      "challenge_key": "securityPolicyChallenge",
+      "category": "Miscellaneous",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
+    },
+    {
+      "case_id": "juice.public_scoreboard_route.v1",
+      "challenge_key": "scoreBoardChallenge",
+      "category": "Miscellaneous",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
+    },
+    {
+      "case_id": "juice.application_version_surface.v1",
+      "challenge_key": "adminSectionChallenge",
+      "category": "Sensitive Data Exposure",
+      "expected": false,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts",
+      "out_of_scope_reason": "authenticated_or_external_destination_surface_not_in_local_read_only_contract"
+    },
+    {
+      "case_id": "juice.access_log_disclosure.v1",
+      "challenge_key": "accessLogDisclosureChallenge",
+      "category": "Observability Failures",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
+    },
+    {
+      "case_id": "juice.misplaced_signature_file.v1",
+      "challenge_key": "misplacedSignatureFileChallenge",
+      "category": "Observability Failures",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
+    },
+    {
+      "case_id": "juice.exposed_metrics.v1",
+      "challenge_key": "exposedMetricsChallenge",
+      "category": "Observability Failures",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
+    },
+    {
+      "case_id": "juice.security_policy.v1",
+      "challenge_key": "securityPolicyChallenge",
+      "category": "Miscellaneous",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
+    },
+    {
+      "case_id": "juice.redirect_local.v1",
+      "challenge_key": "redirectCryptoCurrencyChallenge",
+      "category": "Unvalidated Redirects",
+      "expected": false,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "out_of_scope",
+      "mapping_status": "out_of_scope",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes",
+      "out_of_scope_reason": "authenticated_or_external_destination_surface_not_in_local_read_only_contract"
+    },
+    {
+      "case_id": "juice.privacy_policy_proof.v1",
+      "challenge_key": "privacyPolicyProofChallenge",
+      "category": "Security through Obscurity",
+      "expected": true,
+      "description_sha256": null,
+      "workflow_id": null,
+      "oracle_status": "pending_safe_oracle_review",
+      "mapping_status": "pending_independent_review",
+      "source_ref": "https://github.com/juice-shop/juice-shop/tree/master/routes"
     }
   ],
   "acceptance": {

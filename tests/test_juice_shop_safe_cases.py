@@ -1,5 +1,9 @@
 import pytest
 
+from webpent.benchmark.juice_shop_oracles import (
+    JUICE_ORACLE_CONTRACTS,
+    get_juice_oracle,
+)
 from webpent.benchmark.juice_shop_safe_cases import (
     JUICE_SHOP_SAFE_CASES,
     JuiceShopSafeCase,
@@ -11,17 +15,25 @@ from webpent.benchmark.juice_shop_safe_cases import (
 
 def test_safe_registry_has_unique_ids_and_six_categories() -> None:
     assert len(safe_case_ids()) == len(set(safe_case_ids()))
-    assert len(JUICE_SHOP_SAFE_CASES) >= 10
+    assert len(JUICE_SHOP_SAFE_CASES) >= 13
     assert len(safe_case_categories()) >= 6
-    assert all(case.safe_to_execute for case in JUICE_SHOP_SAFE_CASES)
     assert all(
-        case.mapping_status == "pending_independent_review"
+        case.mapping_status in {"pending_independent_review", "out_of_scope"}
         for case in JUICE_SHOP_SAFE_CASES
     )
     assert all(
-        case.oracle_status == "pending_safe_oracle_review"
+        case.oracle_status in {"pending_safe_oracle_review", "out_of_scope"}
         for case in JUICE_SHOP_SAFE_CASES
     )
+    out_of_scope_ids = {
+        case.case_id for case in JUICE_SHOP_SAFE_CASES if not case.safe_to_execute
+    }
+    assert out_of_scope_ids == {
+        "juice.redirect_local.v1",
+        "juice.application_version_surface.v1",
+    }
+    assert all(case.oracle_id in JUICE_ORACLE_CONTRACTS for case in JUICE_SHOP_SAFE_CASES)
+    assert not get_juice_shop_safe_case("juice.redirect_local.v1").safe_to_execute
 
 
 def test_registry_cases_are_relative_and_payload_free() -> None:
@@ -34,10 +46,23 @@ def test_registry_cases_are_relative_and_payload_free() -> None:
         assert "javascript:" not in case.path.lower()
 
 
+def test_oracle_contracts_separate_observation_and_vulnerability_proof() -> None:
+    for oracle in JUICE_ORACLE_CONTRACTS.values():
+        assert oracle.observation_proof
+        assert oracle.vulnerability_proof
+        assert oracle.negative_control
+        assert oracle.raw_data_retained is False
+    assert not get_juice_oracle(
+        "out_of_scope.external_destination_control"
+    ).qualification_eligible
+
+
 def test_exact_lookup_fails_closed() -> None:
     assert get_juice_shop_safe_case("juice.local_xss.v1").operation == "typed_search"
     with pytest.raises(KeyError, match="unknown_juice_shop_safe_case"):
         get_juice_shop_safe_case("juice.unknown.v1")
+    with pytest.raises(KeyError, match="unknown_juice_oracle"):
+        get_juice_oracle("unknown.oracle")
 
 
 def test_invalid_absolute_or_fragment_path_is_rejected() -> None:
@@ -48,7 +73,7 @@ def test_invalid_absolute_or_fragment_path_is_rejected() -> None:
             category="XSS",
             path="https://example.invalid/",
             operation="navigate",
-            oracle_id="http.read_only.status_and_shape",
+            oracle_id="http.read_only.policy_resource_metadata",
             source_ref="source",
         )
     with pytest.raises(ValueError, match="fragment"):
@@ -58,6 +83,6 @@ def test_invalid_absolute_or_fragment_path_is_rejected() -> None:
             category="XSS",
             path="/#/search",
             operation="navigate",
-            oracle_id="http.read_only.status_and_shape",
+            oracle_id="http.read_only.policy_resource_metadata",
             source_ref="source",
         )

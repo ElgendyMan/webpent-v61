@@ -51,6 +51,11 @@ _SOURCE_CATALOG = (
 _SOURCE_ROUTES = (
     "https://github.com/juice-shop/juice-shop/tree/master/routes"
 )
+_SOURCE_SERVER = "https://github.com/juice-shop/juice-shop/blob/master/server.ts"
+_SOURCE_SEARCH = (
+    "https://github.com/juice-shop/juice-shop/blob/master/"
+    "frontend/src/app/search-result/search-result.component.ts"
+)
 
 
 # These are deliberately read-only candidates. They do not contain payloads,
@@ -62,7 +67,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Sensitive Data Exposure",
         path="/ftp",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
+        oracle_id="http.read_only.resource_existence_and_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -71,7 +76,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Sensitive Data Exposure",
         path="/ftp/coupons_2013.md.bak",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
+        oracle_id="http.read_only.resource_existence_and_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -80,7 +85,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Observability Failures",
         path="/ftp/access.log",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
+        oracle_id="http.read_only.log_resource_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -89,7 +94,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Observability Failures",
         path="/ftp/suspicious_errors.yml",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
+        oracle_id="http.read_only.signature_resource_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -98,17 +103,17 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Observability Failures",
         path="/metrics",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
-        source_ref=_SOURCE_ROUTES,
+        oracle_id="http.read_only.metrics_publication",
+        source_ref=_SOURCE_SERVER,
     ),
     JuiceShopSafeCase(
         case_id="juice.security_policy.v1",
         challenge_key="securityPolicyChallenge",
-        category="Security Misconfiguration",
+        category="Miscellaneous",
         path="/security.txt",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
-        source_ref=_SOURCE_ROUTES,
+        oracle_id="http.read_only.policy_resource_metadata",
+        source_ref=_SOURCE_SERVER,
     ),
     JuiceShopSafeCase(
         case_id="juice.error_handling.v1",
@@ -116,7 +121,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Security Misconfiguration",
         path="/rest/qwertz",
         operation="navigate",
-        oracle_id="http.read_only.error_status_shape",
+        oracle_id="http.read_only.error_disclosure_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -125,8 +130,9 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Unvalidated Redirects",
         path="/redirect?to=http://127.0.0.1:3000/",
         operation="navigate",
-        oracle_id="http.read_only.same_origin_redirect",
+        oracle_id="out_of_scope.external_destination_control",
         source_ref=_SOURCE_ROUTES,
+        safe_to_execute=False,
     ),
     JuiceShopSafeCase(
         case_id="juice.privacy_policy_proof.v1",
@@ -134,7 +140,7 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="Security through Obscurity",
         path="/we/may/also/instruct/you/to/refuse/all/reasonably/necessary/responsibility",
         operation="navigate",
-        oracle_id="http.read_only.status_and_shape",
+        oracle_id="http.read_only.policy_resource_metadata",
         source_ref=_SOURCE_ROUTES,
     ),
     JuiceShopSafeCase(
@@ -143,8 +149,40 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         category="XSS",
         path="/",
         operation="typed_search",
-        oracle_id="dom.safe_search_observation",
-        source_ref=_SOURCE_CATALOG,
+        oracle_id="dom.safe_search_sink_observation",
+        source_ref=_SOURCE_SEARCH,
+    ),
+    # Buffer candidates: they are intentionally pending and do not increase
+    # approved coverage until an independent reviewer accepts their semantics.
+    JuiceShopSafeCase(
+        case_id="juice.well_known_security_policy.v1",
+        challenge_key="securityPolicyChallenge",
+        category="Miscellaneous",
+        path="/.well-known/security.txt",
+        operation="navigate",
+        oracle_id="http.read_only.policy_resource_metadata",
+        source_ref=_SOURCE_SERVER,
+    ),
+    JuiceShopSafeCase(
+        case_id="juice.public_scoreboard_route.v1",
+        challenge_key="scoreBoardChallenge",
+        category="Miscellaneous",
+        path="/score-board",
+        operation="navigate",
+        oracle_id="http.read_only.public_route_metadata",
+        source_ref=_SOURCE_SERVER,
+    ),
+    JuiceShopSafeCase(
+        case_id="juice.application_version_surface.v1",
+        challenge_key="adminSectionChallenge",
+        category="Sensitive Data Exposure",
+        path="/rest/admin/application-version",
+        operation="navigate",
+        oracle_id="http.read_only.version_disclosure_metadata",
+        source_ref=_SOURCE_SERVER,
+        safe_to_execute=False,
+        mapping_status="out_of_scope",
+        oracle_status="out_of_scope",
     ),
 )
 

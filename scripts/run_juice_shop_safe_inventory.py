@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
+from webpent.benchmark.juice_shop_oracles import get_juice_oracle
 from webpent.benchmark.juice_shop_safe_cases import JUICE_SHOP_SAFE_CASES
 from webpent.shared.browser_proof_runner import EphemeralProbe
 from webpent.shared.control_plane import (
@@ -95,6 +96,31 @@ def run(run_id: str, origin: str, output: Path) -> int:
     results: list[dict[str, object]] = []
 
     for index, case in enumerate(JUICE_SHOP_SAFE_CASES, start=1):
+        oracle = get_juice_oracle(case.oracle_id)
+        if not case.safe_to_execute or not oracle.qualification_eligible:
+            results.append(
+                {
+                    "case_id": case.case_id,
+                    "challenge_key": case.challenge_key,
+                    "category": case.category,
+                    "operation": case.operation,
+                    "oracle_id": case.oracle_id,
+                    "oracle_qualification_eligible": oracle.qualification_eligible,
+                    "mapping_status": case.mapping_status,
+                    "oracle_status": case.oracle_status,
+                    "scope_allowed": False,
+                    "observation": {
+                        "status": "out_of_scope",
+                        "reason": "case_not_safe_to_execute_under_local_only_contract",
+                        "target_backed": False,
+                        "has_raw_response": False,
+                        "has_raw_headers": False,
+                        "has_cookies": False,
+                        "has_probe_value": False,
+                    },
+                }
+            )
+            continue
         engagement_id = f"{run_id}-case-{index:02d}"
         scope = _scope(engagement_id)
         session = _session(engagement_id, profile_root)
@@ -157,6 +183,7 @@ def run(run_id: str, origin: str, output: Path) -> int:
                 "category": case.category,
                 "operation": case.operation,
                 "oracle_id": case.oracle_id,
+                "oracle_qualification_eligible": oracle.qualification_eligible,
                 "mapping_status": case.mapping_status,
                 "oracle_status": case.oracle_status,
                 "scope_allowed": decision.allowed,
