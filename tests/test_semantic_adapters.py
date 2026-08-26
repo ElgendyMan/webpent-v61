@@ -329,3 +329,63 @@ def test_target_registry_rejects_missing_workflow_allowlist() -> None:
 def test_target_registry_rejects_duplicate_workflow_allowlist() -> None:
     with pytest.raises(ValueError, match="workflow_allowlist_duplicate"):
         TargetAdapterRegistry().register(_registration(_DuplicateWorkflowAdapter()))
+
+
+class _UnallowlistedCaseWorkflowAdapter(_FakeTargetAdapter):
+    def case(self, case_id: str) -> TargetCaseBinding | None:
+        binding = super().case(case_id)
+        if binding is None:
+            return None
+        return TargetCaseBinding(
+            case_id=binding.case_id,
+            operation=binding.operation,
+            path=binding.path,
+            oracle_id=binding.oracle_id,
+            workflow_id="unreviewed-workflow",
+            semantic_profile=binding.semantic_profile,
+            scoring_status=binding.scoring_status,
+        )
+
+
+class _MismatchedCaseProfileAdapter(_FakeTargetAdapter):
+    def semantic_profile_for_case(self, case_id: str) -> str | None:
+        return None
+
+
+class _FailingWorkflowAdapter(_FakeTargetAdapter):
+    def workflow_ids(self) -> tuple[str, ...]:
+        raise RuntimeError("workflow source unavailable")
+
+
+def test_target_registry_rejects_case_workflow_outside_allowlist() -> None:
+    with pytest.raises(ValueError, match="case_workflow_not_allowlisted"):
+        TargetAdapterRegistry().register(_registration(_UnallowlistedCaseWorkflowAdapter()))
+
+
+def test_target_registry_rejects_case_profile_mismatch() -> None:
+    with pytest.raises(ValueError, match="case_profile_mismatch"):
+        TargetAdapterRegistry().register(_registration(_MismatchedCaseProfileAdapter()))
+
+
+def test_target_registry_converts_workflow_provider_failure_to_validation_error() -> None:
+    with pytest.raises(ValueError, match="workflow_ids_failed:RuntimeError"):
+        TargetAdapterRegistry().register(_registration(_FailingWorkflowAdapter()))
+
+
+def test_target_case_binding_requires_workflow_and_oracle_identity() -> None:
+    with pytest.raises(ValueError, match="target_case_binding_workflow_id_required"):
+        TargetCaseBinding(
+            case_id="case",
+            operation="navigate",
+            path="/safe",
+            oracle_id="oracle",
+            workflow_id="",
+        )
+    with pytest.raises(ValueError, match="target_case_binding_oracle_id_required"):
+        TargetCaseBinding(
+            case_id="case",
+            operation="navigate",
+            path="/safe",
+            oracle_id="",
+            workflow_id="workflow",
+        )

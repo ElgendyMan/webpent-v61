@@ -32,10 +32,16 @@ class TargetCaseBinding:
     def __post_init__(self) -> None:
         if not str(self.case_id).strip() or not str(self.path).strip():
             raise ValueError("target_case_binding_identity_required")
+        if not str(self.oracle_id).strip():
+            raise ValueError("target_case_binding_oracle_id_required")
+        if not str(self.workflow_id).strip():
+            raise ValueError("target_case_binding_workflow_id_required")
         if self.operation not in {"navigate", "typed_search"}:
             raise ValueError("target_case_binding_operation_not_allowlisted")
         if self.semantic_profile is not None and not str(self.semantic_profile).strip():
             raise ValueError("target_case_binding_semantic_profile_invalid")
+        if not str(self.scoring_status).strip():
+            raise ValueError("target_case_binding_scoring_status_required")
 
 
 @runtime_checkable
@@ -93,11 +99,81 @@ class RegisteredTargetAdapter:
             errors.append(f"target_adapter:{self.target_id}:proof_contract_required")
         if not isinstance(self.adapter.semantic_profiles, SemanticProfileRegistry):
             errors.append(f"target_adapter:{self.target_id}:semantic_registry_required")
-        workflows = tuple(str(item).strip() for item in self.adapter.workflow_ids())
+        normalized_origin = _origin(self.adapter.target_origin)
+        if not normalized_origin:
+            errors.append(f"target_adapter:{self.target_id}:origin_invalid")
+        else:
+            try:
+                if self.adapter.accepts_origin(normalized_origin) is not True:
+                    errors.append(f"target_adapter:{self.target_id}:origin_not_accepted")
+            except Exception as exc:
+                errors.append(
+                    f"target_adapter:{self.target_id}:origin_check_failed:{type(exc).__name__}"
+                )
+
+        try:
+            workflows = tuple(str(item).strip() for item in self.adapter.workflow_ids())
+        except Exception as exc:
+            workflows = ()
+            errors.append(
+                f"target_adapter:{self.target_id}:workflow_ids_failed:{type(exc).__name__}"
+            )
         if not workflows or any(not item for item in workflows):
             errors.append(f"target_adapter:{self.target_id}:workflow_allowlist_required")
         if len(set(workflows)) != len(workflows):
             errors.append(f"target_adapter:{self.target_id}:workflow_allowlist_duplicate")
+        workflow_set = frozenset(workflows)
+
+        try:
+            case_ids = tuple(str(item).strip() for item in self.adapter.case_ids())
+        except Exception as exc:
+            case_ids = ()
+            errors.append(
+                f"target_adapter:{self.target_id}:case_ids_failed:{type(exc).__name__}"
+            )
+        if not case_ids:
+            errors.append(f"target_adapter:{self.target_id}:case_ids_required")
+        if any(not item for item in case_ids):
+            errors.append(f"target_adapter:{self.target_id}:case_id_invalid")
+        if len(set(case_ids)) != len(case_ids):
+            errors.append(f"target_adapter:{self.target_id}:case_id_duplicate")
+
+        if isinstance(self.adapter.semantic_profiles, SemanticProfileRegistry):
+            for case_id in case_ids:
+                try:
+                    binding = self.adapter.case(case_id)
+                    declared_profile = self.adapter.semantic_profile_for_case(case_id)
+                except Exception as exc:
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_resolution_failed:"
+                        f"{case_id}:{type(exc).__name__}"
+                    )
+                    continue
+                if binding is None:
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_missing:{case_id}"
+                    )
+                    continue
+                if binding.case_id != case_id:
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_identity_mismatch:{case_id}"
+                    )
+                if binding.workflow_id not in workflow_set:
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_workflow_not_allowlisted:{case_id}"
+                    )
+                if declared_profile != binding.semantic_profile:
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_profile_mismatch:{case_id}"
+                    )
+                if (
+                    binding.semantic_profile is not None
+                    and self.adapter.semantic_profiles.contract(binding.semantic_profile)
+                    is None
+                ):
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_profile_not_registered:{case_id}"
+                    )
         return tuple(errors)
 
 
