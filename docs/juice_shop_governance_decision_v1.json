@@ -16,6 +16,13 @@
     "self_approval_not_claimed": true
   },
   "purpose": "Freeze case dispositions and hash inputs before any official isolated P10 runs; this packet does not authorize runs or confer P10/VIP qualification.",
+  "corrected_provenance": {
+    "source_manifest_generated_from_webpent_commit": "d18ced94d3cdc0320265d2461e2d9256ede9bfd9",
+    "source_manifest_generated_from_webpent_tree": "10b0e89941484649cbdb44fd3d7ff33cb96b0438",
+    "archive_verification_required": true,
+    "archive_verification_method": "compare the extracted project archive to git archive of the recorded commit and tree",
+    "self_approval_not_claimed": true
+  },
   "case_dispositions": {
     "juice.access_log_disclosure.v1": {
       "disposition": "implemented_pending_governance_confirmation",
@@ -106,7 +113,7 @@
     "ground_truth_document_sha256": "sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52",
     "ground_truth_source_snapshot_id": "gt-snapshot-20260826-corrected",
     "ground_truth_source_snapshot_sha256": "sha256:4bc02c4664aa06230b6617085134ba12080e99767f457c82ddd917c48f471963",
-    "source_ground_truth_manifest_sha256": "sha256:d3078564bd07a2592e3f5a9013a0fd1364405518412592fa3fd42d68967e1205",
+    "source_ground_truth_manifest_sha256": "sha256:d115ce91deba4ec5b3d8c12eaeefc90c6c53f63c45ac7bcef09af6c6e014f4f8",
     "loopback_runtime_manifest_sha256": "sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524",
     "release_manifest_hash_lock": "excluded_to_avoid_recursive_self_reference",
     "hash_interpretation": "Canonical mapping/oracle values are prior review locks. Current source mapping/oracle hashes identify the source presently awaiting human reconfirmation. Document, snapshot, source-to-ground-truth manifest, and runtime manifest hashes identify exact local inputs. The frozen ground truth was not modified to hide drift."

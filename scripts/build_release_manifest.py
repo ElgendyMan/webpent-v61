@@ -20,7 +20,7 @@ EXCLUDED_PARTS = {
     ".ruff_cache",
     ".mypy_cache",
 }
-EXCLUDED_ROOT_DIRS = {"memory", "output"}
+EXCLUDED_ROOT_DIRS = {"audit", "memory", "output"}
 EXCLUDED_NAMES = {
     ".env",
     ".coverage",
@@ -32,6 +32,8 @@ EXCLUDED_NAMES = {
     "decision_log.db.migration.lock",
     "lessons.db",
     "lessons.db.migration.lock",
+    "audit_summary_current.txt",
+    "plan_verification_summary.txt",
 }
 EXCLUDED_SUFFIXES = {
     ".pyc",
@@ -58,6 +60,8 @@ def _is_excluded_relative(relative: Path) -> bool:
     live-output directories that can contain target-specific data.
     """
     if relative.parts and relative.parts[0] in EXCLUDED_ROOT_DIRS:
+        return True
+    if any(part.endswith(".egg-info") for part in relative.parts):
         return True
     relative_text = relative.as_posix()
     return any(
