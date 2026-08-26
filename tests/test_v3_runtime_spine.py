@@ -55,6 +55,9 @@ class _RuntimeTargetAdapter:
     def workflow_ids(self) -> tuple[str, ...]:
         return ("runtime-navigate-v1",)
 
+    def workflow_executors(self) -> dict[str, object]:
+        return {}
+
     def case_ids(self) -> tuple[str, ...]:
         return ("runtime.case.v1",)
 

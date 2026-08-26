@@ -761,3 +761,33 @@ def test_playwright_handler_blocks_unregistered_semantic_profile_before_browser_
     assert result["handler_status"] == "blocked"
     assert result["reason"] == "semantic_profile_not_registered"
     assert result["target_backed"] is False
+
+
+def test_playwright_handler_blocks_allowlisted_typed_search_without_executor():
+    handler = PlaywrightBrowserHandler(
+        target_origin=ORIGIN,
+        engagement_id=ENGAGEMENT,
+        browser_timeout_ms=1000,
+        workflow_allowlist={"independent-target-search"},
+        workflow_executors={},
+    )
+    request = BrowserActionRequest(
+        action_id="browser-typed-search-no-executor",
+        engagement_id=ENGAGEMENT,
+        session_id="session-1",
+        operation="typed_search",
+        url=f"{ORIGIN}/search",
+        scope_decision=evaluate_scope(_scope(), f"{ORIGIN}/search"),
+        timeout_ms=1000,
+        idempotency_key="browser-typed-search-no-executor-idem",
+        observation_role="candidate",
+        probe_ref="probe://test/candidate",
+        probe_digest="sha256:" + "b" * 64,
+        workflow_id="independent-target-search",
+    )
+
+    result = handler(request)
+
+    assert result["handler_status"] == "blocked"
+    assert result["reason"] == "typed_search_workflow_executor_missing"
+    assert result["target_backed"] is False

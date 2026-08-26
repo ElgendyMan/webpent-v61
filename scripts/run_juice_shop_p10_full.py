@@ -438,6 +438,7 @@ def main() -> int:
             probe_resolver=probe_store.resolve,
             semantic_profile_registry=target_adapter.semantic_profiles,
             workflow_allowlist=target_adapter.workflow_ids(),
+            workflow_executors=target_adapter.workflow_executors(),
         )
         adapter = BrowserActionAdapter(
             handler,

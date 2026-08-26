@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -106,6 +106,7 @@ class PlaywrightBrowserHandler:
         probe_resolver: Callable[[str], str | None] | None = None,
         semantic_profile_registry: SemanticProfileRegistry | None = None,
         workflow_allowlist: Collection[str] | None = None,
+        workflow_executors: Mapping[str, Callable[[Any, str, int], str | None]] | None = None,
     ) -> None:
         self.target_origin = _origin(target_origin)
         self.engagement_id = str(engagement_id or "").strip()
@@ -121,6 +122,11 @@ class PlaywrightBrowserHandler:
         self.workflow_allowlist = frozenset(
             str(item).strip() for item in (workflow_allowlist or ()) if str(item).strip()
         )
+        self.workflow_executors = {
+            str(workflow_id).strip(): executor
+            for workflow_id, executor in (workflow_executors or {}).items()
+            if str(workflow_id).strip() and callable(executor)
+        }
         if not self.target_origin or not self.engagement_id:
             raise ValueError("playwright_handler_target_and_engagement_required")
 
@@ -138,6 +144,10 @@ class PlaywrightBrowserHandler:
             not request.workflow_id or request.workflow_id not in self.workflow_allowlist
         ):
             return self._blocked("typed_search_workflow_not_allowlisted")
+        if request.operation == "typed_search" and (
+            str(request.workflow_id) not in self.workflow_executors
+        ):
+            return self._blocked("typed_search_workflow_executor_missing")
         if (
             request.semantic_profile is not None
             and self.semantic_profile_registry.contract(request.semantic_profile) is None
@@ -246,48 +256,32 @@ class PlaywrightBrowserHandler:
                     if password_fields.count() > 0:
                         return self._blocked("account_like_form_denied")
                     if request.operation == "typed_search":
-                        stage = "locate_typed_search"
-                        host = page.locator("app-mat-search-bar#searchQuery").first
-                        fields = host.locator("input") if host.count() > 0 else None
-                        field_visible = bool(
-                            fields is not None
-                            and fields.count() > 0
-                            and fields.first.is_visible()
-                        )
-                        if not field_visible:
-                            opener = page.locator("button[aria-label='Open search']").first
-                            if opener.count() == 0 or not opener.is_visible():
-                                return self._blocked("typed_search_opener_missing")
-                            stage = "open_typed_search"
-                            opener.click(timeout=timeout_ms)
-                            page.wait_for_timeout(100)
-                            host = page.locator("app-mat-search-bar#searchQuery").first
-                            fields = host.locator("input") if host.count() > 0 else None
-                        if host.count() == 0 or not host.is_visible():
-                            return self._blocked("typed_search_host_missing")
-                        if fields is None:
-                            return self._blocked("typed_search_input_missing")
+                        executor = self.workflow_executors.get(str(request.workflow_id))
+                        if executor is None:
+                            return self._blocked("typed_search_workflow_executor_missing")
+                        stage = "execute_typed_search"
+                        executor_reason = executor(page, probe_value, timeout_ms)
+                        if executor_reason:
+                            return self._blocked(str(executor_reason)[:120])
+                        fields = None
                     else:
                         fields = page.locator(
                             "input[type='text'], input[type='search'], "
                             "input[type='url'], input[type='email'], input:not([type])"
                         )
-                    stage = "fill_probe"
-                    filled = False
-                    filled_field: Any | None = None
-                    for index in range(min(fields.count(), 20)):
-                        field = fields.nth(index)
-                        if field.is_visible():
-                            field.fill(probe_value, timeout=timeout_ms)
-                            filled = True
-                            filled_field = field
-                            break
-                    if not filled or filled_field is None:
-                        return self._blocked("validator_input_field_missing")
-                    if request.operation == "typed_search":
-                        stage = "submit_typed_search"
-                        filled_field.press("Enter", timeout=timeout_ms)
-                    else:
+                    if request.operation != "typed_search":
+                        stage = "fill_probe"
+                        filled = False
+                        filled_field: Any | None = None
+                        for index in range(min(fields.count(), 20)):
+                            field = fields.nth(index)
+                            if field.is_visible():
+                                field.fill(probe_value, timeout=timeout_ms)
+                                filled = True
+                                filled_field = field
+                                break
+                        if not filled or filled_field is None:
+                            return self._blocked("validator_input_field_missing")
                         submit = page.locator(
                             "input[type='submit'], button[type='submit'], button:not([type])"
                         ).first

@@ -230,6 +230,9 @@ class _FakeTargetAdapter:
     def workflow_ids(self) -> tuple[str, ...]:
         return ("fake-read-only-navigation",)
 
+    def workflow_executors(self) -> dict[str, object]:
+        return {}
+
     def case_ids(self) -> tuple[str, ...]:
         return ("fake.metrics.v1",)
 

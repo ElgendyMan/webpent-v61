@@ -264,10 +264,10 @@ Total records: **325**.
 | `src/webpent/shared/planner_decisions.py` | 70 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/planner_decisions.py` | 250 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 154 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 179 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
-| `src/webpent/shared/playwright_adapter.py` | 193 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/playwright_adapter.py` | 195 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 164 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 189 | `call` | `playwright.chromium.launch` | `browser_playwright` | `approved` |
+| `src/webpent/shared/playwright_adapter.py` | 203 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/playwright_adapter.py` | 205 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 44 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 80 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/poc_policy.py` | 84 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -314,8 +314,8 @@ Total records: **325**.
 | `src/webpent/shared/target_workspace.py` | 180 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/trust_matrix.py` | 17 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/initial_state.py` | 193 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 280 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 281 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 286 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 287 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 33 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 52 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/tools/exploitation/dalfox.py` | 175 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |

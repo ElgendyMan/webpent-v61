@@ -6,6 +6,7 @@ explicitly at orchestration time.
 """
 from __future__ import annotations
 
+from typing import Any
 from urllib.parse import urlsplit
 
 from webpent.benchmark.juice_shop_safe_cases import (
@@ -56,6 +57,9 @@ class JuiceShopTargetAdapter:
             "juice-shop-read-only-navigation",
         )
 
+    def workflow_executors(self) -> dict[str, Any]:
+        return {"juice-shop-mat-search": _execute_juice_shop_mat_search}
+
     def case_ids(self) -> tuple[str, ...]:
         return tuple(case.case_id for case in JUICE_SHOP_SAFE_CASES)
 
@@ -87,6 +91,41 @@ class JuiceShopTargetAdapter:
 
     def accepts_origin(self, origin: str) -> bool:
         return _normalize_origin(origin) == self.target_origin
+
+
+def _execute_juice_shop_mat_search(
+    page: Any,
+    probe_value: str,
+    timeout_ms: int,
+) -> str | None:
+    """Execute the reviewed, read-only Juice Shop MAT search workflow."""
+
+    host = page.locator("app-mat-search-bar#searchQuery").first
+    fields = host.locator("input") if host.count() > 0 else None
+    field_visible = bool(
+        fields is not None
+        and fields.count() > 0
+        and fields.first.is_visible()
+    )
+    if not field_visible:
+        opener = page.locator("button[aria-label='Open search']").first
+        if opener.count() == 0 or not opener.is_visible():
+            return "typed_search_opener_missing"
+        opener.click(timeout=timeout_ms)
+        page.wait_for_timeout(100)
+        host = page.locator("app-mat-search-bar#searchQuery").first
+        fields = host.locator("input") if host.count() > 0 else None
+    if host.count() == 0 or not host.is_visible():
+        return "typed_search_host_missing"
+    if fields is None:
+        return "typed_search_input_missing"
+    for index in range(min(fields.count(), 20)):
+        field = fields.nth(index)
+        if field.is_visible():
+            field.fill(probe_value, timeout=timeout_ms)
+            field.press("Enter", timeout=timeout_ms)
+            return None
+    return "validator_input_field_missing"
 
 
 JUICE_SHOP_TARGET_ADAPTER = JuiceShopTargetAdapter()

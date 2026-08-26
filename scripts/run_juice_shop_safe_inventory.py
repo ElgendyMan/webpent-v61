@@ -135,6 +135,7 @@ def run(run_id: str, origin: str, output: Path) -> int:
             probe_resolver=probe_store.resolve,
             semantic_profile_registry=JUICE_SHOP_TARGET_ADAPTER.semantic_profiles,
             workflow_allowlist=JUICE_SHOP_TARGET_ADAPTER.workflow_ids(),
+            workflow_executors=JUICE_SHOP_TARGET_ADAPTER.workflow_executors(),
         )
         adapter = BrowserActionAdapter(
             handler,

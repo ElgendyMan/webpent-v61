@@ -221,6 +221,11 @@ def build_initial_state(
         if target_adapter_registration is not None
         else ()
     )
+    workflow_executors = (
+        target_adapter_registration.adapter.workflow_executors()
+        if target_adapter_registration is not None
+        else {}
+    )
     browser_capability = (
         (capability_manifest.get("capabilities") or {}).get("browser") or {}
     )
@@ -251,6 +256,7 @@ def build_initial_state(
                     probe_resolver=probe_store.resolve,
                     semantic_profile_registry=semantic_profile_registry,
                     workflow_allowlist=workflow_allowlist,
+                    workflow_executors=workflow_executors,
                 ),
                 probe_registrar=probe_store.put,
                 probe_cleaner=probe_store.clear,

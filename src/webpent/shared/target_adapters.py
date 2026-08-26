@@ -7,7 +7,7 @@ closed; there is no default target and no cross-target fallback.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
@@ -44,6 +44,9 @@ class TargetCaseBinding:
             raise ValueError("target_case_binding_scoring_status_required")
 
 
+WorkflowExecutor = Callable[[Any, str, int], str | None]
+
+
 @runtime_checkable
 class TargetAdapter(Protocol):
     """Minimal target-specific surface required by generic proof orchestration."""
@@ -54,6 +57,9 @@ class TargetAdapter(Protocol):
 
     def workflow_ids(self) -> Sequence[str]:
         """Return reviewed workflow IDs allowed for this target."""
+
+    def workflow_executors(self) -> Mapping[str, WorkflowExecutor]:
+        """Return target-local executors for workflows that perform browser I/O."""
 
     def case_ids(self) -> Sequence[str]:
         """Return the immutable execution set for this target."""
@@ -127,6 +133,33 @@ class RegisteredTargetAdapter:
         workflow_set = frozenset(workflows)
 
         try:
+            raw_executors = self.adapter.workflow_executors()
+        except Exception as exc:
+            raw_executors = {}
+            errors.append(
+                f"target_adapter:{self.target_id}:workflow_executors_failed:{type(exc).__name__}"
+            )
+        if not isinstance(raw_executors, Mapping):
+            raw_executors = {}
+            errors.append(
+                f"target_adapter:{self.target_id}:workflow_executors_invalid"
+            )
+        executor_keys = tuple(str(key).strip() for key in raw_executors)
+        if len(set(executor_keys)) != len(executor_keys):
+            errors.append(
+                f"target_adapter:{self.target_id}:workflow_executor_duplicate"
+            )
+        if any(key not in workflow_set for key in executor_keys):
+            errors.append(
+                f"target_adapter:{self.target_id}:workflow_executor_not_allowlisted"
+            )
+        for key, executor in raw_executors.items():
+            if str(key).strip() in workflow_set and not callable(executor):
+                errors.append(
+                    f"target_adapter:{self.target_id}:workflow_executor_not_callable:{str(key).strip()}"
+                )
+
+        try:
             case_ids = tuple(str(item).strip() for item in self.adapter.case_ids())
         except Exception as exc:
             case_ids = ()
@@ -163,6 +196,16 @@ class RegisteredTargetAdapter:
                 if binding.workflow_id not in workflow_set:
                     errors.append(
                         f"target_adapter:{self.target_id}:case_workflow_not_allowlisted:{case_id}"
+                    )
+                if (
+                    binding.operation == "typed_search"
+                    and (
+                        binding.workflow_id not in raw_executors
+                        or not callable(raw_executors.get(binding.workflow_id))
+                    )
+                ):
+                    errors.append(
+                        f"target_adapter:{self.target_id}:typed_workflow_executor_missing:{case_id}"
                     )
                 if declared_profile != binding.semantic_profile:
                     errors.append(
@@ -254,4 +297,5 @@ __all__ = [
     "TargetAdapter",
     "TargetAdapterRegistry",
     "TargetCaseBinding",
+    "WorkflowExecutor",
 ]
