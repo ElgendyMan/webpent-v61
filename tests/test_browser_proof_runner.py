@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from webpent.config.settings import ScanMode, Settings
 from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.shared.action_authority import ActionAuthority
@@ -68,6 +70,7 @@ def _build_runner(
     missing_observation: bool = False,
     browser_operation: str = "validate_input",
     workflow_id: str | None = None,
+    workflow_allowlist: tuple[str, ...] = (),
 ) -> tuple[BrowserProofRunner, list[dict[str, Any]]]:
     probes: dict[str, str] = {}
     seen: list[dict[str, Any]] = []
@@ -143,6 +146,7 @@ def _build_runner(
         engagement_id=ENGAGEMENT,
         browser_operation=browser_operation,
         workflow_id=workflow_id,
+        workflow_allowlist=workflow_allowlist,
     )
     return runner, seen
 
@@ -168,12 +172,13 @@ def test_typed_search_request_is_explicitly_bound_to_allowlisted_workflow(tmp_pa
     runner, _ = _build_runner(
         tmp_path,
         browser_operation="typed_search",
-        workflow_id="juice-shop-mat-search",
+        workflow_id="reviewed-target-search",
+        workflow_allowlist=("reviewed-target-search",),
     )
     request = runner._request(_finding(), _probes()[0], target_url=TARGET_URL)
 
     assert request.operation == "typed_search"
-    assert request.workflow_id == "juice-shop-mat-search"
+    assert request.workflow_id == "reviewed-target-search"
     assert request.probe_ref.startswith("probe://")
     assert request.probe_digest.startswith("sha256:")
 
@@ -266,3 +271,46 @@ def test_runner_rejects_identical_candidate_and_negative_probe_digest(tmp_path):
     assert result.passed is False
     assert result.reason == "negative_control_probe_must_be_distinct"
     assert seen == []
+
+
+def test_typed_search_requires_explicit_workflow_allowlist(tmp_path):
+    with pytest.raises(ValueError, match="browser_proof_workflow_not_allowlisted"):
+        _build_runner(
+            tmp_path,
+            browser_operation="typed_search",
+            workflow_id="unregistered-target-workflow",
+            workflow_allowlist=("different-target-workflow",),
+        )
+
+
+def test_typed_search_requires_workflow_id_even_with_allowlist(tmp_path):
+    with pytest.raises(ValueError, match="browser_proof_workflow_not_allowlisted"):
+        _build_runner(
+            tmp_path,
+            browser_operation="typed_search",
+            workflow_allowlist=("independent-target-workflow",),
+        )
+
+
+def test_typed_search_allowlist_is_not_implicitly_juice_shop_specific(tmp_path):
+    runner, _ = _build_runner(
+        tmp_path,
+        browser_operation="typed_search",
+        workflow_id="independent-target-workflow",
+        workflow_allowlist=("independent-target-workflow",),
+    )
+
+    request = runner._request(_finding(), _probes()[0], target_url=TARGET_URL)
+
+    assert request.workflow_id == "independent-target-workflow"
+    assert "juice-shop-mat-search" not in runner.workflow_allowlist
+
+
+
+def test_validate_input_remains_compatible_without_workflow_allowlist(tmp_path):
+    runner, _ = _build_runner(tmp_path, browser_operation="validate_input")
+
+    request = runner._request(_finding(), _probes()[0], target_url=TARGET_URL)
+
+    assert request.operation == "validate_input"
+    assert request.workflow_id is None

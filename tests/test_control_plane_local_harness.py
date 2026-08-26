@@ -706,3 +706,58 @@ def test_browser_session_manager_keeps_engagement_profile_directories_isolated(t
     assert (tmp_path / "engagement-a" / "profile-a").resolve() != (
         tmp_path / "engagement-b" / "profile-a"
     ).resolve()
+
+
+
+def test_playwright_handler_blocks_typed_search_without_target_workflow_allowlist():
+    handler = PlaywrightBrowserHandler(
+        target_origin=ORIGIN,
+        engagement_id=ENGAGEMENT,
+        browser_timeout_ms=1000,
+    )
+    request = BrowserActionRequest(
+        action_id="browser-typed-search-1",
+        engagement_id=ENGAGEMENT,
+        session_id="session-1",
+        operation="typed_search",
+        url=f"{ORIGIN}/search",
+        scope_decision=evaluate_scope(_scope(), f"{ORIGIN}/search"),
+        timeout_ms=1000,
+        idempotency_key="browser-typed-search-idem",
+        observation_role="candidate",
+        probe_ref="probe://test/candidate",
+        probe_digest="sha256:" + "a" * 64,
+        workflow_id="unregistered-target-workflow",
+    )
+
+    result = handler(request)
+
+    assert result["handler_status"] == "blocked"
+    assert result["reason"] == "typed_search_workflow_not_allowlisted"
+    assert result["target_backed"] is False
+
+
+def test_playwright_handler_blocks_unregistered_semantic_profile_before_browser_io():
+    handler = PlaywrightBrowserHandler(
+        target_origin=ORIGIN,
+        engagement_id=ENGAGEMENT,
+        browser_timeout_ms=1000,
+    )
+    request = BrowserActionRequest(
+        action_id="browser-semantic-profile-1",
+        engagement_id=ENGAGEMENT,
+        session_id="session-1",
+        operation="navigate",
+        url=f"{ORIGIN}/metrics",
+        scope_decision=evaluate_scope(_scope(), f"{ORIGIN}/metrics"),
+        timeout_ms=1000,
+        idempotency_key="browser-semantic-profile-idem",
+        observation_role="candidate",
+        semantic_profile="unregistered-target-profile.v1",
+    )
+
+    result = handler(request)
+
+    assert result["handler_status"] == "blocked"
+    assert result["reason"] == "semantic_profile_not_registered"
+    assert result["target_backed"] is False

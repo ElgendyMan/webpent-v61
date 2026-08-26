@@ -32,7 +32,10 @@ from webpent.shared.runtime import (
     CONTROL_PLANE_BROWSER_INVENTORY_REF,
     CONTROL_PLANE_BROWSER_PROOF_CONTRACT,
 )
-from webpent.shared.semantic_observations import semantic_profile_contract
+from webpent.shared.semantic_observations import (
+    SemanticProfileRegistry,
+    semantic_profile_contract,
+)
 from webpent.shared.verifier import VerificationResult, verify_replay_evidence
 
 
@@ -144,12 +147,18 @@ class SemanticProofRunner:
         scope: EngagementScope,
         engagement_id: str,
         semantic_profile: str,
+        semantic_profiles: SemanticProfileRegistry | None,
         validator_id: str,
         validator_version: str = "1.0",
         g02_inventory_ref: str = CONTROL_PLANE_BROWSER_INVENTORY_REF,
         g02_proof_contract: str = CONTROL_PLANE_BROWSER_PROOF_CONTRACT,
     ) -> None:
-        contract = semantic_profile_contract(semantic_profile)
+        if semantic_profiles is None:
+            raise ValueError("semantic_profile_registry_required")
+        contract = semantic_profile_contract(
+            semantic_profile,
+            registry=semantic_profiles,
+        )
         if contract is None:
             raise ValueError("semantic_profile_not_registered")
         if contract.get("promotable") is not True:
@@ -160,6 +169,7 @@ class SemanticProofRunner:
         self.scope = scope
         self.engagement_id = str(engagement_id or "").strip()
         self.semantic_profile = str(semantic_profile).strip()
+        self.semantic_profiles = semantic_profiles
         self.validator_id = str(validator_id or "").strip()
         self.validator_version = str(validator_version or "").strip()
         self.g02_inventory_ref = str(g02_inventory_ref or "").strip()
@@ -291,7 +301,13 @@ class SemanticProofRunner:
                 "semantic_negative_control_response_must_differ",
                 observations,
             )
-        contract = semantic_profile_contract(self.semantic_profile) or {}
+        contract = (
+            semantic_profile_contract(
+                self.semantic_profile,
+                registry=self.semantic_profiles,
+            )
+            or {}
+        )
         causal_basis = (
             f"{self.semantic_profile}:candidate_semantic_match_only_with_independent_control;"
             f"contract={contract.get('reason', 'registered')}"

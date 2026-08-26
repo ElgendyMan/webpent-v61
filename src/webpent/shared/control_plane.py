@@ -605,8 +605,8 @@ class BrowserActionRequest(BaseModel):
                 raise ValueError("validator_probe_digest_invalid")
         elif self.probe_ref is not None or self.probe_digest is not None:
             raise ValueError("probe_metadata_not_allowed_for_operation")
-        if self.operation == "typed_search" and self.workflow_id != "juice-shop-mat-search":
-            raise ValueError("typed_search_workflow_not_allowlisted")
+        if self.operation == "typed_search" and not self.workflow_id:
+            raise ValueError("typed_search_workflow_required")
         if self.operation != "typed_search" and self.workflow_id is not None:
             raise ValueError("workflow_metadata_not_allowed_for_operation")
         if self.semantic_profile is not None:

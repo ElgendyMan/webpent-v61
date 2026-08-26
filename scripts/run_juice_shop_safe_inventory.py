@@ -17,6 +17,7 @@ from urllib.parse import urljoin, urlsplit
 
 from webpent.benchmark.juice_shop_oracles import get_juice_oracle
 from webpent.benchmark.juice_shop_safe_cases import JUICE_SHOP_SAFE_CASES
+from webpent.benchmark.juice_shop_target_adapter import JUICE_SHOP_TARGET_ADAPTER
 from webpent.shared.browser_proof_runner import EphemeralProbe
 from webpent.shared.control_plane import (
     BrowserActionRequest,
@@ -132,6 +133,8 @@ def run(run_id: str, origin: str, output: Path) -> int:
             headless=True,
             browser_timeout_ms=15_000,
             probe_resolver=probe_store.resolve,
+            semantic_profile_registry=JUICE_SHOP_TARGET_ADAPTER.semantic_profiles,
+            workflow_allowlist=JUICE_SHOP_TARGET_ADAPTER.workflow_ids(),
         )
         adapter = BrowserActionAdapter(
             handler,
@@ -151,6 +154,9 @@ def run(run_id: str, origin: str, output: Path) -> int:
             )
             probe_ref = probe.probe_ref
             probe_digest = probe.probe_digest
+        target_binding = JUICE_SHOP_TARGET_ADAPTER.case(case.case_id)
+        if target_binding is None or target_binding.operation != case.operation:
+            raise ValueError("juice_shop_target_case_binding_mismatch")
         request = BrowserActionRequest(
             action_id=f"{run_id}-action-{index:02d}",
             engagement_id=engagement_id,
@@ -163,7 +169,7 @@ def run(run_id: str, origin: str, output: Path) -> int:
             observation_role="inventory",
             probe_ref=probe_ref,
             probe_digest=probe_digest,
-            workflow_id="juice-shop-mat-search" if case.operation == "typed_search" else None,
+            workflow_id=target_binding.workflow_id if case.operation == "typed_search" else None,
         )
         if probe is not None:
             adapter.register_ephemeral_probe(probe.probe_ref, _NEUTRAL_PROBE)

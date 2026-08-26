@@ -15,7 +15,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-from webpent.benchmark.juice_shop_safe_cases import get_juice_shop_safe_case
+from webpent.benchmark.juice_shop_target_adapter import (
+    JUICE_SHOP_TARGET_REGISTRATION,
+)
 from webpent.benchmark.p10_review import validate_mapping_review
 from webpent.config.settings import ScanMode, Settings
 from webpent.models.findings import Finding, Severity, VulnClass
@@ -44,6 +46,7 @@ from webpent.shared.runtime import (
     RegisteredAdapter,
 )
 from webpent.shared.semantic_proof_runner import SemanticProofRunner
+from webpent.shared.target_adapters import TargetAdapterRegistry
 
 ORIGIN = "http://127.0.0.1:3000"
 EXPECTED_MAPPING = "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5"
@@ -53,12 +56,6 @@ EXECUTION_ORACLE_STATUSES = frozenset(
 )
 NEUTRAL_PROBE = "p10-neutral-observation"
 TARGET_CONTAINER = "juice-shop-local"
-SEMANTIC_CASE_PROFILES = {
-    "juice.exposed_metrics.v1": "juice.exposed_metrics.v1",
-    "juice.error_handling.v1": "juice.error_disclosure.v1",
-}
-
-
 def target_integrity_snapshot() -> dict[str, object]:
     """Read only immutable Docker metadata for the local target container."""
     command = [
@@ -232,11 +229,6 @@ def xss_finding(case_id: str, target_url: str) -> Finding:
     )
 
 
-def semantic_profile_for_case(case_id: str) -> str | None:
-    """Return an explicitly registered semantic profile or keep the case blocked."""
-    return SEMANTIC_CASE_PROFILES.get(case_id)
-
-
 def semantic_finding(case_id: str, target_url: str) -> Finding:
     """Create an info-disclosure context; no response content enters the finding."""
     return Finding(
@@ -379,6 +371,10 @@ def main() -> int:
     parser.add_argument("--origin", default=ORIGIN)
     args = parser.parse_args()
     normalized_origin = origin(args.origin)
+    target_registry = TargetAdapterRegistry()
+    target_registry.register(JUICE_SHOP_TARGET_REGISTRATION)
+    target_registration = target_registry.require_for_origin(normalized_origin)
+    target_adapter = target_registration.adapter
     ground_truth = json.loads(args.ground_truth.read_text(encoding="utf-8"))
     execution_cases = [
         item for item in ground_truth.get("cases", [])
@@ -420,7 +416,14 @@ def main() -> int:
     proof_states: dict[str, dict[str, object]] = {}
     for index, item in enumerate(execution_cases, start=1):
         case_id = str(item["case_id"])
-        case = get_juice_shop_safe_case(case_id)
+        case = target_adapter.case(case_id)
+        if case is None:
+            statuses[case_id] = "target_case_not_registered"
+            proof_states[case_id] = {
+                "status": "target_case_not_registered",
+                "reason": "target_adapter_case_missing",
+            }
+            continue
         engagement_id = f"{workspace_id}-case-{index:02d}"
         current_scope = scope(engagement_id)
         case_profile_root = profile_root / f"case-{index:02d}"
@@ -433,6 +436,8 @@ def main() -> int:
             headless=True,
             browser_timeout_ms=15_000,
             probe_resolver=probe_store.resolve,
+            semantic_profile_registry=target_adapter.semantic_profiles,
+            workflow_allowlist=target_adapter.workflow_ids(),
         )
         adapter = BrowserActionAdapter(
             handler,
@@ -476,7 +481,8 @@ def main() -> int:
                 validator_id="juice-shop-p10-xss-browser-adapter",
                 validator_version="1",
                 browser_operation="typed_search",
-                workflow_id="juice-shop-mat-search",
+                workflow_id=case.workflow_id,
+                workflow_allowlist=target_adapter.workflow_ids(),
             )
             proof_result = proof_runner.run(
                 xss_finding(case_id, target_url),
@@ -522,7 +528,7 @@ def main() -> int:
             )
             continue
 
-        semantic_profile = semantic_profile_for_case(case_id)
+        semantic_profile = case.semantic_profile
         if case.operation == "navigate" and semantic_profile:
             try:
                 target_url = urljoin(normalized_origin + "/", case.path.lstrip("/"))
@@ -533,6 +539,7 @@ def main() -> int:
                     scope=current_scope,
                     engagement_id=engagement_id,
                     semantic_profile=semantic_profile,
+                    semantic_profiles=target_adapter.semantic_profiles,
                     validator_id="juice-shop-p10-semantic-adapter",
                     validator_version="1",
                 )

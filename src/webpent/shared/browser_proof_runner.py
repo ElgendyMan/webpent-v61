@@ -9,7 +9,7 @@ never signs a bundle, and never promotes a finding.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlsplit
@@ -158,6 +158,7 @@ class BrowserProofRunner:
         validator_version: str = "1.0",
         browser_operation: str = "validate_input",
         workflow_id: str | None = None,
+        workflow_allowlist: Collection[str] | None = None,
         g02_inventory_ref: str = CONTROL_PLANE_BROWSER_INVENTORY_REF,
         g02_proof_contract: str = CONTROL_PLANE_BROWSER_PROOF_CONTRACT,
     ) -> None:
@@ -170,6 +171,9 @@ class BrowserProofRunner:
         self.validator_version = str(validator_version or "").strip()
         self.browser_operation = str(browser_operation or "").strip()
         self.workflow_id = str(workflow_id or "").strip() or None
+        self.workflow_allowlist = frozenset(
+            str(item).strip() for item in (workflow_allowlist or ()) if str(item).strip()
+        )
         self.g02_inventory_ref = str(g02_inventory_ref or "").strip()
         self.g02_proof_contract = str(g02_proof_contract or "").strip()
         if not self.engagement_id or self.session.engagement_id != self.engagement_id:
@@ -180,7 +184,9 @@ class BrowserProofRunner:
             raise ValueError("browser_proof_validator_identity_required")
         if self.browser_operation not in {"validate_input", "typed_search"}:
             raise ValueError("browser_proof_operation_not_allowlisted")
-        if self.browser_operation == "typed_search" and self.workflow_id != "juice-shop-mat-search":
+        if self.browser_operation == "typed_search" and (
+            not self.workflow_id or self.workflow_id not in self.workflow_allowlist
+        ):
             raise ValueError("browser_proof_workflow_not_allowlisted")
         if self.browser_operation == "validate_input" and self.workflow_id is not None:
             raise ValueError("browser_proof_workflow_not_allowed")

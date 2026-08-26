@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -22,7 +22,10 @@ from webpent.shared.http import (
     build_host_resolver_rules_args,
     install_playwright_ssrf_guard,
 )
-from webpent.shared.semantic_observations import derive_semantic_observation
+from webpent.shared.semantic_observations import (
+    SemanticProfileRegistry,
+    derive_semantic_observation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,6 @@ _ALLOWED_OPERATIONS = frozenset(
         "typed_search",
     }
 )
-_TYPED_SEARCH_WORKFLOW = "juice-shop-mat-search"
 _DENIED_OPERATIONS = frozenset({"signup", "login", "create_account", "password_reset", "oauth"})
 
 
@@ -102,6 +104,8 @@ class PlaywrightBrowserHandler:
         headless: bool = True,
         browser_timeout_ms: int = 15_000,
         probe_resolver: Callable[[str], str | None] | None = None,
+        semantic_profile_registry: SemanticProfileRegistry | None = None,
+        workflow_allowlist: Collection[str] | None = None,
     ) -> None:
         self.target_origin = _origin(target_origin)
         self.engagement_id = str(engagement_id or "").strip()
@@ -109,6 +113,14 @@ class PlaywrightBrowserHandler:
         self.headless = bool(headless)
         self.browser_timeout_ms = max(100, min(120_000, int(browser_timeout_ms)))
         self._probe_resolver = probe_resolver
+        self.semantic_profile_registry = (
+            semantic_profile_registry
+            if semantic_profile_registry is not None
+            else SemanticProfileRegistry()
+        )
+        self.workflow_allowlist = frozenset(
+            str(item).strip() for item in (workflow_allowlist or ()) if str(item).strip()
+        )
         if not self.target_origin or not self.engagement_id:
             raise ValueError("playwright_handler_target_and_engagement_required")
 
@@ -122,6 +134,15 @@ class PlaywrightBrowserHandler:
             return self._blocked("account_action_denied")
         if request.operation not in _ALLOWED_OPERATIONS:
             return self._blocked("browser_operation_not_implemented")
+        if request.operation == "typed_search" and (
+            not request.workflow_id or request.workflow_id not in self.workflow_allowlist
+        ):
+            return self._blocked("typed_search_workflow_not_allowlisted")
+        if (
+            request.semantic_profile is not None
+            and self.semantic_profile_registry.contract(request.semantic_profile) is None
+        ):
+            return self._blocked("semantic_profile_not_registered")
         requested_origin = _origin(request.url)
         if requested_origin != self.target_origin:
             return self._blocked("target_origin_mismatch")
@@ -226,8 +247,6 @@ class PlaywrightBrowserHandler:
                         return self._blocked("account_like_form_denied")
                     if request.operation == "typed_search":
                         stage = "locate_typed_search"
-                        if request.workflow_id != _TYPED_SEARCH_WORKFLOW:
-                            return self._blocked("typed_search_workflow_not_allowlisted")
                         host = page.locator("app-mat-search-bar#searchQuery").first
                         fields = host.locator("input") if host.count() > 0 else None
                         field_visible = bool(
@@ -303,6 +322,7 @@ class PlaywrightBrowserHandler:
                             content_type=transient_content_type,
                             body=transient_body,
                             final_path=urlsplit(page.url).path or "/",
+                            registry=self.semantic_profile_registry,
                         )
                     finally:
                         # The raw response is never returned, logged, or retained

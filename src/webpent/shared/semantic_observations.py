@@ -1,10 +1,13 @@
-"""Bounded semantic projections for read-only target adapters.
+"""Redacted semantic observations with explicit profile registries.
 
 The adapter receives a response transiently and returns only categorical or
-bucketed facts.  No raw body, header, route content, metric name, log line, or
-probe value is returned.  A semantic observation is not a finding by itself;
+bucketed facts. No raw body, header, route content, metric name, log line, or
+probe value is returned. A semantic observation is not a finding by itself;
 only an explicitly promotable profile may be consumed by the strict replay
 runner, and it must still satisfy the independent negative-control contract.
+
+Profiles are supplied by a target adapter. This module contains only generic
+fact extraction and rule evaluation; it has no built-in target profiles.
 """
 from __future__ import annotations
 
@@ -13,54 +16,34 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-_PROFILE_CONTRACTS: dict[str, dict[str, Any]] = {
-    "juice.directory_listing.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "directory_shape_is_not_a_security_finding_without_resource_oracle",
-    },
-    "juice.static_resource.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "resource_metadata_requires_class_specific_fingerprint",
-    },
-    "juice.log_disclosure.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "log_shape_requires_independent_disclosure_oracle",
-    },
-    "juice.signature_disclosure.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "signature_shape_requires_independent_disclosure_oracle",
-    },
-    "juice.exposed_metrics.v1": {
-        "target_family": "juice_shop",
-        "promotable": True,
-        "reason": "bounded_prometheus_publication_shape_with_negative_control",
-    },
-    "juice.policy_resource.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "policy_file_existence_is_not_a_misconfiguration_proof",
-    },
-    "juice.error_disclosure.v1": {
-        "target_family": "juice_shop",
-        "promotable": True,
-        "reason": "bounded_verbose_error_shape_with_negative_control",
-    },
-    "juice.public_route.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "public_route_shape_is_not_a_vulnerability_proof",
-    },
-    "juice.privacy_policy.v1": {
-        "target_family": "juice_shop",
-        "promotable": False,
-        "reason": "privacy_resource_semantics_are_not_an_approved_vulnerability_oracle",
-    },
-}
 
+class SemanticProfileRegistry:
+    """Immutable-at-use registry for explicitly target-scoped profiles."""
+
+    def __init__(self, contracts: Mapping[str, Mapping[str, Any]] | None = None) -> None:
+        normalized: dict[str, dict[str, Any]] = {}
+        for name, contract in (contracts or {}).items():
+            profile = str(name or "").strip()
+            if not profile or not isinstance(contract, Mapping):
+                raise ValueError("semantic_profile_registry_entry_invalid")
+            copied = dict(contract)
+            if not str(copied.get("rule") or "").strip():
+                raise ValueError(f"semantic_profile:{profile}:rule_required")
+            copied["profile"] = profile
+            normalized[profile] = copied
+        self._contracts = normalized
+
+    def contract(self, profile: str) -> Mapping[str, Any] | None:
+        """Return a defensive copy of one registered contract."""
+        contract = self._contracts.get(str(profile or "").strip())
+        return dict(contract) if contract else None
+
+    def profiles(self) -> tuple[str, ...]:
+        """Return registered profile names without exposing mutable state."""
+        return tuple(sorted(self._contracts))
+
+
+_EMPTY_REGISTRY = SemanticProfileRegistry()
 _TEXT_CONTENT_TYPES = frozenset({"text/plain", "text/html", "application/json"})
 _METRIC_LINE = re.compile(
     r"^(?:#\s+(?:HELP|TYPE)\s+[A-Za-z_:][\w:.-]*(?:\s+[^\n]{0,160})?|"
@@ -90,10 +73,14 @@ _SCOREBOARD_SHAPE = re.compile(
 )
 
 
-def semantic_profile_contract(profile: str) -> Mapping[str, Any] | None:
-    """Return a read-only contract copy for a registered semantic profile."""
-    contract = _PROFILE_CONTRACTS.get(str(profile or "").strip())
-    return dict(contract) if contract else None
+def semantic_profile_contract(
+    profile: str,
+    *,
+    registry: SemanticProfileRegistry | None = None,
+) -> Mapping[str, Any] | None:
+    """Return a contract only from the explicitly supplied registry."""
+    active_registry = registry if registry is not None else _EMPTY_REGISTRY
+    return active_registry.contract(profile)
 
 
 def _bucket(value: int, *, high: int = 3) -> int:
@@ -117,26 +104,28 @@ def _content_type_family(value: Any) -> str:
     return "other"
 
 
-def _semantic_match(profile: str, facts: Mapping[str, Any]) -> bool:
+def _semantic_match(contract: Mapping[str, Any], facts: Mapping[str, Any]) -> bool:
+    """Evaluate a generic rule selected by the target-scoped contract."""
     status = int(facts.get("status_code") or 0)
     content_type = str(facts.get("content_type_family") or "")
-    if profile == "juice.exposed_metrics.v1":
+    rule = str(contract.get("rule") or "")
+    if rule == "prometheus_publication":
         return (
             status == 200
             and content_type == "text/plain"
             and int(facts.get("metric_line_count_bucket") or 0) >= 2
         )
-    if profile == "juice.error_disclosure.v1":
+    if rule == "verbose_server_error":
         return status >= 500 and facts.get("verbose_error_shape") is True
-    if profile == "juice.directory_listing.v1":
+    if rule == "directory_listing":
         return status == 200 and facts.get("directory_shape") is True
-    if profile == "juice.log_disclosure.v1":
+    if rule == "access_log_shape":
         return status == 200 and int(facts.get("log_record_count_bucket") or 0) >= 2
-    if profile == "juice.signature_disclosure.v1":
+    if rule == "signature_shape":
         return status == 200 and int(facts.get("signature_field_count_bucket") or 0) >= 2
-    if profile == "juice.policy_resource.v1":
+    if rule == "policy_shape":
         return status == 200 and int(facts.get("policy_directive_count_bucket") or 0) >= 2
-    if profile == "juice.public_route.v1":
+    if rule == "scoreboard_shape":
         return status == 200 and facts.get("scoreboard_shape") is True
     return False
 
@@ -148,14 +137,15 @@ def derive_semantic_observation(
     content_type: Any,
     body: bytes | str | None,
     final_path: str,
+    registry: SemanticProfileRegistry | None = None,
 ) -> dict[str, Any]:
     """Derive bounded semantic facts while discarding the supplied body.
 
-    ``body`` is intentionally not copied into the returned object.  The caller
+    ``body`` is intentionally not copied into the returned object. The caller
     should delete its transient response buffer immediately after this call.
     """
     normalized_profile = str(profile or "").strip()
-    contract = semantic_profile_contract(normalized_profile)
+    contract = semantic_profile_contract(normalized_profile, registry=registry)
     if contract is None:
         return {
             "semantic_profile": normalized_profile[:160],
@@ -192,7 +182,7 @@ def derive_semantic_observation(
         "status_code": int(status_code or 0),
         "semantic_oracle_ready": bool(contract.get("promotable")),
     }
-    facts["semantic_match"] = _semantic_match(normalized_profile, facts)
+    facts["semantic_match"] = _semantic_match(contract, facts)
     facts["semantic_reason"] = (
         "registered_semantic_match"
         if facts["semantic_match"]
@@ -201,4 +191,8 @@ def derive_semantic_observation(
     return facts
 
 
-__all__ = ["derive_semantic_observation", "semantic_profile_contract"]
+__all__ = [
+    "SemanticProfileRegistry",
+    "derive_semantic_observation",
+    "semantic_profile_contract",
+]
