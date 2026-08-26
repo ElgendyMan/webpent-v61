@@ -15,6 +15,7 @@ from webpent.adapters.generic_web.adapter import (
 from webpent.adapters.mock_target.adapter import (
     MOCK_TARGET_CASE_ID,
     MOCK_TARGET_REGISTRATION,
+    READY_MOCK_TARGET_REGISTRATION,
 )
 from webpent.benchmark.generic_test_target_adapter import GENERIC_TEST_TARGET_REGISTRATION
 from webpent.models.findings import Finding, Severity
@@ -246,6 +247,59 @@ def test_mock_lifecycle_is_deterministically_blocked_by_precondition() -> None:
     )
     assert result.status == "blocked"
     assert result.reason == "mock_target_not_started_and_precondition_not_ready"
+    assert result.proof_bundle_ref is None
+
+
+def test_mock_ready_opt_in_uses_central_proof_pipeline() -> None:
+    adapter = READY_MOCK_TARGET_REGISTRATION.adapter
+    case = adapter.case_definition()
+    result = GenericCaseRunner.execute_case(
+        READY_MOCK_TARGET_REGISTRATION,
+        case,
+        LifecycleAuthorization(
+            authorized=True,
+            engagement_id="offline-lifecycle-fixture",
+            allowed_origin="http://127.0.0.1:4200",
+            satisfied_requirements=("explicit_fixture_authorization", "loopback_origin"),
+        ),
+        _context(READY_MOCK_TARGET_REGISTRATION, case.case_id),
+    )
+
+    assert result.status == "confirmed"
+    assert result.reason == "verified_replay"
+    assert result.proof_bundle_ref
+    assert result.negative_control_ref == "mock:run-lifecycle-001:negative_control"
+    assert "verification" not in result.as_dict()
+    serialized = json.dumps(result.as_dict(), sort_keys=True).lower()
+    assert "cookie" not in serialized
+    assert "authorization" not in serialized
+    assert "raw_response_body" not in serialized
+
+    verification = adapter._last_verification
+    assert verification is not None
+    assert verification.proof_bundle.verify_seal() is True
+    replay_context = verification.evidence["replay_context"]
+    assert verification.proof_bundle.replay(
+        [
+            verification.evidence["baseline"],
+            verification.evidence["candidate"],
+            verification.evidence["negative_control"],
+        ],
+        verification.evidence["negative_control"],
+        replay_context=replay_context,
+    ) is True
+    assert (
+        verification.evidence["candidate"]["request_digest"]
+        != verification.evidence["negative_control"]["request_digest"]
+    )
+    assert all(
+        observation["target_backed"]
+        for observation in (
+            verification.evidence["baseline"],
+            verification.evidence["candidate"],
+            verification.evidence["negative_control"],
+        )
+    )
 
 
 class _ProofLifecycleAdapter(GenericWebAdapter):
