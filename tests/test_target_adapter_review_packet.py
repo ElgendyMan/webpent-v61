@@ -78,6 +78,14 @@ def _closed_packet(*, status: str = "mapping_approved") -> dict:
         }
     )
     packet["live_runs"]["authorized"] = status in {"qualified_for_runs", "approved"}
+    if status == "approved":
+        packet["live_runs"].update(
+            {
+                "run_ids": ["run-1", "run-2", "run-3"],
+                "executed_case_ids": ["case-v1"],
+                "proof_bundle_ids": ["bundle-v1"],
+            }
+        )
     return packet
 
 
@@ -100,6 +108,19 @@ def test_final_approved_packet_requires_authorized_results() -> None:
     packet = _closed_packet(status="approved")
 
     assert validate_target_adapter_review_packet(packet) == ()
+
+
+def test_final_approved_packet_rejects_missing_run_traceability() -> None:
+    packet = _closed_packet(status="approved")
+    packet["live_runs"]["run_ids"] = ["run-1"]
+    packet["live_runs"]["executed_case_ids"] = []
+    packet["live_runs"]["proof_bundle_ids"] = []
+
+    errors = validate_target_adapter_review_packet(packet)
+
+    assert "live_runs:three_distinct_run_ids_required" in errors
+    assert "live_runs:proof_bundle_ids_required" in errors
+    assert "live_runs:executed_cases_must_match_approved_cases" in errors
 
 
 def test_closed_packet_rejects_pending_case_and_mismatched_disposition() -> None:

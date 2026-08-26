@@ -291,5 +291,33 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
         errors.append("live_runs:authorization_required_for_run_lifecycle")
     if status in {"draft", "pending", "mapping_approved", "rejected"} and authorized is not False:
         errors.append("live_runs:authorization_must_remain_false_before_runs")
+    run_ids = live_runs.get("run_ids")
+    executed_case_ids = live_runs.get("executed_case_ids")
+    proof_bundle_ids = live_runs.get("proof_bundle_ids")
+    for field, value in (
+        ("run_ids", run_ids),
+        ("executed_case_ids", executed_case_ids),
+        ("proof_bundle_ids", proof_bundle_ids),
+    ):
+        if not isinstance(value, (list, tuple)):
+            errors.append(f"live_runs:{field}_list_required")
+    if status == "approved":
+        if isinstance(run_ids, (list, tuple)):
+            normalized_run_ids = [str(value).strip() for value in run_ids if str(value).strip()]
+            if (
+                len(normalized_run_ids) < 3
+                or len(set(normalized_run_ids)) != len(normalized_run_ids)
+            ):
+                errors.append("live_runs:three_distinct_run_ids_required")
+        if isinstance(proof_bundle_ids, (list, tuple)) and not any(
+            str(value).strip() for value in proof_bundle_ids
+        ):
+            errors.append("live_runs:proof_bundle_ids_required")
+        if isinstance(executed_case_ids, (list, tuple)):
+            normalized_executed = {
+                str(value).strip() for value in executed_case_ids if str(value).strip()
+            }
+            if normalized_executed != disposition_sets.get("approved_case_ids", set()):
+                errors.append("live_runs:executed_cases_must_match_approved_cases")
 
     return tuple(sorted(set(errors)))

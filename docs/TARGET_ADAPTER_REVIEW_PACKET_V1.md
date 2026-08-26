@@ -2,7 +2,7 @@
 
 ## الغرض
 
-هذا المستند هو قالب مراجعة مستقل لأي `TargetAdapter` جديد. هو **ليس approval**، ولا يثبت وجود ثغرة، ولا يسمح بتسجيل metrics أو ترقية finding. يجب أن يظل packet في حالة `pending` إلى أن يراجعه reviewer مستقل يرى mapping وoracle contracts ونتائج التشغيل الفعلية.
+هذا المستند هو قالب مراجعة مستقل لأي `TargetAdapter` جديد. هو **ليس approval**، ولا يثبت وجود ثغرة، ولا يسمح بتسجيل metrics أو ترقية finding. يظل packet في `draft` أو `pending` قبل المراجعة؛ وبعدها يمكن أن ينتقل إلى `mapping_approved` أو `qualified_for_runs` قبل التشغيل، بينما لا تصبح حالة `approved` ممكنة إلا بعد مراجعة النتائج الفعلية.
 
 الهدف من packet هو منع انتقال تفاصيل target إلى الطبقات المشتركة، ومنع تحويل وجود route أو HTTP `200` أو DOM observation إلى causal proof. الـadapter يملك facts الخاصة بالهدف والتنفيذ المسموح، بينما يظل `ProofBundle` وverification وreplay مركزيًا وعامًا.
 
@@ -42,7 +42,7 @@
 | `qualified_for_runs` | reviewer أغلق mapping ووافق على بدء runs المحددة؛ لا يعني نجاح P10 |
 | `approved` | نتيجة reviewer النهائية بعد رؤية النتائج الفعلية والـhashes |
 | `rejected` | mapping أو oracle أو safety posture مرفوض |
-| `out_of_scope` | الحالة مستبعدة صراحة ولا تدخل في TP/FP/FN |
+| `out_of_scope` (case disposition) | الحالة مستبعدة صراحة ولا تدخل في TP/FP/FN؛ ليست packet status مستقلة |
 
 أي packet لا يملك `reviewed_mapping_sha256` و`reviewed_oracle_contract_sha256` وقرارًا محددًا لكل case يجب أن يفشل مغلقًا في qualification tooling. كما يجب أن تكون هوية target وscope والمرجع authorization غير فارغة في أي حالة مغلقة، وأن يطابق `mapping_status` و`expected_disposition` وreview disposition نفس القرار لكل case. حالات `mapping_approved` و`qualified_for_runs` هي pre-run approvals ولا يجوز أن ترى نتائج التشغيل؛ أما `approved` فهي final approval ولا تمر إلا بعد رؤية النتائج الفعلية، مع authorization مسجل في `live_runs`.
 
