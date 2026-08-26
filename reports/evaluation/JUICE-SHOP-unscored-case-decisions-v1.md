@@ -31,7 +31,7 @@ The adapter must produce redaction-safe target-backed baseline, candidate, and i
 
 ## Current decision
 
-`decision_matrix_status = case_6_closed_out_of_scope_case_7_pending_review`
+`decision_matrix_status = case_7_closed_out_of_scope_case_8_pending_review`
 
 `p10_qualification = NOT_QUALIFIED`
 
