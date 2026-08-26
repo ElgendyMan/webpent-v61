@@ -1,0 +1,117 @@
+{
+  "schema_version": "juice_shop.governance_decision.v1",
+  "decision_id": "juice-shop-governance-20260826-01",
+  "prepared_at_utc": "2026-08-26T19:15:00Z",
+  "target_scope": {
+    "kind": "authorized_local_loopback_lab",
+    "origin": "http://127.0.0.1:3000",
+    "package_version": "20.2.0",
+    "source_commit": "1618a611b173b4bf114028e6e02549950606e29d"
+  },
+  "decision_authority": {
+    "status": "pending_independent_governance_signoff",
+    "independent_reviewer_id": null,
+    "reviewed_at_utc": null,
+    "results_seen_by_reviewer": false,
+    "self_approval_not_claimed": true
+  },
+  "purpose": "Freeze case dispositions and hash inputs before any official isolated P10 runs; this packet does not authorize runs or confer P10/VIP qualification.",
+  "case_dispositions": {
+    "juice.access_log_disclosure.v1": {
+      "disposition": "implemented_pending_governance_confirmation",
+      "official_scoring_status": "not_in_final_approved_set",
+      "basis": "Target-local implementation and rerun passed, but the currently independent oracle decision explicitly accepts only three predicates and lists access-log among binding non-approvals.",
+      "required_next_action": "Independent governance reviewer must confirm the redacted log-resource predicate before inclusion in the official scoring set."
+    },
+    "juice.directory_listing.v1": {
+      "disposition": "blocked",
+      "official_scoring_status": "excluded_until_reopened",
+      "basis": "Runtime did not satisfy the directory-index causal predicate; candidate and independent control failed the predicate.",
+      "reopen_condition": "Authorized target-local runtime/configuration review must establish the predicate without bypassing controls or modifying Generic Core."
+    },
+    "juice.forgotten_backup.v1": {
+      "disposition": "blocked",
+      "official_scoring_status": "excluded_until_reopened",
+      "basis": "Candidate and independent control returned 403; anonymous-read precondition and causal delta were not demonstrated.",
+      "reopen_condition": "Authorized target-local configuration review must establish a safe read-only precondition without retaining raw backup content."
+    },
+    "juice.misplaced_signature_file.v1": {
+      "disposition": "blocked",
+      "official_scoring_status": "excluded_until_reopened",
+      "basis": "Mapped resource is absent from the checked-out source and runtime candidate/control did not establish the signature exposure predicate.",
+      "reopen_condition": "Version-matched source/runtime mapping must be independently established without retaining raw YAML."
+    },
+    "juice.privacy_policy_proof.v1": {
+      "disposition": "out_of_scope",
+      "official_scoring_status": "non_scoring_pending_governance_confirmation",
+      "basis": "Challenge-completion/read-policy behavior is not a vulnerability causal predicate."
+    },
+    "juice.public_scoreboard_route.v1": {
+      "disposition": "out_of_scope",
+      "official_scoring_status": "non_scoring_pending_governance_confirmation",
+      "basis": "Route reachability or hidden-page discovery does not establish a security weakness."
+    },
+    "juice.security_policy.v1": {
+      "disposition": "out_of_scope",
+      "official_scoring_status": "non_scoring_pending_governance_confirmation",
+      "basis": "Public security-policy resource availability is not a vulnerability oracle."
+    },
+    "juice.well_known_security_policy.v1": {
+      "disposition": "out_of_scope",
+      "official_scoring_status": "non_scoring_pending_governance_confirmation",
+      "basis": "Alternate policy-resource location duplicates policy semantics and is not an independent vulnerability case."
+    }
+  },
+  "final_approved_scoring_case_set": {
+    "status": "proposed_pending_independent_governance_signoff",
+    "case_ids": [
+      "juice.error_handling.v1",
+      "juice.exposed_metrics.v1",
+      "juice.local_xss.v1"
+    ],
+    "case_count": 3,
+    "class_count": 3,
+    "reason": "These are the only predicates explicitly accepted by the independent oracle decision currently recorded in docs/p10_oracle_semantics_decision_v1.json."
+  },
+  "hash_lock": {
+    "mapping_hash": "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5",
+    "oracle_mapping_hash": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
+    "current_oracle_contract_hash_reviewed": "sha256:d16e139eebcbe7e88f62058e22aa4ffa31ed96a5af8c5187cc29937304902dee",
+    "oracle_decision_hash": "sha256:637b1f7e10e4224d60e3bcf29abdcaadb2e87aa66ed03d776668b94f1454a97c",
+    "ground_truth_document_sha256": "sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52",
+    "ground_truth_source_snapshot_id": "gt-snapshot-20260826-02",
+    "ground_truth_source_snapshot_sha256": "sha256:ecb29540165f4f33462d69f213b79cb14e72e8ec0ff2477466d0e3acd12e3381",
+    "hash_interpretation": "The mapping/oracle values are canonical hashes frozen by prior review records; the document and source snapshot hashes identify the exact local governance inputs. The source snapshot file hash is distinct from the live catalog body hash and does not constitute vulnerability verdict approval."
+  },
+  "run_gate": {
+    "official_isolated_p10_runs_authorized": false,
+    "blocking_reasons": [
+      "independent_governance_signoff_missing",
+      "final_approved_case_set_below_minimum_10_cases",
+      "final_approved_class_set_below_minimum_6_classes",
+      "access_log_oracle_governance_confirmation_missing",
+      "full_ground_truth_result_approval_missing"
+    ],
+    "required_before_authorization": [
+      "Independent governance reviewer signs this exact packet and reviewed hashes.",
+      "The approved case set is explicitly frozen with no pending dispositions.",
+      "Each approved case has an accepted semantic causal predicate and safe precondition.",
+      "Each approved case has baseline, candidate, independent negative control, central verification, sealed ProofBundle, verify_seal, and replay evidence contracts.",
+      "Three isolated runs are executed only after the minimum approved-set and class gates are met."
+    ]
+  },
+  "safety": {
+    "allowed_origin": "http://127.0.0.1:3000",
+    "allowed_methods": ["GET"],
+    "credentials_used": false,
+    "external_destinations": false,
+    "raw_http_data_retained": false,
+    "generic_core_modified": false,
+    "frozen_p10_artifacts_modified": false
+  },
+  "qualification": {
+    "p10": "NOT_QUALIFIED",
+    "p9": "NOT_QUALIFIED",
+    "vip": "NOT_QUALIFIED"
+  }
+}
