@@ -4,7 +4,7 @@
 
 تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الحالي هو **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
-آخر baseline منشور معروف هو `f62de77`؛ تغييرات Generic migration الحالية additive ومحلية وتحتاج commit/push بعد المراجعة النهائية. لم تُنفذ أي عملية live target في هذه الدورة، ولا توجد حاجة لتغيير frozen P10 artifacts. runtime artifacts والـcredentials والـcookies تظل خارج Git.
+آخر baseline للدورة كان `f62de77`، وتم نشر دورة Generic migration في commit `e55ee61` على `origin/master`. لم تُنفذ أي عملية live target في هذه الدورة، ولا توجد حاجة لتغيير frozen P10 artifacts. runtime artifacts والـcredentials والـcookies تظل خارج Git.
 
 ## ما تم تنفيذه
 
@@ -20,19 +20,19 @@
 | VIP Reporting | lifecycle لا يصبح `Confirmed` من label أو confidence وحدهما؛ يلزم evidence assessment وreproduction | report quality/ProofBundle/export suites | `6d6831b` |
 | Benchmark Metrics | `confirmed` وrepeatability gated على `causal_signal` و`negative_control_complete` و`proof_bundle_sealed`؛ أضيف human agreement من reviewer data صريح وcost efficiency على unique strict confirmations، مع unavailable عند zero denominator | benchmark/qualification suites وfull regression | `e4f8c74` |
 | Production Architecture | assessment موثق يفصل single-node controlled pilot عن horizontal/multi-tenant qualification، ويحافظ على PostgreSQL fail-closed | assessment review وdiff check | `347a3b9` |
-| Offline Qualification | three-run proof/replay simulation deterministic؛ target contact false؛ لا تُحسب كـlive VIP qualification | qualification harness suites وoffline simulation | working validation before final docs commit |
-| Research Core | bounded budget/state/hypothesis/confidence/knowledge-gap planning؛ لا direct promotion أو execution | research engine focused tests وG-02 gates | working validation before final docs commit |
-| Intelligence Projections | application/entity/workflow/permission/state projections target/engagement-scoped وreport-safe | intelligence focused tests | working validation before final docs commit |
-| Identity Matrix | role matrix وhorizontal/vertical gaps فوق authorization observations؛ 403/200 candidate-only وعزل engagement | identity facade tests | working validation before final docs commit |
-| Business Logic | workflow/state/invariant/abuse facades passive؛ illegal transitions proposals فقط | business logic focused tests | working validation before final docs commit |
-| Research Projection Adapter | immutable/serializable Target Brain/Attack Graph/Knowledge Gap planning input بلا graph execution wiring | projection adapter tests | working validation before final docs commit |
-| Validation Facades | canonical causal/replay delegation مع state-diff وidentity candidate validators؛ لا promotion خارج المركز | validation focused tests | working validation before final docs commit |
-| Specialist Planning | bounded deterministic CandidateAction/ResearchTask proposals فقط، مع ActionAuthority requirement | specialist planner tests | working validation before final docs commit |
-| VIP v2 Benchmark | manifest/scenarios وthree-independent-run measurement من supplied results فقط؛ لا synthetic/live claims | vip_v2 benchmark tests | working validation before final docs commit |
-| Production Qualification | fail-closed health/recovery/idempotency/secrets/TLS/logging/retention projection؛ لا تشغيل stack تلقائي | production qualification وrecovery contract tests | working validation before final docs commit |
-| Generic Target Boundary | نقل WAPTLab campaign/proof/execution contracts إلى `benchmark/waptlab_campaign_profile.py` وربطها عبر `CampaignProfileSpec`؛ لا provider implicit في shared/state | neutrality guard، provider fail-closed tests، planner/bootstrap regression | working validation before final docs commit |
-| Versioned Generic Contracts | capability/case/result lifecycle contracts، canonical workflow IDs وlegacy aliases، proof-reference invariant للحالات confirmed/probable | generic contract, workflow migration, and lifecycle tests | working validation before final docs commit |
-| GenericWebAdapter MVP | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، structured redacted observations، fake transport injection | GenericWebAdapter discovery and registry-swap tests | working validation before final docs commit |
+| Offline Qualification | three-run proof/replay simulation deterministic؛ target contact false؛ لا تُحسب كـlive VIP qualification | qualification harness suites وoffline simulation | e55ee61 — offline validation passed |
+| Research Core | bounded budget/state/hypothesis/confidence/knowledge-gap planning؛ لا direct promotion أو execution | research engine focused tests وG-02 gates | e55ee61 — offline validation passed |
+| Intelligence Projections | application/entity/workflow/permission/state projections target/engagement-scoped وreport-safe | intelligence focused tests | e55ee61 — offline validation passed |
+| Identity Matrix | role matrix وhorizontal/vertical gaps فوق authorization observations؛ 403/200 candidate-only وعزل engagement | identity facade tests | e55ee61 — offline validation passed |
+| Business Logic | workflow/state/invariant/abuse facades passive؛ illegal transitions proposals فقط | business logic focused tests | e55ee61 — offline validation passed |
+| Research Projection Adapter | immutable/serializable Target Brain/Attack Graph/Knowledge Gap planning input بلا graph execution wiring | projection adapter tests | e55ee61 — offline validation passed |
+| Validation Facades | canonical causal/replay delegation مع state-diff وidentity candidate validators؛ لا promotion خارج المركز | validation focused tests | e55ee61 — offline validation passed |
+| Specialist Planning | bounded deterministic CandidateAction/ResearchTask proposals فقط، مع ActionAuthority requirement | specialist planner tests | e55ee61 — offline validation passed |
+| VIP v2 Benchmark | manifest/scenarios وthree-independent-run measurement من supplied results فقط؛ لا synthetic/live claims | vip_v2 benchmark tests | e55ee61 — offline validation passed |
+| Production Qualification | fail-closed health/recovery/idempotency/secrets/TLS/logging/retention projection؛ لا تشغيل stack تلقائي | production qualification وrecovery contract tests | e55ee61 — offline validation passed |
+| Generic Target Boundary | نقل WAPTLab campaign/proof/execution contracts إلى `benchmark/waptlab_campaign_profile.py` وربطها عبر `CampaignProfileSpec`؛ لا provider implicit في shared/state | neutrality guard، provider fail-closed tests، planner/bootstrap regression | e55ee61 — offline validation passed |
+| Versioned Generic Contracts | capability/case/result lifecycle contracts، canonical workflow IDs وlegacy aliases، proof-reference invariant للحالات confirmed/probable | generic contract, workflow migration, and lifecycle tests | e55ee61 — offline validation passed |
+| GenericWebAdapter MVP | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، structured redacted observations، fake transport injection | GenericWebAdapter discovery and registry-swap tests | e55ee61 — offline validation passed |
 
 ## بوابات الجودة
 
