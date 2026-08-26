@@ -1,6 +1,7 @@
 """Tests for the target-adapter review packet governance contract."""
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -21,6 +22,65 @@ def test_checked_in_template_is_draft_and_valid() -> None:
     assert validate_target_adapter_review_packet(packet) == ()
 
 
+def _closed_packet(*, status: str = "mapping_approved") -> dict:
+    packet = copy.deepcopy(_template())
+    packet["packet_status"] = status
+    packet["target"].update(
+        {
+            "target_id": "target-v1",
+            "target_origin": "http://127.0.0.1:8080",
+            "source_ref": "local-review-source",
+            "adapter_module": "example.target_adapter",
+            "adapter_version": "v1",
+            "scope_digest": "a" * 64,
+            "authorization_ref": "local-authorization-v1",
+        }
+    )
+    packet["workflows"][0].update(
+        {
+            "workflow_id": "navigate-v1",
+            "operation": "navigate",
+            "reviewed": True,
+            "allowlisted": True,
+        }
+    )
+    packet["cases"][0].update(
+        {
+            "case_id": "case-v1",
+            "operation": "navigate",
+            "path": "/safe",
+            "workflow_id": "navigate-v1",
+            "oracle_id": "oracle-v1",
+            "mapping_status": "approved",
+            "expected_disposition": "approved",
+            "causal_signal_contract": {
+                "defined": True,
+                "target_backed": True,
+                "observation_only": False,
+                "description": "A target-backed causal transition is required.",
+            },
+            "negative_control_contract": {
+                "defined": True,
+                "independent": True,
+                "description": "An independent control must not produce the signal.",
+            },
+        }
+    )
+    packet["review"].update(
+        {
+            "reviewer_id": "external-reviewer",
+            "reviewed_at_utc": "2026-08-26T00:00:00Z",
+            "reviewed_mapping_sha256": "b" * 64,
+            "reviewed_oracle_contract_sha256": "c" * 64,
+            "approved_case_ids": ["case-v1"],
+            "approval_decision": "approved",
+            "results_seen_by_reviewer": status == "approved",
+        }
+    )
+    packet["live_runs"]["authorized"] = status in {"qualified_for_runs", "approved"}
+    return packet
+
+
 def test_review_packet_rejects_qualification_claim() -> None:
     packet = _template()
     packet["qualification_claim"] = True
@@ -28,6 +88,38 @@ def test_review_packet_rejects_qualification_claim() -> None:
     errors = validate_target_adapter_review_packet(packet)
 
     assert "packet:qualification_claim_must_be_false" in errors
+
+
+def test_mapping_approved_packet_is_pre_run_and_complete() -> None:
+    packet = _closed_packet()
+
+    assert validate_target_adapter_review_packet(packet) == ()
+
+
+def test_final_approved_packet_requires_authorized_results() -> None:
+    packet = _closed_packet(status="approved")
+
+    assert validate_target_adapter_review_packet(packet) == ()
+
+
+def test_closed_packet_rejects_pending_case_and_mismatched_disposition() -> None:
+    packet = _closed_packet()
+    packet["cases"][0]["mapping_status"] = "pending"
+
+    errors = validate_target_adapter_review_packet(packet)
+
+    assert "cases[0]:pending_mapping_in_closed_packet" in errors
+    assert "cases[0]:disposition_mismatch" in errors
+    assert "cases[0]:review_disposition_mismatch" in errors
+
+
+def test_qualified_for_runs_requires_live_authorization() -> None:
+    packet = _closed_packet(status="qualified_for_runs")
+    packet["live_runs"]["authorized"] = False
+
+    errors = validate_target_adapter_review_packet(packet)
+
+    assert "live_runs:authorization_required_for_run_lifecycle" in errors
 
 
 def test_closed_packet_requires_reviewer_and_complete_dispositions() -> None:

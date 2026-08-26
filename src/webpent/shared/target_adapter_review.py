@@ -30,6 +30,21 @@ _REQUIRED_FORBIDDEN_OPERATIONS = {
     "raw_cookie_or_token_retention",
 }
 _HEX_HASH_LENGTH = 64
+_TARGET_REQUIRED_FIELDS = (
+    "target_id",
+    "target_origin",
+    "source_ref",
+    "adapter_module",
+    "adapter_version",
+    "scope_digest",
+    "authorization_ref",
+)
+_PROOF_REQUIREMENTS = (
+    "three_isolated_runs",
+    "sealed_proof_bundle",
+    "replay_required",
+    "verify_seal_required",
+)
 
 
 def _mapping(value: Any, name: str, errors: list[str]) -> Mapping[str, Any]:
@@ -80,7 +95,11 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
     if root.get("qualification_claim") is not False:
         errors.append("packet:qualification_claim_must_be_false")
 
-    _mapping(root.get("target"), "target", errors)
+    target = _mapping(root.get("target"), "target", errors)
+    if status != "draft":
+        for field in _TARGET_REQUIRED_FIELDS:
+            if not _nonempty(target.get(field)):
+                errors.append(f"target:{field}_required")
     policy = _mapping(root.get("policy"), "policy", errors)
     workflows_raw = _sequence(root.get("workflows"), "workflows", errors)
     cases_raw = _sequence(root.get("cases"), "cases", errors)
@@ -89,6 +108,11 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
 
     if policy.get("raw_evidence_retained") is not False:
         errors.append("policy:raw_evidence_retained_must_be_false")
+    allowed = policy.get("allowed_operations")
+    if not isinstance(allowed, (list, tuple)):
+        errors.append("policy:allowed_operations_list_required")
+    elif any(operation not in _OPERATIONS for operation in allowed):
+        errors.append("policy:allowed_operation_invalid")
     forbidden = policy.get("forbidden_operations")
     if not isinstance(forbidden, (list, tuple)):
         errors.append("policy:forbidden_operations_list_required")
@@ -152,6 +176,14 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
         case_status = case.get("mapping_status")
         if case_status not in _CASE_STATUSES:
             errors.append(f"cases[{index}]:mapping_status_invalid")
+        if status != "draft":
+            expected_disposition = case.get("expected_disposition")
+            if expected_disposition not in _CASE_STATUSES - {"pending"}:
+                errors.append(f"cases[{index}]:expected_disposition_invalid")
+            if case_status == "pending":
+                errors.append(f"cases[{index}]:pending_mapping_in_closed_packet")
+            if expected_disposition != case_status:
+                errors.append(f"cases[{index}]:disposition_mismatch")
         causal = _mapping(
             case.get("causal_signal_contract"),
             f"cases[{index}].causal_signal_contract",
@@ -167,12 +199,32 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
                 errors.append(f"cases[{index}]:target_backed_causal_contract_required")
             if causal.get("observation_only") is True:
                 errors.append(f"cases[{index}]:causal_contract_observation_only")
+            if not _nonempty(causal.get("description")):
+                errors.append(f"cases[{index}]:causal_description_required")
             if negative.get("defined") is not True or negative.get("independent") is not True:
                 errors.append(f"cases[{index}]:independent_negative_control_required")
+            if not _nonempty(negative.get("description")):
+                errors.append(f"cases[{index}]:negative_description_required")
+            proof_requirements = _mapping(
+                case.get("proof_requirements"),
+                f"cases[{index}].proof_requirements",
+                errors,
+            )
+            for field in _PROOF_REQUIREMENTS:
+                if proof_requirements.get(field) is not True:
+                    errors.append(f"cases[{index}]:{field}_required")
 
     decision = review.get("approval_decision")
     if decision not in _DECISIONS:
         errors.append("review:approval_decision_invalid")
+    if status in {"draft", "pending"} and decision != "pending":
+        errors.append("review:decision_must_be_pending_for_open_status")
+    if status in {"mapping_approved", "qualified_for_runs"} and decision != "approved":
+        errors.append("review:mapping_status_requires_approved_decision")
+    if status == "approved" and decision != "approved":
+        errors.append("review:approved_status_requires_approved_decision")
+    if status == "rejected" and decision != "rejected":
+        errors.append("review:rejected_status_requires_rejected_decision")
     if status in {"mapping_approved", "qualified_for_runs", "approved"}:
         if decision == "pending":
             errors.append("review:decision_pending_for_closed_status")
@@ -187,8 +239,14 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
         for field in ("reviewed_mapping_sha256", "reviewed_oracle_contract_sha256"):
             if review.get(field) and not _sha256(review.get(field)):
                 errors.append(f"review:{field}_invalid")
-    if decision == "approved" and review.get("results_seen_by_reviewer") is not True:
-        errors.append("review:results_must_be_seen_for_final_approval")
+    if decision == "approved":
+        results_seen = review.get("results_seen_by_reviewer")
+        if status == "approved" and results_seen is not True:
+            errors.append("review:results_must_be_seen_for_final_approval")
+        if status in {"mapping_approved", "qualified_for_runs"} and results_seen is not False:
+            errors.append("review:results_must_not_be_seen_for_pre_run_approval")
+    elif review.get("results_seen_by_reviewer") is not False:
+        errors.append("review:results_seen_must_be_false_without_approval")
 
     disposition_sets: dict[str, set[str]] = {}
     for field in ("approved_case_ids", "out_of_scope_case_ids", "rejected_case_ids"):
@@ -206,15 +264,32 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
         assigned = set().union(*disposition_sets.values())
         if assigned != set(case_ids):
             errors.append("review:case_dispositions_must_cover_all_cases")
+        disposition_by_case = dict.fromkeys(
+            disposition_sets["approved_case_ids"], "approved"
+        )
+        disposition_by_case.update(
+            dict.fromkeys(
+                disposition_sets["out_of_scope_case_ids"], "out_of_scope"
+            )
+        )
+        disposition_by_case.update(
+            dict.fromkeys(disposition_sets["rejected_case_ids"], "rejected")
+        )
+        for index, raw_case in enumerate(cases_raw):
+            case = _mapping(raw_case, f"cases[{index}]", errors)
+            case_id = str(case.get("case_id") or "").strip()
+            expected = disposition_by_case.get(case_id)
+            if expected and case.get("mapping_status") != expected:
+                errors.append(f"cases[{index}]:review_disposition_mismatch")
 
     if live_runs.get("qualification_status") != "not_qualified":
         errors.append("live_runs:qualification_status_must_remain_not_qualified")
     if live_runs.get("metrics") is not None:
         errors.append("live_runs:metrics_must_remain_null")
-    if (
-        live_runs.get("authorized") is not False
-        and status not in {"qualified_for_runs", "approved"}
-    ):
-        errors.append("live_runs:authorization_invalid_for_packet_status")
+    authorized = live_runs.get("authorized")
+    if status in {"qualified_for_runs", "approved"} and authorized is not True:
+        errors.append("live_runs:authorization_required_for_run_lifecycle")
+    if status in {"draft", "pending", "mapping_approved", "rejected"} and authorized is not False:
+        errors.append("live_runs:authorization_must_remain_false_before_runs")
 
     return tuple(sorted(set(errors)))
