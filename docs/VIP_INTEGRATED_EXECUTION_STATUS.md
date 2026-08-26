@@ -2,9 +2,9 @@
 
 ## الحكم التنفيذي
 
-تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. وأُغلقت الآن فجوة lifecycle الرسمية offline عبر `CaseLifecycleAdapter` و`GenericCaseRunner` وRuntimeContext integration، مع الحفاظ على التوافق مع التسجيلات القديمة. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الحالي هو **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
+تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. وأُغلقت الآن فجوة lifecycle الرسمية offline عبر `CaseLifecycleAdapter` و`GenericCaseRunner` وRuntimeContext integration، مع الحفاظ على التوافق مع التسجيلات القديمة. كما أُضيف controlled local loopback lab مستقل عن Juice Shop لتشغيل bounded transport وcausal/negative-control وsealing/replay والـmetrics. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الرسمي الحالي هو **`NOT_QUALIFIED`**؛ local-lab evidence لا تُستخدم كبديل عن independent review أو Juice Shop target evidence أو governance approval.
 
-آخر baseline للدورة كان `f62de77`، وتم نشر دورة Generic migration في commit `e55ee61` على `origin/master`. لم تُنفذ أي عملية live target في هذه الدورة، ولا توجد حاجة لتغيير frozen P10 artifacts. runtime artifacts والـcredentials والـcookies تظل خارج Git.
+آخر baseline منشور قبل دورة lifecycle كان `cef5c64`، ثم نُفذت lifecycle/local-lab changes في working tree الحالية تمهيدًا للـrelease بعد البوابات النهائية. تم تشغيل target-backed requests فقط إلى synthetic loopback lab داخل sandbox؛ لم يُشغّل Juice Shop أو WAPTLab ولم يُستخدم أي target خارجي. frozen P10 artifacts لم تتغير، وruntime artifacts والـcredentials والـcookies تظل خارج Git.
 
 ## ما تم تنفيذه
 
@@ -33,18 +33,19 @@
 | Generic Target Boundary | نقل WAPTLab campaign/proof/execution contracts إلى `benchmark/waptlab_campaign_profile.py` وربطها عبر `CampaignProfileSpec`؛ لا provider implicit في shared/state | neutrality guard، provider fail-closed tests، planner/bootstrap regression | e55ee61 — offline validation passed |
 | Versioned Generic Contracts | capability/case/result lifecycle contracts، canonical workflow IDs وlegacy aliases، proof-reference invariant للحالات confirmed/probable | generic contract, workflow migration, and lifecycle tests | e55ee61 — offline validation passed |
 | GenericWebAdapter and lifecycle | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، versioned `CaseLifecycleAdapter`، `GenericCaseRunner`، RuntimeContext integration، structured redacted observations، fake transport injection، وlegacy fail-closed resolver | GenericWebAdapter discovery، lifecycle، registry-swap، verifier-promotion، وRuntime integration tests | lifecycle release commit — offline validation passed |
+| Controlled local lab | synthetic loopback-only target، GET-only transport، known ground truth، 3 isolated runs، 33 sealed/replayable ProofBundles، independent artifact replay، وإعادة حساب metrics من القرص | local-lab harness، replay verifier، metrics verifier، redaction test | working-tree evidence — local validation passed; official approval pending |
 
 ## بوابات الجودة
 
-اجتاز full pytest serial بعد إغلاق lifecycle **1895 اختبارًا**. كما نجحت Ruff وcompileall و`git diff --check`، وإعادة توليد direct-I/O inventory (**340 سجلًا**)، وG-02 precommit/runtime، وtracked-secret scan، وneutrality guard الموسع (**224 ملفًا، 5 جذور**). اختبارات GenericWebAdapter استخدمت fake transports محلية فقط، واختبارات target swap عبر runner، verifier-backed promotion، وRuntimeContext integration نجحت؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
+اجتاز full pytest serial بعد إغلاق lifecycle **1895 اختبارًا** قبل إضافة local-lab CI test، ثم نجح اختبار local lab المضاف وRuff للحarnesses. كما نجحت Ruff وcompileall و`git diff --check`، وإعادة توليد direct-I/O inventory، وG-02 precommit/runtime، وtracked-secret scan، وneutrality guard. الـcontrolled lab نفذ 3 runs معزولة، و33 ProofBundle sealed/replayable، وأعاد replay مستقلًا من القرص، وأعاد حساب metrics من artifacts مع `metrics_match=true`. هذه نتائج local fixture bounded وليست official P10 approval.
 
 التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. بيانات WAPTLab انتقلت إلى profile target-local؛ لا توجد WAPTLab constants أو imports في shared/state generic core.
 
 ## حدود qualification الحي
 
-لم تُعاد جولة WAPTLab أو Juice Shop في دورة Generic migration. تم فحص الجاهزية بشكل سلبي فقط؛ لا يوجد authorized loopback listener متاح لتشغيل bounded live validation، والحوكمة المجمدة لا تحتوي full-result approval أو metrics صالحة. لذلك لم يُنفذ أي target حي، ولا يتغير verdict: `P10 = NOT_QUALIFIED` و`P9/VIP = NOT_QUALIFIED`.
+لم تُعاد جولة WAPTLab أو Juice Shop. تم تنفيذ bounded live validation فقط على synthetic loopback lab مصرح داخل sandbox؛ هذا يثبت transport/proof pipeline ولا يثبت portability أو qualification على target validation الحقيقي. independent-review gate ما زال fail-closed لأن reviewer وtimestamp وfull-result approval غير موجودة. لذلك لا يتغير verdict: `P10 = NOT_QUALIFIED` و`P9/VIP = NOT_QUALIFIED`.
 
-أي تأهل مستقبلي يحتاج، في تشغيل محلي مصرح ومضبوط، target-backed causal signal مستقلًا عن candidate materialization، negative control مستقلًا، sealed/replayable ProofBundle، وreplay ناجحًا عبر الجولات المطلوبة. لا يرفع benchmark أو report lifecycle أو scorecard هذه الشروط.
+أي تأهل مستقبلي يحتاج، في تشغيل target مصرح ومضبوط، target-backed causal signal مستقلًا عن candidate materialization، negative control مستقلًا، sealed/replayable ProofBundle، وreplay ناجحًا عبر الجولات المطلوبة. الـcontrolled local lab أثبت هذه السلسلة على synthetic loopback fixture فقط، ولا يثبت portability. أما Bug Bounty portability فـ`BLOCKED` حتى يقدم المستخدم برنامجًا محددًا وتفويضًا مكتوبًا ونطاقًا وطرق اختبار وحدود معدل؛ لا يوجد أي اتصال أو اختبار خارجي في هذه الدورة. لا يرفع benchmark أو report lifecycle أو scorecard هذه الشروط.
 
 ## Release boundary
 
@@ -52,4 +53,4 @@
 
 ## ما لم يُدّعَ
 
-لم تُدّعَ تغطية 15 أو 18 ثغرة في جولة واحدة، ولم تُحوّل candidates إلى confirmed لرفع العدد، ولم تُعدّل frozen P10 artifacts، ولم تُستخدم أهداف خارجية أو CAPTCHA bypass أو provider live I/O. GenericWebAdapter وCampaignProfileSpec والتحقق من target swap مثبتة offline فقط. اكتمال المسارات الهندسية لا يساوي كون المنتج VIP Smart Autonomous Bug Hunter مؤهلًا تشغيليًا.
+لم تُدّعَ تغطية 15 أو 18 ثغرة في target حقيقي، ولم تُحوّل candidates إلى confirmed لرفع العدد، ولم تُعدّل frozen P10 artifacts، ولم تُستخدم أهداف خارجية أو CAPTCHA bypass أو provider live I/O. نتائج local lab الإيجابية محصورة في synthetic known-ground-truth fixture وموسومة صراحةً بذلك. GenericWebAdapter وCampaignProfileSpec والتحقق من target swap مثبتة offline، والـcontrolled lab مثبت bounded محليًا فقط. اكتمال المسارات الهندسية والـlocal pipeline لا يساوي كون المنتج VIP Smart Autonomous Bug Hunter مؤهلًا تشغيليًا.

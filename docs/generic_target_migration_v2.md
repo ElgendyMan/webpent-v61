@@ -41,7 +41,7 @@ The implementation was verified offline with fake transports and two distinct ge
 
 ## Open qualification gate
 
-No live qualification is claimed. At the time of this migration review, no authorized loopback target listener was available and the frozen P10 governance state still had no full-result reviewer approval, no approved full-run evidence, and null benchmark metrics. Consequently P10, P9, and VIP remain `NOT_QUALIFIED` even though the offline engineering gates pass.
+No official target qualification is claimed. A bounded, synthetic, loopback-only controlled lab is now available and has produced three isolated local runs with redacted target-backed observations, sealed/replayable ProofBundles, and independently recomputed local metrics. This evidence exercises the transport and proof pipeline only; it is not Juice Shop evidence and does not replace independent approval of the oracle, results, hashes, or frozen ground truth. Consequently official P10, P9, and VIP remain `NOT_QUALIFIED` even though the offline engineering and controlled-lab gates pass.
 
 ## Review checklist
 
@@ -67,6 +67,11 @@ No live qualification is claimed. At the time of this migration review, no autho
 - [`shared/runtime.py`](../src/webpent/shared/runtime.py)
 - [`scripts/check_generic_target_neutrality.py`](../scripts/check_generic_target_neutrality.py)
 - [`audit/p10_gap_matrix_v1.md`](../audit/p10_gap_matrix_v1.md)
+- [`audit/controlled_local_lab_oracle_review_packet_v1.json`](../audit/controlled_local_lab_oracle_review_packet_v1.json)
+- [`audit/controlled_local_lab_review_manifest_v1.json`](../audit/controlled_local_lab_review_manifest_v1.json)
+- [`scripts/run_controlled_local_lab_p10.py`](../scripts/run_controlled_local_lab_p10.py)
+- [`scripts/replay_controlled_local_lab_p10.py`](../scripts/replay_controlled_local_lab_p10.py)
+- [`scripts/verify_controlled_local_lab_metrics.py`](../scripts/verify_controlled_local_lab_metrics.py)
 
 > The product architecture is generic; target-specific knowledge is an explicit plugin/profile concern.
 
