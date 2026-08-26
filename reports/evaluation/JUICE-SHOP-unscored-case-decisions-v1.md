@@ -11,7 +11,7 @@ A case may be promoted only when its contract defines a semantic causal predicat
 | Case | Baseline status | Decision | Contract decision and boundary |
 |---|---|---|---|
 | `juice.access_log_disclosure.v1` | `blocked_by_precondition` | `implemented_and_retested` | Contract approved and implemented in a case-local change. The semantic predicate is a publicly retrievable server access-log resource, proved by redacted log-shape metadata. The loopback/read-only precondition held; baseline, candidate, and independent same-target non-log control produced distinct digests; central sealing and replay passed. |
-| `juice.directory_listing.v1` | `observation_only` | `contract_approved_for_implementation_pending_case_review` | Valid exposure semantics: a public directory index enumerates child resources that are not otherwise linked through an application workflow. Candidate must use a DOM/metadata predicate for directory-index structure and at least one child-link shape, never save the page body. Control must be a non-directory or absent path on the same target. |
+| `juice.directory_listing.v1` | `observation_only` | `blocked` | The source semantics are a directory-listing exposure, but the local runtime precondition did not hold: `/ftp` and `/ftp/` returned an HTML error-shaped response with `directory_shape=false` and no child-link shape. The candidate and independent nonexistent-path control both failed the causal predicate, so no contract was implemented and no ProofBundle was created. Re-open only after a target-local runtime/configuration review establishes the directory-index predicate without bypassing controls. |
 | `juice.forgotten_backup.v1` | `blocked_by_precondition` | `contract_approved_for_implementation_pending_case_review` | Valid exposure semantics: a backup-suffixed resource is publicly readable at the application boundary. Candidate may record status, content-type/length shape, and digest only; it must not retain the backup body. The control must be a known non-backup resource from the same local target and have distinct request/response digests. |
 | `juice.misplaced_signature_file.v1` | `blocked_by_precondition` | `contract_approved_for_implementation_pending_case_review` | Valid exposure semantics: a SIEM/signature resource is publicly readable at the application boundary. The contract is read-only and metadata-only, with no raw YAML/body persistence. The control must be a same-target non-signature resource with distinct digests and the same central verifier/seal/replay path. |
 | `juice.privacy_policy_proof.v1` | `blocked_by_precondition` | `out_of_scope` | Source semantics are a challenge-completion proof that the user read a privacy policy, not a security weakness. A route hit cannot be a causal vulnerability oracle; no P10 scoring contract is approved. It may remain an observation-only compatibility case. |
@@ -31,7 +31,7 @@ The adapter must produce redaction-safe target-backed baseline, candidate, and i
 
 ## Current decision
 
-`decision_matrix_status = case_1_closed_case_2_pending_review`
+`decision_matrix_status = case_2_closed_blocked_case_3_pending_review`
 
 `p10_qualification = NOT_QUALIFIED`
 
