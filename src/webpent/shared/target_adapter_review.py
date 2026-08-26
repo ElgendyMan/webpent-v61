@@ -294,6 +294,9 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
     run_ids = live_runs.get("run_ids")
     executed_case_ids = live_runs.get("executed_case_ids")
     proof_bundle_ids = live_runs.get("proof_bundle_ids")
+    run_case_matrix = live_runs.get("run_case_matrix")
+    replay_statuses = live_runs.get("replay_statuses")
+    verify_seal_results = live_runs.get("verify_seal_results")
     for field, value in (
         ("run_ids", run_ids),
         ("executed_case_ids", executed_case_ids),
@@ -301,7 +304,15 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
     ):
         if not isinstance(value, (list, tuple)):
             errors.append(f"live_runs:{field}_list_required")
+    for field, value in (
+        ("run_case_matrix", run_case_matrix),
+        ("replay_statuses", replay_statuses),
+        ("verify_seal_results", verify_seal_results),
+    ):
+        if not isinstance(value, Mapping):
+            errors.append(f"live_runs:{field}_mapping_required")
     if status == "approved":
+        normalized_run_ids: list[str] = []
         if isinstance(run_ids, (list, tuple)):
             normalized_run_ids = [str(value).strip() for value in run_ids if str(value).strip()]
             if (
@@ -319,5 +330,48 @@ def validate_target_adapter_review_packet(packet: Mapping[str, Any]) -> tuple[st
             }
             if normalized_executed != disposition_sets.get("approved_case_ids", set()):
                 errors.append("live_runs:executed_cases_must_match_approved_cases")
+        approved_case_ids = disposition_sets.get("approved_case_ids", set())
+        if isinstance(run_case_matrix, Mapping):
+            normalized_matrix: dict[str, set[str]] = {}
+            matrix_values_valid = True
+            for run_id, case_ids in run_case_matrix.items():
+                normalized_run_id = str(run_id).strip()
+                if not normalized_run_id:
+                    continue
+                if not isinstance(case_ids, (list, tuple)):
+                    matrix_values_valid = False
+                    continue
+                normalized_matrix[normalized_run_id] = {
+                    str(case_id).strip()
+                    for case_id in case_ids
+                    if str(case_id).strip()
+                }
+            if (
+                not matrix_values_valid
+                or normalized_matrix.keys() != set(normalized_run_ids)
+            ):
+                errors.append("live_runs:run_case_matrix_must_cover_all_runs")
+            elif any(case_ids != approved_case_ids for case_ids in normalized_matrix.values()):
+                errors.append("live_runs:run_case_matrix_must_cover_all_approved_cases")
+        if isinstance(replay_statuses, Mapping):
+            normalized_replay = {
+                str(run_id).strip(): str(result).strip().lower()
+                for run_id, result in replay_statuses.items()
+                if str(run_id).strip()
+            }
+            if normalized_replay.keys() != set(normalized_run_ids) or any(
+                result != "passed" for result in normalized_replay.values()
+            ):
+                errors.append("live_runs:replay_statuses_must_be_passed")
+        if isinstance(verify_seal_results, Mapping):
+            normalized_seal = {
+                str(run_id).strip(): result
+                for run_id, result in verify_seal_results.items()
+                if str(run_id).strip()
+            }
+            if normalized_seal.keys() != set(normalized_run_ids) or any(
+                result is not True for result in normalized_seal.values()
+            ):
+                errors.append("live_runs:verify_seal_results_must_be_true")
 
     return tuple(sorted(set(errors)))

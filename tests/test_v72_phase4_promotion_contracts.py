@@ -1,4 +1,4 @@
-from webpent.agents.validator.agent import _validate_known_swagger_ssrf
+from webpent.benchmark.waptlab_target_adapter import validate_swagger_finding
 from webpent.models.findings import Finding
 from webpent.models.proof_bundle import build_proof_bundle
 
@@ -26,7 +26,7 @@ def test_swagger_direct_promotion_rejects_marker_without_proof_bundle():
         }
     )
 
-    assert _validate_known_swagger_ssrf(finding, {}) is None
+    assert validate_swagger_finding(finding, {}) is None
 
 
 def test_swagger_direct_promotion_accepts_sealed_proof_with_controls():
@@ -48,4 +48,4 @@ def test_swagger_direct_promotion_accepts_sealed_proof_with_controls():
         }
     )
 
-    assert _validate_known_swagger_ssrf(finding, {}) == finding
+    assert validate_swagger_finding(finding, {}) == finding

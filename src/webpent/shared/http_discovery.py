@@ -18,9 +18,9 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from webpent.config.settings import get_settings
 
-# Route seeds must be target-scoped. The previous global list contained
-# WAPTLab-only paths and caused unrelated targets to inherit synthetic
-# hypotheses. Operators can provide explicit seeds through discovery_route_seeds.
+# Route seeds must be target-scoped. Operators can provide explicit seeds
+# through discovery_route_seeds; the built-in discovery path never invents
+# target-specific hypotheses.
 _PRIORITY_ROUTE_SEEDS: tuple[str, ...] = ()
 
 def _extract_openapi_payload(text: str) -> dict[str, Any] | None:
@@ -336,10 +336,10 @@ def discover_http_surface(
     skipped_state_changing = 0
     settings = get_settings()
     configured_user_agent = str(getattr(settings, "http_user_agent", "") or "").strip()
-    # WAPTLab-style middleware rejects the project default UA as an automated
-    # client. Keep explicit operator overrides intact, but use a bounded,
-    # ordinary browser profile for the built-in default so read-only discovery
-    # can observe the same surface as the Playwright authentication path.
+    # Some application middleware rejects the project default UA as an
+    # automated client. Keep explicit operator overrides intact, but use a
+    # bounded ordinary browser profile for the built-in read-only discovery
+    # path so it observes the same surface as the browser path.
     user_agent = configured_user_agent
     if not user_agent or user_agent.startswith("WebPent/0.2"):
         user_agent = (

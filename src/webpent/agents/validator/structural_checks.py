@@ -165,8 +165,8 @@ def _fetch_page_scoped_with_rate_limit_retry(
 ) -> tuple[int, str, dict[str, str]] | None:
     """Retry one transient throttle response without weakening scope checks.
 
-    WAPTLab intentionally returns HTTP 429 after detecting a periodic request
-    pattern. A single bounded wait lets a legitimate owner baseline recover,
+    Some targets return HTTP 429 after detecting a periodic request pattern.
+    A single bounded wait lets a legitimate owner baseline recover,
     while a persistent throttle still reaches the normal fail-closed assessment
     as HTTP 429. No retry is performed for other response classes.
     """
@@ -177,17 +177,15 @@ def _fetch_page_scoped_with_rate_limit_retry(
     status_code, body, headers = result
     retry_after = str(headers.get("retry-after", ""))
     wait_match = re.search(r"(?:wait|retry[- ]after)\D*(\d{1,3})", retry_after or body, re.I)
-    # WAPTLab's periodic-request detector may omit Retry-After entirely. Its
-    # bounded local TTL is about 12 seconds, so a short default retry would
-    # reproduce the throttle and erase the owner baseline. Keep this longer
-    # fallback limited to HTTP 429; transient 5xx responses retain the short
-    # retry budget.
+    # A target may omit Retry-After entirely. A bounded default retry avoids
+    # immediately reproducing the throttle while preserving the owner baseline.
+    # Keep this fallback limited to HTTP 429; transient 5xx responses retain the
+    # short retry budget.
     default_wait = 12 if status_code == 429 else 1
     wait_seconds = int(wait_match.group(1)) if wait_match else default_wait
     wait_seconds = min(max(wait_seconds, 1), 12)
-    # Add an expiry margin: WAPTLab keeps the periodic-request timestamp
-    # cache slightly longer than the block key, so the advertised wait alone
-    # can still hit the active detector on the retry.
+    # Add a small expiry margin so a retry does not immediately hit a still
+    # active rate-limit cache.
     time.sleep(wait_seconds + 3.5)
     retry = _fetch_page_scoped(url, cookies=cookies, target_scope=target_scope)
     return retry if retry is not None else (status_code, body, headers)

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from webpent.agents.validator.registry import validator_id_for
-from webpent.shared.campaigns import CAMPAIGN_HUMAN_REVIEW, WAPTLAB_CAMPAIGNS
+from webpent.shared.campaigns import GENERIC_CAMPAIGNS, WAPTLAB_CAMPAIGNS
 
 PluginStage = Literal[
     "discover",
@@ -27,6 +28,7 @@ PLUGIN_STAGES: Final[tuple[PluginStage, ...]] = (
     "cleanup",
     "render_finding",
 )
+
 
 @dataclass(frozen=True)
 class ValidatorPluginSpec:
@@ -71,17 +73,29 @@ class ValidatorPluginSpec:
         )
 
 
-def build_validator_plugin_registry() -> tuple[ValidatorPluginSpec, ...]:
-    """Return one stable plugin contract for every declarative campaign."""
+def build_validator_plugin_registry(
+    campaigns: Iterable[Mapping[str, Any]] | None = None,
+) -> tuple[ValidatorPluginSpec, ...]:
+    """Build plugin contracts for the selected inventory.
+
+    The default is target-neutral.  Vertical inventories must be supplied
+    explicitly so a planner cannot silently inherit WAPTLab metadata.
+    """
+    selected_campaigns = GENERIC_CAMPAIGNS if campaigns is None else campaigns
     plugins: list[ValidatorPluginSpec] = []
-    for campaign in WAPTLAB_CAMPAIGNS:
-        campaign_key = str(campaign["key"])
-        vuln_class = str(campaign.get("validator") or campaign_key)
-        registered_id = (
-            None
-            if campaign_key in CAMPAIGN_HUMAN_REVIEW
-            else validator_id_for(vuln_class)
-        )
+    for campaign in selected_campaigns:
+        campaign_key = str(campaign.get("key", "")).strip()
+        if not campaign_key:
+            continue
+        validator_value = campaign.get("validator")
+        vuln_class = str(validator_value or campaign_key)
+        injected_validator_id = campaign.get("validator_id")
+        if validator_value is None:
+            registered_id = None
+        elif injected_validator_id:
+            registered_id = str(injected_validator_id)
+        else:
+            registered_id = validator_id_for(vuln_class)
         plugins.append(
             ValidatorPluginSpec(
                 plugin_id=f"campaign:{campaign_key}",
@@ -108,12 +122,18 @@ def build_validator_plugin_registry() -> tuple[ValidatorPluginSpec, ...]:
     return tuple(plugins)
 
 
+def build_waptlab_validator_plugin_registry() -> tuple[ValidatorPluginSpec, ...]:
+    """Return the legacy WAPTLab registry through an explicit profile call."""
+    return build_validator_plugin_registry(WAPTLAB_CAMPAIGNS)
+
+
 def plugin_capability_gaps(
     plugins: tuple[ValidatorPluginSpec, ...] | None = None,
 ) -> list[dict[str, str]]:
     """Return explicit gaps; never silently route incomplete classes."""
+    selected_plugins = build_validator_plugin_registry() if plugins is None else plugins
     gaps: list[dict[str, str]] = []
-    for plugin in plugins or build_validator_plugin_registry():
+    for plugin in selected_plugins:
         if not plugin.complete:
             gaps.append({"plugin_id": plugin.plugin_id, "reason": "incomplete-contract"})
         if plugin.evidence_mode == "human-review":
@@ -127,9 +147,9 @@ def plugin_capability_gaps(
 
 
 __all__ = [
-    "CAMPAIGN_HUMAN_REVIEW",
     "PLUGIN_STAGES",
     "ValidatorPluginSpec",
     "build_validator_plugin_registry",
+    "build_waptlab_validator_plugin_registry",
     "plugin_capability_gaps",
 ]

@@ -378,9 +378,9 @@ def _perform_login_sync(
                     logger.info("Discovered login form at same-origin path %s", login_path)
                     break
 
-        # Most login forms expose password immediately. Some targets (such
-        # as WAPTLab) deliberately use a two-step email -> password flow,
-        # where the password input exists in the DOM but is hidden until the
+        # Most login forms expose password immediately. Some targets use a
+        # two-step email -> password flow, where the password input exists in
+        # the DOM but is hidden until the
         # email is checked by the application. Support both forms without
         # weakening the target-agnostic selectors below.
         password_input = page.locator("input[type='password']").first

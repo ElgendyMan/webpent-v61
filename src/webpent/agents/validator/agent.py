@@ -66,6 +66,7 @@ from webpent.shared.llm import (
     get_llm as _shared_get_llm,
 )
 from webpent.shared.stealth import apply_jitter, enforce_min_interval, extract_host
+from webpent.shared.target_adapters import campaign_extensions_for_registration
 from webpent.shared.target_package_context import package_continuity_kwargs
 from webpent.shared.verifier import verify_replay_evidence
 from webpent.state.state import PentestState
@@ -3355,23 +3356,24 @@ def _apply_validation_failure_learning(
     return [updated_hypothesis], [decision_log_entry]
 
 
-def _validate_known_swagger_ssrf(finding: Finding, state: PentestState) -> Finding | None:
-    """Accept only a fully validated Swagger SSRF proof from the executor."""
-    del state
-    if finding.vuln_class != "ssrf" or "/swagger_ui" not in str(finding.url):
+
+def _campaign_extension_for_finding(
+    state: Mapping[str, Any],
+    finding: Finding,
+) -> tuple[str, Any] | None:
+    """Resolve a finding projector from the live, revalidated target adapter."""
+    extension_id = str((finding.evidence or {}).get("campaign_extension_id") or "").strip()
+    if not extension_id:
         return None
-    evidence = finding.evidence or {}
-    if evidence.get("action_executor_probe") is not True:
+    runtime = state.get("runtime_context")
+    registration = getattr(runtime, "target_adapter_registration", None)
+    extensions = campaign_extensions_for_registration(registration)
+    if extensions is None:
         return None
-    if finding.confidence != Confidence.CONFIRMED.value:
+    extension = extensions.get(extension_id)
+    if extension is None or extension.finding_projector is None:
         return None
-    if evidence.get("causal_signal") is not True:
-        return None
-    if evidence.get("negative_control_complete") is not True:
-        return None
-    if not validate_proof_bundle(evidence.get("proof_bundle"), require_negative_control=True):
-        return None
-    return finding
+    return extension_id, extension
 
 
 def validator_node(state: PentestState) -> dict:
@@ -3474,20 +3476,9 @@ def validator_node(state: PentestState) -> dict:
             "Needs Human Review",
             "Clean",
         }
-        governance = state.get("smart_governance") or {}
-        known_swagger_probe = (
-            str(
-                governance.get("profile")
-                if isinstance(governance, dict)
-                else state.get("scan_mode")
-            )
-            == "authorized-active"
-            and finding.vuln_class == "ssrf"
-            and "/swagger_ui" in str(finding.url)
-            and finding.confidence != Confidence.CONFIRMED.value
-            and (finding.evidence or {}).get("action_executor_probe") is not True
-        )
-        if not known_swagger_probe and not _validation_requeue and (
+        extension_binding = _campaign_extension_for_finding(state, finding)
+        extension_probe = extension_binding is not None
+        if not extension_probe and not _validation_requeue and (
             _finding_evidence.get("validation_attempted")
             or _terminal_confidence
             or _finding_evidence.get("tool_infra_failure")
@@ -3518,25 +3509,32 @@ def validator_node(state: PentestState) -> dict:
                 skipped_count += 1
                 continue
 
-        if vuln_class == "ssrf":
-            direct_updated = _validate_known_swagger_ssrf(finding, state)
-            if direct_updated is not None:
-                direct_updated = direct_updated.model_copy(
+        if extension_binding is not None:
+            extension_id, extension = extension_binding
+            try:
+                projected = extension.finding_projector(finding, state)
+            except Exception:
+                projected = None
+            if isinstance(projected, Finding):
+                projected = projected.model_copy(
                     update={
                         "evidence": {
-                            **(direct_updated.evidence or {}),
+                            **(projected.evidence or {}),
                             "validation_attempted": True,
                             "validation_requeue": False,
-                            "validator_path": "known_swagger_ssrf_direct_probe",
+                            "validator_path": f"campaign_extension:{extension_id}",
+                            "campaign_extension_id": extension_id,
                         },
                     }
                 )
-                findings_by_id[finding.id] = direct_updated
-                ledger_entries.append(_ledger_entry_for_finding(direct_updated))
-                confirmed_count += 1
-                if thread_id:
-                    _persist_finding_incrementally(direct_updated, thread_id=thread_id)
-                skipped_count += 1
+                findings_by_id[finding.id] = projected
+                ledger_entries.append(_ledger_entry_for_finding(projected))
+                if projected.confidence == Confidence.CONFIRMED.value:
+                    confirmed_count += 1
+                else:
+                    skipped_count += 1
+                if thread_id and projected.confidence == Confidence.CONFIRMED.value:
+                    _persist_finding_incrementally(projected, thread_id=thread_id)
                 continue
 
         if vuln_class is None:
@@ -3820,7 +3818,7 @@ def _validate_xxe_via_oob(
         (finding.request_data or {}).get("__webpent_content_type", "")
     ).lower().strip() == "application/json"
     if json_transport:
-        # WAPTLab's ERP surface accepts JSON and parses the user-supplied XSLT.
+        # Some targets accept JSON transport for an XSLT-based entity probe.
         # The canary is non-destructive: it only requests WebPent's per-finding
         # callback and emits the returned entity into the transformation result.
         xslt_body = (

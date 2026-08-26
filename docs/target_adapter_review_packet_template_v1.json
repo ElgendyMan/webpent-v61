@@ -90,6 +90,9 @@
     "run_ids": [],
     "executed_case_ids": [],
     "proof_bundle_ids": [],
+    "run_case_matrix": {},
+    "replay_statuses": {},
+    "verify_seal_results": {},
     "metrics": null,
     "qualification_status": "not_qualified"
   }

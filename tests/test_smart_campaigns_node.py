@@ -16,7 +16,23 @@ from webpent.graph.builder import (
 )
 from webpent.models.targets import Target
 from webpent.models.workflows import WorkflowObservation
+from webpent.shared.action_authority import ActionRisk
+from webpent.shared.action_ledger import SQLiteActionLedger
+from webpent.shared.campaign_executor import CampaignTask
 from webpent.shared.coverage_ledger import project_coverage_ledger
+from webpent.shared.g02_contract import (
+    G02_HTTP_ADAPTER_NAME,
+    G02_HTTP_INVENTORY_REF,
+    G02_HTTP_PROOF_CONTRACT,
+)
+from webpent.shared.runtime import AdapterRegistry, RuntimeFactory
+from webpent.shared.semantic_observations import SemanticProfileRegistry
+from webpent.shared.target_adapters import (
+    CampaignExtensionSpec,
+    RegisteredTargetAdapter,
+    TargetAdapterRegistry,
+    TargetCaseBinding,
+)
 from webpent.state.initial_state import build_initial_state
 
 
@@ -584,10 +600,44 @@ def test_authorized_active_file_upload_is_bounded_and_typed(monkeypatch) -> None
 # End of typed authorized-action regression coverage.
 
 
-def test_authorized_active_direct_swagger_probe_requires_proof_bundle_for_confirmation(
-    monkeypatch,
+def test_authorized_active_direct_swagger_probe_requires_explicit_extension_and_proof_bundle(
+    tmp_path, monkeypatch
 ) -> None:
+    from webpent.benchmark.waptlab_target_adapter import (
+        WaptlabCampaignExtensionProvider,
+    )
     from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+
+    class WaptlabAdapter(WaptlabCampaignExtensionProvider):
+        target_id = "explicit-waptlab-test"
+        target_origin = "https://target.test"
+        semantic_profiles = SemanticProfileRegistry({})
+
+        def workflow_ids(self):
+            return ("navigate",)
+
+        def workflow_executors(self):
+            return {}
+
+        def case_ids(self):
+            return ("waptlab.case.v1",)
+
+        def case(self, case_id):
+            if case_id != "waptlab.case.v1":
+                return None
+            return TargetCaseBinding(
+                case_id=case_id,
+                operation="navigate",
+                path="/",
+                oracle_id="waptlab.oracle.v1",
+                workflow_id="navigate",
+            )
+
+        def semantic_profile_for_case(self, case_id):
+            return None if case_id == "waptlab.case.v1" else None
+
+        def accepts_origin(self, origin):
+            return origin == self.target_origin
 
     class Response:
         status_code = 200
@@ -608,6 +658,29 @@ def test_authorized_active_direct_swagger_probe_requires_proof_bundle_for_confir
                 return Response(b'{"method":"ipv6-loopback","flag":"NUA{test}"}')
             return Response(b"safe-body")
 
+    registry = TargetAdapterRegistry()
+    registry.register(
+        RegisteredTargetAdapter(
+            adapter=WaptlabAdapter(),
+            source="tests",
+            version="1",
+            policy_ref="waptlab-test-policy",
+            proof_contract="waptlab-test-proof-contract",
+        )
+    )
+    ledger_path = tmp_path / "waptlab-smart-runtime.sqlite3"
+    runtime = RuntimeFactory.create(
+        engagement_id="engagement:test",
+        campaign_id="campaign:waptlab-smart",
+        target_origin="https://target.test",
+        settings=get_settings().model_copy(update={"scan_mode": "authorized-active"}),
+        manifest={"capabilities": {"http_read": {"available": True, "status": "available"}}},
+        ledger=SQLiteActionLedger(ledger_path),
+        adapters=AdapterRegistry(),
+        target_adapter_registry=registry,
+    )
+    assert runtime.valid is True
+
     existing = Finding(
         title="Potential SSRF at swagger_ui",
         severity=Severity.HIGH,
@@ -622,6 +695,8 @@ def test_authorized_active_direct_swagger_probe_requires_proof_bundle_for_confir
     state["scan_mode"] = "authorized-active"
     state["auto_approve"] = True
     state["findings"] = [existing]
+    state["runtime_context"] = runtime
+    state["action_ledger_path"] = str(ledger_path)
     monkeypatch.setattr(
         "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
         lambda **_kwargs: Client(),
@@ -644,6 +719,250 @@ def test_authorized_active_direct_swagger_probe_requires_proof_bundle_for_confir
         for item in result["decision_trace"]
         if item.get("selected_task") == "smart-swagger-ssrf-proof"
     )
+
+
+def test_authorized_active_without_registered_extension_does_not_enqueue_swagger_task(
+    monkeypatch,
+) -> None:
+    from webpent.models.findings import Finding, Severity, VulnClass
+
+    class Response:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b"safe-body"
+
+    class Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def get(self, _url):
+            return Response()
+
+    state = _state()
+    state["smart_governance"] = {"profile": "authorized-active"}
+    state["scan_mode"] = "authorized-active"
+    state["auto_approve"] = True
+    state["findings"] = [
+        Finding(
+            title="Potential SSRF at generic surface",
+            severity=Severity.HIGH,
+            description="Unconfirmed generic candidate.",
+            tool_name="hypothesis_analyzer",
+            url="https://target.test/swagger_ui",
+            vuln_class=VulnClass.SSRF,
+        )
+    ]
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
+        lambda **_kwargs: Client(),
+    )
+
+    result = smart_campaigns_execution_node(state)
+    assert not any(
+        item.get("selected_task") == "smart-swagger-ssrf-proof"
+        for item in result["decision_trace"]
+    )
+    assert not any(
+        item.get("task_id") == "smart-swagger-ssrf-proof"
+        for item in result["campaign_task_outcomes"]
+    )
+
+
+def test_authorized_active_accepts_independent_registered_campaign_extension(
+    tmp_path, monkeypatch
+) -> None:
+    from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+
+    class IndependentAdapter:
+        target_id = "independent-test-target"
+        target_origin = "https://target.test"
+        semantic_profiles = SemanticProfileRegistry({})
+
+        def workflow_ids(self):
+            return ("navigate",)
+
+        def workflow_executors(self):
+            return {}
+
+        def case_ids(self):
+            return ("independent.case.v1",)
+
+        def case(self, case_id):
+            if case_id != "independent.case.v1":
+                return None
+            return TargetCaseBinding(
+                case_id=case_id,
+                operation="navigate",
+                path="/",
+                oracle_id="independent.oracle.v1",
+                workflow_id="navigate",
+            )
+
+        def semantic_profile_for_case(self, case_id):
+            return None if case_id == "independent.case.v1" else None
+
+        def accepts_origin(self, origin):
+            return origin == self.target_origin
+
+        def campaign_extensions(self):
+            def task_factory(state, root):
+                return CampaignTask(
+                    task_id="independent-extension-task",
+                    engagement_id=str(state["engagement_id"]),
+                    asset_id="independent-surface",
+                    source_evidence_ids=("surface:independent",),
+                    vulnerability_class=VulnClass.XSS.value,
+                    hypothesis_id="independent-hypothesis",
+                    probe_family="independent_read_only_probe",
+                    negative_control="required",
+                    oracle="independent_metadata_oracle",
+                    risk_tier=ActionRisk.READ_ONLY,
+                    idempotency_key="independent-extension-idempotency",
+                    target_url=f"{root.rstrip('/')}/extension-check",
+                    validator_id="xss_reflected",
+                    metadata={
+                        "campaign_extension_id": "independent.extension.v1",
+                        "adapter_name": G02_HTTP_ADAPTER_NAME,
+                        "g02_inventory_ref": G02_HTTP_INVENTORY_REF,
+                        "g02_proof_contract": G02_HTTP_PROOF_CONTRACT,
+                    },
+                )
+
+            def response_projector(_state, _response, request_url):
+                return Finding(
+                    title="Independent extension candidate",
+                    severity=Severity.LOW,
+                    description="An independently registered extension produced metadata.",
+                    tool_name="smart_campaigns_execution",
+                    url=request_url,
+                    vuln_class=VulnClass.XSS.value,
+                    confidence=Confidence.TENTATIVE,
+                    evidence={"extension_projection": "independent"},
+                )
+
+            return {
+                "independent.extension.v1": CampaignExtensionSpec(
+                    extension_id="independent.extension.v1",
+                    task_factory=task_factory,
+                    response_projector=response_projector,
+                )
+            }
+
+    registry = TargetAdapterRegistry()
+    registry.register(
+        RegisteredTargetAdapter(
+            adapter=IndependentAdapter(),
+            source="tests",
+            version="1",
+            policy_ref="independent-policy",
+            proof_contract="independent-proof-contract",
+        )
+    )
+    runtime = RuntimeFactory.create(
+        engagement_id="engagement:independent-extension",
+        campaign_id="campaign:independent-extension",
+        target_origin="https://target.test",
+        settings=get_settings(),
+        manifest={"capabilities": {"http_read": {"available": True, "status": "available"}}},
+        ledger=SQLiteActionLedger(tmp_path / "independent-runtime.sqlite3"),
+        target_adapter_registry=registry,
+    )
+    assert runtime.valid is True
+
+    state = _state()
+    state["engagement_id"] = "engagement:independent-extension"
+    state.update(
+        {
+            "campaign_inventory": "generic",
+            "campaign_plan": {"entries": []},
+            "crawled_data": {},
+            "hypotheses": [],
+            "runtime_context": runtime,
+            "scan_mode": "authorized-active",
+            "smart_governance": {"profile": "authorized-active"},
+            "action_ledger_path": str(tmp_path / "independent-extension.sqlite3"),
+        }
+    )
+
+    class Response:
+        status_code = 200
+        content = b'{"status":"ok"}'
+        headers = {"content-type": "application/json"}
+
+    class Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def get(self, _url):
+            return Response()
+
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
+        lambda **_kwargs: Client(),
+    )
+
+    result = smart_campaigns_execution_node(state)
+    assert any(
+        outcome.get("task_id") == "independent-extension-task"
+        and outcome.get("status") == "executed"
+        for outcome in result["campaign_task_outcomes"]
+    )
+    assert any(
+        finding.evidence.get("extension_projection") == "independent"
+        for finding in result["findings"]
+    )
+    assert all(
+        outcome.get("task_id") != "smart-swagger-ssrf-proof"
+        for outcome in result["campaign_task_outcomes"]
+    )
+
+
+def test_authorized_active_without_target_extension_does_not_enqueue_swagger_probe(
+    monkeypatch,
+) -> None:
+    state = _state()
+    state.update(
+        {
+            "campaign_inventory": "generic",
+            "campaign_plan": {"entries": []},
+            "crawled_data": {},
+            "hypotheses": [],
+            "scan_mode": "authorized-active",
+            "smart_governance": {"profile": "authorized-active"},
+        }
+    )
+    calls: list[str] = []
+
+    class UnexpectedClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def get(self, url):
+            calls.append(url)
+            raise AssertionError("no specialized probe should run without registration")
+
+    monkeypatch.setattr(
+        "webpent.agents.smart_campaigns.agent.make_safe_httpx_client",
+        lambda **_kwargs: UnexpectedClient(),
+    )
+
+    result = smart_campaigns_execution_node(state)
+
+    assert calls == []
+    assert all(
+        item.get("selected_task") != "smart-swagger-ssrf-proof"
+        for item in result["decision_trace"]
+    )
+    assert result["smart_http_observations"] == []
 
 
 def test_authorized_active_direct_swagger_probe_requires_marker(monkeypatch) -> None:

@@ -34,7 +34,7 @@ def test_declared_origin_alias_attaches_form_context() -> None:
     assert ssti[0].target_param == "db"
 
 
-def test_known_form_route_gets_bounded_context_when_form_discovery_is_empty() -> None:
+def test_unknown_form_route_does_not_invent_target_specific_context() -> None:
     result = hypothesis_node(
         {
             "target": Target(url="http://127.0.0.1:8000"),
@@ -44,9 +44,9 @@ def test_known_form_route_gets_bounded_context_when_form_discovery_is_empty() ->
 
     ssti = [item for item in result["hypotheses"] if item.vuln_class == "ssti"]
     assert len(ssti) == 1
-    assert ssti[0].request_method == "POST"
-    assert ssti[0].request_data["rows[0][name]"] == "baseline"
-    assert ssti[0].target_param == "rows[0][name]"
+    assert ssti[0].request_method == "GET"
+    assert ssti[0].request_data == {}
+    assert ssti[0].target_param is None
 
 
 def test_waptlab_read_only_idor_paths_are_candidates_not_confirmations() -> None:

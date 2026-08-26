@@ -414,7 +414,8 @@ def build_campaign_plan(
     workflows = [_as_mapping(item) for item in workflow_observations]
     workflow_ref_set = {_observation_ref(item, "") for item in workflows}
     plugin_by_campaign = {
-        plugin.campaign_key: plugin for plugin in build_validator_plugin_registry()
+        plugin.campaign_key: plugin
+        for plugin in build_validator_plugin_registry(ledger["entries"])
     }
     observations = surfaces + workflows
     explicit = [_safe_gap(item) for item in explicit_gaps if item]

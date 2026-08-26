@@ -70,6 +70,11 @@ from webpent.models.memory import MemoryBudget, MemoryKind
 from webpent.shared.confidence import compute_initial_hypothesis_confidence
 from webpent.shared.knowledge_retrieval import retrieve_knowledge_context
 from webpent.shared.memory_boundary import MemoryBoundary
+from webpent.shared.target_adapters import (
+    campaign_path_classification_for_registration,
+    campaign_request_context_for_registration,
+    campaign_surface_seeds_for_registration,
+)
 from webpent.state.state import PentestState
 
 logger = logging.getLogger(__name__)
@@ -480,16 +485,6 @@ _VULN_PATH_PATTERNS: list[tuple[str, str, str]] = [
     # sufficient. They cover common CRM/API naming without target-specific
     # literals.
     (
-        "swagger_ui",
-        VulnClass.SSRF.value,
-        "URL path contains 'swagger_ui' — remote specification fetch surface",
-    ),
-    (
-        "swagger-ui",
-        VulnClass.SSRF.value,
-        "URL path contains 'swagger-ui' — remote specification fetch surface",
-    ),
-    (
         "image_fetch",
         VulnClass.SSRF.value,
         "URL path contains 'image_fetch' — server-side image fetch surface",
@@ -511,11 +506,6 @@ _VULN_PATH_PATTERNS: list[tuple[str, str, str]] = [
         "URL path contains 'training' — rendered content surface",
     ),
     ("email", VulnClass.SSTI.value, "URL path contains 'email' — rendered message surface"),
-    (
-        "export-erp",
-        VulnClass.XXE.value,
-        "URL path contains 'export-erp' — JSON XSLT transformation surface",
-    ),
     ("export", VulnClass.SSTI.value, "URL path contains 'export' — rendered export surface"),
     (
         "elasticsearch",
@@ -726,6 +716,10 @@ def hypothesis_node(state: PentestState) -> dict:
     (Phase 3), not here.
     """
     target = state["target"]
+    runtime_context = state.get("runtime_context")
+    target_adapter_registration = getattr(
+        runtime_context, "target_adapter_registration", None
+    )
     crawled_data = state.get("crawled_data") or {}
     raw_endpoints = crawled_data.get("endpoints", []) or []
 
@@ -834,55 +828,23 @@ def hypothesis_node(state: PentestState) -> dict:
             == urlparse(endpoint).path.rstrip("/")
         )
 
-    def _static_request_context_for_url(value: str) -> dict[str, Any] | None:
-        """Provide bounded, transport-compatible context for known form routes.
+    def _path_classification_for_url(value: str) -> tuple[str, str] | None:
+        """Prefer a validated live adapter classification, then generic rules."""
+        adapter_classification = campaign_path_classification_for_registration(
+            target_adapter_registration,
+            state,
+            value,
+        )
+        return adapter_classification or _classify_by_url_path(value)
 
-        These are discovery aids only. They never promote or confirm a finding.
-        Known JSON transports are represented explicitly so validators can
-        reproduce the target contract without guessing at content types.
-        """
-        path = urlparse(value).path.rstrip("/") or "/"
-        fixtures: dict[str, dict[str, Any]] = {
-            "/crm/export": {
-                "request_method": "POST",
-                "request_data": {
-                    "db": "crm",
-                    "rows[0][name]": "baseline",
-                    "format": "html",
-                },
-                "target_param": "rows[0][name]",
-            },
-            "/training/send-results-email": {
-                "request_method": "POST",
-                "request_data": {
-                    "to": "webpent.receiver@example.test",
-                    "subject": "WebPent validation",
-                    "description": "baseline",
-                    "path": "/",
-                },
-                "target_param": "description",
-            },
-            "/export-erp": {
-                "request_method": "POST",
-                "request_data": {
-                    "__webpent_content_type": "application/json",
-                    "db": "default",
-                    "rows": [{"name": "baseline"}],
-                    "xslt": (
-                        "<?xml version='1.0'?>"
-                        "<xsl:stylesheet version='1.0' "
-                        "xmlns:xsl='http://www.w3.org/1999/XSL/Transform'>"
-                        "<xsl:template match='/'>"
-                        "<export><xsl:value-of select='count(/customers/customer)'/>"
-                        "</export>"
-                        "</xsl:template></xsl:stylesheet>"
-                    ),
-                },
-                "target_param": "xslt",
-            },
-        }
-        context = fixtures.get(path)
-        return dict(context) if context else None
+    def _static_request_context_for_url(value: str) -> dict[str, Any] | None:
+        """Return request metadata supplied by the live target adapter only."""
+        context = campaign_request_context_for_registration(
+            target_adapter_registration,
+            state,
+            value,
+        )
+        return dict(context) if context is not None else None
 
     def _request_context_for_url(value: str) -> dict[str, Any]:
         """Attach the best discovered form request to a URL hypothesis.
@@ -893,13 +855,9 @@ def hypothesis_node(state: PentestState) -> dict:
         relative and absolute form actions.
         """
         fixture = _static_request_context_for_url(value)
-        fixture_path = urlparse(value).path.rstrip("/") or "/"
-        if fixture is not None and fixture_path == "/export-erp":
-            # The ERP endpoint's contract is JSON/XSLT. A generic GET form
-            # observed on the same route is only a shell and would erase the
-            # transport required by the real validator. This remains discovery
-            # context only; validators still require causal evidence and a
-            # complete negative control.
+        if fixture is not None:
+            # Adapter-provided context takes precedence over a discovered form;
+            # it is explicit discovery metadata, not validation evidence.
             return fixture
 
         endpoint_key = _route_key(value)
@@ -999,46 +957,33 @@ def hypothesis_node(state: PentestState) -> dict:
     if target.url not in endpoints:
         endpoints.insert(0, target.url)
 
-    # VIP qualification keeps a bounded, target-profile-scoped seed list for
-    # POST-only lab routes that a GET-only crawler cannot prove as reachable.
-    # These entries are hypotheses/discovery context only: no request is sent
-    # here, and validators still require causal evidence plus a negative
-    # control before a Finding can be Tool-Confirmed. Ordinary profiles remain
-    # target-agnostic and do not receive these seeds.
-    profile_value = str(state.get("profile") or "").strip().lower().replace("_", "-")
-    campaign_inventory = str(state.get("campaign_inventory") or "generic").strip().lower()
-    if (
-        campaign_inventory == "waptlab"
-        and profile_value in {"vip-qualification", "scanprofile.vip-qualification"}
-    ):
-        known_surface_paths = (
-            "/export-erp",
-            "/crm/export",
-            "/training/send-results-email",
-        )
-        known_surface_urls = [
-            urljoin(target.url.rstrip("/") + "/", path.lstrip("/"))
-            for path in known_surface_paths
+    # Optional target-adapter seeds are discovery context only. The shared
+    # analyzer never names or guesses a target profile; absent or broken
+    # registration yields no extra URLs and performs no I/O.
+    adapter_seed_urls = campaign_surface_seeds_for_registration(
+        target_adapter_registration,
+        state,
+        target.url,
+    )
+    if adapter_seed_urls:
+        missing_seed_urls = [
+            seed_url
+            for seed_url in adapter_seed_urls
+            if not any(_route_matches(seed_url, str(endpoint)) for endpoint in endpoints)
         ]
-        missing_known_surfaces = [
-            known_url
-            for known_url in known_surface_urls
-            if not any(_route_matches(known_url, str(endpoint)) for endpoint in endpoints)
-        ]
-        if missing_known_surfaces:
-            endpoints.extend(missing_known_surfaces)
+        if missing_seed_urls:
+            endpoints.extend(missing_seed_urls)
             logger.info(
-                "VIP known-surface seeds added %d route(s) as hypothesis context: %s",
-                len(missing_known_surfaces),
-                ", ".join(missing_known_surfaces),
+                "Target-adapter surface seeds added %d route(s) as hypothesis context",
+                len(missing_seed_urls),
             )
-        # Keep every known route ahead of the bounded downstream hypothesis
+        # Keep every adapter-provided route ahead of the bounded downstream
         # budget. Preserve a discovered absolute URL when available; otherwise
         # use the canonical target-origin URL. This prevents a GET-only crawler
         # sample from starving a POST-only route while retaining all other
         # discovered endpoints and their original order.
         prioritized_known_urls: list[str] = []
-        for known_url in known_surface_urls:
+        for known_url in adapter_seed_urls:
             prioritized_known_urls.append(
                 next(
                     (
@@ -1232,7 +1177,7 @@ def hypothesis_node(state: PentestState) -> dict:
             observed_param = _observed_query_parameter(url)
             if observed_param is not None:
                 request_context["target_param"] = observed_param
-        path_classification = _classify_by_url_path(url)
+        path_classification = _path_classification_for_url(url)
         path_class_vuln: str | None = None
         if path_classification is not None:
             path_class_vuln, path_reason = path_classification
@@ -1354,7 +1299,7 @@ def hypothesis_node(state: PentestState) -> dict:
             and "token" not in key.lower()
         ]
         target_param = (injectable_keys or list(form_data))[0]
-        classification = _classify_by_url_path(canonical_form_url)
+        classification = _path_classification_for_url(canonical_form_url)
         form_classes: list[tuple[str, str, bool]] = []
         if classification is not None:
             form_classes.append((classification[0], classification[1], True))
@@ -1476,7 +1421,7 @@ def hypothesis_node(state: PentestState) -> dict:
     not_scanned_findings: list[Finding] = []
     if state.get("skip_recon"):
         seed_url = target.url
-        seed_classification = _classify_by_url_path(seed_url)
+        seed_classification = _path_classification_for_url(seed_url)
         if seed_classification is None:
             # No path pattern matched — emit Not Scanned.
             try:

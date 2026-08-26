@@ -45,6 +45,58 @@ class TargetCaseBinding:
 
 
 WorkflowExecutor = Callable[[Any, str, int], str | None]
+CampaignTaskFactory = Callable[[Mapping[str, Any], str], Any | None]
+CampaignResponseProjector = Callable[[Mapping[str, Any], Any, str], Any | None]
+CampaignFindingProjector = Callable[[Any, Mapping[str, Any]], Any | None]
+CampaignSurfaceSeedProvider = Callable[
+    [Mapping[str, Any], str], Sequence[str] | None
+]
+CampaignRequestContextProvider = Callable[
+    [Mapping[str, Any], str], Mapping[str, Any] | None
+]
+CampaignPathClassifier = Callable[
+    [Mapping[str, Any], str], tuple[str, str] | None
+]
+@dataclass(frozen=True)
+class CampaignExtensionSpec:
+
+    """Optional live campaign extension supplied by one target adapter.
+
+    The shared planner only sees this generic contract.  Implementations may
+    build a bounded task and/or project already-normalized evidence, but all
+    callbacks remain live runtime objects and are never serialized.
+    """
+
+    extension_id: str
+    task_factory: CampaignTaskFactory | None = None
+    response_projector: CampaignResponseProjector | None = None
+    finding_projector: CampaignFindingProjector | None = None
+    surface_seed_provider: CampaignSurfaceSeedProvider | None = None
+    request_context_provider: CampaignRequestContextProvider | None = None
+    path_classifier: CampaignPathClassifier | None = None
+    def __post_init__(self) -> None:
+
+        if not str(self.extension_id or "").strip():
+            raise ValueError("campaign_extension_id_required")
+        if (
+            self.task_factory is None
+            and self.response_projector is None
+            and self.finding_projector is None
+            and self.surface_seed_provider is None
+            and self.request_context_provider is None
+            and self.path_classifier is None
+        ):
+            raise ValueError("campaign_extension_callback_required")
+        for name, callback in (
+            ("task_factory", self.task_factory),
+            ("response_projector", self.response_projector),
+            ("finding_projector", self.finding_projector),
+            ("surface_seed_provider", self.surface_seed_provider),
+            ("request_context_provider", self.request_context_provider),
+            ("path_classifier", self.path_classifier),
+        ):
+            if callback is not None and not callable(callback):
+                raise ValueError(f"campaign_extension_{name}_not_callable")
 
 
 @runtime_checkable
@@ -158,6 +210,26 @@ class RegisteredTargetAdapter:
                 errors.append(
                     f"target_adapter:{self.target_id}:workflow_executor_not_callable:{str(key).strip()}"
                 )
+
+        extension_provider = getattr(self.adapter, "campaign_extensions", None)
+        if extension_provider is not None:
+            if not callable(extension_provider):
+                errors.append(
+                    f"target_adapter:{self.target_id}:campaign_extensions_not_callable"
+                )
+            else:
+                try:
+                    raw_extensions = extension_provider()
+                except Exception as exc:
+                    raw_extensions = {}
+                    errors.append(
+                        f"target_adapter:{self.target_id}:campaign_extensions_failed:{type(exc).__name__}"
+                    )
+                extension_errors = _campaign_extension_errors(
+                    raw_extensions,
+                    target_id=self.target_id,
+                )
+                errors.extend(extension_errors)
 
         try:
             case_ids = tuple(str(item).strip() for item in self.adapter.case_ids())
@@ -280,11 +352,180 @@ class TargetAdapterRegistry:
         ]
 
 
+def campaign_extensions_for_registration(
+    registration: RegisteredTargetAdapter | None,
+) -> dict[str, CampaignExtensionSpec] | None:
+    """Return a revalidated live extension map, or ``None`` on any defect."""
+    if not isinstance(registration, RegisteredTargetAdapter):
+        return None
+    if registration.validate():
+        return None
+    provider = getattr(registration.adapter, "campaign_extensions", None)
+    if provider is None or not callable(provider):
+        return {}
+    try:
+        raw_extensions = provider()
+    except Exception:
+        return None
+    if _campaign_extension_errors(raw_extensions, target_id=registration.target_id):
+        return None
+    return {
+        str(key).strip(): value
+        for key, value in raw_extensions.items()
+    }
+
+
+def campaign_surface_seeds_for_registration(
+    registration: RegisteredTargetAdapter | None,
+    state: Mapping[str, Any],
+    target_url: str,
+    *,
+    max_items: int = 16,
+) -> tuple[str, ...] | None:
+    """Return bounded, same-origin discovery seeds from a live registration.
+
+    A missing provider is a normal empty result. Any malformed provider output,
+    exception, cross-origin URL, or duplicate is fail-closed and returns None.
+    This helper performs no I/O and never serializes callback objects.
+    """
+    extensions = campaign_extensions_for_registration(registration)
+    if extensions is None:
+        return None
+    registration_origin = _origin(registration.adapter.target_origin)
+    if max_items <= 0:
+        return ()
+    seeds: list[str] = []
+    for extension in extensions.values():
+        provider = extension.surface_seed_provider
+        if provider is None:
+            continue
+        try:
+            raw_seeds = provider(state, target_url)
+        except Exception:
+            return None
+        if raw_seeds is None:
+            continue
+        if isinstance(raw_seeds, (str, bytes)) or not isinstance(raw_seeds, Sequence):
+            return None
+        for raw_seed in raw_seeds:
+            if not isinstance(raw_seed, str):
+                return None
+            seed = raw_seed.strip()
+            if not seed or _origin(seed) != registration_origin:
+                return None
+            if seed in seeds:
+                return None
+            seeds.append(seed)
+            if len(seeds) > max_items:
+                return None
+    return tuple(seeds)
+
+
+def campaign_path_classification_for_registration(
+    registration: RegisteredTargetAdapter | None,
+    state: Mapping[str, Any],
+    target_url: str,
+) -> tuple[str, str] | None:
+    """Return a target-provided path classification, or None on any defect."""
+    extensions = campaign_extensions_for_registration(registration)
+    if extensions is None:
+        return None
+    for extension in extensions.values():
+        classifier = extension.path_classifier
+        if classifier is None:
+            continue
+        try:
+            result = classifier(state, target_url)
+        except Exception:
+            return None
+        if result is None:
+            continue
+        if (
+            not isinstance(result, tuple)
+            or len(result) != 2
+            or not all(isinstance(value, str) and value.strip() for value in result)
+        ):
+            return None
+        return (result[0].strip(), result[1].strip())
+    return None
+
+
+def campaign_request_context_for_registration(
+    registration: RegisteredTargetAdapter | None,
+    state: Mapping[str, Any],
+    target_url: str,
+) -> Mapping[str, Any] | None:
+    """Return one target-provided request context, or None on any defect."""
+    extensions = campaign_extensions_for_registration(registration)
+    if extensions is None:
+        return None
+    for extension in extensions.values():
+        provider = extension.request_context_provider
+        if provider is None:
+            continue
+        try:
+            context = provider(state, target_url)
+        except Exception:
+            return None
+        if context is None:
+            continue
+        if not isinstance(context, Mapping):
+            return None
+        return dict(context)
+    return None
+
+
+def _campaign_extension_errors(
+    raw_extensions: Any,
+    *,
+    target_id: str,
+) -> tuple[str, ...]:
+    if not isinstance(raw_extensions, Mapping):
+        return (f"target_adapter:{target_id}:campaign_extensions_invalid",)
+    errors: list[str] = []
+    normalized_keys: list[str] = []
+    for raw_key, raw_spec in raw_extensions.items():
+        key = str(raw_key).strip()
+        normalized_keys.append(key)
+        if not key:
+            errors.append(f"target_adapter:{target_id}:campaign_extension_key_invalid")
+            continue
+        if not isinstance(raw_spec, CampaignExtensionSpec):
+            errors.append(
+                f"target_adapter:{target_id}:campaign_extension_spec_invalid:{key}"
+            )
+            continue
+        if raw_spec.extension_id.strip() != key:
+            errors.append(
+                f"target_adapter:{target_id}:campaign_extension_identity_mismatch:{key}"
+            )
+        callbacks = (
+            ("task_factory", raw_spec.task_factory),
+            ("response_projector", raw_spec.response_projector),
+            ("finding_projector", raw_spec.finding_projector),
+            ("surface_seed_provider", raw_spec.surface_seed_provider),
+            ("request_context_provider", raw_spec.request_context_provider),
+            ("path_classifier", raw_spec.path_classifier),
+        )
+        for callback_name, callback in callbacks:
+            if callback is not None and not callable(callback):
+                errors.append(
+                    f"target_adapter:{target_id}:campaign_extension_"
+                    f"{callback_name}_not_callable:{key}"
+                )
+    if len(set(normalized_keys)) != len(normalized_keys):
+        errors.append(f"target_adapter:{target_id}:campaign_extension_duplicate")
+    return tuple(errors)
+
+
 def _origin(value: str) -> str:
-    parsed = urlsplit(str(value or ""))
-    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+    try:
+        parsed = urlsplit(str(value or ""))
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+            return ""
+        port = parsed.port
+    except (TypeError, ValueError):
         return ""
-    port = parsed.port
     default = (parsed.scheme.lower() == "http" and port in {None, 80}) or (
         parsed.scheme.lower() == "https" and port in {None, 443}
     )
@@ -293,9 +534,20 @@ def _origin(value: str) -> str:
 
 
 __all__ = [
+    "CampaignExtensionSpec",
+    "CampaignFindingProjector",
+    "CampaignPathClassifier",
+    "CampaignRequestContextProvider",
+    "CampaignSurfaceSeedProvider",
+    "CampaignResponseProjector",
+    "CampaignTaskFactory",
     "RegisteredTargetAdapter",
     "TargetAdapter",
     "TargetAdapterRegistry",
+    "campaign_extensions_for_registration",
+    "campaign_path_classification_for_registration",
+    "campaign_request_context_for_registration",
+    "campaign_surface_seeds_for_registration",
     "TargetCaseBinding",
     "WorkflowExecutor",
 ]

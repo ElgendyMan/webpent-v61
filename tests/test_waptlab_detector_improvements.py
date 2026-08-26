@@ -3,6 +3,7 @@ from __future__ import annotations
 from webpent.agents.hypothesis_analyzer.agent import _classify_by_url_path
 from webpent.agents.rabbit_hole.agent import _infer_rabbit_hole_vuln_class
 from webpent.agents.validator import structural_checks
+from webpent.benchmark.waptlab_target_adapter import classify_path as classify_waptlab_path
 from webpent.models.findings import Finding, Severity, VulnClass
 
 
@@ -22,7 +23,6 @@ def test_common_crm_surfaces_get_specific_hypothesis_classes() -> None:
         "/crm/download/1": VulnClass.IDOR.value,
         "/user_profile/1": VulnClass.IDOR.value,
         "/composer.lock.bak": VulnClass.INFO_DISCLOSURE.value,
-        "/swagger_ui": VulnClass.SSRF.value,
         "/email/training": VulnClass.SSTI.value,
         "/documents/xslt": VulnClass.XXE.value,
         "/js/markdown-editor-0.3.0.js": VulnClass.JAVASCRIPT.value,
@@ -31,6 +31,13 @@ def test_common_crm_surfaces_get_specific_hypothesis_classes() -> None:
         result = _classify_by_url_path(f"http://fixture.local{path}")
         assert result is not None
         assert result[0] == expected
+
+
+def test_waptlab_swagger_surface_is_explicit_profile_only() -> None:
+    assert _classify_by_url_path("http://fixture.local/swagger_ui") is None
+    assert classify_waptlab_path({}, "http://fixture.local/swagger_ui") is None
+    # The profile owns the exact route only through its campaign extension task;
+    # generic path classification must not manufacture an SSRF hypothesis.
 
 
 def test_info_disclosure_confirms_public_backup_with_bounded_evidence(monkeypatch) -> None:

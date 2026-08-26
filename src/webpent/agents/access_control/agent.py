@@ -568,12 +568,11 @@ def _wait_before_bac(url: str) -> float:
 def _wait_after_throttle(url: str) -> float:
     """Wait through a bounded server throttle window before retrying.
 
-    WAPTLab's periodic detector keeps a 429 block for ten seconds. A
-    refresh/login performed immediately after the response cannot clear that
-    server-side block, so the old retry path simply reproduced the 429. The
-    delay is bounded and configurable for other authorized lab targets; a
-    small random component avoids creating a new fixed request cadence, and a
-    fixed expiry margin clears the lab's longer timestamp-cache window.
+    A server-side periodic-request detector may keep a 429 block briefly. A
+    refresh/login performed immediately after the response can reproduce that
+    block, so the retry path waits before trying again. The delay is bounded
+    and configurable, a small random component avoids creating a fixed request
+    cadence, and an expiry margin allows the server-side cache to clear.
 
     """
     raw_cooldown = os.getenv("WEBPENT_BAC_THROTTLE_COOLDOWN_SECONDS", "10")

@@ -18,6 +18,7 @@ from webpent.shared.runtime import (
 )
 from webpent.shared.semantic_observations import SemanticProfileRegistry
 from webpent.shared.target_adapters import (
+    CampaignExtensionSpec,
     RegisteredTargetAdapter,
     TargetAdapterRegistry,
     TargetCaseBinding,
@@ -80,6 +81,23 @@ class _RuntimeTargetAdapter:
         return origin == self.target_origin
 
 
+class _ExtensionRuntimeTargetAdapter(_RuntimeTargetAdapter):
+    def campaign_extensions(self) -> dict[str, CampaignExtensionSpec]:
+        return {
+            "runtime.extension.v1": CampaignExtensionSpec(
+                extension_id="runtime.extension.v1",
+                task_factory=lambda _state, _root: None,
+                response_projector=lambda _state, _response, _url: None,
+                finding_projector=lambda _finding, _state: None,
+            )
+        }
+
+
+class _BrokenExtensionRuntimeTargetAdapter(_RuntimeTargetAdapter):
+    def campaign_extensions(self):
+        raise RuntimeError("provider unavailable")
+
+
 def _runtime_target_registry() -> TargetAdapterRegistry:
     registry = TargetAdapterRegistry()
     registry.register(
@@ -92,6 +110,50 @@ def _runtime_target_registry() -> TargetAdapterRegistry:
         )
     )
     return registry
+
+
+def test_registered_target_extension_is_generic_and_descriptor_safe(tmp_path: Path) -> None:
+    registry = TargetAdapterRegistry()
+    registration = RegisteredTargetAdapter(
+        adapter=_ExtensionRuntimeTargetAdapter(),
+        source="tests",
+        version="1",
+        policy_ref="test-policy",
+        proof_contract="test-proof-contract",
+    )
+    registry.register(registration)
+
+    context = RuntimeFactory.create(
+        engagement_id="engagement:extension-runtime",
+        campaign_id="campaign:extension-runtime",
+        target_origin="http://example.test",
+        settings=_settings(tmp_path),
+        manifest=_manifest(),
+        target_adapter_registry=registry,
+    )
+
+    assert context.valid is True
+    assert registration.validate() == ()
+    descriptor = RuntimeFactory.descriptor(context)
+    assert "campaign_extensions" not in repr(descriptor)
+    assert "runtime.extension.v1" not in repr(descriptor)
+
+
+def test_broken_target_extension_provider_fails_closed(tmp_path: Path) -> None:
+    registration = RegisteredTargetAdapter(
+        adapter=_BrokenExtensionRuntimeTargetAdapter(),
+        source="tests",
+        version="1",
+        policy_ref="test-policy",
+        proof_contract="test-proof-contract",
+    )
+
+    errors = registration.validate()
+
+    assert any("campaign_extensions_failed:RuntimeError" in error for error in errors)
+    registry = TargetAdapterRegistry()
+    with pytest.raises(ValueError, match="campaign_extensions_failed"):
+        registry.register(registration)
 
 
 def test_runtime_factory_injects_one_central_spine(tmp_path: Path) -> None:

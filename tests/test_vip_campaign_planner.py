@@ -93,6 +93,10 @@ def test_planner_supports_generic_surface_inventory_without_waptlab_entries() ->
     assert "header_sqli" not in keys
     assert {"api_issue", "sqli_param"}.issubset(keys)
     assert all(entry["validator_id"] for entry in plan["entries"])
+    assert all(entry["plugin_id"].startswith("campaign:") for entry in plan["entries"])
+    assert "campaign:header_sqli" not in {
+        entry["plugin_id"] for entry in plan["entries"]
+    }
     assert all(entry["contract"]["preconditions"] for entry in plan["entries"])
     by_key = {entry["key"]: entry for entry in plan["entries"]}
     assert by_key["api_issue"]["matched_observation_refs"] == ["api-1"]
@@ -116,6 +120,7 @@ def test_explicit_waptlab_inventory_keeps_legacy_matrix() -> None:
 
     assert len(plan["entries"]) == 20
     assert plan["entries"][0]["key"] == "header_sqli"
+    assert plan["entries"][0]["plugin_id"] == "campaign:header_sqli"
     assert plan["summary"]["missing-validator"] == 2
 
 

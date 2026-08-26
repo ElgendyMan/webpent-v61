@@ -14,7 +14,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import parse_qs, quote, urljoin, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
 from webpent.agents.validator.registry import capability_for
@@ -23,7 +23,7 @@ from webpent.attack_graph.reasoner import AttackGraphReasoner
 from webpent.config.settings import ScanMode, get_settings
 from webpent.knowledge.builder import KnowledgeBuilder
 from webpent.models.evidence import canonical_json, redact_sensitive
-from webpent.models.findings import Confidence, Finding, Severity, VulnClass
+from webpent.models.findings import Finding, VulnClass
 from webpent.models.hypothesis import Hypothesis, HypothesisOrigin, HypothesisStatus
 from webpent.models.research import ResearchContext
 from webpent.shared.action_authority import ActionRisk
@@ -71,8 +71,7 @@ from webpent.shared.research_intelligence import (
     SmartNextBestActionEngine,
 )
 from webpent.shared.runtime import RegisteredAdapter, RuntimeContext, RuntimeFactory
-from webpent.validators.causal_validator import validate_causal_observation
-from webpent.validators.proof_validator import validate_proof_bundle
+from webpent.shared.target_adapters import campaign_extensions_for_registration
 
 _DEFAULT_TASK_CAP = 3
 _OBJECT_ROUTE_PATTERN = re.compile(
@@ -1487,192 +1486,10 @@ def _runtime_feedback_projection(
     return feedback
 
 
-def _swagger_promotion_is_proven(state: Mapping[str, Any]) -> bool:
-    """Require independent causal and sealed proof before confirmation."""
-    causal_observation = state.get("causal_observation")
-    proof_bundle = state.get("proof_bundle")
-    return validate_causal_observation(causal_observation) and validate_proof_bundle(
-        proof_bundle,
-        require_negative_control=True,
-    )
 
-
-def _swagger_ssrf_finding(
-    state: Mapping[str, Any],
-    response: Any,
-    request_url: str,
-) -> Finding | None:
-    """Promote the WAPTLab Swagger SSRF only after its deterministic marker appears."""
-    body = bytes(getattr(response, "content", b"") or b"")[:2_000_000]
-    lowered = body.lower()
-    if int(getattr(response, "status_code", 0) or 0) != 200:
-        return None
-    if b"ipv6-loopback" not in lowered and b"nua{" not in lowered:
-        return None
-
-    marker = "ipv6-loopback" if b"ipv6-loopback" in lowered else "nua-marker"
-    evidence = {
-        "validator": "swagger_url_ssrf_direct_probe",
-        "replay": "single_authorized_read_only_request",
-        "matched_marker": marker,
-        "request": {
-            "method": "GET",
-            "url": request_url,
-            "parameter": "url",
-            "payload_label": "ipv6_loopback_url",
-        },
-        "response": {
-            "status_code": int(response.status_code),
-            "body_length": len(body),
-            "body_sha256": hashlib.sha256(body).hexdigest(),
-            "headers": {
-                str(key).lower(): str(value)[:300]
-                for key, value in dict(getattr(response, "headers", {}) or {}).items()
-                if str(key).lower() in {"content-type", "content-length", "server"}
-            },
-        },
-    }
-    reasoning = (
-        "A same-origin authorized GET to /swagger_ui with url=http://[::1]/ "
-        "returned the application-specific IPv6-loopback SSRF marker. The request "
-        "and response metadata are reproducible while the response body is redacted."
-    )
-    promotion_proven = _swagger_promotion_is_proven(state)
-    promotion_status = (
-        "tool_confirmed"
-        if promotion_proven
-        else "blocked_missing_causal_signal_or_negative_control"
-    )
-    promoted_confidence = (
-        Confidence.CONFIRMED.value if promotion_proven else Confidence.TENTATIVE.value
-    )
-    promoted_level = "Tool-Confirmed" if promotion_proven else "Needs Human Review"
-    for current in state.get("findings") or []:
-        if (
-            str(_finding_value(current, "vuln_class", "")) == VulnClass.SSRF.value
-            and "/swagger_ui" in str(_finding_value(current, "url", ""))
-        ):
-            try:
-                if isinstance(current, Finding):
-                    base = current
-                else:
-                    raw = dict(current) if isinstance(current, Mapping) else {}
-                    allowed = set(Finding.model_fields)
-                    base = Finding.model_validate(
-                        {key: value for key, value in raw.items() if key in allowed}
-                    )
-                return base.model_copy(
-                    update={
-                        "confidence": (
-                            Confidence.CONFIRMED.value
-                            if promotion_proven
-                            else str(base.confidence or Confidence.TENTATIVE.value)
-                        ),
-                        "confidence_level": (
-                            "Tool-Confirmed" if promotion_proven else promoted_level
-                        ),
-                        "payload": "url=http://[::1]/",
-                        "evidence": {
-                            **(base.evidence or {}),
-                            **evidence,
-                            "promotion_guard": {
-                                "status": promotion_status,
-                                "causal_signal": bool(
-                                    isinstance(state.get("causal_observation"), Mapping)
-                                    and state["causal_observation"].get("causal_signal") is True
-                                ),
-                                "negative_control_complete": bool(
-                                    isinstance(state.get("causal_observation"), Mapping)
-                                    and state["causal_observation"].get(
-                                        "negative_control_complete"
-                                    )
-                                    is True
-                                ),
-                                "proof_bundle_valid": validate_proof_bundle(
-                                    state.get("proof_bundle"),
-                                    require_negative_control=True,
-                                ),
-                            },
-                        },
-                        "evidence_bundle": {
-                            "request": {
-                                "method": "GET",
-                                "url": request_url,
-                                "headers": {},
-                                "body": None,
-                            },
-                            "response": evidence["response"],
-                        },
-                        "reasoning": reasoning,
-                    }
-                )
-            except Exception:
-                continue
-
-    return Finding(
-        title="Server-Side Request Forgery at /swagger_ui",
-        severity=Severity.HIGH,
-        description=(
-            "The swagger_ui url parameter causes the server to process an IPv6 "
-            "loopback URL and return the application SSRF marker."
-        ),
-        tool_name="smart_campaigns_execution",
-        payload="url=http://[::1]/",
-        request_method="GET",
-        request_data={"url": "http://[::1]/"},
-        target_param="url",
-        url=request_url,
-        confidence=promoted_confidence,
-        references=["https://cwe.mitre.org/data/definitions/918.html"],
-        vuln_class=VulnClass.SSRF.value,
-        confidence_level=promoted_level,
-        reasoning=reasoning,
-        evidence={
-            **evidence,
-            "promotion_guard": {
-                "status": promotion_status,
-                "causal_signal": False,
-                "negative_control_complete": False,
-                "proof_bundle_valid": False,
-            },
-        },
-    )
-
-
-def _build_swagger_ssrf_task(state: Mapping[str, Any], root: str) -> CampaignTask | None:
-    """Build the bounded Swagger SSRF action; transport stays in the executor handler."""
-    parsed_root = urlsplit(root)
-    if parsed_root.scheme not in {"http", "https"} or not parsed_root.netloc:
-        return None
-    request_url = (
-        f"{root.rstrip('/')}/swagger_ui?url={quote('http://[::1]/', safe='')}"
-    )
-    engagement_id = str(state.get("engagement_id") or "default")[:160]
-    return CampaignTask(
-        task_id="smart-swagger-ssrf-proof",
-        engagement_id=engagement_id,
-        asset_id="swagger_ui",
-        source_evidence_ids=("surface:swagger_ui",),
-        vulnerability_class=VulnClass.SSRF.value,
-        hypothesis_id="swagger-ui-ssrf-ipv6-loopback",
-        probe_family="same_origin_ssrf_marker",
-        negative_control="required",
-        oracle="deterministic_swagger_marker",
-        risk_tier=ActionRisk.ACTIVE,
-        budget=1.0,
-        expected_information_gain=0.8,
-        idempotency_key=f"swagger-ssrf:{engagement_id}:{request_url}",
-        method="GET",
-        capability="http_read",
-        action_family="http_read",
-        target_url=request_url,
-        metadata=g02_http_metadata({
-            "probe_kind": "swagger_ssrf",
-            "observed_preconditions": ("authorized-active profile",),
-            "human_approved": bool(state.get("auto_approve", False)),
-        }),
-        validator_id="swagger_url_ssrf_direct_probe",
-    )
+def _campaign_extensions(runtime: RuntimeContext) -> dict[str, Any] | None:
+    """Resolve live target extensions; malformed registrations fail closed."""
+    return campaign_extensions_for_registration(runtime.target_adapter_registration)
 
 
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
@@ -1683,7 +1500,10 @@ def build_smart_campaign_handler(
     root: str,
     observations: list[dict[str, Any]],
     direct_findings: list[Finding],
+    extensions: Mapping[str, Any] | None = None,
 ) -> Any:
+    extensions = dict(extensions or {})
+
     def handler(task: CampaignTask) -> dict[str, Any]:
         parsed_root = urlsplit(root)
         parsed_target = urlsplit(task.target_url)
@@ -1767,16 +1587,21 @@ def build_smart_campaign_handler(
         }
         observation.update(_safe_http_observation(response))
         observations.append(observation)
-        if task.metadata.get("probe_kind") == "swagger_ssrf":
-            direct_finding = _swagger_ssrf_finding(state, response, task.target_url)
-            if direct_finding is not None:
+        extension_id = str(task.metadata.get("campaign_extension_id") or "").strip()
+        extension = extensions.get(extension_id) if extension_id else None
+        if extension is not None and extension.response_projector is not None:
+            try:
+                direct_finding = extension.response_projector(state, response, task.target_url)
+            except Exception:
+                direct_finding = None
+            if isinstance(direct_finding, Finding):
                 direct_findings.append(
                     direct_finding.model_copy(
                         update={
                             "evidence": {
                                 **(direct_finding.evidence or {}),
                                 "action_executor_probe": True,
-                                "validator_path": "action_executor_swagger_ssrf",
+                                "campaign_extension_id": extension_id,
                             }
                         }
                     )
@@ -2088,11 +1913,13 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         task for task in tasks if task.normalized_idempotency_key() not in attempted
     ][:task_cap]
 
+    extensions = _campaign_extensions(runtime)
     handler = build_smart_campaign_handler(
         state,
         root=root,
         observations=observations,
         direct_findings=direct_findings,
+        extensions=extensions or {},
     )
     adapter = runtime.adapters.get("smart_http")
     if adapter is None:
@@ -2178,12 +2005,19 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
                 outcome=f"{outcome_name}:{evidence_classification}",
             )
 
-    if profile == "authorized-active":
-        swagger_task = _build_swagger_ssrf_task(state, root)
-        if swagger_task is not None:
+    if extensions is not None and profile == "authorized-active":
+        for extension in extensions.values():
+            if extension.task_factory is None:
+                continue
+            try:
+                extension_task = extension.task_factory(state, root)
+            except Exception:
+                extension_task = None
+            if extension_task is None:
+                continue
             observed = tuple(state_observed_preconditions or ()) + ("authorized-active profile",)
             ready, _ = resolve_preconditions(
-                swagger_task,
+                extension_task,
                 observed_preconditions=observed,
                 blocked_preconditions=state_blocked_preconditions,
                 require_observations=True,
@@ -2191,7 +2025,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             outcomes.append(
                 _execute_campaign_task(
                     runtime,
-                    swagger_task,
+                    extension_task,
                     handler,
                     state=state,
                     root=root,

@@ -84,6 +84,21 @@ def _closed_packet(*, status: str = "mapping_approved") -> dict:
                 "run_ids": ["run-1", "run-2", "run-3"],
                 "executed_case_ids": ["case-v1"],
                 "proof_bundle_ids": ["bundle-v1"],
+                "run_case_matrix": {
+                    "run-1": ["case-v1"],
+                    "run-2": ["case-v1"],
+                    "run-3": ["case-v1"],
+                },
+                "replay_statuses": {
+                    "run-1": "passed",
+                    "run-2": "passed",
+                    "run-3": "passed",
+                },
+                "verify_seal_results": {
+                    "run-1": True,
+                    "run-2": True,
+                    "run-3": True,
+                },
             }
         )
     return packet
@@ -121,6 +136,28 @@ def test_final_approved_packet_rejects_missing_run_traceability() -> None:
     assert "live_runs:three_distinct_run_ids_required" in errors
     assert "live_runs:proof_bundle_ids_required" in errors
     assert "live_runs:executed_cases_must_match_approved_cases" in errors
+
+
+def test_final_approved_packet_rejects_malformed_traceability_without_exception() -> None:
+    packet = _closed_packet(status="approved")
+    packet["live_runs"]["run_ids"] = None
+    packet["live_runs"]["run_case_matrix"] = {"run-1": None}
+
+    errors = validate_target_adapter_review_packet(packet)
+
+    assert "live_runs:run_ids_list_required" in errors
+    assert "live_runs:run_case_matrix_must_cover_all_runs" in errors
+
+
+def test_final_approved_packet_rejects_failed_replay_or_seal() -> None:
+    packet = _closed_packet(status="approved")
+    packet["live_runs"]["replay_statuses"]["run-2"] = "failed"
+    packet["live_runs"]["verify_seal_results"]["run-3"] = False
+
+    errors = validate_target_adapter_review_packet(packet)
+
+    assert "live_runs:replay_statuses_must_be_passed" in errors
+    assert "live_runs:verify_seal_results_must_be_true" in errors
 
 
 def test_closed_packet_rejects_pending_case_and_mismatched_disposition() -> None:

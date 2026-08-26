@@ -44,7 +44,7 @@
 | `rejected` | mapping أو oracle أو safety posture مرفوض |
 | `out_of_scope` (case disposition) | الحالة مستبعدة صراحة ولا تدخل في TP/FP/FN؛ ليست packet status مستقلة |
 
-أي packet لا يملك `reviewed_mapping_sha256` و`reviewed_oracle_contract_sha256` وقرارًا محددًا لكل case يجب أن يفشل مغلقًا في qualification tooling. كما يجب أن تكون هوية target وscope والمرجع authorization غير فارغة في أي حالة مغلقة، وأن يطابق `mapping_status` و`expected_disposition` وreview disposition نفس القرار لكل case. حالات `mapping_approved` و`qualified_for_runs` هي pre-run approvals ولا يجوز أن ترى نتائج التشغيل؛ أما `approved` فهي final approval ولا تمر إلا بعد رؤية النتائج الفعلية، مع authorization مسجل في `live_runs`.
+أي packet لا يملك `reviewed_mapping_sha256` و`reviewed_oracle_contract_sha256` وقرارًا محددًا لكل case يجب أن يفشل مغلقًا في qualification tooling. كما يجب أن تكون هوية target وscope والمرجع authorization غير فارغة في أي حالة مغلقة، وأن يطابق `mapping_status` و`expected_disposition` وreview disposition نفس القرار لكل case. حالات `mapping_approved` و`qualified_for_runs` هي pre-run approvals ولا يجوز أن ترى نتائج التشغيل؛ أما `approved` فهي final approval ولا تمر إلا بعد رؤية النتائج الفعلية، مع authorization مسجل في `live_runs`. ولمنع traceability الشكلية، يجب أن يحتوي final `approved` على ثلاث `run_ids` مختلفة، و`proof_bundle_ids`، و`run_case_matrix` يغطي كل approved case في كل run، و`replay_statuses` التي تساوي `passed` لكل run، و`verify_seal_results` التي تساوي `true` لكل run. هذه الحقول تثبت اكتمال metadata المرجعية فقط؛ الـchecker لا يتحقق من محتوى ProofBundle نفسه ولا ينشئ evidence، ولذلك لا يرفع P10 أو VIP وحده.
 
 يوجد checker محلي deterministic لهذا العقد، ويمكن تمرير packet محدد أو استخدام template الافتراضي:
 

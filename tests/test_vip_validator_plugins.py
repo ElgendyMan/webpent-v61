@@ -3,26 +3,64 @@ from webpent.shared.evidence_ledger import merge_evidence_ledger
 from webpent.shared.validator_plugins import (
     PLUGIN_STAGES,
     build_validator_plugin_registry,
+    build_waptlab_validator_plugin_registry,
     plugin_capability_gaps,
 )
 
 
-def test_validator_plugin_registry_covers_all_campaigns_without_false_confirmation() -> None:
+def test_validator_plugin_registry_defaults_to_generic_without_false_confirmation() -> None:
     plugins = build_validator_plugin_registry()
 
-    assert len(plugins) == 20
+    assert len(plugins) == 10
     assert all(plugin.complete for plugin in plugins)
     assert all(plugin.stages == PLUGIN_STAGES for plugin in plugins)
+    assert {plugin.campaign_key for plugin in plugins} == {
+        "xss_reflected",
+        "xss_stored",
+        "sqli_param",
+        "idor_object",
+        "auth_bypass_jwt",
+        "open_redirect",
+        "info_disclosure",
+        "ssrf_url_param",
+        "api_issue",
+        "path_traversal",
+    }
+    assert all(plugin.evidence_mode == "deterministic" for plugin in plugins)
+
+
+def test_explicit_waptlab_plugin_registry_preserves_legacy_matrix() -> None:
+    plugins = build_waptlab_validator_plugin_registry()
+
+    assert len(plugins) == 20
     human_review = [plugin for plugin in plugins if plugin.evidence_mode == "human-review"]
-    assert len(human_review) == 2
     assert {plugin.campaign_key for plugin in human_review} == {
         "elasticsearch_snapshot_traversal",
         "xslt_injection",
     }
 
 
+def test_registry_uses_injected_validator_for_independent_inventory() -> None:
+    plugins = build_validator_plugin_registry(
+        (
+            {
+                "key": "independent_xss",
+                "validator": "xss",
+                "validator_id": "independent:xss:v1",
+            },
+            {"key": "independent_manual", "validator": None},
+        )
+    )
+
+    by_key = {plugin.campaign_key: plugin for plugin in plugins}
+    assert by_key["independent_xss"].validator_id == "independent:xss:v1"
+    assert by_key["independent_xss"].evidence_mode == "deterministic"
+    assert by_key["independent_manual"].validator_id is None
+    assert by_key["independent_manual"].evidence_mode == "human-review"
+
+
 def test_plugin_gaps_are_explicit_and_bounded() -> None:
-    gaps = plugin_capability_gaps()
+    gaps = plugin_capability_gaps(build_waptlab_validator_plugin_registry())
 
     assert len(gaps) == 2
     assert all(item["reason"] == "missing-deterministic-validator" for item in gaps)

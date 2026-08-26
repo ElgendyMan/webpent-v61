@@ -11,8 +11,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from webpent.benchmark.waptlab_offline_validator_fixtures import (
+    evaluate_waptlab_offline_fixture,
+)
 from webpent.models.research import CandidateAction, ResearchContext
-from webpent.shared.offline_validator_fixtures import evaluate_offline_fixture
 from webpent.shared.research_contracts import ActiveResearchLoop
 
 
@@ -91,7 +93,7 @@ def _research_case(kind: str) -> dict[str, Any]:
 def run_failure_matrix() -> dict[str, Any]:
     """Return deterministic local failure classifications and invariants."""
     validator_cases = {
-        status: evaluate_offline_fixture(_fixture_bundle(status))
+        status: evaluate_waptlab_offline_fixture(_fixture_bundle(status))
         for status in ("reviewable", "missing", "blocked", "inconclusive")
     }
     research_cases = {

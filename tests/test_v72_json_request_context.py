@@ -4,8 +4,77 @@ import json
 
 from webpent.agents.hypothesis_analyzer.agent import _classify_by_url_path, hypothesis_node
 from webpent.agents.validator.active_checks import _build_request
+from webpent.benchmark.waptlab_target_adapter import (
+    campaign_extensions as waptlab_campaign_extensions,
+)
+from webpent.config.settings import get_settings
 from webpent.models.findings import Finding, Severity, VulnClass
 from webpent.models.targets import Target
+from webpent.shared.action_ledger import SQLiteActionLedger
+from webpent.shared.runtime import RuntimeFactory
+from webpent.shared.semantic_observations import SemanticProfileRegistry
+from webpent.shared.target_adapters import (
+    RegisteredTargetAdapter,
+    TargetAdapterRegistry,
+    TargetCaseBinding,
+)
+
+
+class _WaptlabCompatibilityAdapter:
+    target_id = "waptlab-compatibility"
+    target_origin = "http://target.test"
+    semantic_profiles = SemanticProfileRegistry()
+
+    def workflow_ids(self) -> tuple[str, ...]:
+        return ("navigate",)
+
+    def workflow_executors(self) -> dict[str, object]:
+        return {}
+
+    def case_ids(self) -> tuple[str, ...]:
+        return ("waptlab.case.v1",)
+
+    def case(self, case_id: str):
+        if case_id != "waptlab.case.v1":
+            return None
+        return TargetCaseBinding(
+            case_id=case_id,
+            operation="navigate",
+            path="/",
+            oracle_id="waptlab.oracle.v1",
+            workflow_id="navigate",
+        )
+
+    def semantic_profile_for_case(self, case_id: str):
+        return None if case_id == "waptlab.case.v1" else None
+
+    def accepts_origin(self, origin: str) -> bool:
+        return origin == self.target_origin
+
+    def campaign_extensions(self):
+        return waptlab_campaign_extensions()
+
+
+def _waptlab_runtime(tmp_path):
+    registry = TargetAdapterRegistry()
+    registry.register(
+        RegisteredTargetAdapter(
+            adapter=_WaptlabCompatibilityAdapter(),
+            source="tests",
+            version="1",
+            policy_ref="waptlab-test-policy",
+            proof_contract="waptlab-test-proof-contract",
+        )
+    )
+    return RuntimeFactory.create(
+        engagement_id="engagement:waptlab-json-context",
+        campaign_id="campaign:waptlab-json-context",
+        target_origin="http://target.test",
+        settings=get_settings(),
+        manifest={"capabilities": {}},
+        ledger=SQLiteActionLedger(tmp_path / "waptlab-json-context.sqlite3"),
+        target_adapter_registry=registry,
+    )
 
 
 def _finding(*, url: str, request_data: dict, target_param: str) -> Finding:
@@ -61,14 +130,14 @@ def test_form_request_context_remains_urlencoded() -> None:
     assert "name=candidate+value" in body
 
 
-def test_export_erp_is_classified_before_generic_export() -> None:
+def test_export_erp_uses_generic_export_classification_without_profile() -> None:
     classified = _classify_by_url_path("http://target.test/export-erp")
 
     assert classified is not None
-    assert classified[0] == VulnClass.XXE.value
+    assert classified[0] == VulnClass.SSTI.value
 
 
-def test_vip_profile_seeds_missing_post_only_export_erp_surface() -> None:
+def test_vip_profile_seeds_missing_post_only_export_erp_surface(tmp_path) -> None:
     state = {
         "target": Target(url="http://target.test"),
         "crawled_data": {"endpoints": ["http://target.test/"]},
@@ -80,6 +149,7 @@ def test_vip_profile_seeds_missing_post_only_export_erp_surface() -> None:
         "client_id": "test-client",
         "engagement_id": "test-engagement",
         "thread_id": "test-thread",
+        "runtime_context": _waptlab_runtime(tmp_path),
     }
 
     result = hypothesis_node(state)
@@ -165,7 +235,7 @@ def test_deterministic_xxe_has_safe_validator_promotion_path() -> None:
     assert "validator-available" in rule
 
 
-def test_export_erp_fixture_wins_over_generic_get_form() -> None:
+def test_export_erp_fixture_wins_over_generic_get_form(tmp_path) -> None:
     state = {
         "target": Target(url="http://target.test"),
         "crawled_data": {
@@ -180,11 +250,14 @@ def test_export_erp_fixture_wins_over_generic_get_form() -> None:
             ],
         },
         "application_intent": {},
+        "campaign_inventory": "waptlab",
+        "profile": "vip-qualification",
         "additional_target_origins": [],
         "policy_assumptions": [],
         "client_id": "test-client",
         "engagement_id": "test-engagement",
         "thread_id": "test-thread",
+        "runtime_context": _waptlab_runtime(tmp_path),
     }
 
     result = hypothesis_node(state)
