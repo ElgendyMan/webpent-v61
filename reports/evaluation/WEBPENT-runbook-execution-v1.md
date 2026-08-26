@@ -6,7 +6,7 @@
 
 ## 1. Baseline and provenance
 
-The runbook baseline was captured before the final validation pass. The WebPent source revision was `080d01de6144442aaf3667c950c92519e53fb4a8` with tree `16ef2d1de002e3fae8bfeabf667504d6e326f77f`. The active controlled target was Juice Shop `20.2.0`, whose source commit is `1618a611b173b4bf114028e6e02549950606e29d`. These are distinct identities: the first identifies the WebPent source revision that contains the adapters, governance documents, validators, and manifests; the second identifies the Juice Shop application source used as the local target.
+The runbook baseline was captured before the final validation pass. The WebPent validation revision was `89ca0596fc979d56da1525302bdeac19979f6dea` with tree `ad140135ec35b133be12f99852acb4e0a69b0a0b`; the prior source-manifest baseline revision remains recorded in the source-to-ground-truth manifest. The active controlled target was Juice Shop `20.2.0`, whose source commit is `1618a611b173b4bf114028e6e02549950606e29d`. These are distinct identities: the first identifies the WebPent source revision that contains the adapters, governance documents, validators, and manifests; the second identifies the Juice Shop application source used as the local target.
 
 Juice Shop was verified on `http://127.0.0.1:3000` only. The runtime manifest records the loopback-only binding and disabled OTEL exporters with no external OTLP endpoint. No official qualification process was present during the final check.
 
@@ -55,9 +55,10 @@ No authorized local WebGoat or crAPI instance was available in the environment. 
 | Gate | Result |
 |---|---|
 | Corrected governance validator | PASS |
-| Full pytest | 1900 passed |
+| Full pytest | 1902 passed |
 | P10 review tests | 17 passed |
 | Juice Shop contract tests | 7 passed |
+| P10 expansion regression tests | 12 passed |
 | Ruff | PASS |
 | Compileall | PASS |
 | Direct-I/O scan | PASS |
