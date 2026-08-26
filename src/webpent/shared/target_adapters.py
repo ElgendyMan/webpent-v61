@@ -127,6 +127,58 @@ class TargetAdapter(Protocol):
 
 
 @dataclass(frozen=True)
+class TargetManifest:
+    """Declarative adapter manifest required for auditable execution."""
+
+    target_id: str
+    adapter_version: str
+    supported_capabilities: frozenset[str]
+    supported_case_types: frozenset[str]
+    authorization_requirements: tuple[str, ...]
+    allowed_scope: tuple[str, ...]
+    redaction_policy: str
+    cleanup_policy: str
+    contract_version: str = "target-manifest.v1"
+    explicit: bool = True
+
+    def validate(self, *, expected_target_id: str) -> tuple[str, ...]:
+        errors: list[str] = []
+        if self.target_id != expected_target_id:
+            errors.append("target_manifest:target_id_mismatch")
+        if not self.adapter_version.strip():
+            errors.append("target_manifest:adapter_version_required")
+        if not self.supported_capabilities:
+            errors.append("target_manifest:supported_capabilities_required")
+        if not self.supported_case_types:
+            errors.append("target_manifest:supported_case_types_required")
+        if not self.authorization_requirements:
+            errors.append("target_manifest:authorization_requirements_required")
+        if not self.allowed_scope:
+            errors.append("target_manifest:allowed_scope_required")
+        if not self.redaction_policy.strip():
+            errors.append("target_manifest:redaction_policy_required")
+        if not self.cleanup_policy.strip():
+            errors.append("target_manifest:cleanup_policy_required")
+        if not self.contract_version.strip():
+            errors.append("target_manifest:contract_version_required")
+        return tuple(errors)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "target_id": self.target_id,
+            "adapter_version": self.adapter_version,
+            "supported_capabilities": sorted(self.supported_capabilities),
+            "supported_case_types": sorted(self.supported_case_types),
+            "authorization_requirements": list(self.authorization_requirements),
+            "allowed_scope": list(self.allowed_scope),
+            "redaction_policy": self.redaction_policy,
+            "cleanup_policy": self.cleanup_policy,
+            "contract_version": self.contract_version,
+            "explicit": self.explicit,
+        }
+
+
+@dataclass(frozen=True)
 class RegisteredTargetAdapter:
     """Auditable target adapter registration."""
 
@@ -135,11 +187,24 @@ class RegisteredTargetAdapter:
     version: str
     policy_ref: str
     proof_contract: str
+    manifest: TargetManifest | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     @property
     def target_id(self) -> str:
         return str(self.adapter.target_id).strip()
+
+    @property
+    def effective_manifest(self) -> TargetManifest | None:
+        return self.manifest
+
+    def live_manifest_errors(self) -> tuple[str, ...]:
+        if self.manifest is None:
+            return ("target_manifest:explicit_manifest_required_for_live_execution",)
+        errors = list(self.manifest.validate(expected_target_id=self.target_id))
+        if not self.manifest.explicit:
+            errors.append("target_manifest:explicit_manifest_required_for_live_execution")
+        return tuple(errors)
 
     def validate(self) -> tuple[str, ...]:
         if not isinstance(self.adapter, TargetAdapter):
@@ -157,12 +222,24 @@ class RegisteredTargetAdapter:
             errors.append(f"target_adapter:{self.target_id}:policy_ref_required")
         if not str(self.proof_contract).strip():
             errors.append(f"target_adapter:{self.target_id}:proof_contract_required")
+        if self.manifest is not None:
+            if not isinstance(self.manifest, TargetManifest):
+                errors.append(f"target_adapter:{self.target_id}:manifest_invalid")
+            else:
+                errors.extend(
+                    f"target_adapter:{self.target_id}:{error}"
+                    for error in self.manifest.validate(expected_target_id=self.target_id)
+                )
         if not isinstance(self.adapter.semantic_profiles, SemanticProfileRegistry):
             errors.append(f"target_adapter:{self.target_id}:semantic_registry_required")
         normalized_origin = _origin(self.adapter.target_origin)
         if not normalized_origin:
             errors.append(f"target_adapter:{self.target_id}:origin_invalid")
-        else:
+        elif self.manifest is not None and isinstance(self.manifest, TargetManifest):
+            allowed_scope = frozenset(_origin(item) for item in self.manifest.allowed_scope)
+            if normalized_origin not in allowed_scope:
+                errors.append(f"target_adapter:{self.target_id}:origin_outside_manifest_scope")
+        if normalized_origin:
             try:
                 if self.adapter.accepts_origin(normalized_origin) is not True:
                     errors.append(f"target_adapter:{self.target_id}:origin_not_accepted")
@@ -265,6 +342,14 @@ class RegisteredTargetAdapter:
                     errors.append(
                         f"target_adapter:{self.target_id}:case_identity_mismatch:{case_id}"
                     )
+                if (
+                    self.manifest is not None
+                    and isinstance(self.manifest, TargetManifest)
+                    and binding.operation not in self.manifest.supported_case_types
+                ):
+                    errors.append(
+                        f"target_adapter:{self.target_id}:case_operation_not_manifested:{case_id}"
+                    )
                 if binding.workflow_id not in workflow_set:
                     errors.append(
                         f"target_adapter:{self.target_id}:case_workflow_not_allowlisted:{case_id}"
@@ -337,6 +422,13 @@ class TargetAdapterRegistry:
             raise ValueError("target_adapter_origin_not_registered_or_ambiguous")
         return registration
 
+    def require_live_for_origin(self, origin: str) -> RegisteredTargetAdapter:
+        registration = self.require_for_origin(origin)
+        errors = registration.live_manifest_errors()
+        if errors:
+            raise ValueError(";".join(errors))
+        return registration
+
     def manifest(self) -> list[dict[str, Any]]:
         return [
             {
@@ -347,6 +439,12 @@ class TargetAdapterRegistry:
                 "policy_ref": item.policy_ref,
                 "proof_contract": item.proof_contract,
                 "case_count": len(tuple(item.adapter.case_ids())),
+                "target_manifest": (
+                    item.effective_manifest.as_dict()
+                    if item.effective_manifest is not None
+                    else None
+                ),
+                "live_manifest_errors": list(item.live_manifest_errors()),
             }
             for item in sorted(self._targets.values(), key=lambda value: value.target_id)
         ]
@@ -543,6 +641,7 @@ __all__ = [
     "CampaignTaskFactory",
     "RegisteredTargetAdapter",
     "TargetAdapter",
+    "TargetManifest",
     "TargetAdapterRegistry",
     "campaign_extensions_for_registration",
     "campaign_path_classification_for_registration",

@@ -202,9 +202,14 @@ def build_initial_state(
     )
     control_plane_browser_adapter = None
     target_adapter_registration = None
+    target_adapter_workflow_configured = True
     if target_adapter_registry is not None:
         target_adapter_registration = target_adapter_registry.for_origin(target_url)
-    target_adapter_workflow_configured = True
+        if target_adapter_registration is not None:
+            try:
+                target_adapter_registry.require_live_for_origin(target_url)
+            except ValueError:
+                target_adapter_workflow_configured = False
     semantic_profile_registry = None
     workflow_allowlist: tuple[str, ...] = ()
     workflow_executors: Mapping[str, Any] = {}

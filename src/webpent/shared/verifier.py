@@ -217,6 +217,9 @@ def verify_replay_evidence(
         }
         return VerificationResult(False, "scope_and_identity_context_required", evidence)
 
+    clean_baseline = redact_sensitive(baseline)[0]
+    clean_candidate = redact_sensitive(candidate)[0]
+    clean_negative_control = redact_sensitive(negative_control)[0]
     replay = {
         "replayable": True,
         "sequence": ["baseline", "candidate", "negative_control"],
@@ -236,16 +239,16 @@ def verify_replay_evidence(
         target_package_policy_digest=target_package_policy_digest,
         scope_context=clean_scope,
         identity_context=clean_identity,
-        evidence=[baseline, candidate, negative_control],
+        evidence=[clean_baseline, clean_candidate, clean_negative_control],
         evidence_refs=(
             f"replay:{validator_id}:baseline",
             f"replay:{validator_id}:candidate",
             f"replay:{validator_id}:negative_control",
         ),
-        negative_control=negative_control,
-        baseline=baseline,
-        request_evidence=[baseline, candidate, negative_control],
-        response_evidence=[baseline, candidate, negative_control],
+        negative_control=clean_negative_control,
+        baseline=clean_baseline,
+        request_evidence=[clean_baseline, clean_candidate, clean_negative_control],
+        response_evidence=[clean_baseline, clean_candidate, clean_negative_control],
         causal_oracle={
             "causal_signal": True,
             "negative_control_complete": True,
@@ -306,9 +309,6 @@ def verify_replay_evidence(
         }
         return VerificationResult(False, "proof_bundle_replay_failed", evidence)
 
-    clean_baseline = redact_sensitive(baseline)[0]
-    clean_candidate = redact_sensitive(candidate)[0]
-    clean_negative_control = redact_sensitive(negative_control)[0]
     clean_replay_metadata = redact_sensitive(
         {**replay, **(replay_metadata or {}), "replay_verified": True}
     )[0]

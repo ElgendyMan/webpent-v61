@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,6 +10,7 @@ import pytest
 from webpent.benchmark.juice_shop_target_adapter import (
     JUICE_SHOP_SEMANTIC_PROFILES,
     JUICE_SHOP_TARGET_ADAPTER,
+    canonical_workflow_id,
 )
 from webpent.shared.semantic_observations import (
     SemanticProfileRegistry,
@@ -127,6 +129,20 @@ def test_record_proof_result_does_not_promote_incomplete_attestation() -> None:
     assert statuses["juice.exposed_metrics.v1"] == "confirmed_metadata_only"
     assert proof_states["juice.exposed_metrics.v1"]["promotion_ready"] is False
     assert "juice.exposed_metrics.v1" in proof_bundles
+
+
+def test_frozen_workflows_map_to_canonical_adapter_workflows() -> None:
+    ground_truth_path = Path(__file__).parents[1] / "docs" / "juice_shop_p10_ground_truth_v1.json"
+    ground_truth = json.loads(ground_truth_path.read_text(encoding="utf-8"))
+    approved_cases = [
+        item for item in ground_truth["cases"] if item.get("mapping_status") == "approved"
+    ]
+    assert len(approved_cases) == 11
+    for item in approved_cases:
+        binding = JUICE_SHOP_TARGET_ADAPTER.case(item["case_id"])
+        assert binding is not None
+        assert canonical_workflow_id(item["workflow_id"]) == binding.workflow_id
+        assert binding.workflow_id in JUICE_SHOP_TARGET_ADAPTER.workflow_ids()
 
 
 def test_semantic_case_mapping_is_owned_by_target_adapter() -> None:
@@ -433,3 +449,34 @@ def test_target_registry_origin_lookup_fails_closed_on_provider_exception() -> N
     adapter.broken = True
 
     assert registrations.for_origin("http://127.0.0.1:4100") is None
+
+
+def test_directory_semantic_rule_is_route_neutral() -> None:
+    registry = SemanticProfileRegistry(
+        {
+            "generic.directory.v1": {
+                "target_family": "generic",
+                "promotable": False,
+                "rule": "directory_listing",
+            }
+        }
+    )
+    shaped = derive_semantic_observation(
+        "generic.directory.v1",
+        status_code=200,
+        content_type="text/html",
+        body="Index of /public\nParent Directory\n",
+        final_path="/public",
+        registry=registry,
+    )
+    route_only = derive_semantic_observation(
+        "generic.directory.v1",
+        status_code=200,
+        content_type="text/html",
+        body="/ftp/",
+        final_path="/unrelated",
+        registry=registry,
+    )
+    assert shaped["semantic_match"] is True
+    assert route_only["semantic_match"] is False
+    assert shaped["semantic_oracle_ready"] is False

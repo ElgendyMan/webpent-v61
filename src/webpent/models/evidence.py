@@ -32,8 +32,10 @@ RedactionStatus = Literal["clean", "redacted", "not_applicable"]
 RelationStatus = Literal["observed", "inconclusive", "needs_review", "confirmed"]
 
 _SENSITIVE_KEYS = re.compile(
-    r"(?:authorization|cookie|set-cookie|token|secret|password|passwd|"
-    r"api[_-]?key|access[_-]?key|client[_-]?secret|session|credential|jwt)",
+    r"(?:^|[_-])(?:authorization|cookie|set-cookie|token|secret|password|passwd|"
+    r"api[_-]?key|access[_-]?key|client[_-]?secret|session|credential|jwt|"
+    r"raw[_-]?(?:request|response)[_-]?body|(?:request|response)[_-]?body|"
+    r"screenshot|dom(?:[_-]snapshot)?|html[_-]?body)(?:$|[_-])",
     re.IGNORECASE,
 )
 _SENSITIVE_TEXT = (

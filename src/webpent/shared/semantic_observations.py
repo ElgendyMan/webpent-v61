@@ -66,7 +66,7 @@ _STACK_SHAPE = re.compile(
     re.IGNORECASE,
 )
 _DIRECTORY_SHAPE = re.compile(
-    r"(?:Index of|Directory listing|Parent Directory|/ftp/)", re.IGNORECASE
+    r"(?:Index of|Directory listing|Parent Directory)", re.IGNORECASE
 )
 _SCOREBOARD_SHAPE = re.compile(
     r"(?:score.?board|leaderboard|highest score|points)", re.IGNORECASE
