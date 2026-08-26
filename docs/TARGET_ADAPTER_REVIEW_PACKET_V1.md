@@ -44,7 +44,14 @@
 | `rejected` | mapping أو oracle أو safety posture مرفوض |
 | `out_of_scope` | الحالة مستبعدة صراحة ولا تدخل في TP/FP/FN |
 
-أي packet لا يملك `reviewed_mapping_sha256` و`reviewed_oracle_contract_sha256` وقرارًا محددًا لكل case يجب أن يفشل مغلقًا في qualification tooling.
+أي packet لا يملك `reviewed_mapping_sha256` و`reviewed_oracle_contract_sha256` وقرارًا محددًا لكل case يجب أن يفشل مغلقًا في qualification tooling. يوجد checker محلي deterministic لهذا العقد:
+
+```bash
+PYTHONPATH=src:integrations/bbscout/src .venv/bin/python \\
+  scripts/check_target_adapter_review_packet.py
+```
+
+الـchecker يراجع packet metadata فقط، ولا يتصل بأي target ولا ينشئ evidence.
 
 ## ما لا يثبته هذا packet
 

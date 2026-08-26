@@ -14,7 +14,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlsplit
 
 from webpent.config.settings import (
     ScanMode,
@@ -105,7 +104,7 @@ def build_initial_state(
     profile: str | ScanProfile | None = None,
     root_goal_nodes: dict[str, Any] | None = None,
     action_ledger_path: str | None = None,
-    campaign_inventory: str = "waptlab",
+    campaign_inventory: str = "auto",
     enable_control_plane: bool = True,
     control_plane_profile_root: str | None = None,
     raw_scope_entries: list[str] | None = None,
@@ -171,17 +170,11 @@ def build_initial_state(
                 raise ValueError(f"target_package_binding_{key}_mismatch")
         if binding_required and not str(binding_projection.get("lease_id") or ""):
             raise ValueError("target_package_binding_lease_missing")
-    requested_inventory = str(campaign_inventory or "waptlab").strip().lower()
-    if requested_inventory == "auto":
-        parsed_target = urlsplit(target_url)
-        target_host = (parsed_target.hostname or "").lower()
-        resolved_inventory = (
-            "waptlab"
-            if parsed_target.port == 8000 or target_host in {"waptlab", "waptlab.local"}
-            else "generic"
-        )
-    elif requested_inventory in {"waptlab", "generic"}:
-        resolved_inventory = requested_inventory
+    requested_inventory = str(campaign_inventory or "auto").strip().lower()
+    if requested_inventory in {"auto", "generic"}:
+        resolved_inventory = "generic"
+    elif requested_inventory == "waptlab":
+        resolved_inventory = "waptlab"
     else:
         raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
     resolved_scan_mode = settings.scan_mode

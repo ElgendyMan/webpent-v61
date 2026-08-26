@@ -228,6 +228,37 @@ def test_initial_state_injects_and_checkpoint_roundtrips_runtime_context(
     assert restored.action_executor.authority is restored.action_authority
 
 
+def test_initial_state_defaults_to_target_neutral_inventory_even_on_lab_port(
+    tmp_path: Path,
+) -> None:
+    state = build_initial_state(
+        Target(url="http://127.0.0.1:8000"),
+        thread_id="engagement:generic-default",
+        engagement_id="engagement:generic-default",
+        profile="smart-observe",
+        action_ledger_path=str(tmp_path / "generic-default.sqlite3"),
+    )
+
+    assert state["campaign_inventory"] == "generic"
+    assert len(state["campaign_plan"]["entries"]) == 10
+
+
+def test_initial_state_keeps_explicit_waptlab_compatibility_inventory(
+    tmp_path: Path,
+) -> None:
+    state = build_initial_state(
+        Target(url="http://127.0.0.1:8000"),
+        thread_id="engagement:explicit-waptlab",
+        engagement_id="engagement:explicit-waptlab",
+        profile="smart-observe",
+        campaign_inventory="waptlab",
+        action_ledger_path=str(tmp_path / "explicit-waptlab.sqlite3"),
+    )
+
+    assert state["campaign_inventory"] == "waptlab"
+    assert len(state["campaign_plan"]["entries"]) == 20
+
+
 def test_target_aware_runtime_roundtrip_requires_explicit_registry(
     tmp_path: Path,
 ) -> None:

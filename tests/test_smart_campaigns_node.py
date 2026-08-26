@@ -2,6 +2,7 @@ from dataclasses import replace
 
 from webpent.agents.smart_campaigns.agent import (
     _campaign_hypotheses_from_execution,
+    _campaign_plan_for_state,
     _javascript_surface_records,
     _smart_task_cap,
     build_smart_campaign_tasks,
@@ -29,10 +30,33 @@ def test_safe_smart_governance_is_persisted_in_initial_state(monkeypatch) -> Non
     assert state["action_budget"]["max_actions"] > 0
 
 
+def test_campaign_refresh_defaults_to_generic_inventory_when_state_omits_it() -> None:
+    state = {
+        "target": {"url": "http://127.0.0.1:8000"},
+        "crawled_data": {
+            "surface_records": [
+                {
+                    "record_id": "surface:generic:1",
+                    "url": "http://127.0.0.1:8000/search?q=demo",
+                    "method": "GET",
+                }
+            ]
+        },
+        "workflow_observations": [],
+        "campaign_plan": {"entries": []},
+    }
+
+    plan = _campaign_plan_for_state(state)
+
+    assert len(plan["entries"]) == 10
+    assert plan["entries"][0]["key"] == "xss_reflected"
+
+
 def _state(*, enabled: bool = True) -> dict:
     return {
         "smart_mode": enabled,
         "engagement_id": "engagement:test",
+        "campaign_inventory": "waptlab",
         "target": {"url": "https://target.test"},
         "crawled_data": {
             "surface_records": [

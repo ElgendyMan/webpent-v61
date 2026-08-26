@@ -611,7 +611,7 @@ def _campaign_plan_for_state(state: Mapping[str, Any]) -> dict[str, Any]:
     # The executor remains the authority for any actual request or finding.
     refreshed = build_campaign_plan(
         target_url=_target_url(state),
-        campaign_inventory=str(state.get("campaign_inventory") or "waptlab"),
+        campaign_inventory=str(state.get("campaign_inventory") or "generic"),
         surface_observations=surfaces,
         workflow_observations=workflows,
     )
