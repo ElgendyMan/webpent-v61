@@ -259,6 +259,47 @@ def test_target_aware_runtime_roundtrip_requires_explicit_registry(
     assert restored.target_adapter_registration.target_id == "runtime-test-target"
 
 
+def test_initial_state_fails_closed_when_target_workflow_provider_raises(
+    tmp_path: Path,
+) -> None:
+    class _BootstrapFailingAdapter(_RuntimeTargetAdapter):
+        executor_calls = 0
+
+        def workflow_executors(self) -> dict[str, object]:
+            self.executor_calls += 1
+            if self.executor_calls >= 3:
+                raise RuntimeError("workflow provider unavailable during bootstrap")
+            return {}
+
+    target_registry = TargetAdapterRegistry()
+    target_registry.register(
+        RegisteredTargetAdapter(
+            adapter=_BootstrapFailingAdapter(),
+            source="tests",
+            version="1",
+            policy_ref="test-policy",
+            proof_contract="test-proof-contract",
+        )
+    )
+
+    state = build_initial_state(
+        Target(url="http://example.test"),
+        thread_id="engagement:bootstrap-failure",
+        engagement_id="engagement:bootstrap-failure",
+        profile="smart-observe",
+        action_ledger_path=str(tmp_path / "bootstrap-failure.sqlite3"),
+        target_adapter_registry=target_registry,
+    )
+
+    context = state["runtime_context"]
+    assert context.valid is False
+    assert context.control_plane_browser_adapter is None
+    assert any(
+        item.startswith("target_adapter:registration_unavailable:")
+        for item in context.configuration_errors
+    )
+
+
 def test_runtime_factory_rejects_invalid_target_without_raw_transport(
     tmp_path: Path,
 ) -> None:

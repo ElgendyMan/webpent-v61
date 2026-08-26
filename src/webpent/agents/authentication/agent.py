@@ -139,11 +139,11 @@ _AUTH_STORAGE_KEYS = {
     "token",
 }
 
-# Browser preferences/consent cookies are not authentication material.  They
-# may be present before login (Juice Shop, for example, always sets
-# ``language``), so accepting them as proof would create an anonymous-session
-# false positive.  Keep this list deliberately narrow; target-issued session
-# cookies with any other name remain eligible for validation.
+# Browser preferences/consent cookies are not authentication material. They
+# may be present before login, so accepting them as proof would create an
+# anonymous-session false positive. Keep this list deliberately narrow;
+# target-issued session cookies with any other name remain eligible for
+# validation.
 _NON_AUTH_COOKIE_NAMES = {
     "language",
     "cookieconsent",
@@ -345,28 +345,6 @@ def _perform_login_sync(
         except Exception as exc:
             logger.warning("Navigation to %s failed: %s", url, exc)
             return {}
-
-        # Juice Shop may show a welcome dialog above the cookie banner. Close
-        # only its explicit, target-rendered control before touching consent.
-        try:
-            welcome_close = page.locator(
-                "[role='dialog'] button[aria-label='Close Welcome Banner']"
-            ).first
-            if welcome_close.is_visible(timeout=500):
-                welcome_close.click(timeout=1500)
-                page.wait_for_timeout(100)
-        except Exception:
-            pass
-        # Its same-origin cookie-consent overlay keeps the login submit
-        # control disabled until the operator dismisses it. Use only the
-        # stable consent control; never click a generic overlay.
-        try:
-            consent = page.locator("a.cc-dismiss").filter(has_text="Me want it!").first
-            if consent.is_visible(timeout=500):
-                consent.click(timeout=1500)
-                page.wait_for_timeout(100)
-        except Exception:
-            pass
 
         # Some targets redirect the base URL to a protected dashboard and
         # expose the login form at a sibling route. Discover only bounded,

@@ -40,7 +40,7 @@ Total records: **325**.
 | `src/webpent/agents/api_testing/agent.py` | 123 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/api_testing/agent.py` | 616 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/authentication/agent.py` | 250 | `import` | `playwright.sync_api.sync_playwright` | `browser_implementation` | `approved` |
-| `src/webpent/agents/authentication/agent.py` | 1077 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/authentication/agent.py` | 1055 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_impact/agent.py` | 133 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_logic_fuzzer/agent.py` | 46 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/business_logic_fuzzer/agent.py` | 49 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -314,8 +314,8 @@ Total records: **325**.
 | `src/webpent/shared/target_workspace.py` | 180 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/trust_matrix.py` | 17 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/initial_state.py` | 193 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 286 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 287 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 294 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 295 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 33 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 52 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/tools/exploitation/dalfox.py` | 175 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |

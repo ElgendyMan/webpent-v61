@@ -211,21 +211,28 @@ def build_initial_state(
     target_adapter_registration = None
     if target_adapter_registry is not None:
         target_adapter_registration = target_adapter_registry.for_origin(target_url)
-    semantic_profile_registry = (
-        target_adapter_registration.adapter.semantic_profiles
-        if target_adapter_registration is not None
-        else None
-    )
-    workflow_allowlist = (
-        target_adapter_registration.adapter.workflow_ids()
-        if target_adapter_registration is not None
-        else ()
-    )
-    workflow_executors = (
-        target_adapter_registration.adapter.workflow_executors()
-        if target_adapter_registration is not None
-        else {}
-    )
+    target_adapter_workflow_configured = True
+    semantic_profile_registry = None
+    workflow_allowlist: tuple[str, ...] = ()
+    workflow_executors: Mapping[str, Any] = {}
+    if target_adapter_registration is not None:
+        try:
+            semantic_profile_registry = target_adapter_registration.adapter.semantic_profiles
+            workflow_allowlist = tuple(
+                target_adapter_registration.adapter.workflow_ids()
+            )
+            workflow_executors = dict(
+                target_adapter_registration.adapter.workflow_executors()
+            )
+        except Exception:
+            # A registration was validated during lookup, but its injected
+            # provider may still be mutable or fail at bootstrap. Keep the
+            # browser adapter unavailable rather than letting a provider
+            # exception escape or falling back to an unbound workflow.
+            semantic_profile_registry = None
+            workflow_allowlist = ()
+            workflow_executors = {}
+            target_adapter_workflow_configured = False
     browser_capability = (
         (capability_manifest.get("capabilities") or {}).get("browser") or {}
     )
@@ -235,6 +242,7 @@ def build_initial_state(
         and bool(playwright_enabled)
         and bool(settings.playwright_adapter_enabled)
         and browser_preflight_ok
+        and target_adapter_workflow_configured
     ):
         try:
             from webpent.shared.control_plane_runtime import BrowserActionAdapter
