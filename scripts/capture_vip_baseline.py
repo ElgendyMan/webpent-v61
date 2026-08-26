@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from webpent.shared.campaigns import (
+from webpent.benchmark.waptlab_campaign_profile import (
     build_waptlab_campaign_ledger,
 )
 

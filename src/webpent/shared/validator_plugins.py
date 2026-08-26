@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from webpent.agents.validator.registry import validator_id_for
-from webpent.shared.campaigns import GENERIC_CAMPAIGNS, WAPTLAB_CAMPAIGNS
+from webpent.shared.campaigns import GENERIC_CAMPAIGNS
 
 PluginStage = Literal[
     "discover",
@@ -78,8 +78,8 @@ def build_validator_plugin_registry(
 ) -> tuple[ValidatorPluginSpec, ...]:
     """Build plugin contracts for the selected inventory.
 
-    The default is target-neutral.  Vertical inventories must be supplied
-    explicitly so a planner cannot silently inherit WAPTLab metadata.
+    The default is target-neutral. Vertical inventories must be supplied
+    explicitly so a planner cannot silently inherit target-specific metadata.
     """
     selected_campaigns = GENERIC_CAMPAIGNS if campaigns is None else campaigns
     plugins: list[ValidatorPluginSpec] = []
@@ -122,11 +122,6 @@ def build_validator_plugin_registry(
     return tuple(plugins)
 
 
-def build_waptlab_validator_plugin_registry() -> tuple[ValidatorPluginSpec, ...]:
-    """Return the legacy WAPTLab registry through an explicit profile call."""
-    return build_validator_plugin_registry(WAPTLAB_CAMPAIGNS)
-
-
 def plugin_capability_gaps(
     plugins: tuple[ValidatorPluginSpec, ...] | None = None,
 ) -> list[dict[str, str]]:
@@ -150,6 +145,5 @@ __all__ = [
     "PLUGIN_STAGES",
     "ValidatorPluginSpec",
     "build_validator_plugin_registry",
-    "build_waptlab_validator_plugin_registry",
     "plugin_capability_gaps",
 ]

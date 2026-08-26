@@ -127,8 +127,22 @@ def test_generic_target_backed_proof_is_sealed_replayable_and_redacted():
     assert result.evidence["promotion_guard"]["replay_verified"] is True
     assert "must-not-escape" not in str(result.evidence)
 
+    from webpent.shared.generic_case_lifecycle import case_result_from_verification
+
+    case_result = case_result_from_verification(
+        "generic.info_disclosure.v1",
+        result,
+        metadata={"raw_response_body": "must-not-escape", "target_classification": "api"},
+    )
+    assert case_result.status == "confirmed"
+    assert case_result.proof_bundle_ref == result.proof_bundle.bundle_id
+    assert case_result.negative_control_ref is not None
+    assert "must-not-escape" not in str(case_result.as_dict())
+
+
 
 def test_generic_target_proof_fails_closed_without_independent_control():
+
     from webpent.models.findings import Finding, Severity, VulnClass
     from webpent.shared.verifier import verify_replay_evidence
 
@@ -167,6 +181,13 @@ def test_generic_target_proof_fails_closed_without_independent_control():
     assert result.passed is False
     assert result.reason == "negative_control_must_be_independent"
     assert result.evidence["promotion_guard"]["status"] == "blocked"
+
+    from webpent.shared.generic_case_lifecycle import case_result_from_verification
+
+    case_result = case_result_from_verification("generic.info_disclosure.v1", result)
+    assert case_result.status == "blocked"
+    assert case_result.proof_bundle_ref is None
+    assert case_result.negative_control_ref is None
 
 
 __all__ = []

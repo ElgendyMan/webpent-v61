@@ -72,7 +72,7 @@ def _state(*, enabled: bool = True) -> dict:
     return {
         "smart_mode": enabled,
         "engagement_id": "engagement:test",
-        "campaign_inventory": "waptlab",
+        "campaign_inventory": "generic",
         "target": {"url": "https://target.test"},
         "crawled_data": {
             "surface_records": [
@@ -90,13 +90,13 @@ def _state(*, enabled: bool = True) -> dict:
         "action_budget": {"used_actions": 0, "used_cost": 0.0},
         "campaign_ledger": {
             "entries": [
-                {"id": 1, "key": "download_idor", "status": "not_observed"},
+                {"id": 1, "key": "idor_object", "status": "not_observed"},
             ]
         },
         "campaign_plan": {
             "entries": [
                 {
-                    "key": "download_idor",
+                    "key": "idor_object",
                     "status": "ready",
                     "validator_id": "idor",
                     "matched_observation_refs": ["surface:download:1"],
@@ -146,9 +146,7 @@ def test_javascript_routes_project_only_same_origin_concrete_routes() -> None:
     }
 
     records = _javascript_surface_records(state)
-    assert [record["url"] for record in records] == [
-        "https://target.test/rest/user/whoami"
-    ]
+    assert [record["url"] for record in records] == ["https://target.test/rest/user/whoami"]
     assert records[0]["category"] == "api"
     assert records[0]["evidence_ref"] == "js:whoami"
 
@@ -156,10 +154,13 @@ def test_javascript_routes_project_only_same_origin_concrete_routes() -> None:
 def test_authorized_active_campaign_cap_is_bounded_and_safe_smart_is_unchanged() -> None:
     assert _smart_task_cap({"smart_governance": {"profile": "safe-smart"}}) == 3
     assert _smart_task_cap({"smart_governance": {"profile": "authorized-active"}}) == 6
-    assert _smart_task_cap(
-        {"smart_governance": {"profile": "authorized-active"}},
-        type("SettingsStub", (), {"smart_campaign_task_cap": 99})(),
-    ) == 10
+    assert (
+        _smart_task_cap(
+            {"smart_governance": {"profile": "authorized-active"}},
+            type("SettingsStub", (), {"smart_campaign_task_cap": 99})(),
+        )
+        == 10
+    )
 
 
 def test_disabled_node_is_additive_and_does_not_plan() -> None:
@@ -175,8 +176,7 @@ def test_node_plans_observed_campaign_but_never_executes_it() -> None:
     assert result["smart_replanning"]["execution_required"] is True
     assert result["smart_replanning"]["proof_required"] is True
     assert any(
-        item["reason"] == "planned_not_executed"
-        for item in result["campaign_task_outcomes"]
+        item["reason"] == "planned_not_executed" for item in result["campaign_task_outcomes"]
     )
 
 
@@ -185,11 +185,11 @@ def test_initial_plan_refreshes_from_observed_surface_url() -> None:
     state["campaign_plan"] = {
         "entries": [
             {
-                "key": "export_blade_ssti",
+                "key": "path_traversal",
                 "status": "not_observed",
-                "validator_id": "ssti",
+                "validator_id": "path_traversal",
                 "matched_observation_refs": [],
-                "gaps": ["missing-surface:export_blade_ssti"],
+                "gaps": ["missing-surface:path_traversal"],
                 "contract": {},
             }
         ]
@@ -197,7 +197,7 @@ def test_initial_plan_refreshes_from_observed_surface_url() -> None:
     result = smart_campaigns_node(state)
     assert result["smart_next_actions"]
     assert any(
-        entry["key"] == "export_blade_ssti" and entry["matched_observation_refs"]
+        entry["key"] == "path_traversal" and entry["matched_observation_refs"]
         for entry in result["campaign_plan"]["entries"]
     )
 
@@ -220,11 +220,11 @@ def test_typed_workflow_observation_becomes_observed_surface_task() -> None:
     state["campaign_plan"] = {
         "entries": [
             {
-                "key": "download_idor",
+                "key": "idor_object",
                 "status": "not_observed",
                 "validator_id": "idor",
                 "matched_observation_refs": [],
-                "gaps": ["missing-surface:download_idor"],
+                "gaps": ["missing-surface:idor_object"],
                 "contract": {},
             }
         ]
@@ -244,11 +244,11 @@ def test_crawler_endpoint_strings_become_observed_surface_tasks() -> None:
     state["campaign_plan"] = {
         "entries": [
             {
-                "key": "download_idor",
+                "key": "idor_object",
                 "status": "not_observed",
                 "validator_id": "idor",
                 "matched_observation_refs": [],
-                "gaps": ["missing-surface:download_idor"],
+                "gaps": ["missing-surface:idor_object"],
                 "contract": {},
             }
         ]
@@ -262,7 +262,7 @@ def test_crawler_endpoint_strings_become_observed_surface_tasks() -> None:
 
 def test_unobserved_or_missing_validator_campaign_is_blocked() -> None:
     tasks, outcomes = build_smart_campaign_tasks(_state())
-    assert [task.vulnerability_class for task in tasks] == ["download_idor"]
+    assert [task.vulnerability_class for task in tasks] == ["idor_object"]
     assert outcomes[0]["reason"] == "missing_observed_surface"
 
 
@@ -284,8 +284,7 @@ def test_execution_node_blocks_missing_precondition_before_handler(monkeypatch) 
     assert called is False
     assert result["smart_http_observations"] == []
     assert any(
-        item["status"] == "blocked_by_precondition"
-        and item["reason"] == "precondition_failed"
+        item["status"] == "blocked_by_precondition" and item["reason"] == "precondition_failed"
         for item in result["campaign_task_outcomes"]
     )
 
@@ -320,22 +319,34 @@ def test_campaign_execution_bridge_fails_closed_for_blocked_or_missing_data() ->
         "status": "executed",
         "output_available": True,
     }
-    assert _campaign_hypotheses_from_execution(
-        [task],
-        [{**executed, "status": "blocked_by_precondition"}],
-    ) == []
-    assert _campaign_hypotheses_from_execution(
-        [replace(task, validator_id="")],
-        [executed],
-    ) == []
-    assert _campaign_hypotheses_from_execution(
-        [replace(task, validator_id="missing-validator")],
-        [executed],
-    ) == []
-    assert _campaign_hypotheses_from_execution(
-        [replace(task, source_evidence_ids=())],
-        [executed],
-    ) == []
+    assert (
+        _campaign_hypotheses_from_execution(
+            [task],
+            [{**executed, "status": "blocked_by_precondition"}],
+        )
+        == []
+    )
+    assert (
+        _campaign_hypotheses_from_execution(
+            [replace(task, validator_id="")],
+            [executed],
+        )
+        == []
+    )
+    assert (
+        _campaign_hypotheses_from_execution(
+            [replace(task, validator_id="missing-validator")],
+            [executed],
+        )
+        == []
+    )
+    assert (
+        _campaign_hypotheses_from_execution(
+            [replace(task, source_evidence_ids=())],
+            [executed],
+        )
+        == []
+    )
 
 
 def test_execution_node_uses_bounded_get_and_records_safe_metadata(monkeypatch) -> None:
@@ -762,8 +773,7 @@ def test_authorized_active_without_registered_extension_does_not_enqueue_swagger
 
     result = smart_campaigns_execution_node(state)
     assert not any(
-        item.get("selected_task") == "smart-swagger-ssrf-proof"
-        for item in result["decision_trace"]
+        item.get("selected_task") == "smart-swagger-ssrf-proof" for item in result["decision_trace"]
     )
     assert not any(
         item.get("task_id") == "smart-swagger-ssrf-proof"
@@ -959,8 +969,7 @@ def test_authorized_active_without_target_extension_does_not_enqueue_swagger_pro
 
     assert calls == []
     assert all(
-        item.get("selected_task") != "smart-swagger-ssrf-proof"
-        for item in result["decision_trace"]
+        item.get("selected_task") != "smart-swagger-ssrf-proof" for item in result["decision_trace"]
     )
     assert result["smart_http_observations"] == []
 
@@ -1004,7 +1013,9 @@ def test_user_agent_falls_back_to_settings_when_state_has_no_settings(monkeypatc
     assert "solverfileexpect_2222" in _user_agent({})
     from types import SimpleNamespace
 
-    default_state = {"settings": SimpleNamespace(http_user_agent="WebPent/0.2 (+https://example.test)")}
+    default_state = {
+        "settings": SimpleNamespace(http_user_agent="WebPent/0.2 (+https://example.test)")
+    }
     assert "solverfileexpect_2222" in _user_agent(default_state)
     get_settings.cache_clear()
 
@@ -1257,7 +1268,6 @@ def test_controller_entry_is_reached_for_smart_profile_without_caller_flag(
     assert route_after_smart_campaigns_execution(legacy) != NODE_AUTONOMOUS_CONTROLLER
 
 
-
 def test_campaign_manager_stops_weak_paths_and_deepens_causal_paths() -> None:
     from webpent.shared.campaign_manager import CampaignManager
 
@@ -1335,9 +1345,7 @@ def test_campaign_manager_does_not_treat_candidate_as_causal_signal() -> None:
         [{"task_id": "task:1", "campaign_key": "path", "budget": 1.0}],
         {
             "engagement_id": "engagement:test",
-            "campaign_task_outcomes": [
-                {"campaign_key": "path", "status": "candidate"}
-            ],
+            "campaign_task_outcomes": [{"campaign_key": "path", "status": "candidate"}],
         },
     )
 

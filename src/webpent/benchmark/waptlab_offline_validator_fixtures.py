@@ -6,7 +6,7 @@ executor and must be selected explicitly by a WAPTLab adapter or test harness.
 
 from __future__ import annotations
 
-from webpent.shared.campaigns import WAPTLAB_CAMPAIGNS
+from webpent.benchmark.waptlab_campaign_profile import WAPTLAB_CAMPAIGNS
 from webpent.shared.offline_validator_fixtures import (
     OfflineValidatorFixtureSpec,
     build_offline_validator_fixture_registry,

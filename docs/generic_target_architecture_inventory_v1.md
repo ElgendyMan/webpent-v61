@@ -9,18 +9,18 @@ This inventory records the repository boundaries used by the Generic Target-Neut
 | Boundary | Current repository locations | Allowed responsibility | Target-specific literals allowed? |
 |---|---|---|---|
 | Generic core | `src/webpent/shared/`, `src/webpent/agents/`, `src/webpent/contracts/`, `src/webpent/models/`, `src/webpent/state/` | Runtime orchestration, contracts, safety, redaction, proof, replay, metrics, lifecycle, generic agent behavior | No routes, selectors, challenge IDs, or target-family branches |
-| Target adapters | `src/webpent/adapters/juice_shop/adapter.py`, `src/webpent/adapters/mock_target/adapter.py`, `src/webpent/benchmark/waptlab_target_adapter.py`, and future explicit adapter modules | Origin binding, workflow execution, case mapping, target-local projection, target-local extensions | Yes, only inside the explicit adapter module |
-| Target inventories/profiles | `src/webpent/profiles/juice_shop/cases.py`, target-local semantic registries and fixtures | Declarative case inventory, preconditions, workflow bindings, semantic profile declarations | Yes, only inside the target profile/inventory boundary |
+| Target adapters | `src/webpent/adapters/juice_shop/adapter.py`, `src/webpent/adapters/mock_target/adapter.py`, `src/webpent/adapters/generic_web/adapter.py`, `src/webpent/benchmark/waptlab_target_adapter.py`, and future explicit adapter modules | Origin binding, safe workflow execution, bounded discovery, case mapping, target-local projection, target-local extensions, optional profile-provider registration | Yes, only inside the explicit adapter module |
+| Target inventories/profiles | `src/webpent/profiles/juice_shop/cases.py`, `src/webpent/benchmark/waptlab_campaign_profile.py`, target-local semantic registries and fixtures | Declarative case inventory, campaign/proof/execution contracts, preconditions, workflow bindings, semantic profile declarations | Yes, only inside the target profile/inventory boundary |
 | Benchmarks/governance | `docs/juice_shop_p10_*.json`, `docs/p10_*.json`, `audit/`, `benchmarks/` | Frozen truth, review packets, evaluation policy, benchmark records, audit reports | Yes, but never imported as runtime configuration |
 | Test targets and fixtures | `tests/`, `tests/fixtures/`, target-specific test modules | Contract tests, fake receipts, mock adapters, redaction and replay tests | Target-specific values only in target-scoped tests |
 
 ## Baseline findings
 
-The repository already has an explicit `TargetAdapter` protocol, `RegisteredTargetAdapter`, target-origin registration, semantic profile registries, and target-scoped campaign extensions. The shared runner and validator consume registered extension contracts rather than embedding WAPTLab behavior. This is the correct direction and must be preserved.
+The repository has an explicit `TargetAdapter` protocol, `RegisteredTargetAdapter`, target-origin registration, semantic profile registries, target-scoped campaign extensions, and an optional `CampaignProfileSpec`. The shared runner and validator consume registered profile data rather than importing target inventories. This is the correct direction and must be preserved.
 
 The initial generic-core scan found one forbidden target route literal in `src/webpent/shared/semantic_observations.py`: the generic directory-shape heuristic contained `/ftp/`. That literal was removed because a route name is not a target-neutral directory semantic. The heuristic now recognizes only generic directory-listing shapes such as `Index of`, `Directory listing`, and `Parent Directory`; a target adapter may register its own target-local profile and route mapping separately.
 
-The scan did not identify direct imports of Juice Shop or WAPTLab adapter modules from the generic-core roots. The old `src/webpent/benchmark/juice_shop_*.py` paths remain compatibility shims only; the executable Juice Shop implementation is now under `src/webpent/adapters/juice_shop/` and `src/webpent/profiles/juice_shop/`. The new guard is `scripts/check_generic_target_neutrality.py` and fails closed on forbidden target literals and imports in the generic-core roots.
+The scan does not identify direct imports of Juice Shop, WAPTLab, or adapter modules from the generic-core roots. The old `src/webpent/benchmark/juice_shop_*.py` paths remain compatibility shims only; the executable Juice Shop implementation is under `src/webpent/adapters/juice_shop/` and `src/webpent/profiles/juice_shop/`, while WAPTLab campaign data is under its explicit benchmark profile. The guard is `scripts/check_generic_target_neutrality.py`; it fails closed on forbidden target literals, target imports, and target-specific conditionals in the generic-core roots.
 
 ## Reference handling decisions
 
@@ -32,6 +32,8 @@ The scan did not identify direct imports of Juice Shop or WAPTLab adapter module
 | Generic semantic shape | Keep in shared observation engine | It is bounded, redacted, and does not identify a target |
 | Frozen P10 path/workflow values | Keep only in frozen benchmark artifacts and target adapter mapping | Frozen governance files are not runtime configuration and must not be edited to make code pass |
 | Target-specific campaign callback | Keep behind `CampaignExtensionSpec` and live registration | Callback objects must not enter descriptors or checkpoints |
+| Campaign profile provider | Keep behind `CampaignProfileSpec` on an explicit registered adapter | Profile identity may be projected into state; runtime builders/callbacks must remain process-local |
+| Generic web discovery | Keep in `GenericWebAdapter` behind the central safe HTTP boundary | Discovery is bounded, same-origin, read-only, redacted, and never a finding by itself |
 
 ## Guardrail invocation
 
@@ -43,10 +45,10 @@ The guard is expected to be part of CI before merge of changes touching shared/c
 
 ## Current limitations
 
-This inventory does not claim that the platform is P10-qualified or universally target-neutral at runtime. Workflow canonicalization, a second-target swap suite, complete per-case causal contracts, and live sealed/replayable evidence remain separate gates. In particular, the P10 gap matrix remains the source of truth for the current 11-case proof gaps.
+This inventory does not claim that the platform is P10-qualified or universally target-neutral at runtime. Versioned case/capability contracts, GenericWebAdapter discovery, explicit profile-provider wiring, complete per-case causal contracts, and live sealed/replayable evidence remain separate gates. In particular, the P10 gap matrix remains the source of truth for the current 11-case proof gaps.
 
 ## Validation gate result
 
-The bounded fixture validation passed without network I/O: full contract tests, target swap tests, redaction tests, sealed/replay tests, neutrality scanning, and fail-closed manifest checks all passed. A live Juice Shop run was not started because no loopback target listener was present and the frozen P10 governance state still has `reviewer_approval=false`, null metrics, and no full-run approval. Therefore no live causal signal, negative control, sealed bundle, replay result, or benchmark metric is claimed by this implementation cycle.
+The bounded fixture validation passed without network I/O: full contract tests, GenericWebAdapter fake-transport discovery tests, target swap tests, redaction tests, sealed/replay tests, neutrality scanning, direct-I/O/G-02 checks, and fail-closed manifest/profile checks all passed. A live target run was not started because no authorized loopback target listener was present and the frozen P10 governance state still has no full-result approval, null metrics, and no approved full-run evidence. Therefore no live causal signal, negative control, sealed bundle, replay result, or benchmark metric is claimed by this implementation cycle.
 
 > Juice Shop is a validation target, not the product architecture. Generic readiness must be demonstrated with an explicit second adapter and target-neutral proof tests, not inferred from Juice Shop results.

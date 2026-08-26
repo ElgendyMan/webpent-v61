@@ -1,8 +1,8 @@
-from webpent.shared.campaigns import build_waptlab_campaign_ledger
-from webpent.shared.validator_plugins import (
+from webpent.benchmark.waptlab_campaign_profile import (
+    build_waptlab_campaign_ledger,
     build_waptlab_validator_plugin_registry,
-    plugin_capability_gaps,
 )
+from webpent.shared.validator_plugins import plugin_capability_gaps
 
 
 def _entries_by_key(ledger):
@@ -44,10 +44,7 @@ def test_observed_vertical_campaign_is_tested_not_confirmed():
 
 
 def test_plugin_registry_exposes_base_validator_for_vertical_campaigns():
-    plugins = {
-        plugin.campaign_key: plugin
-        for plugin in build_waptlab_validator_plugin_registry()
-    }
+    plugins = {plugin.campaign_key: plugin for plugin in build_waptlab_validator_plugin_registry()}
     assert plugins["download_idor"].validator_id == "idor"
     assert plugins["tenant_context_switching"].validator_id == "idor"
     assert plugins["public_backup_disclosure"].validator_id == "info_disclosure"

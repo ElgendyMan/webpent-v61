@@ -22,10 +22,12 @@
 
 ## Source-level records
 
-Total records: **331**.
+Total records: **335**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
+| `src/webpent/adapters/generic_web/adapter.py` | 20 | `import` | `httpx` | `http_implementation` | `approved` |
+| `src/webpent/adapters/generic_web/adapter.py` | 257 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/access_control/agent.py` | 399 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/access_control/agent.py` | 659 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/access_control/agent.py` | 706 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -114,19 +116,19 @@ Total records: **331**.
 | `src/webpent/agents/request_smuggling/agent.py` | 95 | `call` | `socket.create_connection` | `raw_tcp_dns` | `approved` |
 | `src/webpent/agents/request_smuggling/agent.py` | 339 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/request_smuggling/agent.py` | 538 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 128 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 147 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 276 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 378 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1042 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1292 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1294 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1295 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1298 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1412 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 1522 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 2083 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/agents/smart_campaigns/agent.py` | 2131 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 127 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 280 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 382 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1067 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1315 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1317 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1318 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1321 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1429 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 1541 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 2087 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/agents/smart_campaigns/agent.py` | 2133 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 103 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 511 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/strategist/agent.py` | 551 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -216,8 +218,8 @@ Total records: **331**.
 | `src/webpent/shared/confidence.py` | 369 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/control_plane_spine.py` | 194 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/differential_workflow.py` | 160 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 543 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 544 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 537 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 538 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 19 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 35 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/finding_aggregation.py` | 39 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -315,13 +317,15 @@ Total records: **331**.
 | `src/webpent/shared/self_critique.py` | 355 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/self_critique.py` | 688 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/stealth.py` | 56 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/target_adapters.py` | 291 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/target_adapters.py` | 461 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/target_adapters.py` | 78 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/target_adapters.py` | 321 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/target_adapters.py` | 486 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/target_adapters.py` | 506 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/target_workspace.py` | 180 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/trust_matrix.py` | 17 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 186 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 292 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/state/initial_state.py` | 293 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 184 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 294 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/state/initial_state.py` | 295 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 33 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/state/reducers.py` | 52 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/tools/exploitation/dalfox.py` | 175 | `safe_boundary_call` | `run_command` | `subprocess_boundary` | `approved` |

@@ -334,6 +334,13 @@ class WaptlabCampaignExtensionProvider:
     def campaign_extensions(self) -> Mapping[str, CampaignExtensionSpec]:
         return campaign_extensions()
 
+    def campaign_profile(self):
+        from webpent.benchmark.waptlab_campaign_profile import (
+            build_waptlab_campaign_profile,
+        )
+
+        return build_waptlab_campaign_profile()
+
 
 __all__ = [
     "EXTENSION_ID",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from webpent.benchmark.waptlab_campaign_profile import build_waptlab_campaign_profile
 from webpent.shared.campaign_planner import build_campaign_plan
 
 
@@ -7,6 +8,7 @@ def test_planner_materializes_all_campaign_contracts_without_claiming_tested() -
     plan = build_campaign_plan(
         target_url="http://fixture.local",
         campaign_inventory="waptlab",
+        campaign_profile=build_waptlab_campaign_profile(),
     )
 
     assert len(plan["entries"]) == 20
@@ -26,6 +28,7 @@ def test_planner_links_surface_workflow_and_explicit_gaps_in_dag() -> None:
     plan = build_campaign_plan(
         target_url="http://fixture.local",
         campaign_inventory="waptlab",
+        campaign_profile=build_waptlab_campaign_profile(),
         observed_campaigns={"header_sqli"},
         blocked_by={"tenant_context_switching": "blocked-by-auth"},
         surface_observations=[
@@ -94,9 +97,7 @@ def test_planner_supports_generic_surface_inventory_without_waptlab_entries() ->
     assert {"api_issue", "sqli_param"}.issubset(keys)
     assert all(entry["validator_id"] for entry in plan["entries"])
     assert all(entry["plugin_id"].startswith("campaign:") for entry in plan["entries"])
-    assert "campaign:header_sqli" not in {
-        entry["plugin_id"] for entry in plan["entries"]
-    }
+    assert "campaign:header_sqli" not in {entry["plugin_id"] for entry in plan["entries"]}
     assert all(entry["contract"]["preconditions"] for entry in plan["entries"])
     by_key = {entry["key"]: entry for entry in plan["entries"]}
     assert by_key["api_issue"]["matched_observation_refs"] == ["api-1"]
@@ -116,6 +117,7 @@ def test_explicit_waptlab_inventory_keeps_legacy_matrix() -> None:
     plan = build_campaign_plan(
         target_url="http://127.0.0.1:8000",
         campaign_inventory="waptlab",
+        campaign_profile=build_waptlab_campaign_profile(),
     )
 
     assert len(plan["entries"]) == 20
@@ -159,8 +161,7 @@ def test_auto_inventory_is_target_agnostic_across_unrelated_origins_and_ports() 
     )
 
     plans = [
-        build_campaign_plan(target_url=origin, campaign_inventory="auto")
-        for origin in origins
+        build_campaign_plan(target_url=origin, campaign_inventory="auto") for origin in origins
     ]
 
     assert all(len(plan["entries"]) == 10 for plan in plans)

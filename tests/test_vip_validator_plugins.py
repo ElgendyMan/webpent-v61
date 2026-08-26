@@ -1,9 +1,11 @@
+from webpent.benchmark.waptlab_campaign_profile import (
+    build_waptlab_validator_plugin_registry,
+)
 from webpent.models.evidence_ledger import EvidenceLedgerEntry
 from webpent.shared.evidence_ledger import merge_evidence_ledger
 from webpent.shared.validator_plugins import (
     PLUGIN_STAGES,
     build_validator_plugin_registry,
-    build_waptlab_validator_plugin_registry,
     plugin_capability_gaps,
 )
 
@@ -100,9 +102,7 @@ def test_evidence_ledger_merge_is_idempotent_by_id_and_content() -> None:
         target="https://fixture.local",
     )
     same_content_different_id = first.model_copy(update={"entry_id": "entry-2"})
-    different = first.model_copy(
-        update={"entry_id": "entry-3", "campaign_key": "image_fetch_ssrf"}
-    )
+    different = first.model_copy(update={"entry_id": "entry-3", "campaign_key": "image_fetch_ssrf"})
 
     merged = merge_evidence_ledger(
         [first.model_dump(mode="json")],
@@ -110,7 +110,6 @@ def test_evidence_ledger_merge_is_idempotent_by_id_and_content() -> None:
     )
 
     assert [item["entry_id"] for item in merged] == ["entry-1", "entry-3"]
-
 
 
 def test_validator_outcome_projects_to_redacted_ledger_entry() -> None:
@@ -163,7 +162,6 @@ def test_offline_fixture_capabilities_are_not_live_validators() -> None:
     assert validator_id_for("xslt_injection") is None
     assert unknown.status == "missing-validator"
     assert unknown.validator_id is None
-
 
 
 def test_evidence_ledger_bounds_long_failure_reason() -> None:

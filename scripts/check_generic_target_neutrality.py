@@ -19,6 +19,7 @@ CORE_ROOTS = (
 )
 FORBIDDEN_PATTERNS = (
     re.compile(r"juice[_ -]?shop", re.IGNORECASE),
+    re.compile(r"waptlab", re.IGNORECASE),
     re.compile(r"/ftp(?:/|$)", re.IGNORECASE),
     re.compile(r"/metrics(?:/|$)", re.IGNORECASE),
     re.compile(r"score-board", re.IGNORECASE),
@@ -29,9 +30,36 @@ FORBIDDEN_PATTERNS = (
     re.compile(r"suspicious_errors", re.IGNORECASE),
 )
 FORBIDDEN_IMPORT_PREFIXES = (
+    "webpent.adapters.",
     "webpent.benchmark.juice_shop",
     "webpent.benchmark.waptlab",
 )
+TARGET_CONDITION_NAMES = frozenset(
+    {"campaign_inventory", "target_family", "profile_id", "target_id"}
+)
+
+
+def _target_specific_conditionals(tree: ast.AST) -> list[str]:
+    findings: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.If, ast.IfExp, ast.While)):
+            continue
+        test_text = ast.unparse(node.test)
+        names = {
+            item.id
+            for item in ast.walk(node.test)
+            if isinstance(item, ast.Name)
+        }
+        if not names.intersection(TARGET_CONDITION_NAMES):
+            continue
+        constants = [
+            item.value.lower()
+            for item in ast.walk(node.test)
+            if isinstance(item, ast.Constant) and isinstance(item.value, str)
+        ]
+        if any("waptlab" in value or "juice" in value for value in constants):
+            findings.append(f"target_specific_conditional:{test_text}")
+    return findings
 
 
 def _source_files() -> list[Path]:
@@ -71,6 +99,10 @@ def main() -> int:
         for imported in _import_names(tree):
             if imported.startswith(FORBIDDEN_IMPORT_PREFIXES):
                 findings.append(f"forbidden_target_import:{relative}:{imported}")
+        findings.extend(
+            f"{relative}:{finding}"
+            for finding in _target_specific_conditionals(tree)
+        )
     if findings:
         print("\n".join(sorted(set(findings))))
         return 1

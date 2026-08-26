@@ -103,9 +103,8 @@ def _annotate_observed_object_surface(item: Mapping[str, Any]) -> dict[str, Any]
     surfaces = list(semantic_values) if isinstance(semantic_values, (list, tuple, set)) else []
     surfaces.extend(("object", "id", "idor"))
     identity = str(record.get("identity") or "").strip().lower()
-    if (
-        identity in {"authenticated", "operator", "owner", "foreign"}
-        or record.get("session_present")
+    if identity in {"authenticated", "operator", "owner", "foreign"} or record.get(
+        "session_present"
     ):
         surfaces.append("identity")
     record["surfaces"] = list(dict.fromkeys(str(value).lower() for value in surfaces if value))[:20]
@@ -166,12 +165,11 @@ def _coverage_attempts_for_state(state: Mapping[str, Any]) -> dict[str, int]:
     for entry in entries[:200]:
         if not isinstance(entry, Mapping):
             continue
-        vulnerability_class = str(
-            entry.get("vulnerability_class")
-            or entry.get("key")
-            or entry.get("class")
-            or ""
-        ).strip().lower()[:120]
+        vulnerability_class = (
+            str(entry.get("vulnerability_class") or entry.get("key") or entry.get("class") or "")
+            .strip()
+            .lower()[:120]
+        )
         if not vulnerability_class:
             continue
         try:
@@ -201,13 +199,15 @@ def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]
     )
     budget = state.get("action_budget")
     if not isinstance(budget, Mapping):
-        return [{
-            "status": "rejected",
-            "reasons": ["budget:missing_budget"],
-            "stages": ["budget"],
-            "sanitized": False,
-            "decision_id": "",
-        }]
+        return [
+            {
+                "status": "rejected",
+                "reasons": ["budget:missing_budget"],
+                "stages": ["budget"],
+                "sanitized": False,
+                "decision_id": "",
+            }
+        ]
     try:
         max_cost = float(budget.get("limit", budget.get("max_cost", 0.0)))
         used_cost = float(
@@ -217,13 +217,15 @@ def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]
             )
         )
     except (TypeError, ValueError):
-        return [{
-            "status": "rejected",
-            "reasons": ["budget:invalid_budget"],
-            "stages": ["budget"],
-            "sanitized": False,
-            "decision_id": "",
-        }]
+        return [
+            {
+                "status": "rejected",
+                "reasons": ["budget:invalid_budget"],
+                "stages": ["budget"],
+                "sanitized": False,
+                "decision_id": "",
+            }
+        ]
     result = LLMReliabilityGate().evaluate(
         advisory,
         ReliabilityPolicy(
@@ -234,13 +236,15 @@ def _llm_reliability_projection(state: Mapping[str, Any]) -> list[dict[str, Any]
             allow_active=str(state.get("scan_mode", "legacy")) == "authorized-active",
         ),
     )
-    return [{
-        "status": result.status,
-        "reasons": list(result.reasons),
-        "stages": list(result.stages),
-        "sanitized": result.sanitized,
-        "decision_id": result.envelope.decision_id if result.envelope else "",
-    }]
+    return [
+        {
+            "status": result.status,
+            "reasons": list(result.reasons),
+            "stages": list(result.stages),
+            "sanitized": result.sanitized,
+            "decision_id": result.envelope.decision_id if result.envelope else "",
+        }
+    ]
 
 
 def _same_origin(candidate: str, root: str) -> bool:
@@ -420,8 +424,7 @@ def _surface_records(state: Mapping[str, Any]) -> list[Mapping[str, Any]]:
                 )
             )
     records.extend(
-        _annotate_observed_object_surface(item)
-        for item in _javascript_surface_records(state)
+        _annotate_observed_object_surface(item) for item in _javascript_surface_records(state)
     )
     records.extend(_hypothesis_surface_records(state))
     return records[:700]
@@ -489,12 +492,12 @@ def _task_from_entry(
         numeric_budget = max(0.1, min(10.0, float(budget)))
     except (TypeError, ValueError):
         numeric_budget = 1.0
-    content_type = str(
-        surface_record.get("content_type") or contract.get("content_type") or ""
-    )[:120]
-    body_schema = str(
-        surface_record.get("body_schema") or contract.get("body_schema") or "none"
-    )[:64]
+    content_type = str(surface_record.get("content_type") or contract.get("content_type") or "")[
+        :120
+    ]
+    body_schema = str(surface_record.get("body_schema") or contract.get("body_schema") or "none")[
+        :64
+    ]
     action_family = str(
         surface_record.get("action_family") or contract.get("action_family") or ""
     ).strip()[:64]
@@ -506,9 +509,7 @@ def _task_from_entry(
         else:
             action_family = "http_read"
     tenant_context = str(
-        surface_record.get("tenant_context")
-        or contract.get("tenant_context")
-        or "unknown"
+        surface_record.get("tenant_context") or contract.get("tenant_context") or "unknown"
     )[:120]
     validator_id = str(entry.get("validator_id") or entry.get("validator") or "")[:120]
     observed_preconditions = entry.get(
@@ -554,8 +555,13 @@ def _task_from_entry(
         cleanup_plan=tuple(str(item)[:160] for item in contract.get("cleanup", [])),
         rollback_plan=tuple(str(item)[:160] for item in contract.get("cleanup", [])),
         method=method,
-        capability=("browser" if action_family == "browser_action" else
-                    "active_workflow" if method == "POST" else "http_read"),
+        capability=(
+            "browser"
+            if action_family == "browser_action"
+            else "active_workflow"
+            if method == "POST"
+            else "http_read"
+        ),
         action_family=action_family,
         risk_tier=(
             ActionRisk.ACTIVE
@@ -563,18 +569,22 @@ def _task_from_entry(
             else ActionRisk.READ_ONLY
         ),
         target_url=(target_url or _target_url(state))[:500],
-        metadata=g02_http_metadata({
-            "campaign_status": str(entry.get("status", "unknown"))[:80],
-            "source": "campaign_plan",
-            "content_type": content_type,
-            "request_body": redact_sensitive(request_body)[0] if request_body is not None else None,
-            "body_evidence_ref": refs[0] if request_body is not None and refs else "",
-            "body_schema": body_schema,
-            "tenant_context": tenant_context,
-            "validator_id": validator_id,
-            "observed_preconditions": [str(item)[:200] for item in observed_preconditions],
-            "blocked_preconditions": [str(item)[:200] for item in blocked_preconditions],
-        }),
+        metadata=g02_http_metadata(
+            {
+                "campaign_status": str(entry.get("status", "unknown"))[:80],
+                "source": "campaign_plan",
+                "content_type": content_type,
+                "request_body": redact_sensitive(request_body)[0]
+                if request_body is not None
+                else None,
+                "body_evidence_ref": refs[0] if request_body is not None and refs else "",
+                "body_schema": body_schema,
+                "tenant_context": tenant_context,
+                "validator_id": validator_id,
+                "observed_preconditions": [str(item)[:200] for item in observed_preconditions],
+                "blocked_preconditions": [str(item)[:200] for item in blocked_preconditions],
+            }
+        ),
         body_schema=body_schema,
         content_type=content_type,
         tenant_context=tenant_context,
@@ -608,9 +618,32 @@ def _campaign_plan_for_state(state: Mapping[str, Any]) -> dict[str, Any]:
     # Rebuild deterministically when passive observations extend the known
     # surface set.  A prior partially matched plan must not hide later routes.
     # The executor remains the authority for any actual request or finding.
+    contract_projection = {
+        str(entry.get("key")): dict(entry["contract"])
+        for entry in entries
+        if isinstance(entry, Mapping)
+        and isinstance(entry.get("key"), str)
+        and isinstance(entry.get("contract"), Mapping)
+    }
+    ledger_projection = state.get("campaign_ledger")
+    projection_entries = (
+        ledger_projection.get("entries") if isinstance(ledger_projection, Mapping) else None
+    )
+    projection_is_valid = isinstance(projection_entries, list) and all(
+        isinstance(item, Mapping)
+        and isinstance(item.get("key"), str)
+        and isinstance(item.get("surfaces"), (list, tuple, set))
+        for item in projection_entries
+    )
     refreshed = build_campaign_plan(
         target_url=_target_url(state),
         campaign_inventory=str(state.get("campaign_inventory") or "generic"),
+        campaign_ledger=(
+            ledger_projection
+            if projection_is_valid and isinstance(ledger_projection, Mapping)
+            else None
+        ),
+        execution_contracts=contract_projection or None,
         surface_observations=surfaces,
         workflow_observations=workflows,
     )
@@ -636,9 +669,7 @@ def build_smart_campaign_tasks(
         key = str(entry.get("key") or "unknown")[:120]
         refs = entry.get("matched_observation_refs") or []
         gaps = [str(item)[:200] for item in entry.get("gaps", [])[:12]]
-        identity_gap = any(
-            gap.startswith("missing-identity-context:") for gap in gaps
-        )
+        identity_gap = any(gap.startswith("missing-identity-context:") for gap in gaps)
         if not refs or identity_gap:
             outcomes.append(
                 {
@@ -675,9 +706,7 @@ def build_smart_campaign_tasks(
                 }
             )
             continue
-        tasks.append(
-            _task_from_entry(entry, state=state, index=index, target_url=target_url)
-        )
+        tasks.append(_task_from_entry(entry, state=state, index=index, target_url=target_url))
 
     cap = max(1, min(10, int(max_tasks)))
     return tasks[:cap], outcomes
@@ -761,19 +790,21 @@ def _information_task_from_record(
         action_family="http_read",
         risk_tier=ActionRisk.READ_ONLY,
         target_url=target_url,
-        metadata=g02_http_metadata({
-            "probe_kind": "research_information",
-            "research_action_id": action_id,
-            "research_action_class": action_class,
-            "research_action_fingerprint": fingerprint,
-            "objective": str(record.get("objective") or "")[:240],
-            "justification": str(record.get("justification") or "")[:240],
-            "human_approved": bool(state.get("auto_approve", False)) or not requires_approval,
-            "observed_preconditions": ["planned_same_origin_information_action"],
-            "proof_evidence": proof_evidence,
-            "evidence_refs": [str(item)[:200] for item in evidence_refs[:8]],
-            "negative_control_payload": negative_control_payload,
-        }),
+        metadata=g02_http_metadata(
+            {
+                "probe_kind": "research_information",
+                "research_action_id": action_id,
+                "research_action_class": action_class,
+                "research_action_fingerprint": fingerprint,
+                "objective": str(record.get("objective") or "")[:240],
+                "justification": str(record.get("justification") or "")[:240],
+                "human_approved": bool(state.get("auto_approve", False)) or not requires_approval,
+                "observed_preconditions": ["planned_same_origin_information_action"],
+                "proof_evidence": proof_evidence,
+                "evidence_refs": [str(item)[:200] for item in evidence_refs[:8]],
+                "negative_control_payload": negative_control_payload,
+            }
+        ),
         tenant_context=str(record.get("tenant_context") or "unknown")[:120],
         validator_id="research_information_observation",
     )
@@ -964,9 +995,7 @@ def _causal_edges_for_state(state: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "target_action_ids": [
                     str(value)[:200]
                     for value in (
-                        item.get("target_action_ids")
-                        or metadata.get("target_action_ids")
-                        or ()
+                        item.get("target_action_ids") or metadata.get("target_action_ids") or ()
                     )
                     if str(value).strip()
                 ][:20],
@@ -999,15 +1028,11 @@ def _causal_relevance(task: CampaignTask, edges: Iterable[Mapping[str, Any]]) ->
     hypothesis_id = str(task.hypothesis_id)
     vulnerability_class = str(task.vulnerability_class)
     for edge in edges:
-        if (
-            task_id in edge.get("target_action_ids", ())
-            or hypothesis_id in edge.get("target_hypothesis_ids", ())
+        if task_id in edge.get("target_action_ids", ()) or hypothesis_id in edge.get(
+            "target_hypothesis_ids", ()
         ):
             return 0.35
-    if any(
-        vulnerability_class in edge.get("target_vulnerability_classes", ())
-        for edge in edges
-    ):
+    if any(vulnerability_class in edge.get("target_vulnerability_classes", ()) for edge in edges):
         return 0.2
     return 0.0
 
@@ -1192,9 +1217,7 @@ def smart_campaigns_node(state: Mapping[str, Any]) -> dict[str, Any]:
             covered_classes=covered_classes,
             attempted_keys=attempted,
             causal_relevance=_causal_relevance(task, causal_edges),
-            coverage_attempts=(
-                coverage_attempts if isinstance(coverage_ledger, Mapping) else None
-            ),
+            coverage_attempts=(coverage_attempts if isinstance(coverage_ledger, Mapping) else None),
         )
         action_record = action.as_dict()
         if isinstance(allocation, Mapping) and allocation:
@@ -1309,7 +1332,7 @@ def _campaign_vuln_class(value: Any) -> VulnClass | None:
     except ValueError:
         pass
     aliases = {
-        "download_idor": VulnClass.IDOR,
+        "idor_object": VulnClass.IDOR,
         "profile_idor": VulnClass.IDOR,
         "object_idor": VulnClass.IDOR,
         "stored_xss": VulnClass.XSS,
@@ -1345,11 +1368,7 @@ def _campaign_hypotheses_from_execution(
         task = by_task_id.get(task_id)
         if task is None or not outcome.get("output_available"):
             continue
-        refs = tuple(
-            str(ref)[:200].strip()
-            for ref in task.source_evidence_ids
-            if str(ref).strip()
-        )
+        refs = tuple(str(ref)[:200].strip() for ref in task.source_evidence_ids if str(ref).strip())
         validator_id = str(task.validator_id or "").strip()[:120]
         target_url = str(task.target_url or "").strip()[:500]
         vuln_class = _campaign_vuln_class(task.vulnerability_class)
@@ -1380,9 +1399,7 @@ def _campaign_hypotheses_from_execution(
             Hypothesis(
                 id=hypothesis_id,
                 target_url=target_url,
-                statement=(
-                    f"Potential {vuln_class.value} at {target_url}"
-                )[:500],
+                statement=(f"Potential {vuln_class.value} at {target_url}")[:500],
                 vuln_class=vuln_class,
                 status=HypothesisStatus.UNEXPLORED,
                 confidence_score=0.45,
@@ -1429,7 +1446,7 @@ def _feedback_items(value: Any) -> list[dict[str, Any]]:
         for key in ("target_ref", "target_url", "reason"):
             value_text = str(item.get(key) or "").strip()
             if value_text:
-                record[key] = value_text[:320 if key != "reason" else 240]
+                record[key] = value_text[: 320 if key != "reason" else 240]
         evidence_refs = item.get("evidence_refs") or item.get("evidence_ref") or ()
         if isinstance(evidence_refs, str):
             evidence_refs = (evidence_refs,)
@@ -1486,13 +1503,13 @@ def _runtime_feedback_projection(
     return feedback
 
 
-
 def _campaign_extensions(runtime: RuntimeContext) -> dict[str, Any] | None:
     """Resolve live target extensions; malformed registrations fail closed."""
     return campaign_extensions_for_registration(runtime.target_adapter_registration)
 
 
 # NOTE: deterministic agent — no LLM reasoning by design (verified 2026-08-21).
+
 
 def build_smart_campaign_handler(
     state: Mapping[str, Any],
@@ -1519,11 +1536,14 @@ def build_smart_campaign_handler(
         content_type = str(task.metadata.get("content_type") or "")[:120]
         if method == "POST" and content_type:
             headers["Content-Type"] = content_type
-        with _declared_target_scope(root), make_safe_httpx_client(
-            timeout=10.0,
-            follow_redirects=False,
-            headers=headers,
-        ) as client:
+        with (
+            _declared_target_scope(root),
+            make_safe_httpx_client(
+                timeout=10.0,
+                follow_redirects=False,
+                headers=headers,
+            ) as client,
+        ):
             if method == "GET":
                 response = client.get(task.target_url)
             elif method == "HEAD":
@@ -1540,9 +1560,7 @@ def build_smart_campaign_handler(
                     file_spec = body.get("file") or body.get("upload")
                     if not isinstance(file_spec, Mapping):
                         raise ValueError("multipart_file_evidence_required")
-                    field_name = str(
-                        file_spec.get("field") or file_spec.get("name") or "file"
-                    )[:80]
+                    field_name = str(file_spec.get("field") or file_spec.get("name") or "file")[:80]
                     filename = str(file_spec.get("filename") or "fixture.bin")[:160]
                     content = file_spec.get("content", b"")
                     if isinstance(content, str):
@@ -1552,14 +1570,12 @@ def build_smart_campaign_handler(
                     fields = body.get("fields") or {}
                     if not isinstance(fields, Mapping):
                         fields = {}
-                    upload_type = str(
-                        file_spec.get("content_type") or "application/octet-stream"
-                    )[:120]
+                    upload_type = str(file_spec.get("content_type") or "application/octet-stream")[
+                        :120
+                    ]
                     response = client.post(
                         task.target_url,
-                        data={
-                            str(key)[:80]: str(value)[:1000] for key, value in fields.items()
-                        },
+                        data={str(key)[:80]: str(value)[:1000] for key, value in fields.items()},
                         files={field_name: (filename, content, upload_type)},
                     )
                 elif (
@@ -1570,9 +1586,7 @@ def build_smart_campaign_handler(
                         raise ValueError("form_body_schema_required")
                     response = client.post(
                         task.target_url,
-                        data={
-                            str(key)[:80]: str(value)[:1000] for key, value in body.items()
-                        },
+                        data={str(key)[:80]: str(value)[:1000] for key, value in body.items()},
                     )
                 elif isinstance(body, Mapping):
                     response = client.post(task.target_url, json=dict(body))
@@ -1619,7 +1633,9 @@ def build_smart_campaign_handler(
             if negative_control is not None:
                 result["negative_control"] = redact_sensitive(negative_control)[0]
         return result
+
     return handler
+
 
 def _execute_campaign_task(
     runtime: RuntimeContext,
@@ -1638,10 +1654,7 @@ def _execute_campaign_task(
     therefore cannot create a second authority or promote execution to finding
     confirmation.  Missing grants, identity, package, or scope fail closed.
     """
-    if (
-        state.get("superagentic_harness_enabled") is not True
-        or runtime.agent_harness is None
-    ):
+    if state.get("superagentic_harness_enabled") is not True or runtime.agent_harness is None:
         return runtime.action_executor.execute(
             task,
             handler,
@@ -1650,9 +1663,7 @@ def _execute_campaign_task(
     package = state.get("target_package")
     package_digest = str(state.get("package_digest") or "").strip()
     if not package_digest and isinstance(package, Mapping):
-        package_digest = str(
-            package.get("package_sha256") or package.get("digest") or ""
-        ).strip()
+        package_digest = str(package.get("package_sha256") or package.get("digest") or "").strip()
     if not package_digest:
         package_digest = hashlib.sha256(
             canonical_json(
@@ -1676,11 +1687,11 @@ def _execute_campaign_task(
             "reason": "harness:invalid_budget",
         }
     capabilities_value = state.get("agent_capabilities")
-    capabilities = tuple(
-        str(item).strip()[:80]
-        for item in capabilities_value
-        if str(item).strip()
-    ) if isinstance(capabilities_value, (list, tuple, set)) else ()
+    capabilities = (
+        tuple(str(item).strip()[:80] for item in capabilities_value if str(item).strip())
+        if isinstance(capabilities_value, (list, tuple, set))
+        else ()
+    )
     authorization = state.get("authorization_context")
     safe_authorization, _ = redact_sensitive(
         dict(authorization) if isinstance(authorization, Mapping) else {}
@@ -1826,9 +1837,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             for index, record in enumerate(planned_information[:3]):
                 if not isinstance(record, Mapping):
                     continue
-                information_task = _information_task_from_record(
-                    record, state=state, index=index
-                )
+                information_task = _information_task_from_record(record, state=state, index=index)
                 if information_task is None:
                     continue
                 ready, missing = resolve_preconditions(
@@ -1877,8 +1886,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             used_budget=float((state.get("action_budget") or {}).get("used_cost", 0.0)),
             target_package=(
                 dict(state.get("target_package") or {})
-                if isinstance(state.get("target_package"), Mapping)
-                and state.get("target_package")
+                if isinstance(state.get("target_package"), Mapping) and state.get("target_package")
                 else None
             ),
         )
@@ -1895,8 +1903,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     research_attempted = {
         str(item.get("fingerprint"))
         for item in research_session.next_best_actions
-        if isinstance(item, Mapping)
-        and str(item.get("outcome") or "") not in {"", "planned"}
+        if isinstance(item, Mapping) and str(item.get("outcome") or "") not in {"", "planned"}
     }
     information_tasks: list[tuple[CampaignTask, Mapping[str, Any]]] = []
     for index, record in enumerate(planned_information[:3]):
@@ -1909,9 +1916,9 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         if information_task is not None:
             information_tasks.append((information_task, record))
             break
-    selected = [
-        task for task in tasks if task.normalized_idempotency_key() not in attempted
-    ][:task_cap]
+    selected = [task for task in tasks if task.normalized_idempotency_key() not in attempted][
+        :task_cap
+    ]
 
     extensions = _campaign_extensions(runtime)
     handler = build_smart_campaign_handler(
@@ -2045,9 +2052,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
     research_session.coverage_gaps = [gap.gap_id for gap in updated_knowledge_gaps]
 
     projection_state = dict(feedback_state)
-    projection_state["knowledge_gaps"] = [
-        gap.as_dict() for gap in updated_knowledge_gaps
-    ]
+    projection_state["knowledge_gaps"] = [gap.as_dict() for gap in updated_knowledge_gaps]
     projection_state["campaign_task_outcomes"] = [
         *(state.get("campaign_task_outcomes") or []),
         *outcomes,
@@ -2060,8 +2065,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
         outcomes=outcomes,
         evidence_added=bool(
             any(
-                isinstance(item, Mapping)
-                and item.get("proof_bundle_sealed") is True
+                isinstance(item, Mapping) and item.get("proof_bundle_sealed") is True
                 for item in outcomes
             )
             or direct_findings
@@ -2113,9 +2117,7 @@ def smart_campaigns_execution_node(state: Mapping[str, Any]) -> dict[str, Any]:
             "same_origin_only": True,
             "proof_required": True,
         },
-        "runtime_capability_gaps": [
-            gap.as_dict() for gap in runtime.current_capability_gaps()
-        ],
+        "runtime_capability_gaps": [gap.as_dict() for gap in runtime.current_capability_gaps()],
         "current_phase": "smart_campaign_execution",
     }
 

@@ -214,9 +214,7 @@ def test_runtime_factory_returns_structured_blocker_for_invalid_context(
     assert result["status"] == "blocked_by_configuration"
     assert result["clean"] is False
     assert "engagement_id_required" in result["reason"]
-    assert context.event_sink.snapshot()[-1].event_type == (
-        "runtime.blocked_by_configuration"
-    )
+    assert context.event_sink.snapshot()[-1].event_type == ("runtime.blocked_by_configuration")
 
 
 def test_runtime_event_sink_redacts_sensitive_payloads() -> None:
@@ -305,20 +303,18 @@ def test_initial_state_defaults_to_target_neutral_inventory_even_on_lab_port(
     assert len(state["campaign_plan"]["entries"]) == 10
 
 
-def test_initial_state_keeps_explicit_waptlab_compatibility_inventory(
+def test_initial_state_fails_closed_for_unregistered_explicit_waptlab_inventory(
     tmp_path: Path,
 ) -> None:
-    state = build_initial_state(
-        Target(url="http://127.0.0.1:8000"),
-        thread_id="engagement:explicit-waptlab",
-        engagement_id="engagement:explicit-waptlab",
-        profile="smart-observe",
-        campaign_inventory="waptlab",
-        action_ledger_path=str(tmp_path / "explicit-waptlab.sqlite3"),
-    )
-
-    assert state["campaign_inventory"] == "waptlab"
-    assert len(state["campaign_plan"]["entries"]) == 20
+    with pytest.raises(ValueError, match="campaign_inventory_requires_explicit_registered_profile"):
+        build_initial_state(
+            Target(url="http://127.0.0.1:8000"),
+            thread_id="engagement:explicit-waptlab",
+            engagement_id="engagement:explicit-waptlab",
+            profile="smart-observe",
+            campaign_inventory="waptlab",
+            action_ledger_path=str(tmp_path / "explicit-waptlab.sqlite3"),
+        )
 
 
 def test_target_aware_runtime_roundtrip_requires_explicit_registry(

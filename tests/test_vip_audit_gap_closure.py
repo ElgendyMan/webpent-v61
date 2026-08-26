@@ -100,8 +100,7 @@ def test_request_smuggling_probe_outcome_requires_proof_bundle(monkeypatch) -> N
         )
         assert len(result["findings"]) == 2
         assert all(
-            finding.confidence_level == "Needs Human Review"
-            for finding in result["findings"]
+            finding.confidence_level == "Needs Human Review" for finding in result["findings"]
         )
         assert all(finding.confidence == "tentative" for finding in result["findings"])
         assert all(
@@ -136,7 +135,9 @@ def test_scan_registry_health_is_operator_visible_and_non_secret() -> None:
 
 
 def test_waptlab_campaign_inventory_is_complete_and_fail_closed() -> None:
-    from webpent.shared.campaigns import build_waptlab_campaign_ledger
+    from webpent.benchmark.waptlab_campaign_profile import (
+        build_waptlab_campaign_ledger,
+    )
 
     ledger = build_waptlab_campaign_ledger()
     assert len(ledger["entries"]) == 20

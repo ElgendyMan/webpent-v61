@@ -5,6 +5,7 @@ IDs, or semantic fingerprints.  A target adapter supplies those facts through
 an explicit immutable registration.  Missing or mismatched registrations fail
 closed; there is no default target and no cross-target fallback.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
@@ -48,18 +49,52 @@ WorkflowExecutor = Callable[[Any, str, int], str | None]
 CampaignTaskFactory = Callable[[Mapping[str, Any], str], Any | None]
 CampaignResponseProjector = Callable[[Mapping[str, Any], Any, str], Any | None]
 CampaignFindingProjector = Callable[[Any, Mapping[str, Any]], Any | None]
-CampaignSurfaceSeedProvider = Callable[
-    [Mapping[str, Any], str], Sequence[str] | None
-]
-CampaignRequestContextProvider = Callable[
-    [Mapping[str, Any], str], Mapping[str, Any] | None
-]
-CampaignPathClassifier = Callable[
-    [Mapping[str, Any], str], tuple[str, str] | None
-]
+CampaignSurfaceSeedProvider = Callable[[Mapping[str, Any], str], Sequence[str] | None]
+CampaignRequestContextProvider = Callable[[Mapping[str, Any], str], Mapping[str, Any] | None]
+CampaignPathClassifier = Callable[[Mapping[str, Any], str], tuple[str, str] | None]
+CampaignLedgerBuilder = Callable[..., Mapping[str, Any]]
+CampaignPluginBuilder = Callable[[Sequence[Mapping[str, Any]]], Sequence[Any]]
+
+
+@dataclass(frozen=True)
+class CampaignProfileSpec:
+    """Explicit target-local campaign profile supplied at runtime.
+
+    Builders are deliberately kept as runtime callbacks.  Only the stable
+    identity is suitable for state/checkpoint projections; callers must never
+    serialize this object or infer one from a URL.
+    """
+
+    profile_id: str
+    source: str
+    version: str
+    ledger_builder: CampaignLedgerBuilder
+    plugin_builder: CampaignPluginBuilder
+    execution_contracts: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    contract_version: str = "campaign-profile.v1"
+
+    def __post_init__(self) -> None:
+        for field_name in ("profile_id", "source", "version", "contract_version"):
+            if not str(getattr(self, field_name) or "").strip():
+                raise ValueError(f"campaign_profile_{field_name}_required")
+        if not callable(self.ledger_builder):
+            raise ValueError("campaign_profile_ledger_builder_not_callable")
+        if not callable(self.plugin_builder):
+            raise ValueError("campaign_profile_plugin_builder_not_callable")
+        if not isinstance(self.execution_contracts, Mapping):
+            raise ValueError("campaign_profile_execution_contracts_invalid")
+
+    def descriptor(self) -> dict[str, str]:
+        return {
+            "profile_id": self.profile_id,
+            "source": self.source,
+            "version": self.version,
+            "contract_version": self.contract_version,
+        }
+
+
 @dataclass(frozen=True)
 class CampaignExtensionSpec:
-
     """Optional live campaign extension supplied by one target adapter.
 
     The shared planner only sees this generic contract.  Implementations may
@@ -74,6 +109,7 @@ class CampaignExtensionSpec:
     surface_seed_provider: CampaignSurfaceSeedProvider | None = None
     request_context_provider: CampaignRequestContextProvider | None = None
     path_classifier: CampaignPathClassifier | None = None
+
     def __post_init__(self) -> None:
 
         if not str(self.extension_id or "").strip():
@@ -270,18 +306,12 @@ class RegisteredTargetAdapter:
             )
         if not isinstance(raw_executors, Mapping):
             raw_executors = {}
-            errors.append(
-                f"target_adapter:{self.target_id}:workflow_executors_invalid"
-            )
+            errors.append(f"target_adapter:{self.target_id}:workflow_executors_invalid")
         executor_keys = tuple(str(key).strip() for key in raw_executors)
         if len(set(executor_keys)) != len(executor_keys):
-            errors.append(
-                f"target_adapter:{self.target_id}:workflow_executor_duplicate"
-            )
+            errors.append(f"target_adapter:{self.target_id}:workflow_executor_duplicate")
         if any(key not in workflow_set for key in executor_keys):
-            errors.append(
-                f"target_adapter:{self.target_id}:workflow_executor_not_allowlisted"
-            )
+            errors.append(f"target_adapter:{self.target_id}:workflow_executor_not_allowlisted")
         for key, executor in raw_executors.items():
             if str(key).strip() in workflow_set and not callable(executor):
                 errors.append(
@@ -291,9 +321,7 @@ class RegisteredTargetAdapter:
         extension_provider = getattr(self.adapter, "campaign_extensions", None)
         if extension_provider is not None:
             if not callable(extension_provider):
-                errors.append(
-                    f"target_adapter:{self.target_id}:campaign_extensions_not_callable"
-                )
+                errors.append(f"target_adapter:{self.target_id}:campaign_extensions_not_callable")
             else:
                 try:
                     raw_extensions = extension_provider()
@@ -312,9 +340,7 @@ class RegisteredTargetAdapter:
             case_ids = tuple(str(item).strip() for item in self.adapter.case_ids())
         except Exception as exc:
             case_ids = ()
-            errors.append(
-                f"target_adapter:{self.target_id}:case_ids_failed:{type(exc).__name__}"
-            )
+            errors.append(f"target_adapter:{self.target_id}:case_ids_failed:{type(exc).__name__}")
         if not case_ids:
             errors.append(f"target_adapter:{self.target_id}:case_ids_required")
         if any(not item for item in case_ids):
@@ -334,9 +360,7 @@ class RegisteredTargetAdapter:
                     )
                     continue
                 if binding is None:
-                    errors.append(
-                        f"target_adapter:{self.target_id}:case_missing:{case_id}"
-                    )
+                    errors.append(f"target_adapter:{self.target_id}:case_missing:{case_id}")
                     continue
                 if binding.case_id != case_id:
                     errors.append(
@@ -354,12 +378,9 @@ class RegisteredTargetAdapter:
                     errors.append(
                         f"target_adapter:{self.target_id}:case_workflow_not_allowlisted:{case_id}"
                     )
-                if (
-                    binding.operation == "typed_search"
-                    and (
-                        binding.workflow_id not in raw_executors
-                        or not callable(raw_executors.get(binding.workflow_id))
-                    )
+                if binding.operation == "typed_search" and (
+                    binding.workflow_id not in raw_executors
+                    or not callable(raw_executors.get(binding.workflow_id))
                 ):
                     errors.append(
                         f"target_adapter:{self.target_id}:typed_workflow_executor_missing:{case_id}"
@@ -370,8 +391,7 @@ class RegisteredTargetAdapter:
                     )
                 if (
                     binding.semantic_profile is not None
-                    and self.adapter.semantic_profiles.contract(binding.semantic_profile)
-                    is None
+                    and self.adapter.semantic_profiles.contract(binding.semantic_profile) is None
                 ):
                     errors.append(
                         f"target_adapter:{self.target_id}:case_profile_not_registered:{case_id}"
@@ -450,6 +470,31 @@ class TargetAdapterRegistry:
         ]
 
 
+def campaign_profile_for_registration(
+    registration: RegisteredTargetAdapter | None,
+) -> CampaignProfileSpec | None:
+    """Resolve a validated explicit profile from one target registration.
+
+    A missing provider means the target has no vertical profile.  A malformed
+    provider is different: it is an execution defect and returns ``None`` so
+    callers cannot silently fall back to another target's matrix.
+    """
+    if not isinstance(registration, RegisteredTargetAdapter):
+        return None
+    if registration.validate():
+        return None
+    provider = getattr(registration.adapter, "campaign_profile", None)
+    if provider is None or not callable(provider):
+        return None
+    try:
+        profile = provider()
+    except Exception:
+        return None
+    if not isinstance(profile, CampaignProfileSpec):
+        return None
+    return profile
+
+
 def campaign_extensions_for_registration(
     registration: RegisteredTargetAdapter | None,
 ) -> dict[str, CampaignExtensionSpec] | None:
@@ -467,10 +512,7 @@ def campaign_extensions_for_registration(
         return None
     if _campaign_extension_errors(raw_extensions, target_id=registration.target_id):
         return None
-    return {
-        str(key).strip(): value
-        for key, value in raw_extensions.items()
-    }
+    return {str(key).strip(): value for key, value in raw_extensions.items()}
 
 
 def campaign_surface_seeds_for_registration(
@@ -589,14 +631,10 @@ def _campaign_extension_errors(
             errors.append(f"target_adapter:{target_id}:campaign_extension_key_invalid")
             continue
         if not isinstance(raw_spec, CampaignExtensionSpec):
-            errors.append(
-                f"target_adapter:{target_id}:campaign_extension_spec_invalid:{key}"
-            )
+            errors.append(f"target_adapter:{target_id}:campaign_extension_spec_invalid:{key}")
             continue
         if raw_spec.extension_id.strip() != key:
-            errors.append(
-                f"target_adapter:{target_id}:campaign_extension_identity_mismatch:{key}"
-            )
+            errors.append(f"target_adapter:{target_id}:campaign_extension_identity_mismatch:{key}")
         callbacks = (
             ("task_factory", raw_spec.task_factory),
             ("response_projector", raw_spec.response_projector),
@@ -633,6 +671,8 @@ def _origin(value: str) -> str:
 
 __all__ = [
     "CampaignExtensionSpec",
+    "CampaignProfileSpec",
+    "campaign_profile_for_registration",
     "CampaignFindingProjector",
     "CampaignPathClassifier",
     "CampaignRequestContextProvider",

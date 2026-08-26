@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from webpent.shared.campaigns import WAPTLAB_CAMPAIGNS
+from webpent.benchmark.waptlab_campaign_profile import WAPTLAB_CAMPAIGNS
 
 
 def _entry_by_key(campaign: dict[str, Any], observed: dict[str, Any]) -> dict[str, Any]:

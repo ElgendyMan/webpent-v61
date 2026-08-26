@@ -140,6 +140,7 @@ SAFE_BOUNDARY_CALLS = frozenset(
 # artifact.  Enforcement below uses the narrower symbol-level map.
 APPROVED_DIRECT_FILES = {
     "src/webpent/shared/http.py": "hardened_httpx_and_dns_boundary",
+    "src/webpent/adapters/generic_web/adapter.py": "generic_adapter_uses_hardened_http_boundary",
     "src/webpent/tools/utils/subprocess.py": "bounded_subprocess_boundary",
     "src/webpent/cli/git_source.py": "bounded_git_source_subprocess",
     "src/webpent/shared/capability_manifest.py": "read_only_tool_capability_probe",
@@ -157,21 +158,18 @@ APPROVED_DIRECT_FILES = {
 # Structured approvals are intentionally symbol-scoped.  A file-level entry
 # alone is never enough to make a new raw transport safe.
 APPROVED_RAW_SYMBOLS_BY_FILE: dict[str, frozenset[str]] = {
+    "src/webpent/adapters/generic_web/adapter.py": frozenset({"httpx"}),
     "src/webpent/shared/http.py": frozenset(
         {"socket", "httpx", "socket.getaddrinfo", "httpx.Client", "httpx.AsyncClient"}
     ),
     "src/webpent/tools/utils/subprocess.py": frozenset({"subprocess", "subprocess.Popen"}),
     "src/webpent/cli/git_source.py": frozenset({"subprocess", "subprocess.run"}),
     "src/webpent/shared/capability_manifest.py": frozenset({"subprocess", "subprocess.run"}),
-    "src/webpent/shared/preflight.py": frozenset(
-        {"playwright"}
-    ),
+    "src/webpent/shared/preflight.py": frozenset({"playwright"}),
     "src/webpent/shared/playwright_adapter.py": frozenset(
         {"playwright.sync_api.sync_playwright", "playwright.chromium.launch"}
     ),
-    "src/webpent/shared/oob_provider.py": frozenset(
-        {"subprocess", "subprocess.Popen"}
-    ),
+    "src/webpent/shared/oob_provider.py": frozenset({"subprocess", "subprocess.Popen"}),
     "src/webpent/agents/authentication/agent.py": frozenset(
         {"playwright.sync_api.sync_playwright", "sync_playwright"}
     ),
@@ -373,14 +371,12 @@ def classify_symbol(symbol: str, kind: str) -> str:
         return "dynamic_resolution"
     if kind == "import" and symbol.startswith("playwright"):
         return "browser_implementation"
-    if (
-        symbol in {"httpx.Client", "make_safe_httpx_client"}
-        or symbol.endswith(".make_safe_httpx_client")
+    if symbol in {"httpx.Client", "make_safe_httpx_client"} or symbol.endswith(
+        ".make_safe_httpx_client"
     ):
         return "http_sync"
-    if (
-        symbol in {"httpx.AsyncClient", "make_safe_httpx_async_client"}
-        or symbol.endswith(".make_safe_httpx_async_client")
+    if symbol in {"httpx.AsyncClient", "make_safe_httpx_async_client"} or symbol.endswith(
+        ".make_safe_httpx_async_client"
     ):
         return "http_async"
     if symbol in {"sync_playwright", "async_playwright"} or symbol.startswith("playwright"):
@@ -489,10 +485,9 @@ def _is_transport_call(symbol: str) -> bool:
         and symbol.rsplit(".", 1)[-1] in _DIRECT_HTTP_METHODS
     ):
         return True
-    if (
-        symbol.startswith(("http.client.HTTPConnection.", "http.client.HTTPSConnection."))
-        and symbol.rsplit(".", 1)[-1] in {"request", "connect", "send"}
-    ):
+    if symbol.startswith(
+        ("http.client.HTTPConnection.", "http.client.HTTPSConnection.")
+    ) and symbol.rsplit(".", 1)[-1] in {"request", "connect", "send"}:
         return True
     if symbol.startswith("urllib3.") and symbol.rsplit(".", 1)[-1] in _DIRECT_HTTP_METHODS:
         return True
@@ -525,8 +520,7 @@ def _indirect_transport_signal(symbol: str) -> bool:
         "os",
     )
     return symbol.startswith("getattr(sys.modules") or any(
-        root in symbol
-        for root in transport_roots
+        root in symbol for root in transport_roots
     )
 
 
@@ -604,8 +598,10 @@ def scan_direct_io(root: Path) -> list[dict[str, Any]]:
                 for index, name in enumerate(_import_names(node)):
                     if _is_direct_import(name):
                         alias = node.names[index]
-                        source = alias.name if isinstance(node, ast.Import) else (
-                            f"{node.module}.{alias.name}" if node.module else alias.name
+                        source = (
+                            alias.name
+                            if isinstance(node, ast.Import)
+                            else (f"{node.module}.{alias.name}" if node.module else alias.name)
                         )
                         records.append(
                             _record(
@@ -702,14 +698,10 @@ def expired_approval_errors(today: date | None = None) -> list[str]:
             try:
                 expiry = date.fromisoformat(raw_expiry)
             except ValueError:
-                errors.append(
-                    f"{collection_name} {location}: invalid expires_at={raw_expiry!r}"
-                )
+                errors.append(f"{collection_name} {location}: invalid expires_at={raw_expiry!r}")
                 continue
             if expiry <= effective_today:
-                errors.append(
-                    f"{collection_name} {location}: expired expires_at={raw_expiry}"
-                )
+                errors.append(f"{collection_name} {location}: expired expires_at={raw_expiry}")
     return errors
 
 
@@ -747,10 +739,9 @@ def inventory_contract_errors(
     for record in observed_records:
         if record.get("transport") == "unclassified":
             errors.append(f"unclassified transport: {record.get('file')}:{record.get('line')}")
-        if (
-            record.get("transport_family") not in families
-            and record.get("transport_family") not in {"unknown", "non_transport"}
-        ):
+        if record.get("transport_family") not in families and record.get(
+            "transport_family"
+        ) not in {"unknown", "non_transport"}:
             errors.append(
                 f"unknown transport family {record.get('transport_family')!r}: "
                 f"{record.get('file')}:{record.get('line')}"

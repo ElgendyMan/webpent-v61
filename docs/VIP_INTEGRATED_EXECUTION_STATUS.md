@@ -2,9 +2,9 @@
 
 ## الحكم التنفيذي
 
-تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية حتى Phase 11، مع الحفاظ على الفصل الصارم بين **engineering maturity** و**VIP qualification**. الحكم الحالي يظل **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
+تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الحالي هو **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
-آخر commit محلي نظيف قبل هذه الإضافات هو `7070aa7` (`Harden typed browser proof and offline local scanning`)؛ تغييرات Phases 2–11 الحالية additive وتخضع للمراجعة النهائية قبل commit جديد. `origin/master` ما زال أقدم من ذلك بسبب تعذر push الناتج عن GitHub token غير صالح. runtime artifacts والـcredentials والـcookies تظل خارج Git، وسيُعاد توليد release manifest بعد اكتمال metadata reconciliation.
+آخر baseline منشور معروف هو `f62de77`؛ تغييرات Generic migration الحالية additive ومحلية وتحتاج commit/push بعد المراجعة النهائية. لم تُنفذ أي عملية live target في هذه الدورة، ولا توجد حاجة لتغيير frozen P10 artifacts. runtime artifacts والـcredentials والـcookies تظل خارج Git.
 
 ## ما تم تنفيذه
 
@@ -30,16 +30,19 @@
 | Specialist Planning | bounded deterministic CandidateAction/ResearchTask proposals فقط، مع ActionAuthority requirement | specialist planner tests | working validation before final docs commit |
 | VIP v2 Benchmark | manifest/scenarios وthree-independent-run measurement من supplied results فقط؛ لا synthetic/live claims | vip_v2 benchmark tests | working validation before final docs commit |
 | Production Qualification | fail-closed health/recovery/idempotency/secrets/TLS/logging/retention projection؛ لا تشغيل stack تلقائي | production qualification وrecovery contract tests | working validation before final docs commit |
+| Generic Target Boundary | نقل WAPTLab campaign/proof/execution contracts إلى `benchmark/waptlab_campaign_profile.py` وربطها عبر `CampaignProfileSpec`؛ لا provider implicit في shared/state | neutrality guard، provider fail-closed tests، planner/bootstrap regression | working validation before final docs commit |
+| Versioned Generic Contracts | capability/case/result lifecycle contracts، canonical workflow IDs وlegacy aliases، proof-reference invariant للحالات confirmed/probable | generic contract, workflow migration, and lifecycle tests | working validation before final docs commit |
+| GenericWebAdapter MVP | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، structured redacted observations، fake transport injection | GenericWebAdapter discovery and registry-swap tests | working validation before final docs commit |
 
 ## بوابات الجودة
 
-تم اجتياز full pytest serial على **253 ملف اختبار**؛ **252 ملفًا خرجت بنجاح**، والملف الوحيد غير الصفري هو `tests/test_target_package_v2_hardening.py` بسبب optional bbscout source غير الموجود، وقد احتوى على skip فقط. كما نجحت Ruff وcompileall و`git diff --check`، وdirect-I/O inventory بعدد **319 سجلًا**، وG-02 precommit/runtime، وtracked-secret scan. اختبارات الإضافات المركزة نجحت، وVIP v2 يرفض أقل من ثلاث نتائج مستقلة أو النتائج غير المتطابقة؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
+اجتاز full pytest serial في دورة Generic migration **1883 اختبارًا**. كما نجحت Ruff وcompileall و`git diff --check`، وإعادة توليد direct-I/O inventory، وG-02 precommit/runtime، وtracked-secret scan، وneutrality guard الموسع. اختبارات GenericWebAdapter استخدمت fake transports محلية فقط، واختبارات target swap وprofile provider وproof lifecycle نجحت؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
 
-التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. لا توجد تغييرات على WAPTLab source.
+التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. بيانات WAPTLab انتقلت إلى profile target-local؛ لا توجد WAPTLab constants أو imports في shared/state generic core.
 
 ## حدود qualification الحي
 
-لم تُعاد جولة WAPTLab أو Juice Shop في Phase 11/12 لأن تغييرات هذه الدورة كانت في benchmark metrics والتوثيق، وليست في live proof generation أو target coverage. تشغيل live target بلا أثر وظيفي جديد كان سيضيف runtime noise ولا يبرر تغيير الحكم. آخر qualification smoke حي موثق من commit `1882b42` سجّل `target_reachable=true` و`live_target_executed=true` و4 candidate rows، لكن `strict_confirmed=0` و`promoted ProofBundles=0`؛ لذلك يظل verdict `NOT_QUALIFIED`.
+لم تُعاد جولة WAPTLab أو Juice Shop في دورة Generic migration. تم فحص الجاهزية بشكل سلبي فقط؛ لا يوجد authorized loopback listener متاح لتشغيل bounded live validation، والحوكمة المجمدة لا تحتوي full-result approval أو metrics صالحة. لذلك لم يُنفذ أي target حي، ولا يتغير verdict: `P10 = NOT_QUALIFIED` و`P9/VIP = NOT_QUALIFIED`.
 
 أي تأهل مستقبلي يحتاج، في تشغيل محلي مصرح ومضبوط، target-backed causal signal مستقلًا عن candidate materialization، negative control مستقلًا، sealed/replayable ProofBundle، وreplay ناجحًا عبر الجولات المطلوبة. لا يرفع benchmark أو report lifecycle أو scorecard هذه الشروط.
 
@@ -49,4 +52,4 @@
 
 ## ما لم يُدّعَ
 
-لم تُدّعَ تغطية 15 أو 18 ثغرة في جولة واحدة، ولم تُحوّل candidates إلى confirmed لرفع العدد، ولم تُعدّل WAPTLab، ولم تُستخدم أهداف خارجية أو CAPTCHA bypass أو provider live I/O. اكتمال المسارات الهندسية لا يساوي كون المنتج VIP Smart Autonomous Bug Hunter مؤهلًا تشغيليًا.
+لم تُدّعَ تغطية 15 أو 18 ثغرة في جولة واحدة، ولم تُحوّل candidates إلى confirmed لرفع العدد، ولم تُعدّل frozen P10 artifacts، ولم تُستخدم أهداف خارجية أو CAPTCHA bypass أو provider live I/O. GenericWebAdapter وCampaignProfileSpec والتحقق من target swap مثبتة offline فقط. اكتمال المسارات الهندسية لا يساوي كون المنتج VIP Smart Autonomous Bug Hunter مؤهلًا تشغيليًا.

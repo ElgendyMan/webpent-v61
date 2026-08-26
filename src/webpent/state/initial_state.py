@@ -29,13 +29,14 @@ from webpent.shared.bbscout_bridge import (
     load_bbscout_package,
 )
 from webpent.shared.campaign_planner import build_campaign_plan
-from webpent.shared.campaigns import (
-    build_generic_campaign_ledger,
-    build_waptlab_campaign_ledger,
-)
+from webpent.shared.campaigns import build_generic_campaign_ledger
 from webpent.shared.capability_manifest import build_capability_manifest
 from webpent.shared.runtime import RuntimeFactory
-from webpent.shared.target_adapters import TargetAdapterRegistry
+from webpent.shared.target_adapters import (
+    CampaignProfileSpec,
+    TargetAdapterRegistry,
+    campaign_profile_for_registration,
+)
 from webpent.shared.target_package_context import (
     TargetPackageContext,
     admit_target_package,
@@ -112,6 +113,7 @@ def build_initial_state(
     target_package_context: TargetPackageContext | None = None,
     target_package_binding: Mapping[str, Any] | None = None,
     target_adapter_registry: TargetAdapterRegistry | None = None,
+    campaign_profile: CampaignProfileSpec | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -170,13 +172,9 @@ def build_initial_state(
                 raise ValueError(f"target_package_binding_{key}_mismatch")
         if binding_required and not str(binding_projection.get("lease_id") or ""):
             raise ValueError("target_package_binding_lease_missing")
-    requested_inventory = str(campaign_inventory or "auto").strip().lower()
-    if requested_inventory in {"auto", "generic"}:
-        resolved_inventory = "generic"
-    elif requested_inventory == "waptlab":
-        resolved_inventory = "waptlab"
-    else:
-        raise ValueError("campaign_inventory must be one of: waptlab, generic, auto")
+    requested_inventory = str(campaign_inventory or "auto").strip().lower() or "auto"
+    if campaign_profile is not None and not isinstance(campaign_profile, CampaignProfileSpec):
+        raise ValueError("campaign_profile_invalid")
     resolved_scan_mode = settings.scan_mode
     if profile is not None:
         resolved_profile, resolved_scan_mode = resolve_scan_profile(profile)
@@ -191,9 +189,7 @@ def build_initial_state(
             ScanMode.AUTHORIZED_ACTIVE: ScanProfile.AUTHORIZED_ACTIVE,
         }[resolved_scan_mode]
     vip_proof_required = profile_requires_proof_bundle(resolved_profile)
-    deployment_proof_required = deployment_requires_proof_bundle(
-        settings.environment_profile
-    )
+    deployment_proof_required = deployment_requires_proof_bundle(settings.environment_profile)
     proof_required = vip_proof_required or deployment_proof_required
     capability_manifest = build_capability_manifest(settings)
     resolved_campaign_id = (
@@ -216,12 +212,8 @@ def build_initial_state(
     if target_adapter_registration is not None:
         try:
             semantic_profile_registry = target_adapter_registration.adapter.semantic_profiles
-            workflow_allowlist = tuple(
-                target_adapter_registration.adapter.workflow_ids()
-            )
-            workflow_executors = dict(
-                target_adapter_registration.adapter.workflow_executors()
-            )
+            workflow_allowlist = tuple(target_adapter_registration.adapter.workflow_ids())
+            workflow_executors = dict(target_adapter_registration.adapter.workflow_executors())
         except Exception:
             # A registration was validated during lookup, but its injected
             # provider may still be mutable or fail at bootstrap. Keep the
@@ -231,9 +223,7 @@ def build_initial_state(
             workflow_allowlist = ()
             workflow_executors = {}
             target_adapter_workflow_configured = False
-    browser_capability = (
-        (capability_manifest.get("capabilities") or {}).get("browser") or {}
-    )
+    browser_capability = (capability_manifest.get("capabilities") or {}).get("browser") or {}
     browser_preflight_ok = browser_capability.get("available") is True
     if (
         bool(enable_control_plane)
@@ -272,6 +262,20 @@ def build_initial_state(
             # cannot be constructed remains unavailable and is visible through
             # the runtime capability gap rather than becoming a raw handler.
             control_plane_browser_adapter = None
+    registration_profile = campaign_profile_for_registration(target_adapter_registration)
+    if requested_inventory in {"auto", "generic"}:
+        resolved_campaign_profile = campaign_profile
+        resolved_inventory = (
+            campaign_profile.profile_id if campaign_profile is not None else "generic"
+        )
+    else:
+        resolved_campaign_profile = campaign_profile or registration_profile
+        if resolved_campaign_profile is None:
+            raise ValueError("campaign_inventory_requires_explicit_registered_profile")
+        if resolved_campaign_profile.profile_id.strip().lower() != requested_inventory:
+            raise ValueError("campaign_inventory_profile_mismatch")
+        resolved_inventory = resolved_campaign_profile.profile_id
+
     runtime_context = RuntimeFactory.create(
         engagement_id=resolved_engagement_id or "",
         campaign_id=resolved_campaign_id,
@@ -283,9 +287,7 @@ def build_initial_state(
         control_plane_browser_adapter=control_plane_browser_adapter,
         raw_scope_entries=list(raw_scope_entries or []),
         target_package=(
-            admitted_package_context.as_state()
-            if admitted_package_context is not None
-            else None
+            admitted_package_context.as_state() if admitted_package_context is not None else None
         ),
         target_adapter_registry=target_adapter_registry,
     )
@@ -298,19 +300,13 @@ def build_initial_state(
         else _profile_enables_autonomous_controller(resolved_profile)
     )
     normalized_payloads = [
-        str(item).strip()
-        for item in list(custom_payloads or [])
-        if str(item).strip()
+        str(item).strip() for item in list(custom_payloads or []) if str(item).strip()
     ]
     normalized_formats = [
-        str(item).strip().lower()
-        for item in list(report_formats or [])
-        if str(item).strip()
+        str(item).strip().lower() for item in list(report_formats or []) if str(item).strip()
     ]
     normalized_origins = [
-        str(item).strip()
-        for item in list(additional_target_origins or [])
-        if str(item).strip()
+        str(item).strip() for item in list(additional_target_origins or []) if str(item).strip()
     ]
 
     return {
@@ -357,9 +353,7 @@ def build_initial_state(
         "target_package_blocked_tasks": [],
         "target_package_binding": binding_projection,
         "bbscout_advisory": (
-            bbscout_admission.as_state()["bbscout"]
-            if bbscout_admission is not None
-            else {}
+            bbscout_admission.as_state()["bbscout"] if bbscout_admission is not None else {}
         ),
         "additional_target_origins": normalized_origins,
         "messages": [],
@@ -462,12 +456,8 @@ def build_initial_state(
             "fail_closed": True,
             "auto_approve_requested": bool(auto_approve),
             "smart_auto_approve": bool(settings.smart_auto_approve),
-            "require_idempotency": bool(
-                settings.smart_require_idempotency or proof_required
-            ),
-            "require_proof_bundle": bool(
-                settings.smart_require_proof_bundle or proof_required
-            ),
+            "require_idempotency": bool(settings.smart_require_idempotency or proof_required),
+            "require_proof_bundle": bool(settings.smart_require_proof_bundle or proof_required),
         },
         "action_ledger_path": action_ledger_path,
         "action_budget": {
@@ -513,22 +503,26 @@ def build_initial_state(
         "campaign_inventory": resolved_inventory,
         "campaign_id": resolved_campaign_id,
         "runtime_context": runtime_context,
-        "runtime_capability_gaps": [
-            gap.as_dict() for gap in runtime_context.capability_gaps
-        ],
+        "runtime_capability_gaps": [gap.as_dict() for gap in runtime_context.capability_gaps],
         "control_plane_descriptor": (
             runtime_context.control_plane_runtime.descriptor()
             if runtime_context.control_plane_runtime is not None
             else None
         ),
         "campaign_ledger": (
-            build_generic_campaign_ledger()
-            if resolved_inventory == "generic"
-            else build_waptlab_campaign_ledger()
+            resolved_campaign_profile.ledger_builder()
+            if resolved_campaign_profile is not None
+            else build_generic_campaign_ledger()
+        ),
+        "campaign_profile": (
+            resolved_campaign_profile.descriptor()
+            if resolved_campaign_profile is not None
+            else None
         ),
         "campaign_plan": build_campaign_plan(
             target_url=target_url,
             campaign_inventory=resolved_inventory,
+            campaign_profile=resolved_campaign_profile,
         ),
         "evidence_ledger": [],
         "positive_evidence_ledger": [],
@@ -556,11 +550,7 @@ def build_initial_state(
         },
         "rabbit_hole_loop_back_count": 0,
         **({"thread_id": thread_id} if thread_id is not None else {}),
-        **(
-            {"owner_username": resolved_owner_username}
-            if resolved_owner_username
-            else {}
-        ),
+        **({"owner_username": resolved_owner_username} if resolved_owner_username else {}),
         **({"client_id": resolved_client_id} if resolved_client_id else {}),
         **({"engagement_id": resolved_engagement_id} if resolved_engagement_id else {}),
     }

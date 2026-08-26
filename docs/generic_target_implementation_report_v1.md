@@ -9,19 +9,22 @@ This report records the implementation work completed against the Generic Target
 | Plan area | Result | Evidence basis |
 |---|---|---|
 | Baseline and architecture inventory | Completed | `docs/generic_target_architecture_inventory_v1.md` and repository boundary scan |
-| Generic-core leakage prevention | Completed | `scripts/check_generic_target_neutrality.py`; scanner passed with 221 files and 5 roots |
-| Workflow canonicalization | Completed | `src/webpent/shared/workflow_contracts.py`, Juice Shop compatibility mapping, approved-case compatibility tests |
+| Generic-core leakage prevention | Completed | `scripts/check_generic_target_neutrality.py`; scanner passed with 223 files and 5 roots, including forbidden target literals/imports and target-specific conditional checks |
+| Workflow canonicalization | Completed | Versioned `src/webpent/shared/workflow_contracts.py` with canonical generic IDs and explicit legacy aliases; compatibility tests pass |
 | Manifest and live capability gate | Completed | `TargetManifest`, registration validation, `require_live_for_origin`, bootstrap fail-closed behavior, manifest tests |
+| Generic capability/case contracts | Completed offline | `src/webpent/shared/generic_web_contracts.py` and lifecycle helpers define versioned capability requirements, bounded case metadata, fail-closed result statuses, and proof-reference invariants |
+| Generic web discovery | Completed offline | `src/webpent/adapters/generic_web/adapter.py` uses bounded same-origin read-only discovery through the safe HTTP boundary and injected fake transports |
 | Juice Shop isolation | Completed | Executable implementation under `src/webpent/adapters/juice_shop/` and `src/webpent/profiles/juice_shop/`; legacy benchmark paths retained as compatibility shims |
 | Generic proof and redaction hardening | Completed | Clean projections before bundle construction, expanded body/DOM/screenshot redaction, proof and replay regression tests |
-| Second-target portability | Completed | `src/webpent/benchmark/generic_test_target_adapter.py` and `src/webpent/adapters/mock_target/adapter.py`; target-swap and cross-origin isolation tests |
+| Explicit campaign profile providers | Completed | `CampaignProfileSpec` resolves only from an explicit registered adapter; WAPTLab data and execution contracts are target-local and `auto` never selects them |
+| Second-target portability | Completed offline | `src/webpent/benchmark/generic_test_target_adapter.py`, `src/webpent/adapters/mock_target/adapter.py`, and GenericWebAdapter registry-swap tests cover distinct target shapes and origin isolation |
 | CI and safety guardrails | Completed | Ruff, compileall, direct-I/O inventory, review-packet checker, G-02 runtime/precommit checks, secret scan, and neutrality guard |
 | Bounded local validation | Completed for offline fixtures | Contract, mock, proof, replay, redaction, and fail-closed tests passed without network I/O |
 | Authorized live benchmark execution | Not run | No loopback target listener was present; frozen P10 governance still has no full approval and null metrics |
 
 ## Quality gates
 
-The final verification run passed with **1876 tests**. Ruff, Python compilation, generic-target neutrality, direct-I/O inventory, target-adapter review packet validation, G-02 runtime validation, G-02 precommit validation, tracked-secret scanning, and staged diff checks also passed. The run did not contact an external or live target.
+The final verification run passed with **1883 tests**. Ruff, Python compilation, generic-target neutrality, direct-I/O inventory, target-adapter review packet validation, G-02 runtime validation, G-02 precommit validation, tracked-secret scanning, and `git diff --check` also passed. The run did not contact an external or live target.
 
 ## Important safety and governance result
 
@@ -31,7 +34,7 @@ The live gate remains fail-closed until an authorized local target is actually a
 
 ## Delivery boundary
 
-The changes are generic at the shared-contract and runtime-enforcement layers. Juice Shop literals remain confined to the explicit Juice Shop adapter/profile and compatibility shims. The mock target proves that registration, manifest validation, origin isolation, unsupported-operation rejection, blocked preconditions, and generic proof contracts do not depend on Juice Shop.
+The changes are generic at the shared-contract, discovery, lifecycle, and runtime-enforcement layers. Juice Shop and WAPTLab literals remain confined to explicit adapter/profile or benchmark boundaries. The mock target and two fake-transport GenericWebAdapter shapes prove that registration, manifest/profile validation, origin isolation, bounded read-only discovery, unsupported-operation rejection, blocked preconditions, and generic proof contracts do not depend on one target.
 
 ## Remaining qualification work
 

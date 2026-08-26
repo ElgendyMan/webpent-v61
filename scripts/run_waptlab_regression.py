@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from webpent.shared.campaigns import build_waptlab_campaign_ledger
+from webpent.benchmark.waptlab_campaign_profile import build_waptlab_campaign_ledger
 from webpent.shared.proof_engine import build_proof_plan, classify_probe_gaps
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
