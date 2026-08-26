@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1110,
+  "file_count": 1111,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -388,6 +388,7 @@
     "reports/improvements/JUICE-SHOP-UNSCORED-DECISIONS-COMPARISON-v1.md": "43a0e4c6e6cda19dc771f1cd322d406b66ca6f32720329ae6e03d7d6cb4319e2",
     "reports/improvements/MOCK-FN-001_comparison.md": "4bdab040c1e9947dffef1119625078911a3eff0336d14be2627ce90ff7963206",
     "reports/improvements/MOCK-FN-001_proposal.md": "6d078efc892f284c9157b09f3d3d8087b69241c33bc09bfefdcf0329bf0efd91",
+    "reports/reviews/JUICE-SHOP-P10-CANDIDATE-01-decision-v1.md": "64bdc4aa43d4e97148ebde99e6f84e930b8884524a355c1576ce003b0f9f5110",
     "reports/reviews/JUICE-SHOP-governance-decision-v1.md": "8476662ebd4c44f8348ac22288747a4abc2b6ca5f4a036f25a63297c3823fa15",
     "reports/reviews/MOCK-FN-001_final_independent_review.md": "77e2265d3ee3276e7152118f36436a51ef79488cfcb9134be593b227acf648e7",
     "requirements-audit-v63.txt": "d5e538c184295875ec332a2ed0446a72897b728adfd62dcccd4d72f670f2415d",
@@ -1122,9 +1123,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-26T21:54:55.721232+00:00",
-  "git_commit": "b8ef1ba9a039fcc0ac90f9d003250ee260d32c6b",
-  "git_tree": "1c58202832dacb41194d054411cb6e603f0e6de6",
+  "generated_at": "2026-08-26T22:00:06.244278+00:00",
+  "git_commit": "783713797e7da14686335c8d94a0fdbbd3b3729a",
+  "git_tree": "3c0132d76cacb4ca4893e0986424ca5d65d9ab49",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
