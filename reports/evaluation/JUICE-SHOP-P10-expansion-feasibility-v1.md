@@ -2,7 +2,7 @@
 
 ## القرار الحالي
 
-تم تنفيذ مرحلة feasibility على نسخة Juice Shop المحلية `20.2.0`، source commit `1618a611b173b4bf114028e6e02549950606e29d`، وعلى WebPent revision `e5171ed55b9bc4130f318b0d922184d672bc0e81`. التنفيذ كان source inspection وbounded read-only triage فقط. لم يتم تشغيل Official P10 Runs، ولم يتم تعديل frozen ground truth.
+تم تنفيذ مرحلة feasibility على نسخة Juice Shop المحلية `20.2.0`، source commit `1618a611b173b4bf114028e6e02549950606e29d`، وعلى WebPent revision `31d0707dc896697a7bd17a83ce1e0114d4a3b24d`. التنفيذ كان source inspection وbounded read-only triage فقط. لم يتم تشغيل Official P10 Runs، ولم يتم تعديل frozen ground truth.
 
 المجموعة oracle-approved تظل 3 cases و3 classes. المطلوب 10 cases و6 classes، ولذلك gap الحسابي هو 7 cases و3 classes. هذا gap لا يتحول إلى approval بمجرد وجود challenge metadata أو route أو source vulnerability snippet.
 

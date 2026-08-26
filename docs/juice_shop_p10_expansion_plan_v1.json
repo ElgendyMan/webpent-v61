@@ -3,8 +3,8 @@
   "status": "draft_pending_independent_review",
   "purpose": "Close the 10-case/6-class gap only through target-backed causal contracts; this plan is not an approval record and does not modify frozen ground truth.",
   "source_revisions": {
-    "webpent_commit": "e5171ed55b9bc4130f318b0d922184d672bc0e81",
-    "webpent_tree": "593c98f74ac8e8c60e9a9338997a45579fda2ac7",
+    "webpent_commit": "31d0707dc896697a7bd17a83ce1e0114d4a3b24d",
+    "webpent_tree": "9f65039c90c19353f94b8b68bca95bfd5f44c6d0",
     "juice_shop_source_commit": "1618a611b173b4bf114028e6e02549950606e29d",
     "juice_shop_version": "20.2.0"
   },
