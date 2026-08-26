@@ -52,8 +52,13 @@ This is a **proposed** set pending independent governance signoff. It contains 3
 | Ground-truth document hash | `sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52` |
 | Source snapshot file hash | `sha256:ecb29540165f4f33462d69f213b79cb14e72e8ec0ff2477466d0e3acd12e3381` |
 | Source snapshot ID | `gt-snapshot-20260826-02` |
+| Loopback runtime manifest hash | `sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524` |
 
 The source snapshot is independent of WebPent run output and records source/catalog consistency only. It is not a vulnerability verdict approval. The live catalog body digest is retained as metadata only and is not substituted for the snapshot-file hash.
+
+## Loopback runtime verification
+
+Juice Shop was restarted through a local preload shim without modifying the Juice Shop source. The observed listener is exactly `127.0.0.1:3000`; wildcard and external-interface listeners were absent. A bounded readiness `GET` succeeded, no credentials or raw response body were retained, and `OTEL_EXPORTER_OTLP_ENDPOINT` was absent while traces, metrics, and logs exporters were disabled. These runtime facts are recorded in `docs/juice_shop_loopback_runtime_manifest_v1.json` and do not authorize Official P10 Runs.
 
 ## Run gate
 

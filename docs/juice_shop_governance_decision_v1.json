@@ -81,6 +81,7 @@
     "ground_truth_document_sha256": "sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52",
     "ground_truth_source_snapshot_id": "gt-snapshot-20260826-02",
     "ground_truth_source_snapshot_sha256": "sha256:ecb29540165f4f33462d69f213b79cb14e72e8ec0ff2477466d0e3acd12e3381",
+    "loopback_runtime_manifest_sha256": "sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524",
     "hash_interpretation": "The mapping/oracle values are canonical hashes frozen by prior review records; the document and source snapshot hashes identify the exact local governance inputs. The source snapshot file hash is distinct from the live catalog body hash and does not constitute vulnerability verdict approval."
   },
   "run_gate": {
@@ -102,6 +103,10 @@
   },
   "safety": {
     "allowed_origin": "http://127.0.0.1:3000",
+    "binding": "127.0.0.1:3000",
+    "wildcard_listener_absent": true,
+    "external_interface_listener_absent": true,
+    "runtime_manifest": "docs/juice_shop_loopback_runtime_manifest_v1.json",
     "allowed_methods": ["GET"],
     "credentials_used": false,
     "external_destinations": false,
