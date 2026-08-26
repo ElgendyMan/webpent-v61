@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1103,
+  "file_count": 1105,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -266,6 +266,7 @@
     "docs/python_environment_inventory.json": "a10fbf1984faf39783d944142c2c9ab339801e212cf086d393bb7c15c14e8722",
     "docs/qualification/superagentic_wiring_audit.json": "3a55213343af1e8b7de934fe8a83dfbf6cbec7b15be715ea83c4ab01e51bbeb5",
     "docs/requirements-audit-release.txt": "b80133a4c2b4238c221b38a5717a162fd1c08e70661062004bc99d835c2dc6db",
+    "docs/runbook_execution_status_v1.json": "ecca3db96b6ff97ef33a0e4bd8997c1687c0ab55206859e552e4585d9be90278",
     "docs/runtime_logic_review_20260821.md": "d2406551f96db64b44ae922f8f906d572df18f9d77ad0b72cc5136f9767ccc8d",
     "docs/sbom.cdx.json": "8620634befd244e28df85d4e44047fda0d0c9842136f8e9cd6ee61473fb67e35",
     "docs/smart_autonomous_bug_hunter_backlog.md": "f7248fd2c434a2be9f3afa92392e5be8e5466ca676343d42e5bd9cf3e13bde2a",
@@ -374,6 +375,7 @@
     "pip-audit-v63-locked.json": "37f9acb25013d4aa95afd36af65dfb9619480692c45b46b38f96ef63d9a4cee7",
     "pyproject.toml": "32734f7622bb4233d93f569fb991b4a6b7ba067e948cb73f1e12a65a47b2e428",
     "reports/evaluation/JUICE-SHOP-unscored-case-decisions-v1.md": "ee04d6dc7bcef58b187478821d44a9feb3148b553f634b5e9a771dd1821d5a27",
+    "reports/evaluation/WEBPENT-runbook-execution-v1.md": "20e3d5c3a0e36a16eeaad172cf8f2179388633c12055dce0b5c1f905e385f12f",
     "reports/evaluation/juice_shop_baseline_quality_v1.md": "73a1a67783be7d1ab15afffcd2e872147a5f5bcb10172186fcd3eaea2ba48fdc",
     "reports/evaluation/mock_target/mock-baseline-001.md": "218978fa6279bd567a79803670ea10c2e171e4df09d82fd6fa140a91d570df39",
     "reports/failures/MOCK-FN-001.md": "bf030d83a60357897a3ab51335c5632362ed6dad20910058bdbad81597c9e187",
@@ -1115,9 +1117,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-26T20:39:55.920193+00:00",
-  "git_commit": "d9e46051cc524dee6897159e95a509bc244f9425",
-  "git_tree": "b2f50928e57183cf6bb319514ddc40665c19063c",
+  "generated_at": "2026-08-26T21:17:18.930341+00:00",
+  "git_commit": "080d01de6144442aaf3667c950c92519e53fb4a8",
+  "git_tree": "16ef2d1de002e3fae8bfeabf667504d6e326f77f",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
