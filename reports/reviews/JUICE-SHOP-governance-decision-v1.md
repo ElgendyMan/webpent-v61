@@ -14,7 +14,8 @@
 
 This corrected packet addresses the source-to-governance drift identified in review. It does **not** self-approve, does not authorize Official P10 Runs, and does not confer P10, P9, or VIP qualification. A human independent reviewer must inspect this exact packet, the referenced hashes, the frozen ground truth, the oracle decision, the source-derived snapshot, and the source-to-ground-truth manifest.
 
-The earlier packet is treated as superseded for review purposes because its provenance and current-source hash references were incomplete. The corrected source manifest is generated from WebPent commit `d18ced94d3cdc0320265d2461e2d9256ede9bfd9` and tree `10b0e89941484649cbdb44fd3d7ff33cb96b0438`. The frozen ground-truth document remains unchanged; the corrected materials expose the drift instead of rewriting it.
+The earlier packet is treated as superseded for review purposes because its provenance and current-source hash references were incomplete. The corrected source manifest is generated from WebPent commit `88991a96d2f02d98aa652bc452ad33bf30b17615` and tree `74f1f9730fd8f58b9d3349347319824321d6767e`.
+The frozen ground-truth document remains unchanged; the corrected materials expose the drift instead of rewriting it.
 
 ## Corrected drift register
 
@@ -79,8 +80,8 @@ No Official P10 Runs, metrics calculation, or qualification claim is permitted a
 | Oracle decision file hash | `sha256:637b1f7e10e4224d60e3bcf29abdcaadb2e87aa66ed03d776668b94f1454a97c` |
 | Frozen ground-truth file hash | `sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52` |
 | Corrected source snapshot ID/hash | `gt-snapshot-20260826-corrected` / `sha256:4bc02c4664aa06230b6617085134ba12080e99767f457c82ddd917c48f471963` |
-| Source-to-ground-truth manifest hash | `sha256:d115ce91deba4ec5b3d8c12eaeefc90c6c53f63c45ac7bcef09af6c6e014f4f8` |
-| Source manifest WebPent commit/tree | `d18ced94d3cdc0320265d2461e2d9256ede9bfd9` / `10b0e89941484649cbdb44fd3d7ff33cb96b0438` |
+| Source-to-ground-truth manifest hash | `sha256:1ad18256e8d0b42041bc9b008ece8de7573603a21c8a898f639d1049ec2b5575` |
+| Source manifest WebPent commit/tree | `88991a96d2f02d98aa652bc452ad33bf30b17615` / `74f1f9730fd8f58b9d3349347319824321d6767e` |
 | Loopback runtime manifest hash | `sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524` |
 
 Canonical review locks are distinct from current-source hashes and raw file hashes. The current oracle hash has **not** yet received human independent reconfirmation. The frozen ground truth was not modified.
