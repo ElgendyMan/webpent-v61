@@ -21,9 +21,13 @@ import httpx
 
 from webpent.shared.engagement_scope import normalize_scope_host
 from webpent.shared.generic_web_contracts import (
+    LIFECYCLE_CONTRACT_VERSION,
     CapabilityRecord,
     CaseDefinition,
     DiscoveryLimits,
+    LifecycleAuthorization,
+    LifecycleRunContext,
+    LifecycleStageResult,
     SurfaceObservation,
 )
 from webpent.shared.http import (
@@ -92,6 +96,7 @@ class GenericWebAdapter:
     """Bounded read-only adapter for an explicitly declared web origin."""
 
     target_id = GENERIC_WEB_TARGET_ID
+    lifecycle_contract_version = LIFECYCLE_CONTRACT_VERSION
     semantic_profiles = SemanticProfileRegistry(
         {
             GENERIC_WEB_PROFILE_ID: {
@@ -127,6 +132,164 @@ class GenericWebAdapter:
         }
         self._extra_headers = sanitize_request_headers(dict(extra_headers or {}))
         self.limits = limits or DiscoveryLimits()
+        self._last_observations: tuple[SurfaceObservation, ...] = ()
+        self._last_classification = "unknown"
+
+    def describe_target(self) -> dict[str, str]:
+        return {
+            "target_id": self.target_id,
+            "target_origin": self.target_origin,
+            "target_classification": self._last_classification,
+            "workflow_mode": "read_only_same_origin_discovery",
+            "raw_response_bodies_saved": "False",
+            "credentials_or_cookies_saved": "False",
+        }
+
+    def capabilities(self) -> tuple[CapabilityRecord, ...]:
+        return (
+            CapabilityRecord("read_only_navigation", "available", "bounded_GET_declared"),
+            CapabilityRecord(
+                "same_origin_resource_observation",
+                "available",
+                "bounded_same_origin_GET_declared",
+            ),
+            CapabilityRecord(
+                "authorized_api_read",
+                "needs_profile",
+                "explicit_authorized_API_profile_required",
+            ),
+            CapabilityRecord(
+                "browser_dom_observation",
+                "observation_only",
+                "HTTP_transport_does_not_replace_browser_DOM",
+            ),
+            CapabilityRecord(
+                "state_changing_execution",
+                "unsupported",
+                "generic_adapter_is_read_only",
+            ),
+        )
+
+    def prepare(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        if case.case_id != GENERIC_WEB_CASE_ID:
+            return LifecycleStageResult(
+                "prepare", "unsupported", "case_not_owned_by_generic_adapter"
+            )
+        if case.mutates_state:
+            return LifecycleStageResult("prepare", "unsupported", "state_changing_case_not_allowed")
+        if run_context.target_id != self.target_id or run_context.case_id != case.case_id:
+            return LifecycleStageResult("prepare", "blocked", "lifecycle_context_identity_mismatch")
+        if not authorization.authorized:
+            return LifecycleStageResult("prepare", "blocked", "explicit_authorization_required")
+        if not self.accepts_origin(authorization.allowed_origin):
+            return LifecycleStageResult("prepare", "blocked", "authorized_origin_outside_target")
+        return LifecycleStageResult(
+            "prepare",
+            "ready",
+            "read_only_same_origin_preconditions_ready",
+            metadata={"target_backed": "True"},
+        )
+
+    def baseline(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        del authorization
+        if case.workflow_id != SAME_ORIGIN_RESOURCE_OBSERVATION:
+            return LifecycleStageResult(
+                "baseline", "unsupported", "workflow_not_supported_by_discovery"
+            )
+        result = self.discover()
+        raw_observations = result.get("observations", ())
+        observations = tuple(
+            item for item in self._last_observations if isinstance(item, SurfaceObservation)
+        )
+        if not observations and isinstance(raw_observations, list):
+            observations = tuple(
+                item for item in raw_observations if isinstance(item, SurfaceObservation)
+            )
+        if not observations:
+            return LifecycleStageResult(
+                "baseline", "inconclusive", "baseline_observation_missing_or_unusable"
+            )
+        refs = tuple(
+            f"baseline:{run_context.run_id}:surface:{index}"
+            for index, _ in enumerate(observations)
+        )
+        return LifecycleStageResult(
+            "baseline",
+            "completed",
+            "bounded_same_origin_baseline_observed",
+            observation_refs=refs,
+            metadata={"target_classification": str(result.get("target_classification", "unknown"))},
+        )
+
+    def execute_safe_action(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        del authorization, run_context
+        if case.mutates_state:
+            return LifecycleStageResult(
+                "execute_safe_action",
+                "unsupported",
+                "state_changing_execution_unsupported",
+            )
+        return LifecycleStageResult(
+            "execute_safe_action",
+            "observation_only",
+            "generic_adapter_has_no_case_mutation_or_exploit_action",
+        )
+
+    def observe(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        del authorization
+        if not self._last_observations:
+            return LifecycleStageResult(
+                "observe", "inconclusive", "post_action_observation_unavailable"
+            )
+        return LifecycleStageResult(
+            "observe",
+            "completed",
+            "bounded_same_origin_observation_reused_without_mutation",
+            observation_refs=(f"observation:{run_context.run_id}:surface",),
+            metadata={"target_classification": self._last_classification},
+        )
+
+    def execute_negative_control(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        del case, authorization, run_context
+        return LifecycleStageResult(
+            "execute_negative_control",
+            "needs_profile",
+            "generic_surface_observation_has_no_independent_semantic_negative_control",
+        )
+
+    def cleanup(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        del case, authorization, run_context
+        return LifecycleStageResult("cleanup", "completed", "no_target_state_to_cleanup")
 
     def workflow_ids(self) -> tuple[str, ...]:
         return (
@@ -317,6 +480,8 @@ class GenericWebAdapter:
         gaps = list(dict.fromkeys(gaps))
         observation_tuple = tuple(observations)
         classification = _classify_surface(observation_tuple)
+        self._last_observations = observation_tuple
+        self._last_classification = classification
         return {
             "contract_version": "generic-web-discovery.v1",
             "target_id": self.target_id,
@@ -336,6 +501,8 @@ class GenericWebAdapter:
         }
 
     def _failure_result(self, reason: str) -> dict[str, Any]:
+        self._last_observations = ()
+        self._last_classification = "unknown"
         capabilities = self.capability_map(())
         return {
             "contract_version": "generic-web-discovery.v1",

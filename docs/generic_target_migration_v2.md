@@ -27,17 +27,17 @@ This preserves legacy benchmark behavior through an explicit provider while prev
 
 ## Generic web adapter boundary
 
-`src/webpent/adapters/generic_web/adapter.py` implements the target-neutral MVP. It uses the central safe HTTP client boundary and an injected transport in offline tests. Its read-only discovery is bounded by timeout, request-rate, depth, and page limits; it follows only same-origin URLs; it rejects state-changing or cross-origin discovery paths; and it emits categorical, redacted observations rather than raw response bodies, cookies, headers, DOM, screenshots, or automatic findings.
+`src/webpent/adapters/generic_web/adapter.py` implements the target-neutral adapter. It uses the central safe HTTP client boundary and an injected transport in offline tests. Its read-only discovery and lifecycle stages are bounded by timeout, request-rate, depth, page, and body limits; it follows only same-origin URLs; it rejects state-changing or cross-origin discovery paths; and it emits categorical, redacted observations rather than raw response bodies, cookies, headers, DOM, screenshots, or automatic findings. Generic cases remain observation-only or `needs_profile` unless an explicitly registered target-local provider supplies a valid semantic oracle and negative control.
 
 The adapter can classify a surface as `html`, `spa`, `api`, `hybrid`, or `unknown`, and can report capabilities and lifecycle classifications such as `observation_only`, `unsupported`, `needs_profile`, and `needs_human_review`. A route existing or returning HTTP 200 is not itself a finding.
 
 ## Workflow and case contracts
 
-The versioned generic workflow contract introduces the canonical concepts `browser_dom_observation`, `authorized_api_read`, and `same_origin_resource_observation`, while preserving explicit aliases for the older identifiers. `CaseDefinition` records required capabilities, authorization and mutation requirements, negative-control requirements, and bounded execution metadata. `CaseResult` is fail-closed: `confirmed` or `probable` requires a proof reference, and blocked/unsupported/inconclusive/profile-review states are not promoted to findings.
+The versioned generic workflow contract introduces the canonical concepts `browser_dom_observation`, `authorized_api_read`, and `same_origin_resource_observation`, while preserving explicit aliases for the older identifiers. `CaseDefinition` records required capabilities, authorization and mutation requirements, negative-control requirements, and bounded execution metadata. `CaseResult` is fail-closed: `confirmed` or `probable` requires a proof reference, and blocked/unsupported/inconclusive/profile-review states are not promoted to findings. The versioned optional `CaseLifecycleAdapter` companion contract now defines `describe_target`, `capabilities`, `prepare`, `baseline`, `execute_safe_action`, `observe`, `execute_negative_control`, and `cleanup`. `GenericCaseRunner` resolves that contract through the target registration, validates authorization/origin/capabilities/mutation policy, and exposes execution through `RuntimeContext.execute_registered_case`; legacy registrations remain compatible but fail closed when lifecycle execution is requested without a provider.
 
 ## Validation performed
 
-The implementation was verified offline with fake transports and two distinct generic target shapes, registry target swap tests, redaction/proof/replay tests, the full test suite, Ruff, compilation, neutrality scanning, direct-I/O inventory, G-02 runtime and precommit checks, secret scanning, and `git diff --check`. No public target, OAST endpoint, external network target, login flow, or destructive action was used.
+The implementation was verified offline with fake transports and two distinct generic target shapes, registry target swap tests through the formal lifecycle runner, redaction/proof/replay tests, RuntimeContext integration, the full test suite, Ruff, compilation, neutrality scanning, direct-I/O inventory, G-02 runtime and precommit checks, secret scanning, and `git diff --check`. No public target, OAST endpoint, external network target, login flow, or destructive action was used.
 
 ## Open qualification gate
 
@@ -63,6 +63,8 @@ No live qualification is claimed. At the time of this migration review, no autho
 - [`benchmark/waptlab_campaign_profile.py`](../src/webpent/benchmark/waptlab_campaign_profile.py)
 - [`adapters/generic_web/adapter.py`](../src/webpent/adapters/generic_web/adapter.py)
 - [`shared/generic_web_contracts.py`](../src/webpent/shared/generic_web_contracts.py)
+- [`shared/generic_case_runner.py`](../src/webpent/shared/generic_case_runner.py)
+- [`shared/runtime.py`](../src/webpent/shared/runtime.py)
 - [`scripts/check_generic_target_neutrality.py`](../scripts/check_generic_target_neutrality.py)
 - [`audit/p10_gap_matrix_v1.md`](../audit/p10_gap_matrix_v1.md)
 

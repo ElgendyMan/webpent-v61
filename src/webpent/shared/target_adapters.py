@@ -13,6 +13,14 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
 
+from webpent.shared.generic_web_contracts import (
+    LIFECYCLE_CONTRACT_VERSION,
+    CapabilityRecord,
+    CaseDefinition,
+    LifecycleAuthorization,
+    LifecycleRunContext,
+    LifecycleStageResult,
+)
 from webpent.shared.semantic_observations import (
     SemanticProfileRegistry,
 )
@@ -133,6 +141,67 @@ class CampaignExtensionSpec:
         ):
             if callback is not None and not callable(callback):
                 raise ValueError(f"campaign_extension_{name}_not_callable")
+
+
+@runtime_checkable
+class CaseLifecycleAdapter(Protocol):
+    """Optional versioned execution lifecycle for one registered target."""
+
+    lifecycle_contract_version: str
+
+    def describe_target(self) -> Mapping[str, Any]:
+        """Return redaction-safe target metadata."""
+
+    def capabilities(self) -> Sequence[CapabilityRecord]:
+        """Return the current redaction-safe capability map."""
+
+    def prepare(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Validate target-local preconditions without executing the case."""
+
+    def baseline(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Collect the bounded baseline observation."""
+
+    def execute_safe_action(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Execute only an adapter-declared safe action."""
+
+    def observe(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Collect bounded post-action observations."""
+
+    def execute_negative_control(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Execute an independent negative control or report why unavailable."""
+
+    def cleanup(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        run_context: LifecycleRunContext,
+    ) -> LifecycleStageResult:
+        """Dispose adapter-local state without target mutation."""
 
 
 @runtime_checkable
@@ -268,6 +337,25 @@ class RegisteredTargetAdapter:
                 )
         if not isinstance(self.adapter.semantic_profiles, SemanticProfileRegistry):
             errors.append(f"target_adapter:{self.target_id}:semantic_registry_required")
+
+        lifecycle_version = getattr(self.adapter, "lifecycle_contract_version", None)
+        if lifecycle_version is not None:
+            if lifecycle_version != LIFECYCLE_CONTRACT_VERSION:
+                errors.append(f"target_adapter:{self.target_id}:lifecycle_contract_version_invalid")
+            for method_name in (
+                "describe_target",
+                "capabilities",
+                "prepare",
+                "baseline",
+                "execute_safe_action",
+                "observe",
+                "execute_negative_control",
+                "cleanup",
+            ):
+                if not callable(getattr(self.adapter, method_name, None)):
+                    errors.append(
+                        f"target_adapter:{self.target_id}:lifecycle_method_missing:{method_name}"
+                    )
         normalized_origin = _origin(self.adapter.target_origin)
         if not normalized_origin:
             errors.append(f"target_adapter:{self.target_id}:origin_invalid")
@@ -468,6 +556,30 @@ class TargetAdapterRegistry:
             }
             for item in sorted(self._targets.values(), key=lambda value: value.target_id)
         ]
+
+
+def lifecycle_adapter_for_registration(
+    registration: RegisteredTargetAdapter | None,
+    *,
+    required: bool = True,
+) -> CaseLifecycleAdapter | None:
+    """Resolve a validated lifecycle provider without a legacy fallback."""
+    if not isinstance(registration, RegisteredTargetAdapter):
+        if required:
+            raise ValueError("target_lifecycle_registration_required")
+        return None
+    errors = registration.validate()
+    if errors:
+        raise ValueError(";".join(errors))
+    adapter = registration.adapter
+    version = getattr(adapter, "lifecycle_contract_version", None)
+    if version is None:
+        if required:
+            raise ValueError("target_lifecycle_provider_missing")
+        return None
+    if version != LIFECYCLE_CONTRACT_VERSION or not isinstance(adapter, CaseLifecycleAdapter):
+        raise ValueError("target_lifecycle_provider_invalid")
+    return adapter
 
 
 def campaign_profile_for_registration(

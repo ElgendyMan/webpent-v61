@@ -2,7 +2,7 @@
 
 ## الحكم التنفيذي
 
-تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الحالي هو **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
+تم تنفيذ المسارات المصدرية القابلة للاختبار في الخطة التكاملية، ثم أضيفت دورة Generic Target migration لإزالة WAPTLab من shared وإدخال عقود capabilities/case lifecycle وGenericWebAdapter target-neutral. وأُغلقت الآن فجوة lifecycle الرسمية offline عبر `CaseLifecycleAdapter` و`GenericCaseRunner` وRuntimeContext integration، مع الحفاظ على التوافق مع التسجيلات القديمة. يظل الفصل صارمًا بين **engineering maturity** و**VIP qualification**. الحكم الحالي هو **`NOT_QUALIFIED`**؛ لا يوجد في هذه الدورة أي strict confirmed أو ProofBundle حي جديد، ولم تُستخدم benchmark fixtures أو candidate rows كبديل عن target-backed causal evidence.
 
 آخر baseline للدورة كان `f62de77`، وتم نشر دورة Generic migration في commit `e55ee61` على `origin/master`. لم تُنفذ أي عملية live target في هذه الدورة، ولا توجد حاجة لتغيير frozen P10 artifacts. runtime artifacts والـcredentials والـcookies تظل خارج Git.
 
@@ -32,11 +32,11 @@
 | Production Qualification | fail-closed health/recovery/idempotency/secrets/TLS/logging/retention projection؛ لا تشغيل stack تلقائي | production qualification وrecovery contract tests | e55ee61 — offline validation passed |
 | Generic Target Boundary | نقل WAPTLab campaign/proof/execution contracts إلى `benchmark/waptlab_campaign_profile.py` وربطها عبر `CampaignProfileSpec`؛ لا provider implicit في shared/state | neutrality guard، provider fail-closed tests، planner/bootstrap regression | e55ee61 — offline validation passed |
 | Versioned Generic Contracts | capability/case/result lifecycle contracts، canonical workflow IDs وlegacy aliases، proof-reference invariant للحالات confirmed/probable | generic contract, workflow migration, and lifecycle tests | e55ee61 — offline validation passed |
-| GenericWebAdapter MVP | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، structured redacted observations، fake transport injection | GenericWebAdapter discovery and registry-swap tests | e55ee61 — offline validation passed |
+| GenericWebAdapter and lifecycle | bounded same-origin read-only discovery عبر safe HTTP boundary، تصنيف HTML/SPA/API/hybrid، versioned `CaseLifecycleAdapter`، `GenericCaseRunner`، RuntimeContext integration، structured redacted observations، fake transport injection، وlegacy fail-closed resolver | GenericWebAdapter discovery، lifecycle، registry-swap، verifier-promotion، وRuntime integration tests | lifecycle release commit — offline validation passed |
 
 ## بوابات الجودة
 
-اجتاز full pytest serial في دورة Generic migration **1883 اختبارًا**. كما نجحت Ruff وcompileall و`git diff --check`، وإعادة توليد direct-I/O inventory، وG-02 precommit/runtime، وtracked-secret scan، وneutrality guard الموسع. اختبارات GenericWebAdapter استخدمت fake transports محلية فقط، واختبارات target swap وprofile provider وproof lifecycle نجحت؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
+اجتاز full pytest serial بعد إغلاق lifecycle **1895 اختبارًا**. كما نجحت Ruff وcompileall و`git diff --check`، وإعادة توليد direct-I/O inventory (**340 سجلًا**)، وG-02 precommit/runtime، وtracked-secret scan، وneutrality guard الموسع (**224 ملفًا، 5 جذور**). اختبارات GenericWebAdapter استخدمت fake transports محلية فقط، واختبارات target swap عبر runner، verifier-backed promotion، وRuntimeContext integration نجحت؛ لا توجد نتائج live أو ProofBundle مصطنعة في هذا التقييم.
 
 التحذيرات الحالية لا تمثل فشلًا وظيفيًا في هذه الدورة؛ وهي مرتبطة بتبعيات LangChain/Chroma deprecated APIs ومذكورة في مخرجات regression. بيانات WAPTLab انتقلت إلى profile target-local؛ لا توجد WAPTLab constants أو imports في shared/state generic core.
 

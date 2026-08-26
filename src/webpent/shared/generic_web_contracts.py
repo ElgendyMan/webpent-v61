@@ -8,10 +8,14 @@ finding and never authorizes a state-changing operation.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Final, Literal
+from typing import TYPE_CHECKING, Final, Literal
+
+if TYPE_CHECKING:
+    from webpent.shared.verifier import VerificationResult
 
 CAPABILITY_CONTRACT_VERSION: Final[str] = "generic-capability.v1"
 CASE_CONTRACT_VERSION: Final[str] = "generic-case.v1"
+LIFECYCLE_CONTRACT_VERSION: Final[str] = "case-lifecycle.v1"
 
 CapabilityStatus = Literal[
     "available",
@@ -33,6 +37,15 @@ CaseResultStatus = Literal[
     "needs_human_review",
 ]
 SurfaceClassification = Literal["html", "spa", "api", "hybrid", "unknown"]
+LifecycleStageStatus = Literal[
+    "ready",
+    "completed",
+    "blocked",
+    "unsupported",
+    "needs_profile",
+    "observation_only",
+    "inconclusive",
+]
 
 
 @dataclass(frozen=True)
@@ -154,6 +167,100 @@ class CaseResult:
 
 
 @dataclass(frozen=True)
+class LifecycleAuthorization:
+    """Explicit authorization envelope required before adapter execution."""
+
+    authorized: bool
+    engagement_id: str = ""
+    allowed_origin: str = ""
+    actor: str = "operator"
+    satisfied_requirements: tuple[str, ...] = ()
+    contract_version: str = LIFECYCLE_CONTRACT_VERSION
+
+    def __post_init__(self) -> None:
+        if self.authorized and not str(self.engagement_id).strip():
+            raise ValueError("lifecycle_authorization_engagement_required")
+        if self.authorized and not str(self.allowed_origin).strip():
+            raise ValueError("lifecycle_authorization_origin_required")
+        if not str(self.actor).strip():
+            raise ValueError("lifecycle_authorization_actor_required")
+        if any(not str(item).strip() for item in self.satisfied_requirements):
+            raise ValueError("lifecycle_authorization_requirement_invalid")
+        if not str(self.contract_version).strip():
+            raise ValueError("lifecycle_authorization_contract_required")
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "authorized": self.authorized,
+            "engagement_id": self.engagement_id,
+            "allowed_origin": self.allowed_origin,
+            "actor": self.actor,
+            "satisfied_requirements": list(self.satisfied_requirements),
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
+class LifecycleRunContext:
+    """Bounded identity for one case run; runtime objects are intentionally absent."""
+
+    run_id: str
+    target_id: str
+    case_id: str
+    engagement_id: str
+    contract_version: str = LIFECYCLE_CONTRACT_VERSION
+
+    def __post_init__(self) -> None:
+        for name in ("run_id", "target_id", "case_id", "engagement_id", "contract_version"):
+            if not str(getattr(self, name)).strip():
+                raise ValueError(f"lifecycle_run_{name}_required")
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "run_id": self.run_id,
+            "target_id": self.target_id,
+            "case_id": self.case_id,
+            "engagement_id": self.engagement_id,
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
+class LifecycleStageResult:
+    """Redaction-safe result from one lifecycle stage."""
+
+    stage: str
+    status: LifecycleStageStatus
+    reason: str
+    observation_refs: tuple[str, ...] = ()
+    metadata: dict[str, str] = field(default_factory=dict)
+    verification: VerificationResult | None = field(default=None, repr=False, compare=False)
+    contract_version: str = LIFECYCLE_CONTRACT_VERSION
+
+    def __post_init__(self) -> None:
+        if not str(self.stage).strip():
+            raise ValueError("lifecycle_stage_required")
+        if not str(self.reason).strip():
+            raise ValueError("lifecycle_stage_reason_required")
+        if len(self.observation_refs) > 20:
+            raise ValueError("lifecycle_stage_observation_refs_limit_exceeded")
+        if len(self.metadata) > 20:
+            raise ValueError("lifecycle_stage_metadata_limit_exceeded")
+        if not str(self.contract_version).strip():
+            raise ValueError("lifecycle_stage_contract_required")
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "stage": self.stage,
+            "status": self.status,
+            "reason": self.reason,
+            "observation_refs": list(self.observation_refs),
+            "metadata": dict(self.metadata),
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
 class SurfaceObservation:
     """Bounded categorical observation of one same-origin resource."""
 
@@ -192,9 +299,14 @@ class SurfaceObservation:
 __all__ = [
     "CAPABILITY_CONTRACT_VERSION",
     "CASE_CONTRACT_VERSION",
+    "LIFECYCLE_CONTRACT_VERSION",
     "CapabilityRecord",
     "CapabilityStatus",
     "CaseDefinition",
+    "LifecycleAuthorization",
+    "LifecycleRunContext",
+    "LifecycleStageResult",
+    "LifecycleStageStatus",
     "CaseResult",
     "CaseResultStatus",
     "DiscoveryLimits",

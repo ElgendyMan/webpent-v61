@@ -33,6 +33,13 @@ from webpent.shared.campaign_executor import ActionExecutor, NextBestActionEngin
 from webpent.shared.capability_manifest import CapabilityRegistry
 from webpent.shared.control_plane import EngagementScope
 from webpent.shared.engagement_scope import OriginPolicy
+from webpent.shared.generic_case_runner import GenericCaseRunner
+from webpent.shared.generic_web_contracts import (
+    CaseDefinition,
+    CaseResult,
+    LifecycleAuthorization,
+    LifecycleRunContext,
+)
 from webpent.shared.package_scope import ScopeCompiler
 from webpent.shared.proof_bundle_store import ProofBundleStore
 from webpent.shared.proof_oracles import NegativeControlEngine, OracleEngine
@@ -369,6 +376,56 @@ class RuntimeContext:
             "runtime_context_valid": self.valid,
             "clean": False,
         }
+
+    def execute_registered_case(
+        self,
+        case: CaseDefinition,
+        authorization: LifecycleAuthorization,
+        *,
+        run_id: str,
+    ) -> CaseResult:
+        """Execute one declared target case through the versioned lifecycle runner.
+
+        This is the runtime integration seam for case-level adapters. It never
+        resolves a target from a URL, never falls back to a legacy executor, and
+        returns a blocked result when the factory did not inject a registration.
+        Adapter I/O remains owned by the registered lifecycle provider.
+        """
+        if not isinstance(case, CaseDefinition):
+            raise TypeError("case_definition_required")
+        if not isinstance(authorization, LifecycleAuthorization):
+            raise TypeError("lifecycle_authorization_required")
+        registration = self.target_adapter_registration
+        if registration is None:
+            return CaseResult(
+                case_id=case.case_id,
+                status="blocked",
+                reason="target_adapter_registration_missing",
+            )
+        if not self.valid:
+            return CaseResult(
+                case_id=case.case_id,
+                status="blocked",
+                reason="runtime_context_invalid",
+            )
+        if authorization.engagement_id != self.engagement_id:
+            return CaseResult(
+                case_id=case.case_id,
+                status="blocked",
+                reason="engagement_identity_mismatch",
+            )
+        run_context = LifecycleRunContext(
+            run_id=run_id,
+            target_id=registration.target_id,
+            case_id=case.case_id,
+            engagement_id=self.engagement_id,
+        )
+        return GenericCaseRunner.execute_case(
+            registration,
+            case,
+            authorization,
+            run_context,
+        )
 
     def run_agent_proposal(
         self,
