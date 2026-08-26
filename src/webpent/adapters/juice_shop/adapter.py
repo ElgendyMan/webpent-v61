@@ -56,10 +56,17 @@ JUICE_SHOP_SEMANTIC_PROFILES = SemanticProfileRegistry(
             "rule": "verbose_server_error",
             "reason": "bounded_verbose_error_shape_with_negative_control",
         },
+        "juice.access_log.v1": {
+            "target_family": "juice_shop",
+            "promotable": True,
+            "rule": "access_log_shape",
+            "reason": "bounded_public_access_log_shape_with_independent_control",
+        },
     }
 )
 
 _CASE_SEMANTIC_PROFILES = {
+    "juice.access_log_disclosure.v1": "juice.access_log.v1",
     "juice.exposed_metrics.v1": "juice.exposed_metrics.v1",
     "juice.error_handling.v1": "juice.error_disclosure.v1",
 }

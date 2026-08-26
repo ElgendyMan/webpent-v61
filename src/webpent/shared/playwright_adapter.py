@@ -168,6 +168,11 @@ class PlaywrightBrowserHandler:
         dialog_events: list[dict[str, Any]] = []
         network_events: list[dict[str, Any]] = []
         response_status: int | None = None
+        semantic_response: Any | None = None
+        semantic_content_type = ""
+        semantic_body: bytes | None = None
+        semantic_final_url = ""
+        download_detected = False
         final_url = ""
         dom_digest = ""
         screenshot_digest = ""
@@ -212,10 +217,20 @@ class PlaywrightBrowserHandler:
                         logger.debug("playwright dialog dismissal failed", exc_info=True)
 
                 def on_response(response: Any) -> None:
+                    nonlocal response_status, semantic_response, semantic_content_type
                     try:
                         response_url = str(response.url)
                         if _origin(response_url) != self.target_origin:
                             return
+                        if request.semantic_profile is not None and (
+                            urlsplit(response_url).path == urlsplit(request.url).path
+                            and urlsplit(response_url).query == urlsplit(request.url).query
+                        ):
+                            semantic_response = response
+                            response_status = int(response.status)
+                            semantic_content_type = str(
+                                response.headers.get("content-type", "")
+                            )
                         network_events.append(
                             {
                                 "status": int(response.status),
@@ -228,15 +243,54 @@ class PlaywrightBrowserHandler:
                     except Exception:
                         logger.debug("playwright response observation failed", exc_info=True)
 
+                def on_download(_download: Any) -> None:
+                    nonlocal download_detected
+                    # The browser context is ephemeral and is disposed below;
+                    # do not cancel the download, which can race page shutdown.
+                    download_detected = True
+
                 page.on("dialog", on_dialog)
-                if request.operation in {"observe_network", "validate_input", "typed_search"}:
+                if (
+                    request.operation in {"observe_network", "validate_input", "typed_search"}
+                    or request.semantic_profile is not None
+                ):
                     page.on("response", on_response)
+                if request.semantic_profile is not None:
+                    page.on("download", on_download)
                 stage = "navigate"
-                response = page.goto(
-                    request.url,
-                    wait_until="domcontentloaded",
-                    timeout=timeout_ms,
-                )
+                try:
+                    response = page.goto(
+                        request.url,
+                        wait_until="domcontentloaded",
+                        timeout=timeout_ms,
+                    )
+                except Exception:
+                    if not request.semantic_profile:
+                        raise
+                    try:
+                        fetched = page.evaluate(
+                            """async (url) => {
+                                const response = await fetch(url, {credentials: 'omit'});
+                                return {
+                                    status: response.status,
+                                    contentType: response.headers.get('content-type') || '',
+                                    finalUrl: response.url,
+                                    body: await response.text(),
+                                };
+                            }""",
+                            request.url,
+                        )
+                        response_status = int(fetched.get("status", 0))
+                        semantic_content_type = str(fetched.get("contentType", ""))
+                        semantic_final_url = str(fetched.get("finalUrl", request.url))
+                        semantic_body = str(fetched.get("body", "")).encode(
+                            "utf-8", "replace"
+                        )
+                        response = semantic_response
+                    except Exception:
+                        if not download_detected or semantic_response is None:
+                            raise
+                        response = semantic_response
                 if (
                     response is not None
                     and int(response.status) >= 400
@@ -300,16 +354,20 @@ class PlaywrightBrowserHandler:
                 semantic_observation: dict[str, Any] = {}
                 if response is not None:
                     response_status = int(response.status)
-                final_url = _origin(page.url) + urlsplit(page.url).path
+                observed_url = semantic_final_url or page.url or request.url
+                final_url = _origin(observed_url) + urlsplit(observed_url).path
                 if request.semantic_profile is not None:
                     transient_body: bytes | None = None
                     transient_content_type = ""
                     try:
-                        if response is not None:
+                        if semantic_body is not None:
+                            transient_body = semantic_body
+                            transient_content_type = semantic_content_type
+                        elif response is not None:
                             transient_body = response.body()
                             transient_content_type = str(
                                 response.headers.get("content-type", "")
-                            )
+                            ) or semantic_content_type
                         semantic_observation = derive_semantic_observation(
                             request.semantic_profile,
                             status_code=response_status,

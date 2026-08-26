@@ -7,6 +7,7 @@ an external reviewer freezes the mapping and oracle contract.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
@@ -58,6 +59,12 @@ _SOURCE_SEARCH = (
 )
 
 
+def _current_access_log_path() -> str:
+    """Resolve the local Juice Shop's date-rotated access log without I/O."""
+    date = datetime.now(timezone.utc).date().isoformat()
+    return f"/support/logs/access.log.{date}"
+
+
 # These are deliberately read-only candidates. They do not contain payloads,
 # credentials, external destinations, or state-changing requests.
 JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
@@ -83,10 +90,10 @@ JUICE_SHOP_SAFE_CASES: Final[tuple[JuiceShopSafeCase, ...]] = (
         case_id="juice.access_log_disclosure.v1",
         challenge_key="accessLogDisclosureChallenge",
         category="Observability Failures",
-        path="/ftp/access.log",
+        path=_current_access_log_path(),
         operation="navigate",
         oracle_id="http.read_only.log_resource_metadata",
-        source_ref=_SOURCE_ROUTES,
+        source_ref=_SOURCE_SERVER,
     ),
     JuiceShopSafeCase(
         case_id="juice.misplaced_signature_file.v1",
