@@ -84,6 +84,8 @@ class RegisteredTargetAdapter:
         return str(self.adapter.target_id).strip()
 
     def validate(self) -> tuple[str, ...]:
+        if not isinstance(self.adapter, TargetAdapter):
+            return ("target_adapter:adapter_contract_invalid",)
         errors: list[str] = []
         if not self.target_id:
             errors.append("target_adapter:target_id_required")
@@ -199,10 +201,19 @@ class TargetAdapterRegistry:
         normalized = _origin(origin)
         if not normalized:
             return None
-        matches = [
-            item for item in self._targets.values()
-            if item.adapter.accepts_origin(normalized)
-        ]
+        matches: list[RegisteredTargetAdapter] = []
+        for item in self._targets.values():
+            # Registrations are immutable, but their injected adapter may be
+            # mutable. Revalidate before every origin lookup so a post-register
+            # mutation or provider failure cannot become executable implicitly.
+            try:
+                if item.validate():
+                    continue
+                accepted = item.adapter.accepts_origin(normalized)
+            except Exception:
+                accepted = False
+            if accepted is True:
+                matches.append(item)
         return matches[0] if len(matches) == 1 else None
 
     def require_for_origin(self, origin: str) -> RegisteredTargetAdapter:

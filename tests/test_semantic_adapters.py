@@ -389,3 +389,44 @@ def test_target_case_binding_requires_workflow_and_oracle_identity() -> None:
             oracle_id="",
             workflow_id="workflow",
         )
+
+
+class _InvalidTargetObject:
+    target_id = "invalid"
+
+
+def test_target_registry_rejects_non_adapter_objects() -> None:
+    with pytest.raises(ValueError, match="adapter_contract_invalid"):
+        TargetAdapterRegistry().register(_registration(_InvalidTargetObject()))
+
+
+def test_target_registry_origin_lookup_revalidates_mutated_adapter() -> None:
+    fake = _FakeTargetAdapter()
+    registrations = TargetAdapterRegistry()
+    registrations.register(_registration(fake))
+
+    assert registrations.require_for_origin("http://127.0.0.1:4100").target_id == (
+        "fake_target"
+    )
+    fake.target_origin = "not-an-origin"
+
+    assert registrations.for_origin("http://127.0.0.1:4100") is None
+    with pytest.raises(ValueError, match="origin_not_registered_or_ambiguous"):
+        registrations.require_for_origin("http://127.0.0.1:4100")
+
+
+def test_target_registry_origin_lookup_fails_closed_on_provider_exception() -> None:
+    class _MutableOriginAdapter(_FakeTargetAdapter):
+        broken = False
+
+        def accepts_origin(self, origin: str) -> bool:
+            if self.broken:
+                raise RuntimeError("origin provider unavailable")
+            return super().accepts_origin(origin)
+
+    adapter = _MutableOriginAdapter()
+    registrations = TargetAdapterRegistry()
+    registrations.register(_registration(adapter))
+    adapter.broken = True
+
+    assert registrations.for_origin("http://127.0.0.1:4100") is None
