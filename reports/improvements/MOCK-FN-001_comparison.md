@@ -2,9 +2,11 @@
 
 ## Status
 
-`comparison_status = implemented_pending_final_independent_review`
+`comparison_status = final_independent_review_approved_limited_scope`
 
-The limited design approval was `approved_for_implementation` for `mock-target-fixture-only`. The post-fix behavior was executed locally through the generic lifecycle runner and central proof verifier. This comparison records implementation evidence; it is not a final independent approval and does not qualify P10 or VIP.
+`improvement_cycle = closed_for_mock-target-fixture-only`
+
+The limited design approval was `approved_for_implementation` for `mock-target-fixture-only`. The post-fix behavior was executed locally through the generic lifecycle runner and central proof verifier. The final independent post-fix review approved the implementation for this fixture-only scope. This comparison is not a P10 or VIP qualification record.
 
 ## Comparison matrix
 
@@ -24,18 +26,20 @@ The limited design approval was `approved_for_implementation` for `mock-target-f
 | network/state mutation | None | None; fixture does not start a server or perform network I/O and has no mutating operation |
 | Generic Core changes | None | None; changes remain in Mock adapter and regression coverage |
 | targeted regression | Default blocked regression passes | Ready success regression passes |
-| full offline suite | Baseline previously passed | `1898 passed in 85.99s`; Ruff and compileall passed |
+| full offline suite | Baseline previously passed | `1898 passed in 94.27s` on the published commit |
 
 ## Post-fix run identity
 
 | Field | Value |
 |---|---|
 | Artifact | `audit/mock_ready_fixture_postfix_v1.json` |
+| Commit SHA | `60a0b17d8bd6e6f55f5f59f6431be4fa0e5ec363` |
 | Run ID | `mock-ready-postfix-001` |
 | Scope | `mock-target-fixture-only` |
 | Ready status | `confirmed` |
 | ProofBundle seal | `true` |
 | ProofBundle replay | `true` |
+| Final implementation review | `approved_for_limited_mock_fixture_scope` |
 | P10 / P9 / VIP | `NOT_QUALIFIED` / `NOT_QUALIFIED` / `NOT_QUALIFIED` |
 
 The artifact contains only redaction-safe metadata, digests, replay context, and the serialized ProofBundle. It intentionally does not contain raw response bodies, cookies, credentials, or an external-target claim.
@@ -44,10 +48,16 @@ The artifact contains only redaction-safe metadata, digests, replay context, and
 
 `implementation_evidence = accepted_for_limited_design_scope`
 
-`final_independent_approval = pending`
+`final_independent_approval = approved_for_limited_mock_fixture_scope`
+
+`improvement_cycle = closed_for_mock-target-fixture-only`
 
 `p10_qualification = NOT_QUALIFIED`
 
+`p9_qualification = NOT_QUALIFIED`
+
 `vip_qualification = NOT_QUALIFIED`
 
-The before/after improvement is reproducible for the Mock fixture. It does not establish the approved Juice Shop case mapping, live P10 metrics, three isolated full-set P10 runs, or an independent P10 qualification decision.
+The before/after improvement is reproducible for the Mock fixture. It does not establish the approved Juice Shop case mapping, live P10 metrics, three isolated full-set P10 runs, or an independent P10 qualification decision. The next activity is a separately scoped, authorized Juice Shop local validation with independent ground truth.
+
+See `reports/reviews/MOCK-FN-001_final_independent_review.md` for the gate-by-gate review record.

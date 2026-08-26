@@ -37,22 +37,26 @@ The change belongs in `src/webpent/adapters/mock_target/adapter.py` and its test
 | Confirmation requires central verifier | Pass: runner promotion occurred only from the `VerificationResult` returned by `verify_replay_evidence`. |
 | ProofBundle is sealed and replayable | Pass: `verify_seal() = true` and replay with the emitted `replay_context` and three redacted observations = true. |
 | No sensitive serialization | Pass: `CaseResult` omits `verification`; serialized result contains no cookie, authorization, or raw response body fields. |
-| No target leakage | Pending final diff/neutrality gate; implementation is confined to Mock adapter and tests. |
+| No target leakage | Pass: final neutrality check passed; implementation is confined to Mock adapter, tests, rerun script, and MOCK-FN-001 reports. |
 | Offline quality checks | Pass so far: targeted tests `17 passed`; full suite `1898 passed`; Ruff and compileall passed; direct-I/O inventory regenerated. |
 
 ## Review status
 
-`proposal_status = implemented_pending_final_independent_review`
+`proposal_status = closed_for_mock_target_fixture_only`
 
 `implementation_allowed = true_under_limited_design_approval`
 
-`final_independent_approval = pending`
+`final_independent_approval = approved_for_limited_mock_fixture_scope`
+
+`improvement_cycle = closed_for_mock-target-fixture-only`
 
 `p10_qualification = NOT_QUALIFIED`
 
+`p9_qualification = NOT_QUALIFIED`
+
 `vip_qualification = NOT_QUALIFIED`
 
-The implementation evidence demonstrates the approved fixture behavior only. It is not a Juice Shop run, does not establish P10 ground truth metrics, and does not close the independent final-review gate.
+The final independent post-fix review is recorded in `reports/reviews/MOCK-FN-001_final_independent_review.md`. The decision approves only the deterministic, non-networking Mock fixture implementation. It is not a Juice Shop run, does not establish P10 ground-truth metrics, and does not grant P10, P9, or VIP qualification.
 
 ## Rollback
 
