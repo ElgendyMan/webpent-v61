@@ -17,7 +17,7 @@ This review is independent of the implementation assertions: it re-runs the publ
 | Published commit | `60a0b17d8bd6e6f55f5f59f6431be4fa0e5ec363` |
 | Baseline artifact | `audit/mock_improvement_baseline_v1.json` — default fixture blocked, no observations or proof |
 | Post-fix artifact | `audit/mock_ready_fixture_postfix_v1.json` — regenerated against commit `60a0b17` |
-| Full offline suite | `1898 passed in 94.27s` on the published commit |
+| Full offline suite | `1898 passed in 69.87s` on the published commit |
 | Targeted review suite | `17 passed in 4.64s` |
 | Diff/rollback checks | Pass; reverse patch applies cleanly as a dry-run and `git diff --check` is clean |
 | Neutrality/frozen-path check | Pass; no diff under `src/webpent/shared` or `src/webpent/benchmark` relative to `1bb89e5` |
