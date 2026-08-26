@@ -36,6 +36,7 @@ from webpent.shared.campaigns import (
 )
 from webpent.shared.capability_manifest import build_capability_manifest
 from webpent.shared.runtime import RuntimeFactory
+from webpent.shared.target_adapters import TargetAdapterRegistry
 from webpent.shared.target_package_context import (
     TargetPackageContext,
     admit_target_package,
@@ -111,6 +112,7 @@ def build_initial_state(
     target_package: dict[str, Any] | None = None,
     target_package_context: TargetPackageContext | None = None,
     target_package_binding: Mapping[str, Any] | None = None,
+    target_adapter_registry: TargetAdapterRegistry | None = None,
 ) -> dict[str, Any]:
     """Build a complete, redaction-safe starting state for one engagement.
 
@@ -206,6 +208,19 @@ def build_initial_state(
         or "engagement:main"
     )
     control_plane_browser_adapter = None
+    target_adapter_registration = None
+    if target_adapter_registry is not None:
+        target_adapter_registration = target_adapter_registry.for_origin(target_url)
+    semantic_profile_registry = (
+        target_adapter_registration.adapter.semantic_profiles
+        if target_adapter_registration is not None
+        else None
+    )
+    workflow_allowlist = (
+        target_adapter_registration.adapter.workflow_ids()
+        if target_adapter_registration is not None
+        else ()
+    )
     browser_capability = (
         (capability_manifest.get("capabilities") or {}).get("browser") or {}
     )
@@ -234,6 +249,8 @@ def build_initial_state(
                     ),
                     browser_timeout_ms=settings.playwright_browser_timeout_ms,
                     probe_resolver=probe_store.resolve,
+                    semantic_profile_registry=semantic_profile_registry,
+                    workflow_allowlist=workflow_allowlist,
                 ),
                 probe_registrar=probe_store.put,
                 probe_cleaner=probe_store.clear,
@@ -258,6 +275,7 @@ def build_initial_state(
             if admitted_package_context is not None
             else None
         ),
+        target_adapter_registry=target_adapter_registry,
     )
     scan_mode_value = getattr(resolved_scan_mode, "value", resolved_scan_mode)
     profile_value = getattr(resolved_profile, "value", resolved_profile)

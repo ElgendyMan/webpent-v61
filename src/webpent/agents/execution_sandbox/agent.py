@@ -680,6 +680,16 @@ def _build_typed_browser_proof_runner(
         return None
     if registered.handler is not adapter:
         return None
+    target_registration = getattr(runtime, "target_adapter_registration", None)
+    if target_registration is None:
+        return None
+    try:
+        target_errors = target_registration.validate()
+        workflow_allowlist = tuple(target_registration.adapter.workflow_ids())
+    except Exception:
+        return None
+    if target_errors or not workflow_allowlist:
+        return None
     if hasattr(registry, "validate_for_execution"):
         valid_registration, _errors = registry.validate_for_execution(
             "control_plane_browser"
@@ -716,6 +726,7 @@ def _build_typed_browser_proof_runner(
             session=session,
             scope=scope,
             engagement_id=engagement_id,
+            workflow_allowlist=workflow_allowlist,
         )
     except (ImportError, OSError, TypeError, ValueError, RuntimeError) as exc:
         logger.warning(

@@ -41,6 +41,10 @@ from webpent.shared.research_intelligence import (
     SmartNextBestActionEngine,
 )
 from webpent.shared.safety_gate import EngagementSafetyGate
+from webpent.shared.target_adapters import (
+    RegisteredTargetAdapter,
+    TargetAdapterRegistry,
+)
 from webpent.shared.wildcard_scope import ScopeRuntimeHandle, compile_wildcard_scope
 
 
@@ -297,6 +301,9 @@ class RuntimeContext:
     scope_runtime_handle: ScopeRuntimeHandle | None = None
     # Shared governed harness; live handlers and grants are never checkpointed.
     agent_harness: HarnessRunner | None = None
+    # Optional target-specific proof registration. The live adapter is never
+    # serialized; only its redacted identity is projected by ``descriptor``.
+    target_adapter_registration: RegisteredTargetAdapter | None = None
 
     @property
     def valid(self) -> bool:
@@ -551,6 +558,7 @@ class RuntimeFactory:
         control_plane_profile_root: str | None = None,
         control_plane_browser_adapter: Any | None = None,
         target_package: Mapping[str, Any] | None = None,
+        target_adapter_registry: TargetAdapterRegistry | None = None,
     ) -> RuntimeContext:
         settings = settings or get_settings()
         if scope_runtime_handle is None and raw_scope_entries:
@@ -597,6 +605,17 @@ class RuntimeFactory:
             if target_package is not None
             else None
         )
+        target_adapter_registration: RegisteredTargetAdapter | None = None
+        if target_adapter_registry is not None:
+            try:
+                target_adapter_registration = target_adapter_registry.require_for_origin(
+                    normalized_origin
+                )
+            except (TypeError, ValueError, RuntimeError) as exc:
+                errors.append(
+                    "target_adapter:registration_unavailable:"
+                    f"{type(exc).__name__}"
+                )
         authority = ActionAuthority(
             settings=settings,
             allowed_origin=normalized_origin,
@@ -765,6 +784,7 @@ class RuntimeFactory:
             engagement_scope=engagement_scope,
             scope_runtime_handle=scope_runtime_handle,
             agent_harness=harness,
+            target_adapter_registration=target_adapter_registration,
         )
 
     @staticmethod
@@ -796,13 +816,32 @@ class RuntimeFactory:
                 context.safety_gate is not None and context.safety_gate.kill_switch.tripped
             ),
             "agent_harness_enabled": context.agent_harness is not None,
+            "target_adapter": (
+                {
+                    "target_id": context.target_adapter_registration.target_id,
+                    "target_origin": str(
+                        context.target_adapter_registration.adapter.target_origin
+                    ).strip(),
+                    "source": context.target_adapter_registration.source,
+                    "version": context.target_adapter_registration.version,
+                    "policy_ref": context.target_adapter_registration.policy_ref,
+                    "proof_contract": context.target_adapter_registration.proof_contract,
+                }
+                if context.target_adapter_registration is not None
+                else None
+            ),
             "kill_switch_reason": (
                 context.safety_gate.kill_switch.reason if context.safety_gate is not None else ""
             ),
         }
 
     @classmethod
-    def from_descriptor(cls, descriptor: Mapping[str, Any]) -> RuntimeContext | None:
+    def from_descriptor(
+        cls,
+        descriptor: Mapping[str, Any],
+        *,
+        target_adapter_registry: TargetAdapterRegistry | None = None,
+    ) -> RuntimeContext | None:
         """Rebuild a live context from a redacted checkpoint descriptor."""
         if not isinstance(descriptor, Mapping):
             return None
@@ -820,6 +859,18 @@ class RuntimeFactory:
             if updates:
                 settings = settings.model_copy(update=updates)
             manifest = descriptor.get("manifest")
+            target_adapter_descriptor = descriptor.get("target_adapter")
+            if target_adapter_descriptor is not None and not isinstance(
+                target_adapter_descriptor, Mapping
+            ):
+                return None
+            if (
+                isinstance(target_adapter_descriptor, Mapping)
+                and target_adapter_registry is None
+            ):
+                # A target-aware checkpoint must not silently degrade into a
+                # generic context with no proof workflows after restoration.
+                return None
             scope_runtime_handle = None
             scope_projection = descriptor.get("scope_projection")
             if isinstance(scope_projection, Mapping):
@@ -843,7 +894,19 @@ class RuntimeFactory:
                     if isinstance(descriptor.get("target_package"), Mapping)
                     else None
                 ),
+                target_adapter_registry=target_adapter_registry,
             )
+            if isinstance(target_adapter_descriptor, Mapping):
+                expected_target_id = str(
+                    target_adapter_descriptor.get("target_id") or ""
+                ).strip()
+                registration = context.target_adapter_registration
+                if (
+                    not expected_target_id
+                    or registration is None
+                    or registration.target_id != expected_target_id
+                ):
+                    return None
             if context.safety_gate is not None and descriptor.get("kill_switch_tripped"):
                 context.safety_gate.kill_switch.trip(
                     str(descriptor.get("kill_switch_reason") or "checkpoint_stop")
