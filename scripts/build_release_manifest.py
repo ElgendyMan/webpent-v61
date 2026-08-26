@@ -68,10 +68,10 @@ def _is_excluded_relative(relative: Path) -> bool:
 
 
 
-def _tracked_commit() -> str | None:
+def _git_revision(argument: str) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", "rev-parse", argument],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
@@ -80,6 +80,14 @@ def _tracked_commit() -> str | None:
     except OSError:
         return None
     return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _tracked_commit() -> str | None:
+    return _git_revision("HEAD")
+
+
+def _tracked_tree() -> str | None:
+    return _git_revision("HEAD^{tree}")
 
 
 def _included(path: Path) -> bool:
@@ -225,6 +233,14 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "project": "WebPent",
         "git_commit": _tracked_commit(),
+        "git_tree": _tracked_tree(),
+        "provenance": {
+            "commit_and_tree_are_source_revision_evidence": True,
+            "manifest_path_excluded_from_file_hashes": True,
+            "archive_verification_method": (
+                "compare extracted archive tree/files to git archive of git_commit"
+            ),
+        },
         "file_count": len(files),
         "files": dict(files),
         "artifact_hashes": _artifact_hashes(),

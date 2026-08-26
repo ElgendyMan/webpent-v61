@@ -1,7 +1,7 @@
 {
   "schema_version": "juice_shop.governance_decision.v1",
   "decision_id": "juice-shop-governance-20260826-01",
-  "prepared_at_utc": "2026-08-26T19:15:00Z",
+  "prepared_at_utc": "2026-08-26T20:35:00Z",
   "target_scope": {
     "kind": "authorized_local_loopback_lab",
     "origin": "http://127.0.0.1:3000",
@@ -71,23 +71,52 @@
     ],
     "case_count": 3,
     "class_count": 3,
-    "reason": "These are the only predicates explicitly accepted by the independent oracle decision currently recorded in docs/p10_oracle_semantics_decision_v1.json."
+    "reason": "These are the only predicates explicitly accepted by the prior oracle decision; this corrected packet requires a human independent reviewer to reconfirm them against the current source hash."
+  },
+  "drift_reconciliation": {
+    "status": "changes_requested_corrected_pending_human_independent_review",
+    "engineering_reviewed_non_scoring_case_count": 8,
+    "engineering_reviewed_non_scoring_case_ids": [
+      "juice.access_log_disclosure.v1",
+      "juice.directory_listing.v1",
+      "juice.forgotten_backup.v1",
+      "juice.misplaced_signature_file.v1",
+      "juice.privacy_policy_proof.v1",
+      "juice.public_scoreboard_route.v1",
+      "juice.security_policy.v1",
+      "juice.well_known_security_policy.v1"
+    ],
+    "juice_shop_authoritative_non_scoring_count": 8,
+    "synthetic_unit_test_not_scored_expected_case_count": 7,
+    "synthetic_unit_test_scope": "tests/test_p10_benchmark.py uses a separate 10-case fixture with 3 oracle-approved cases; its 7 is not the Juice Shop production count.",
+    "blocked_and_out_of_scope_are_not_fn": true,
+    "access_log_source_path": "/support/logs/access.log.2026-08-26",
+    "access_log_frozen_ground_truth_path": "/ftp/access.log",
+    "access_log_path_match": false,
+    "ground_truth_not_modified_to_hide_drift": true
   },
   "hash_lock": {
     "mapping_hash": "sha256:602b2411df9b259911b1ae0757e5e26fabdc86b928fb5b43b040750182762ad5",
     "oracle_mapping_hash": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
-    "current_oracle_contract_hash_reviewed": "sha256:d16e139eebcbe7e88f62058e22aa4ffa31ed96a5af8c5187cc29937304902dee",
+    "previous_independent_reviewed_oracle_contract_sha256": "sha256:d16e139eebcbe7e88f62058e22aa4ffa31ed96a5af8c5187cc29937304902dee",
+    "current_source_mapping_sha256": "sha256:db72b2b70ab3b05ef5d93f82376d21c69b10058f3cac026ee2f60bf45c51069a",
+    "current_source_oracle_contract_sha256": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
+    "current_oracle_contract_independent_reconfirmation": "pending_human_reviewer",
     "oracle_decision_hash": "sha256:637b1f7e10e4224d60e3bcf29abdcaadb2e87aa66ed03d776668b94f1454a97c",
     "ground_truth_document_sha256": "sha256:84bf4111235b546b337fbd3e76207d43a8e7a05f39685dd9ed51f739468aea52",
-    "ground_truth_source_snapshot_id": "gt-snapshot-20260826-02",
-    "ground_truth_source_snapshot_sha256": "sha256:ecb29540165f4f33462d69f213b79cb14e72e8ec0ff2477466d0e3acd12e3381",
+    "ground_truth_source_snapshot_id": "gt-snapshot-20260826-corrected",
+    "ground_truth_source_snapshot_sha256": "sha256:4bc02c4664aa06230b6617085134ba12080e99767f457c82ddd917c48f471963",
+    "source_ground_truth_manifest_sha256": "sha256:d3078564bd07a2592e3f5a9013a0fd1364405518412592fa3fd42d68967e1205",
     "loopback_runtime_manifest_sha256": "sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524",
-    "hash_interpretation": "The mapping/oracle values are canonical hashes frozen by prior review records; the document and source snapshot hashes identify the exact local governance inputs. The source snapshot file hash is distinct from the live catalog body hash and does not constitute vulnerability verdict approval."
+    "release_manifest_hash_lock": "excluded_to_avoid_recursive_self_reference",
+    "hash_interpretation": "Canonical mapping/oracle values are prior review locks. Current source mapping/oracle hashes identify the source presently awaiting human reconfirmation. Document, snapshot, source-to-ground-truth manifest, and runtime manifest hashes identify exact local inputs. The frozen ground truth was not modified to hide drift."
   },
   "run_gate": {
     "official_isolated_p10_runs_authorized": false,
     "blocking_reasons": [
-      "independent_governance_signoff_missing",
+      "independent_human_governance_signoff_missing",
+      "source_to_ground_truth_drift_requires_explicit_review",
+      "current_oracle_hash_requires_independent_reconfirmation",
       "final_approved_case_set_below_minimum_10_cases",
       "final_approved_class_set_below_minimum_6_classes",
       "access_log_oracle_governance_confirmation_missing",
