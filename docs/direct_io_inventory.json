@@ -1,5 +1,6 @@
 {
   "approved_direct_files": {
+    "src/webpent/adapters/controlled_target/adapter.py": "loopback_only_controlled_target_http_boundary",
     "src/webpent/adapters/generic_web/adapter.py": "generic_adapter_uses_hardened_http_boundary",
     "src/webpent/agents/authentication/agent.py": "scoped_playwright_auth_flow",
     "src/webpent/agents/execution_sandbox/agent.py": "scoped_playwright_xss_replay",
@@ -450,12 +451,42 @@
       ],
       "symbol": "socket.gethostbyname_ex",
       "transport": "raw-or-boundary"
+    },
+    {
+      "approved_by": "g02-baseline-review-20260821",
+      "canonical_wrapper": "loopback_only_controlled_target_http_boundary",
+      "expires_at": "2026-11-19",
+      "file": "src/webpent/adapters/controlled_target/adapter.py",
+      "owner": "security-engineering",
+      "reason": "loopback_only_controlled_target_http_boundary",
+      "risk": "medium",
+      "runtime_tests": [
+        "test_g02_direct_io_inventory",
+        "test_g02_runtime_invariants"
+      ],
+      "symbol": "urllib.request",
+      "transport": "raw-or-boundary"
+    },
+    {
+      "approved_by": "g02-baseline-review-20260821",
+      "canonical_wrapper": "loopback_only_controlled_target_http_boundary",
+      "expires_at": "2026-11-19",
+      "file": "src/webpent/adapters/controlled_target/adapter.py",
+      "owner": "security-engineering",
+      "reason": "loopback_only_controlled_target_http_boundary",
+      "risk": "medium",
+      "runtime_tests": [
+        "test_g02_direct_io_inventory",
+        "test_g02_runtime_invariants"
+      ],
+      "symbol": "urllib.request.urlopen",
+      "transport": "raw-or-boundary"
     }
   ],
   "coverage": {
-    "dynamic_records": 276,
-    "raw_or_boundary_records": 67,
-    "record_count": 343,
+    "dynamic_records": 277,
+    "raw_or_boundary_records": 69,
+    "record_count": 346,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -569,6 +600,45 @@
     }
   },
   "records": [
+    {
+      "approval_status": "approved",
+      "classification": "http_transport",
+      "column": 1,
+      "file": "src/webpent/adapters/controlled_target/adapter.py",
+      "kind": "import",
+      "line": 19,
+      "normalized_symbol": "urllib.request",
+      "reason": "loopback_only_controlled_target_http_boundary",
+      "symbol": "urllib.request",
+      "transport": "http_transport",
+      "transport_family": "http"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 26,
+      "file": "src/webpent/adapters/controlled_target/adapter.py",
+      "kind": "dynamic_resolution",
+      "line": 434,
+      "normalized_symbol": "getattr(causal_result.decision, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "approved",
+      "classification": "http_transport",
+      "column": 14,
+      "file": "src/webpent/adapters/controlled_target/adapter.py",
+      "kind": "call",
+      "line": 757,
+      "normalized_symbol": "urllib.request.urlopen",
+      "reason": "loopback_only_controlled_target_http_boundary",
+      "symbol": "urllib.request.urlopen",
+      "transport": "http_transport",
+      "transport_family": "http"
+    },
     {
       "approval_status": "approved",
       "classification": "http_implementation",
@@ -3084,7 +3154,7 @@
       "column": 16,
       "file": "src/webpent/shared/direct_io_inventory.py",
       "kind": "dynamic_resolution",
-      "line": 537,
+      "line": 541,
       "normalized_symbol": "getattr(node, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
@@ -3097,7 +3167,7 @@
       "column": 18,
       "file": "src/webpent/shared/direct_io_inventory.py",
       "kind": "dynamic_resolution",
-      "line": 538,
+      "line": 542,
       "normalized_symbol": "getattr(node, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",

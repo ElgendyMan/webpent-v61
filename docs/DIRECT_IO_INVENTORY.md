@@ -22,10 +22,13 @@
 
 ## Source-level records
 
-Total records: **343**.
+Total records: **346**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
+| `src/webpent/adapters/controlled_target/adapter.py` | 19 | `import` | `urllib.request` | `http_transport` | `approved` |
+| `src/webpent/adapters/controlled_target/adapter.py` | 434 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/adapters/controlled_target/adapter.py` | 757 | `call` | `urllib.request.urlopen` | `http_transport` | `approved` |
 | `src/webpent/adapters/generic_web/adapter.py` | 20 | `import` | `httpx` | `http_implementation` | `approved` |
 | `src/webpent/adapters/generic_web/adapter.py` | 420 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/access_control/agent.py` | 399 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
@@ -219,8 +222,8 @@ Total records: **343**.
 | `src/webpent/shared/confidence.py` | 369 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/control_plane_spine.py` | 194 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/differential_workflow.py` | 160 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 537 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/shared/direct_io_inventory.py` | 538 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 541 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/direct_io_inventory.py` | 542 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 19 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/ensemble.py` | 35 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/finding_aggregation.py` | 39 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

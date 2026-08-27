@@ -90,6 +90,20 @@
   ],
   "current_entries": [
     {
+      "case_id": "controlled.idor.owner_resource.v1",
+      "target": "ControlledLocalTarget",
+      "target_version": "1.0",
+      "status": "CONFIRMED_TECHNICAL_PROOF_ONLY",
+      "maturity": "L4_SEALED_REPLAYABLE",
+      "evidence_origin": "target_runtime",
+      "oracle": "CONFIRMED",
+      "replay": true,
+      "approved_scoring_case": false,
+      "qualification_effect": false,
+      "reason": "Purpose-built deterministic loopback target-backed validation with owner baseline, attacker foreign-resource candidate, and attacker unrelated-resource negative control.",
+      "target_backed_proof_bundle": true
+    },
+    {
       "case_id": "webgoat.idor.view_other_profile.causal-vnext",
       "target": "WebGoat",
       "status": "BLOCKED",
