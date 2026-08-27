@@ -38,7 +38,7 @@ def build_payload() -> dict[str, Any]:
     if not source_commit or not source_tree:
         raise ValueError("release manifest must record git_commit and git_tree")
     parent_commit = _git("rev-parse", f"{manifest_commit}^")
-    parent_tree = _git("rev-parse", f"{manifest_commit}^{{tree}}")
+    parent_tree = _git("rev-parse", f"{parent_commit}^{{tree}}")
     changed_paths = [
         path
         for path in _git(

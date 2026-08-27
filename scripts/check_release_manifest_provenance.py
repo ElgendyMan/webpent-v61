@@ -62,7 +62,7 @@ def validate() -> dict[str, Any]:
     checks["source_commit_matches_manifest"] = source.get("git_commit") == source_commit
     checks["source_tree_matches_manifest"] = source.get("git_tree") == source_tree
     observed_parent = _git("rev-parse", f"{manifest_commit}^")
-    observed_parent_tree = _git("rev-parse", f"{manifest_commit}^{{tree}}")
+    observed_parent_tree = _git("rev-parse", f"{observed_parent}^{{tree}}")
     checks["manifest_parent_is_inventory_source"] = observed_parent == source_commit
     checks["manifest_parent_tree_is_inventory_source"] = observed_parent_tree == source_tree
     checks["sidecar_records_observed_parent"] = (
@@ -93,7 +93,7 @@ def validate() -> dict[str, Any]:
                 if member.isfile():
                     handle = tar.extractfile(member)
                     if handle is not None:
-                        members[member.name.split("/", 1)[-1]] = _sha256_bytes(handle.read())
+                        members[member.name] = _sha256_bytes(handle.read())
         listed = manifest.get("files", {})
         checks["archive_contains_all_listed_files"] = all(path in members for path in listed)
         checks["archive_hashes_match_manifest"] = checks[
