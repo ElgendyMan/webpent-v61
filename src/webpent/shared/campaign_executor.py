@@ -27,6 +27,12 @@ from webpent.shared.action_authority import (
 )
 from webpent.shared.control_plane_runtime import project_browser_observation
 from webpent.shared.proof_bundle_store import ProofBundleStore
+from webpent.shared.target_context import (
+    ContextCoordinator,
+    ContextRequest,
+    ContextStatus,
+    ExecutionContext,
+)
 
 
 class CampaignTaskStatus(str, Enum):
@@ -36,6 +42,7 @@ class CampaignTaskStatus(str, Enum):
     EXECUTED = "executed"
     INFRASTRUCTURE_FAILURE = "infrastructure_failure"
     STOPPED = "stopped"
+    CONTEXT_BLOCKED = "context_blocked"
 
 
 @dataclass(frozen=True)
@@ -255,11 +262,13 @@ class CampaignExecutor:
         action_engine: NextBestActionEngine | None = None,
         proof_bundle_store: ProofBundleStore | None = None,
         experiment_manager: ExperimentManager | None = None,
+        context_coordinator: ContextCoordinator | None = None,
     ) -> None:
         self.authority = authority
         self.action_engine = action_engine or NextBestActionEngine()
         self.proof_bundle_store = proof_bundle_store
         self.experiment_manager = experiment_manager
+        self.context_coordinator = context_coordinator
         self.coverage: dict[str, dict[str, Any]] = {}
         self.decision_trace: list[dict[str, Any]] = []
         self.lifecycle_events: list[dict[str, Any]] = []
@@ -330,10 +339,38 @@ class CampaignExecutor:
         handler: Callable[[CampaignTask], Any],
         *,
         preconditions_met: bool = True,
+        context_request: ContextRequest | None = None,
+        context_handler: Callable[[CampaignTask, ExecutionContext], Any] | None = None,
     ) -> dict[str, Any]:
         key = task.normalized_idempotency_key()
         self._emit_lifecycle(task, "planned")
+        execution_context: ExecutionContext | None = None
+        state_snapshot = None
+        if self.context_coordinator is not None:
+            if context_request is None:
+                self._emit_lifecycle(task, "blocked", "target_context_request_required")
+                return self._record(
+                    task,
+                    CampaignTaskStatus.CONTEXT_BLOCKED,
+                    "target_context_request_required",
+                )
+            context_status, context_reason, execution_context = self.context_coordinator.acquire(
+                context_request
+            )
+            self._emit_lifecycle(task, "context_acquired", context_status.value)
+            if context_status != ContextStatus.READY or execution_context is None:
+                self._emit_lifecycle(task, "blocked", context_reason)
+                return self._record(
+                    task,
+                    CampaignTaskStatus.CONTEXT_BLOCKED,
+                    f"context_{context_status.value}:{context_reason}",
+                )
+            state_snapshot = self.context_coordinator.snapshot(execution_context)
+            self._emit_lifecycle(task, "snapshot", state_snapshot.snapshot_ref)
         if not preconditions_met:
+            if execution_context is not None and state_snapshot is not None:
+                self.context_coordinator.restore(execution_context, state_snapshot)
+                self.context_coordinator.dispose(execution_context)
             self._emit_lifecycle(task, "blocked", "precondition_failed")
             return self._record(
                 task,
@@ -345,15 +382,28 @@ class CampaignExecutor:
             if not duplicate:
                 self._inflight_keys.add(key)
         if duplicate:
+            if execution_context is not None and state_snapshot is not None:
+                restore_result = self.context_coordinator.restore(execution_context, state_snapshot)
+                self._emit_lifecycle(task, "restored", restore_result.status.value)
+                disposal_result = self.context_coordinator.dispose(execution_context)
+                self._emit_lifecycle(task, "disposed", disposal_result.status.value)
             self._emit_lifecycle(task, "deduplicated", "duplicate_idempotency_key")
             return self._record(task, CampaignTaskStatus.STOPPED, "duplicate_idempotency_key")
 
         request = self._request(task)
         try:
-            result: ActionResult = self.authority.execute(
-                request, lambda _request: handler(task)
-            )
+            def run_handler(_request: ActionRequest) -> Any:
+                if context_handler is not None and execution_context is not None:
+                    return context_handler(task, execution_context)
+                return handler(task)
+
+            result: ActionResult = self.authority.execute(request, run_handler)
         finally:
+            if execution_context is not None and state_snapshot is not None:
+                restore_result = self.context_coordinator.restore(execution_context, state_snapshot)
+                self._emit_lifecycle(task, "restored", restore_result.status.value)
+                disposal_result = self.context_coordinator.dispose(execution_context)
+                self._emit_lifecycle(task, "disposed", disposal_result.status.value)
             with self._bookkeeping_lock:
                 self._inflight_keys.discard(key)
         if result.status in {ActionStatus.AUTHORIZED, ActionStatus.EXECUTED}:

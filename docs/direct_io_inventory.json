@@ -453,9 +453,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 273,
+    "dynamic_records": 274,
     "raw_or_boundary_records": 67,
-    "record_count": 340,
+    "record_count": 341,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -2941,7 +2941,7 @@
       "column": 41,
       "file": "src/webpent/shared/campaign_executor.py",
       "kind": "dynamic_resolution",
-      "line": 516,
+      "line": 566,
       "normalized_symbol": "getattr(bundle, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
@@ -4464,6 +4464,19 @@
       "kind": "dynamic_resolution",
       "line": 618,
       "normalized_symbol": "getattr(registration.adapter, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 27,
+      "file": "src/webpent/shared/target_context.py",
+      "kind": "dynamic_resolution",
+      "line": 79,
+      "normalized_symbol": "getattr(self, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",
