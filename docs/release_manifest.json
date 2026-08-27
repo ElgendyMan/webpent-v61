@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1233,
+  "file_count": 1239,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -398,6 +398,8 @@
     "reports/evaluation/local_causal_lab/B2.1-FAILURE-TRIAGE-v1.md": "ab6a2f3d9a8db9e9faafa47e8f9008ae7b631eb0aa7230d549ef3dd781ae897e",
     "reports/evaluation/local_causal_lab/B2.1-TARGET-LIVE-REPORT-v1.md": "a897535465e2510cdb9b93a3528224b2d9959d012a48baa40ac663978200ab8a",
     "reports/evaluation/local_causal_lab/B2.1-TARGET-LIVE-RESULT-v1.json": "94f6ed319d9b2020b74b452241b6cc113c4a93633ce35d5974efb916b77131d2",
+    "reports/evaluation/local_causal_lab/CASE-REGISTRY-PREP-v1.json": "066bb6e3fc3f51ba0f0bd9759924cea661c96a31fb4c08c64e152d31b64e27e2",
+    "reports/evaluation/local_causal_lab/CASE-REGISTRY-PREP-v1.md": "cc7d7a06cc6c409d105281aab30feedd80074e57393d64cc996765c24cd056c2",
     "reports/evaluation/local_causal_lab/CAUSAL-ENGINEERING-METRICS-vNEXT-v1.json": "dccb338ee8ccee8b1b3bbb9dc14df62b9857cf2cf1e98ce8a5d2fabf4f794212",
     "reports/evaluation/local_causal_lab/CAUSAL-ENGINEERING-METRICS-vNEXT-v1.md": "4b76031459d08573031347e0b342200e511e42631e37e110f46118626d4a5876",
     "reports/evaluation/local_causal_lab/CAUSAL-ENGINEERING-METRICS-vNEXT-v2.json": "7e8a8f93e15fc2f9a89016fbf9840c3d6968526c0b34c8925a73c79fe5892a70",
@@ -406,8 +408,12 @@
     "reports/evaluation/local_causal_lab/OPTION-B-LOCAL-CAUSAL-LAB-RESULT-v1.json": "fade54a976fe31bf2491d2c0857b1e973b696e828161f99811357495a6e3b80a",
     "reports/evaluation/local_causal_lab/OPTION-B-LOCAL-CAUSAL-LAB-RESULT-v2.json": "8e5aace9ed03d3bf265b257875c2a76f9688c8ccc8814aba3f7248f8af69523b",
     "reports/evaluation/local_causal_lab/TARGET-BACKED-FIRST-CASE-RESULT-v1.json": "96e6a3aa26113132b6ae207dc9bd7b864b693e82ec850f9858ff677c0205b309",
+    "reports/evaluation/local_causal_lab/TARGET-CAPABILITY-ENABLEMENT-RESULT-v1.md": "40fb91968984d9dc6b1d61a9d0183d4622b630c31cab0ddbd131f32a5634d2f0",
+    "reports/evaluation/local_causal_lab/WEBGOAT-CAPABILITY-CLOSURE-v2.json": "59aad92d9502430dee6c72a48fec499481837225a62629c464982eecb79d1b2c",
+    "reports/evaluation/local_causal_lab/WEBGOAT-CAPABILITY-CLOSURE-v2.md": "b507863b6567319d202418d73ff568273c519f0b3f96c5325fd57ffbf6864c53",
     "reports/evaluation/local_causal_lab/WEBGOAT-CAUSAL-REDESIGN-BLOCKER-v1.json": "9bb45d1d292cd5e08e57d7079fcc2c0d2ef2cd9a975e3fc570070a29c31c4dea",
     "reports/evaluation/local_causal_lab/WEBGOAT-CAUSAL-REDESIGN-BLOCKER-v1.md": "9be59af2851aad1331f1f82c09f8ae58fd52192a4953b018b9361f8b6154c1f2",
+    "reports/evaluation/local_causal_lab/WEBGOAT-TARGET-CAUSAL-EXPERIMENT-v2.json": "9ab3dd51c5636fa516bdae779630c78bbc9ab49e6b18088d38110bb49bc7aec9",
     "reports/evaluation/local_causal_lab/WEBGOAT-TARGET-EVIDENCE-CAPABILITY-GAP-v1.json": "21bc13be15cd65e23b5d53299d3472f00a3b2f022120a486992f660bb79ecf12",
     "reports/evaluation/mock_target/mock-baseline-001.md": "218978fa6279bd567a79803670ea10c2e171e4df09d82fd6fa140a91d570df39",
     "reports/evaluation/owner_decision/B2-TARGET-LIVE-OWNER-APPROVAL-IMPORT-v2.json": "2cc0e436e47338c96db46214d38174f41e39d213135856941ee6b5f0dcc30605",
@@ -1245,9 +1251,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T15:48:27.212925+00:00",
-  "git_commit": "f2fb902b85b1865b631d4ff9c8a42288941e26b5",
-  "git_tree": "1eaabee6c1d968ba946b484fef037e9a9be3f937",
+  "generated_at": "2026-08-27T16:06:58.195021+00:00",
+  "git_commit": "e424cf6a0282115ad8e4e60ee7272bd130c6322d",
+  "git_tree": "789edcb270a15ade3099400523b6c55b40f1db26",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
