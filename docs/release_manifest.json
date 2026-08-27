@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1168,
+  "file_count": 1172,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -388,6 +388,8 @@
     "reports/evaluation/WEBPENT-runbook-execution-v1.md": "b1942313a9da3c8211968caeebbeede302cc6218537910ea9cf4dbf50bcc1e85",
     "reports/evaluation/juice_shop_baseline_quality_v1.md": "73a1a67783be7d1ab15afffcd2e872147a5f5bcb10172186fcd3eaea2ba48fdc",
     "reports/evaluation/mock_target/mock-baseline-001.md": "218978fa6279bd567a79803670ea10c2e171e4df09d82fd6fa140a91d570df39",
+    "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OWNER-DECISION-PACKET-v1.json": "e16a16b0dfaaba38b5d0c5f72b5a7fee405a12ce4ba00f91fc3df48d54a3b04c",
+    "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OWNER-DECISION-PACKET-v1.md": "282b1f49fd30f1c01aa2ce13c24f3313be1e83ab3ad001d3357771f0cb6e446d",
     "reports/evaluation/p10_candidates/CANDIDATE-01-vulnerable-components-diagnosis-and-oracle-proposal-v1.md": "69c87bf66690fc238decb5509c129dff56782388651e3380529050c8ffd95478",
     "reports/evaluation/p10_candidates/CANDIDATE-02-sql-injection-diagnosis-and-oracle-proposal-v1.md": "39b422edd7ea0a35a2612b3cc4c32d70ea756ed28ca8a9f97e8317afe5f74cc6",
     "reports/evaluation/p10_candidates/CANDIDATE-03-broken-access-control-diagnosis-and-oracle-proposal-v1.md": "ba8f1117acf68341f074559cfb8f5f82811de9e4526e78e1509e15e3b158e9fb",
@@ -462,6 +464,7 @@
     "scripts/check_generic_target_neutrality.py": "06447471f494fe58a3cc7560caf1cb56a3c85efbe044a710db02280aa15db932",
     "scripts/check_juice_shop_governance_packet.py": "1ea74f12e82a427f95dc38ecf76d55e39679c3cf9706f9a0a7d5ceea8b36f530",
     "scripts/check_juice_shop_p10_expansion_plan.py": "dded2ec80355896254177664c7226090c16b88dcef999c71f517b8ceeecb74ce",
+    "scripts/check_local_causal_lab_packet.py": "9ed90b6eb78388151cfe8782019f3f07559d0bf448962903df083c36287d5c74",
     "scripts/check_release_manifest_provenance.py": "03455dd3111387654fdc0fc4b15f6113ef8fa6178bd77e814536db04c82c1482",
     "scripts/check_scoring_readiness_packages.py": "5642d14ea396a78ab1e2cb84f9f38f9fb634efc893b2232f2705063b55e0828a",
     "scripts/check_source_backed_candidate_inventory.py": "b1a9a8be204a576cc6f4c196cf2c3c5ed601afa09c22d1f83aeaf4ffc3159eff",
@@ -960,6 +963,7 @@
     "tests/test_llm_budget_guard.py": "282493c4247d9c1332fc548b9a9ac77189a70acc65313c4d7d76a5c0da8fec45",
     "tests/test_llm_doctor_contract.py": "50a0aef36768d322d934b0c3b1fdba44342ce1d44fcb706189c9c27d9cb0b476",
     "tests/test_llm_provider_compatibility.py": "5c0194248766b0915a9ba907df3203e49dc948d1ec90ad7c391a34144f6e4a27",
+    "tests/test_local_causal_lab_packet.py": "be80961eab7ca52cdf68f932095ad004ff062144d4f5e50949352d1315b82dba",
     "tests/test_nettacker_adapter.py": "043692abd6ffc384456046b8835ea82e3c9d4d62f4ade4cc853162ef773f4c1d",
     "tests/test_no_llm_rag_guard.py": "200e23cc86d968d34e3f6430aa5f83a9154c6f93e48c2851386820e6778983fe",
     "tests/test_nuclei_template_contract.py": "68118b7e4d270058e228026e8ff89f844432e08836e32cff87fb2f2440bcbbd1",
@@ -1180,9 +1184,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T06:30:47.105905+00:00",
-  "git_commit": "99d19ba3036d70bfed0748748e5725fbcf490f2d",
-  "git_tree": "4dea05d9fc3ce1d61322a174a83f7ee34af8f9b0",
+  "generated_at": "2026-08-27T06:49:14.917832+00:00",
+  "git_commit": "30cd071e38ac40be4d76bc9f8b8266a1ca605d60",
+  "git_tree": "f8cb5f9f9378d0c50642fb1afa10de60f82f22c7",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
