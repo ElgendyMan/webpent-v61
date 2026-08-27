@@ -219,7 +219,8 @@ def main() -> int:
                 for campaign in campaigns.values()
             ),
             "all_targets_observation_only": all(
-                campaign["cases"][0]["status"] == "inconclusive" for campaign in campaigns.values()
+                campaign["cases"][0]["status"] == "observation_only"
+                for campaign in campaigns.values()
             ),
             "all_targets_have_negative_control": all(
                 campaign["cases"][0]["oracle"]["negative_control_complete"] is True
@@ -256,7 +257,10 @@ def main() -> int:
             "scoring_promotion": False,
         },
         "limitations": [
-            "All three campaigns are passive anonymous GET-only observations.",
+            (
+                "All three campaigns are passive anonymous GET-only observations "
+                "classified as observation_only."
+            ),
             (
                 "No vulnerability case was promoted without an admitted target-specific "
                 "ground truth and causal oracle."

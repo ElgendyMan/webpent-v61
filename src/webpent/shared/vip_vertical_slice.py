@@ -673,7 +673,15 @@ class VIPAutonomousVerticalSlice:
                     ),
                 ]
             )
-            status = OutcomeStatus.CONFIRMED if bundle is not None else OutcomeStatus.INCONCLUSIVE
+            status = (
+                OutcomeStatus.CONFIRMED
+                if bundle is not None
+                else (
+                    OutcomeStatus.OBSERVATION_ONLY
+                    if oracle["baseline_present"] and oracle["negative_control_complete"]
+                    else OutcomeStatus.INCONCLUSIVE
+                )
+            )
             quality = {
                 "status": status.value,
                 "causal_signal": oracle["causal_signal"],
@@ -791,7 +799,12 @@ class VIPAutonomousVerticalSlice:
                         after_status = (
                             OutcomeStatus.CONFIRMED
                             if after_bundle is not None
-                            else OutcomeStatus.INCONCLUSIVE
+                            else (
+                                OutcomeStatus.OBSERVATION_ONLY
+                                if after_oracle["baseline_present"]
+                                and after_oracle["negative_control_complete"]
+                                else OutcomeStatus.INCONCLUSIVE
+                            )
                         )
                         retest_result = {
                             "status": "completed",

@@ -142,7 +142,7 @@ def test_vertical_slice_inconclusive_creates_owner_packet_and_keeps_gate_closed(
 
     case = result["cases"][0]
     assert case["proof"]["promotion_ready"] is True
-    assert case["improvement"]["before_status"] == "inconclusive"
+    assert case["improvement"]["before_status"] == "observation_only"
     assert case["improvement"]["before_oracle"]["causal_signal"] is False
     assert case["improvement"]["retest"]["proof"]["promotion_ready"] is True
     assert case["owner_decision_packet"] is None
@@ -167,7 +167,7 @@ def test_vertical_slice_keeps_non_local_improvement_pending_owner_approval() -> 
 
     case = result["cases"][0]
     packet = case["owner_decision_packet"]
-    assert case["status"] == "inconclusive"
+    assert case["status"] == "observation_only"
     assert packet["status"] == "pending_owner_approval"
     assert "owner approval" in packet["decision_requested"]
     assert {

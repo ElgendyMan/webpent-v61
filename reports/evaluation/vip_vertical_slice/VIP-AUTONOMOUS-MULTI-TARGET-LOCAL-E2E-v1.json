@@ -11,7 +11,7 @@
     "qualification_claim_absent": true,
     "three_target_campaigns_present": true
   },
-  "generated_at": "2026-08-27T05:36:12.546502+00:00",
+  "generated_at": "2026-08-27T05:47:03.987196+00:00",
   "governance": {
     "bug_bounty": "BLOCKED",
     "human_independent_signoff_obtained": false,
@@ -22,7 +22,7 @@
     "vip": "NOT_QUALIFIED"
   },
   "limitations": [
-    "All three campaigns are passive anonymous GET-only observations.",
+    "All three campaigns are passive anonymous GET-only observations classified as observation_only.",
     "No vulnerability case was promoted without an admitted target-specific ground truth and causal oracle.",
     "WebGoat and crAPI have no approved scoring set in the current governance packet.",
     "No credentials, payloads, mutations, external targets, official P10 runs, or qualification actions were attempted."
@@ -38,7 +38,7 @@
             "causal_signal": false,
             "failure_id": "failure:crapi-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:8888"
@@ -51,7 +51,7 @@
               "causal_signal": false,
               "failure_id": "failure:crapi-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:8888"
@@ -97,7 +97,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "crapi-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "crapi-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proof": {
             "promotion_ready": false,
@@ -107,12 +107,12 @@
           },
           "raw_payloads_persisted": false,
           "scoring_promotion": false,
-          "status": "inconclusive",
+          "status": "observation_only",
           "vulnerability_class": "local_vip_passive_observation"
         }
       ],
       "engagement_id": "vip-crapi-loopback-local-e2e-v1",
-      "hash": "sha256:bbd83bdc0bc3fa0168a42c138797930f5520d408adc12074fd6608d98eb4f1ae",
+      "hash": "sha256:26b7518e724a81c268fa2632e830a0057b59186ba476a289be3f13601aff2a15",
       "lifecycle": [
         {
           "engagement_id": "vip-crapi-loopback-local-e2e-v1",
@@ -213,7 +213,7 @@
               "sealed": false,
               "verify_seal": false
             },
-            "status": "inconclusive"
+            "status": "observation_only"
           },
           "stage": "EVALUATE_DETECTION_QUALITY",
           "status": "completed"
@@ -225,7 +225,7 @@
             "causal_signal": false,
             "failure_id": "failure:crapi-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:8888"
@@ -262,7 +262,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "crapi-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "crapi-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proposal": {
             "change_class": "generic_candidate_requires_owner_review",
@@ -271,7 +271,7 @@
               "causal_signal": false,
               "failure_id": "failure:crapi-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:8888"
@@ -312,7 +312,7 @@
           "case_id": "crapi-loopback-live-root-observation",
           "comparison": {
             "after": "not_run",
-            "before": "inconclusive",
+            "before": "observation_only",
             "scoring_promotion": false
           },
           "stage": "COMPARE_BEFORE_AFTER",
@@ -339,7 +339,7 @@
       "target": {
         "authorization_ref": "[REDACTED]",
         "canonical_origin": "http://127.0.0.1:8888",
-        "expires_at": "2026-08-27T05:56:12.543591+00:00",
+        "expires_at": "2026-08-27T06:07:03.983176+00:00",
         "method_policy": [
           "GET"
         ],
@@ -375,7 +375,7 @@
             "causal_signal": false,
             "failure_id": "failure:juice-shop-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:3000"
@@ -388,7 +388,7 @@
               "causal_signal": false,
               "failure_id": "failure:juice-shop-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:3000"
@@ -434,7 +434,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "juice-shop-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "juice-shop-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proof": {
             "promotion_ready": false,
@@ -444,12 +444,12 @@
           },
           "raw_payloads_persisted": false,
           "scoring_promotion": false,
-          "status": "inconclusive",
+          "status": "observation_only",
           "vulnerability_class": "local_vip_passive_observation"
         }
       ],
       "engagement_id": "vip-juice-shop-loopback-local-e2e-v1",
-      "hash": "sha256:22a79048769f44b367ececd804ead20929df422206c9be78c447098cb1509ca1",
+      "hash": "sha256:c2b0285c0f678ed513742556353573ff1cf8437c852fd9c4b8fe4d1814c1f7c3",
       "lifecycle": [
         {
           "engagement_id": "vip-juice-shop-loopback-local-e2e-v1",
@@ -550,7 +550,7 @@
               "sealed": false,
               "verify_seal": false
             },
-            "status": "inconclusive"
+            "status": "observation_only"
           },
           "stage": "EVALUATE_DETECTION_QUALITY",
           "status": "completed"
@@ -562,7 +562,7 @@
             "causal_signal": false,
             "failure_id": "failure:juice-shop-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:3000"
@@ -599,7 +599,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "juice-shop-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "juice-shop-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proposal": {
             "change_class": "generic_candidate_requires_owner_review",
@@ -608,7 +608,7 @@
               "causal_signal": false,
               "failure_id": "failure:juice-shop-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:3000"
@@ -649,7 +649,7 @@
           "case_id": "juice-shop-loopback-live-root-observation",
           "comparison": {
             "after": "not_run",
-            "before": "inconclusive",
+            "before": "observation_only",
             "scoring_promotion": false
           },
           "stage": "COMPARE_BEFORE_AFTER",
@@ -676,7 +676,7 @@
       "target": {
         "authorization_ref": "[REDACTED]",
         "canonical_origin": "http://127.0.0.1:3000",
-        "expires_at": "2026-08-27T05:56:12.526789+00:00",
+        "expires_at": "2026-08-27T06:07:03.958577+00:00",
         "method_policy": [
           "GET"
         ],
@@ -712,7 +712,7 @@
             "causal_signal": false,
             "failure_id": "failure:webgoat-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:8080"
@@ -725,7 +725,7 @@
               "causal_signal": false,
               "failure_id": "failure:webgoat-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:8080"
@@ -771,7 +771,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "webgoat-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "webgoat-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proof": {
             "promotion_ready": false,
@@ -781,12 +781,12 @@
           },
           "raw_payloads_persisted": false,
           "scoring_promotion": false,
-          "status": "inconclusive",
+          "status": "observation_only",
           "vulnerability_class": "local_vip_passive_observation"
         }
       ],
       "engagement_id": "vip-webgoat-loopback-local-e2e-v1",
-      "hash": "sha256:49256ca4c4ca4132514146c4a8c2729748f6857a04bc7165f48ff043c83f0c83",
+      "hash": "sha256:5a32d501e2d7af929c9a8a40343888318ea6b48d20a0007db7526356b311ed06",
       "lifecycle": [
         {
           "engagement_id": "vip-webgoat-loopback-local-e2e-v1",
@@ -887,7 +887,7 @@
               "sealed": false,
               "verify_seal": false
             },
-            "status": "inconclusive"
+            "status": "observation_only"
           },
           "stage": "EVALUATE_DETECTION_QUALITY",
           "status": "completed"
@@ -899,7 +899,7 @@
             "causal_signal": false,
             "failure_id": "failure:webgoat-loopback-live-root-observation",
             "negative_control_complete": true,
-            "observed_status": "inconclusive",
+            "observed_status": "observation_only",
             "oracle_decision": "inconclusive",
             "recorded_as": "failure_or_inconclusive_evidence",
             "target": "http://127.0.0.1:8080"
@@ -936,7 +936,7 @@
               "discard metadata-only campaign artifact"
             ],
             "status": "pending_owner_approval",
-            "why_it_is_needed": "webgoat-loopback-live-root-observation ended as inconclusive; causal evidence was insufficient"
+            "why_it_is_needed": "webgoat-loopback-live-root-observation ended as observation_only; causal evidence was insufficient"
           },
           "proposal": {
             "change_class": "generic_candidate_requires_owner_review",
@@ -945,7 +945,7 @@
               "causal_signal": false,
               "failure_id": "failure:webgoat-loopback-live-root-observation",
               "negative_control_complete": true,
-              "observed_status": "inconclusive",
+              "observed_status": "observation_only",
               "oracle_decision": "inconclusive",
               "recorded_as": "failure_or_inconclusive_evidence",
               "target": "http://127.0.0.1:8080"
@@ -986,7 +986,7 @@
           "case_id": "webgoat-loopback-live-root-observation",
           "comparison": {
             "after": "not_run",
-            "before": "inconclusive",
+            "before": "observation_only",
             "scoring_promotion": false
           },
           "stage": "COMPARE_BEFORE_AFTER",
@@ -1013,7 +1013,7 @@
       "target": {
         "authorization_ref": "[REDACTED]",
         "canonical_origin": "http://127.0.0.1:8080",
-        "expires_at": "2026-08-27T05:56:12.539449+00:00",
+        "expires_at": "2026-08-27T06:07:03.978143+00:00",
         "method_policy": [
           "GET"
         ],
