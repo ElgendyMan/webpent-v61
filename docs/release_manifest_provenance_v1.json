@@ -1,6 +1,6 @@
 {
   "archive_scope": {
-    "archive_commit": "b69e64f7ed737a855be9dc8e22ae71fccb21d8ce",
+    "archive_commit": "e6305aca198b8e601dc5accff243dc9caeeef324",
     "archive_verification": "git archive archive_commit; verify manifest sha256 and all listed file hashes",
     "changed_paths_in_manifest_commit": [
       "docs/release_manifest.json"
@@ -9,10 +9,10 @@
     "sidecar_self_hash_excluded": true
   },
   "artifact": {
-    "manifest_commit": "b69e64f7ed737a855be9dc8e22ae71fccb21d8ce",
-    "manifest_commit_tree": "1a373b44ef3ed08e7b514beeb1adc2d8e8dbd2fd",
+    "manifest_commit": "e6305aca198b8e601dc5accff243dc9caeeef324",
+    "manifest_commit_tree": "797524b885fe7b7b77ac14bed32113c506f89338",
     "path": "docs/release_manifest.json",
-    "sha256": "sha256:f7483048cf2cf23bc939e2fbc8f193d6a638d77e2d8fe79cc4f4936a8d71f9b4"
+    "sha256": "sha256:94ae2cd1642639ace5e958553df1ce93a65a4cd968fd0b5eb2f2bea510fc35ff"
   },
   "fail_closed_conditions": [
     "manifest_commit parent must equal release_manifest.git_commit",
@@ -21,12 +21,12 @@
     "current manifest bytes must match the committed manifest bytes",
     "all manifest-listed files must hash identically from the archive source revision"
   ],
-  "generated_at": "2026-08-27T13:55:17.929682+00:00",
+  "generated_at": "2026-08-27T14:36:45.431979+00:00",
   "inventory_source_revision": {
-    "git_commit": "fefd1844981e0f62849f8ab948b77a11bb1d9713",
-    "git_tree": "5127a23b599346ca9b2ac8e008041a09b563a773",
-    "parent_commit_observed": "fefd1844981e0f62849f8ab948b77a11bb1d9713",
-    "parent_tree_observed": "5127a23b599346ca9b2ac8e008041a09b563a773",
+    "git_commit": "e893f7451adf6fa4dee5a198907d8c715c6dd6b3",
+    "git_tree": "e8c1cedafabea218b64219a1ec9caaf4775fb155",
+    "parent_commit_observed": "e893f7451adf6fa4dee5a198907d8c715c6dd6b3",
+    "parent_tree_observed": "e8c1cedafabea218b64219a1ec9caaf4775fb155",
     "relationship": "manifest_commit_parent"
   },
   "schema_version": "webpent-release-manifest-provenance-v1"
