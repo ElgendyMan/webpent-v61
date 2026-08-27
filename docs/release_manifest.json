@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1117,
+  "file_count": 1118,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -392,6 +392,7 @@
     "reports/reviews/JUICE-SHOP-INDEPENDENT-GOVERNANCE-REVIEW-REQUEST-v1.md": "331ef32c49328214266a28be8d6b852ffe02fd4ea7ef8b4f909a70cff1f31d63",
     "reports/reviews/JUICE-SHOP-P10-CANDIDATE-01-decision-v1.md": "64bdc4aa43d4e97148ebde99e6f84e930b8884524a355c1576ce003b0f9f5110",
     "reports/reviews/JUICE-SHOP-P10-PLAN-EXECUTION-AUDIT-v2.md": "3f535e68727309c08715cedb182724faabc2e744e67c9f81c3f0d2009c2a8946",
+    "reports/reviews/JUICE-SHOP-P10-RE-AUDIT-v3.md": "cdf16a4afc71bc3cc32eff894d373b276b532e244433d3378fdc59f3605f2106",
     "reports/reviews/JUICE-SHOP-governance-decision-v1.md": "8476662ebd4c44f8348ac22288747a4abc2b6ca5f4a036f25a63297c3823fa15",
     "reports/reviews/MOCK-FN-001_final_independent_review.md": "77e2265d3ee3276e7152118f36436a51ef79488cfcb9134be593b227acf648e7",
     "requirements-audit-v63.txt": "d5e538c184295875ec332a2ed0446a72897b728adfd62dcccd4d72f670f2415d",
@@ -1129,9 +1130,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T01:48:18.758732+00:00",
-  "git_commit": "5051f2d4bb591a991e6603a6ec4a35f817143b93",
-  "git_tree": "31b6e4fd1bfceac9fece98d8f1b463b45f79ad9c",
+  "generated_at": "2026-08-27T01:51:19.434128+00:00",
+  "git_commit": "f06af2253f3aee28efb83e23d2fda50134b33fff",
+  "git_tree": "14a0de5784bbb9ced984861b337f6ec221571ac0",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
