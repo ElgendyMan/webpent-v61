@@ -12,6 +12,11 @@ from webpent.benchmark.profiles import (
     build_offline_target_profile,
     default_offline_target_profiles,
 )
+from webpent.benchmark.research_intelligence import (
+    ResearchEvaluationCase,
+    ResearchIntelligenceReport,
+    evaluate_research_intelligence,
+)
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationMatrix,
@@ -26,6 +31,8 @@ __all__ = [
     "GoldenBenchmarkCase",
     "GoldenBenchmarkResult",
     "GroundTruthCase",
+    "ResearchEvaluationCase",
+    "ResearchIntelligenceReport",
     "QualificationMatrix",
     "QualificationRun",
     "build_offline_target_profile",
@@ -33,6 +40,7 @@ __all__ = [
     "default_golden_cases",
     "default_offline_target_profiles",
     "evaluate",
+    "evaluate_research_intelligence",
     "run_golden_benchmark",
     "VIPV2Metrics",
     "measure_vip_v2",

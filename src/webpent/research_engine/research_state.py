@@ -32,6 +32,10 @@ class ResearchTask(BaseModel):
     objective: str = Field(min_length=1, max_length=240)
     reason: str = Field(default="", max_length=400)
     priority: float = Field(default=0.0, ge=0.0, le=1.0)
+    risk: Literal["low", "medium", "high", "critical"] = "low"
+    expected_information_gain: float = Field(default=0.0, ge=0.0, le=1.0)
+    cost: float = Field(default=0.0, ge=0.0, le=1.0)
+    required_capability: str = Field(default="http_read", min_length=1, max_length=120)
     required_evidence: tuple[str, ...] = Field(default=(), max_length=16)
     operation: Literal["observe", "plan", "validate"] = "observe"
 

@@ -120,9 +120,17 @@ class ResearchHypothesis(BaseModel):
     confidence: float = Field(default=0.3, ge=0.0, le=1.0)
     vuln_class: VulnClass = VulnClass.UNKNOWN
     evidence_refs: list[str] = Field(default_factory=list, max_length=32)
+    affected_asset: str = Field(default="", max_length=320)
+    reasoning_chain: list[str] = Field(default_factory=list, max_length=16)
+    required_capability: str = Field(default="http_read", max_length=120)
     origin: HypothesisOrigin = HypothesisOrigin.HEURISTIC
 
-    @field_validator("evidence_needed", "attack_plan", "evidence_refs")
+    @field_validator(
+        "evidence_needed",
+        "attack_plan",
+        "evidence_refs",
+        "reasoning_chain",
+    )
     @classmethod
     def _unique_bounded_strings(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
@@ -142,6 +150,9 @@ class ResearchHypothesis(BaseModel):
                 "evidence_needed": self.evidence_needed,
                 "attack_plan": self.attack_plan,
                 "risk": self.risk.value if isinstance(self.risk, Severity) else self.risk,
+                "affected_asset": self.affected_asset,
+                "reasoning_chain": self.reasoning_chain,
+                "required_capability": self.required_capability,
             },
         )
 

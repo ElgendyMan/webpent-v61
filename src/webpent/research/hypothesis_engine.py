@@ -141,9 +141,11 @@ class HypothesisEngine:
             )
         outcome = str(observation.get("outcome") or "inconclusive").strip().lower()
         refs_value = observation.get("evidence_refs") or ()
-        refs = tuple(str(ref)[:240] for ref in refs_value if str(ref).strip()) if isinstance(
-            refs_value, (list, tuple, set)
-        ) else ()
+        refs = (
+            tuple(str(ref)[:240] for ref in refs_value if str(ref).strip())
+            if isinstance(refs_value, (list, tuple, set))
+            else ()
+        )
         causal_signal = observation.get("causal_signal") is True
         negative_control = observation.get("negative_control_complete") is True
         if outcome == "validated":

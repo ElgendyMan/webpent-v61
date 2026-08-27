@@ -15,8 +15,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class AttackGraphNodeKind(str, Enum):
+    ASSET = "asset"
     IDENTITY = "identity"
     PERMISSION = "permission"
+    PRIVILEGE = "privilege"
+    STATE = "state"
     RESOURCE = "resource"
     ACTION = "action"
     IMPACT = "impact"
@@ -73,6 +76,8 @@ class AttackGraph(BaseModel):
         default_factory=list, max_length=100
     )
     generated_from: list[str] = Field(default_factory=list, max_length=50)
+    consistency_errors: list[str] = Field(default_factory=list, max_length=100)
+    recommended_path_ids: list[str] = Field(default_factory=list, max_length=32)
 
 
 __all__ = [

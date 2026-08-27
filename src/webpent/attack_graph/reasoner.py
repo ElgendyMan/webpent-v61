@@ -86,9 +86,7 @@ class AttackGraphReasoner:
                 continue
             evidence_refs = list(
                 dict.fromkeys(
-                    str(reference).strip()[:240]
-                    for reference in raw_refs
-                    if str(reference).strip()
+                    str(reference).strip()[:240] for reference in raw_refs if str(reference).strip()
                 )
             )[:16]
             if not evidence_refs:
@@ -130,14 +128,10 @@ class AttackGraphReasoner:
                     continue
                 next_edges = edge_path + [edge]
                 edge_ids = [item["id"] for item in next_edges]
-                node_ids = [next_edges[0]["source_id"]] + [
-                    item["target_id"] for item in next_edges
-                ]
+                node_ids = [next_edges[0]["source_id"]] + [item["target_id"] for item in next_edges]
                 evidence_refs = list(
                     dict.fromkeys(
-                        reference
-                        for item in next_edges
-                        for reference in item["evidence_refs"]
+                        reference for item in next_edges for reference in item["evidence_refs"]
                     )
                 )[:32]
                 confidence_score = sum(
@@ -181,4 +175,3 @@ class AttackGraphReasoner:
 
 
 __all__ = ["AttackGraphReasoner"]
-

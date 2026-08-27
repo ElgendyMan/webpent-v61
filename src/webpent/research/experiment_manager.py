@@ -104,11 +104,7 @@ class ExperimentManager:
                 "execution_mode": "proposal_only",
             }
         supplied = inputs if isinstance(inputs, Mapping) else {}
-        missing_inputs = [
-            key
-            for key in spec["required_inputs"]
-            if not supplied.get(key)
-        ]
+        missing_inputs = [key for key in spec["required_inputs"] if not supplied.get(key)]
         if missing_inputs:
             return {
                 "status": "blocked",
@@ -128,10 +124,7 @@ class ExperimentManager:
             "template_id": template_id,
             "stages": list(_STAGES),
             "required_inputs": list(spec["required_inputs"]),
-            "inputs": {
-                key: _input_summary(supplied.get(key))
-                for key in spec["required_inputs"]
-            },
+            "inputs": {key: _input_summary(supplied.get(key)) for key in spec["required_inputs"]},
             "max_steps": int(spec["max_steps"]),
             "stop_condition": spec["stop_condition"],
             "approval_required": True,
@@ -155,8 +148,7 @@ class ExperimentManager:
             cleanup = "not_recorded"
         replay_metadata = data.get("replay_metadata")
         replayable = data.get("replayable") is True or (
-            isinstance(replay_metadata, Mapping)
-            and replay_metadata.get("replayable") is True
+            isinstance(replay_metadata, Mapping) and replay_metadata.get("replayable") is True
         )
         record = {
             "hypothesis_id": _bounded_text(hypothesis_id, 120),
@@ -178,7 +170,7 @@ class ExperimentManager:
             "recorded_at": datetime.now(timezone.utc).isoformat(),
         }
         self._records.append(record)
-        del self._records[:-self.MAX_RECORDS]
+        del self._records[: -self.MAX_RECORDS]
         return dict(record)
 
     def records(self) -> list[dict[str, Any]]:

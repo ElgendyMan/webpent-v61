@@ -70,9 +70,7 @@ def _safe_node_metadata(raw: dict[str, Any], kind: str) -> dict[str, Any]:
         if field in list_fields:
             if not isinstance(value, list):
                 continue
-            cleaned = [
-                item for item in (_safe_text(item, limit=100) for item in value) if item
-            ]
+            cleaned = [item for item in (_safe_text(item, limit=100) for item in value) if item]
             if cleaned:
                 metadata[field] = list(dict.fromkeys(cleaned))[:100]
             continue
@@ -349,9 +347,10 @@ class KnowledgeBuilder:
     def build(self) -> TargetKnowledgeModel:
         """Return a bounded deterministic projection, failing closed on bad input."""
         state = self.state
-        engagement_id = str(
-            state.get("engagement_id") or state.get("thread_id") or "unscoped"
-        ).strip() or "unscoped"
+        engagement_id = (
+            str(state.get("engagement_id") or state.get("thread_id") or "unscoped").strip()
+            or "unscoped"
+        )
         understanding = state.get("target_understanding")
         if not isinstance(understanding, dict):
             understanding = {}

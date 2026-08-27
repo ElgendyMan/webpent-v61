@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 277,
+    "dynamic_records": 280,
     "raw_or_boundary_records": 69,
-    "record_count": 346,
+    "record_count": 349,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -2519,6 +2519,45 @@
       "kind": "dynamic_resolution",
       "line": 93,
       "normalized_symbol": "getattr(msg, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 20,
+      "file": "src/webpent/attack_graph/chain_reasoning.py",
+      "kind": "dynamic_resolution",
+      "line": 146,
+      "normalized_symbol": "getattr(node, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 20,
+      "file": "src/webpent/attack_graph/engine.py",
+      "kind": "dynamic_resolution",
+      "line": 204,
+      "normalized_symbol": "getattr(node.kind, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 20,
+      "file": "src/webpent/attack_graph/engine.py",
+      "kind": "dynamic_resolution",
+      "line": 207,
+      "normalized_symbol": "getattr(kind, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",
