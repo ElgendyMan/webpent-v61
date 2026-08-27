@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from webpent.adapters.local_causal_lab.fixtures import (
     DisposableCanary,
+    DisposableFixture,
     SyntheticIdentity,
     build_regression_fixture,
 )
@@ -50,3 +53,48 @@ def test_identity_ids_cannot_be_real_or_credential_bearing() -> None:
     assert "identity_must_be_opaque_test_id" in identity.validate()
     credentialed = SyntheticIdentity("test_subject_x", "owner", credential_material_present=True)
     assert "credential_or_session_material_forbidden" in credentialed.validate()
+
+
+def test_fixture_snapshot_restore_is_offline_and_hash_equal() -> None:
+    fixture = build_regression_fixture("crapi")
+    result = fixture.snapshot_restore_check()
+    assert result["status"] == "verified"
+    assert result["state_hash_equal"] is True
+    assert result["network_attempted"] is False
+    assert result["application_reset_endpoint_called"] is False
+    assert result["application_mutation_performed"] is False
+    assert result["raw_values_persisted"] is False
+
+
+def test_fixture_snapshot_rejects_invalid_identity() -> None:
+    fixture = build_regression_fixture("crapi")
+    invalid_identity = replace(fixture.identities[0], session_material_present=True)
+    invalid = replace(fixture, identities=(invalid_identity, fixture.identities[1]))
+    assert "credential_or_session_material_forbidden" in invalid.validate()
+    with pytest.raises(ValueError, match="fixture_snapshot_blocked"):
+        invalid.snapshot()
+
+
+def test_fixture_snapshot_rejects_invalid_canary_and_mutation() -> None:
+    fixture = build_regression_fixture("owasp_webgoat")
+    invalid_canary = DisposableCanary(
+        "canary_owner_object", "owner-specific semantic marker", raw_value_persisted=True
+    )
+    invalid = replace(
+        fixture,
+        canaries=(invalid_canary, fixture.canaries[1]),
+        application_mutation_performed=True,
+    )
+    assert "raw_canary_persistence_must_remain_false" not in invalid.validate()
+    assert "raw_canary_persistence_forbidden" in invalid_canary.validate()
+    assert "application_mutation_must_remain_false" in invalid.validate()
+    with pytest.raises(ValueError, match="fixture_snapshot_blocked"):
+        invalid.snapshot()
+
+
+def test_fixture_snapshot_restore_rejects_tampered_snapshot() -> None:
+    fixture = build_regression_fixture("crapi")
+    snapshot = fixture.snapshot()
+    tampered = replace(snapshot, state_hash="0" * 64)
+    with pytest.raises(ValueError, match="fixture_restore_hash_mismatch"):
+        DisposableFixture.restore_from_snapshot(tampered)

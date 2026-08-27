@@ -1,9 +1,9 @@
 """crAPI-specific Option B object-access profiles.
 
-These profiles are source-backed candidates, not confirmations.  All current
-live preconditions are blocked because the approved boundary forbids login,
-tokens, and stateful fixture creation, while the local runtime image digest is
-not available for reproducibility pinning.
+These profiles are source-backed candidates, not confirmations.  Runtime image
+RepoDigests are pinned from the local Docker runtime, but all live preconditions
+remain blocked because the approved boundary forbids login, tokens, and
+stateful fixture creation.
 """
 
 from __future__ import annotations
@@ -14,7 +14,37 @@ from webpent.adapters.local_causal_lab.option_b_contract import OptionBCase
 
 CRAPI_ORIGIN = "http://127.0.0.1:8888"
 CRAPI_SOURCE_REVISION = "73d309cc8f28bbdeed31dbb35f05dba8354de3c9"
-CRAPI_RUNTIME_STATUS = "runtime_digest_unavailable"
+CRAPI_RUNTIME_STATUS = "pinned"
+CRAPI_RUNTIME_DIGEST = (
+    "5f418d985aa610599361d861cf914acf662b9ef86e1598a076ed2cd2dad88d6f"
+)
+CRAPI_RUNTIME_IMAGE_DIGESTS = (
+    (
+        "crapi/crapi-web:latest",
+        "sha256:b27d246c646bd33898e7d1d2095b6e7576c0993a7b81a73aa7386929493d7151",
+    ),
+    (
+        "crapi/crapi-chatbot:latest",
+        "sha256:36d274d54182a8baddba7ede17282035bb43ab9cb9cf87927e1fe7109901e0aa",
+    ),
+    (
+        "crapi/gateway-service:latest",
+        "sha256:97dade9daf0e758547b1686e2d3303c8c9b79838167f728a9211f0ee1f4622b0",
+    ),
+    (
+        "crapi/crapi-workshop:latest",
+        "sha256:d4d2d94d35a31e211b04d5a771881f5ae13e358e8fa0804463ae3bace05dd815",
+    ),
+    (
+        "crapi/crapi-community:latest",
+        "sha256:8ba0c7eda86ae065a673f1fa554d0109a24f25c5a8d65097ae024e5ee715c54e",
+    ),
+    (
+        "crapi/crapi-identity:latest",
+        "sha256:5d1db5b3ba8e02bc68711ec6fc4e35ed7cd8b87e63785ece9e7ff5b5e36c5260",
+    ),
+)
+CRAPI_SERVICE_ALIGNMENT_STATUS = "attested"
 CRAPI_SOURCE_FILES = {
     "profile_video": {
         "path": "services/identity/src/main/java/com/crapi/controller/ProfileController.java",
@@ -41,7 +71,7 @@ def cases() -> tuple[OptionBCase, ...]:
     common_reason = (
         "Synthetic authenticated ownership state would require login or "
         "token/session injection, which is outside the current GET-only/"
-        "no-credentials approval; crAPI runtime digest is unavailable."
+        "no-credentials approval; runtime image RepoDigests are pinned."
     )
     return (
         OptionBCase(

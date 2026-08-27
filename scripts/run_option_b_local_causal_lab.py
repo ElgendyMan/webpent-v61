@@ -25,20 +25,33 @@ except ModuleNotFoundError:  # pragma: no cover - direct script execution
     from check_local_causal_lab_option_b_approval import validate as validate_approval
 
 from webpent.adapters.crapi.option_b import (
+    CRAPI_RUNTIME_DIGEST,
+    CRAPI_RUNTIME_IMAGE_DIGESTS,
     CRAPI_RUNTIME_STATUS,
+    CRAPI_SERVICE_ALIGNMENT_STATUS,
     CRAPI_SOURCE_FILES,
     CRAPI_SOURCE_REVISION,
 )
 from webpent.adapters.crapi.option_b import (
     cases as crapi_cases,
 )
+from webpent.adapters.local_causal_lab.fixtures import build_regression_fixture
 from webpent.adapters.local_causal_lab.option_b_contract import (
     OptionBCase,
     blocked_precondition,
+    validate_option_b_preconditions,
+)
+from webpent.adapters.local_causal_lab.runtime_provenance import (
+    RuntimeProvenance,
+    readiness_check,
 )
 from webpent.adapters.webgoat.option_b import (
+    WEBGOAT_RUNTIME_DIGEST,
+    WEBGOAT_RUNTIME_DIGEST_STATUS,
+    WEBGOAT_SERVICE_ALIGNMENT_STATUS,
     WEBGOAT_SOURCE_FILES,
     WEBGOAT_SOURCE_REVISION,
+    WEBGOAT_TOOLCHAIN_DIGEST,
 )
 from webpent.adapters.webgoat.option_b import (
     cases as webgoat_cases,
@@ -114,59 +127,124 @@ def source_manifest(target_id: str, files: dict[str, dict[str, str]]) -> dict[st
 def target_provenance(target_id: str) -> dict[str, Any]:
     if target_id == "owasp_webgoat":
         source = source_manifest(target_id, WEBGOAT_SOURCE_FILES)
+        pinned = RuntimeProvenance(
+            target_id=target_id,
+            source_revision=WEBGOAT_SOURCE_REVISION,
+            source_files=tuple(
+                (name, item["path"], item["sha256"])
+                for name, item in WEBGOAT_SOURCE_FILES.items()
+            ),
+            runtime_digest_status=WEBGOAT_RUNTIME_DIGEST_STATUS,
+            runtime_digest=WEBGOAT_RUNTIME_DIGEST,
+            toolchain_digest=WEBGOAT_TOOLCHAIN_DIGEST,
+            service_alignment_status=WEBGOAT_SERVICE_ALIGNMENT_STATUS,
+        )
         return {
             "target_id": target_id,
             "origin": "http://127.0.0.1:8080",
             "source": source,
             "runtime": {
                 "java_version": collect_java_version(),
-                "runtime_digest_status": "source_revision_pinned_but_build_digest_unavailable",
-                "runtime_digest": None,
+                **pinned.as_dict(),
+                "readiness": readiness_check(pinned, SOURCE_ROOTS[target_id]),
             },
         }
     source = source_manifest(target_id, CRAPI_SOURCE_FILES)
+    pinned = RuntimeProvenance(
+        target_id=target_id,
+        source_revision=CRAPI_SOURCE_REVISION,
+        source_files=tuple(
+            (name, item["path"], item["sha256"])
+            for name, item in CRAPI_SOURCE_FILES.items()
+        ),
+        runtime_digest_status=CRAPI_RUNTIME_STATUS,
+        runtime_digest=CRAPI_RUNTIME_DIGEST,
+        service_alignment_status=CRAPI_SERVICE_ALIGNMENT_STATUS,
+        image_digests=CRAPI_RUNTIME_IMAGE_DIGESTS,
+    )
     return {
         "target_id": target_id,
         "origin": "http://127.0.0.1:8888",
         "source": source,
         "runtime": {
-            "runtime_digest_status": CRAPI_RUNTIME_STATUS,
-            "runtime_digest": None,
-            "reason": (
-                "Docker RepoDigest could not be collected from the local runtime "
-                "context; no crAPI causal evidence is admitted."
-            ),
+            **pinned.as_dict(),
+            "readiness": readiness_check(pinned, SOURCE_ROOTS[target_id]),
         },
     }
 
 
+PREFLIGHT_URLS = {
+    "webgoat.idor.view_other_profile.v1": (
+        "http://127.0.0.1:8080/WebGoat/IDOR/profile/synthetic-subject"
+    ),
+    "webgoat.path_traversal.v1": (
+        "http://127.0.0.1:8080/WebGoat/PathTraversal/random-picture?id=cat.jpg"
+    ),
+    "crapi.profile_video_object_access.v1": (
+        "http://127.0.0.1:8888/identity/api/v2/user/videos/1"
+    ),
+    "crapi.vehicle_location_bola.v1": (
+        "http://127.0.0.1:8888/identity/api/v2/vehicle/00000000-0000-0000-0000-000000000001/location"
+    ),
+    "crapi.community_post_object_access.v1": (
+        "http://127.0.0.1:8888/community/api/v2/community/posts/1"
+    ),
+    "crapi.mechanic_report_object_access.v1": (
+        "http://127.0.0.1:8888/workshop/api/mechanic/mechanic_report?report_id=1"
+    ),
+}
+
+
 def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]:
     source_ok = provenance["source"]["all_files_match"]
-    runtime_ok = provenance["runtime"]["runtime_digest"] is not None
+    runtime = provenance["runtime"]
+    runtime_ok = runtime["runtime_digest"] is not None
+    readiness = runtime["readiness"]
     precondition = blocked_precondition(case)
+    fixture_readiness = build_regression_fixture(case.target_id).snapshot_restore_check()
+    preflight = validate_option_b_preconditions(
+        case=case,
+        method="GET",
+        url=PREFLIGHT_URLS[case.case_id],
+        expected_origin=provenance["origin"],
+        readiness_status=readiness["status"],
+        fixture_snapshot_status=fixture_readiness["status"],
+    )
+    precondition["preflight"] = preflight
     reason = case.precondition_reason
     if not source_ok:
         reason = "Source file digest drift prevents execution: " + reason
     if not runtime_ok:
         reason = "Runtime/build digest unavailable: " + reason
+    if readiness["status"] != "ready":
+        reason = "Lab readiness is blocked: " + "; ".join(readiness["errors"])
+    if fixture_readiness["status"] != "verified":
+        reason = "Offline fixture snapshot/restore failed: " + reason
     return {
         "case_id": case.case_id,
         "target_id": case.target_id,
         "track": case.track,
         "approved_track": True,
+        "lab_status": "LAB_NOT_READY",
+        "precondition_classification": "PRECONDITION_BLOCKED",
         "runnable_precondition": {
             **precondition,
             "source_digest_ok": source_ok,
             "runtime_digest_ok": runtime_ok,
+            "runtime_readiness": readiness["status"],
+            "service_alignment_status": runtime["service_alignment_status"],
+            "preflight": preflight,
         },
-        "identity_model": (
-            "opaque synthetic identity model declared, but no identity/session "
-            "material was created or persisted"
-        ),
-        "fixture_model": (
-            "disposable fixture/canary declared, but no application fixture or "
-            "reset endpoint was invoked"
-        ),
+        "identity_model": {
+            "status": "offline_opaque_only",
+            "credentials_or_sessions_created": False,
+        },
+        "fixture_model": {
+            "status": "offline_snapshot_restore_verified",
+            "target_fixture_injected": False,
+            "reset_endpoint_called": False,
+            "snapshot_restore": fixture_readiness,
+        },
         "baseline": {"status": "not_run", "reason": "precondition_blocked"},
         "candidate": {"status": "not_run", "reason": "precondition_blocked"},
         "independent_negative_control": {"status": "not_run", "reason": "precondition_blocked"},
@@ -186,7 +264,7 @@ def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]
         },
         "cleanup": {
             "status": "verified_no_mutation",
-            "state_hash": None,
+            "state_hash": fixture_readiness["restored_state_hash"],
             "reset_invoked": False,
             "network_attempted": False,
         },
@@ -201,26 +279,26 @@ def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]
                 "target_local prerequisite is unavailable under the approved "
                 "GET-only/no-credentials boundary"
             ),
-            "evidence": [case.precondition_reason],
+            "evidence": [case.precondition_reason, *preflight["errors"]],
             "generic_or_target_local": "target-local",
             "safety_determination": "safe_stop_before_network",
         },
         "improvement_proposal": {
             "status": "proposal_only",
             "proposal": (
-                "Request a separate explicit authorization for a non-credential "
-                "synthetic session/fixture injection mechanism, or retain BLOCKED; "
-                "do not implement an auth bypass or broaden the generic core."
+                "Keep offline fixtures for regression and require a separately "
+                "authorized, non-credential target fixture/session mechanism before "
+                "any live case; do not implement an auth bypass or broaden core."
             ),
             "implementation": "not_implemented",
-            "regression": "precondition blocker regression added",
+            "regression": "precondition and snapshot/restore blocker regression added",
         },
         "before_after": {
-            "before": "blocked_under_same_precondition",
-            "after": "blocked_under_same_precondition",
+            "before": "LAB_NOT_READY/PRECONDITION_BLOCKED",
+            "after": "LAB_NOT_READY/PRECONDITION_BLOCKED",
             "comparison": "No false improvement claimed; no network or state change occurred.",
         },
-        "final_classification": "BLOCKED",
+        "final_classification": "LAB_NOT_READY/PRECONDITION_BLOCKED",
         "quality_metrics": (
             "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE"
         ),
@@ -258,6 +336,8 @@ def build_result(
         "target_provenance": provenance,
         "cases": records,
         "summary": {
+            "lab_status": "LAB_NOT_READY",
+            "precondition_blocked_case_count": len(records),
             "approved_case_count": len(records),
             "blocked_case_count": len(records),
             "target_backed_causal_confirmations": 0,

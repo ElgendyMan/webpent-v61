@@ -1,65 +1,82 @@
-# Option B — Local Causal Lab v1
+# Option B — Local Causal Lab v1 Readiness Report
 
 **Author:** Manus AI — non-human attributable technical review
 
 **Campaign:** `option-b-local-causal-lab-v1-20260827`
 
-**Status:** Completed safe precondition pass; all six approved-track cases are **BLOCKED before network execution**.
-
-**Authorization:** Imported owner directive for the current bounded task only. The imported record does not claim owner identity, human signature, independent governance signoff, or qualification approval.
+**Determination:** `LAB_NOT_READY / PRECONDITION_BLOCKED`. This phase closes the safety and fail-closed readiness checks, but it does not establish causal detection quality.
 
 ## Executive determination
 
-The approved Option B boundary was implemented as target-local, fail-closed infrastructure. The runner pinned the imported authorization reference, checked the declared source revisions and source-file hashes, modeled only opaque synthetic identities and disposable canaries in memory, and evaluated runnable preconditions before any case request. No login, credential, token, cookie, reset endpoint, application mutation, redirect, external destination, OAST callback, or raw response persistence was used.
+The Option B readiness work was completed only within the approved local boundary. Immutable source revisions and source-file hashes were revalidated. A WebGoat build/runtime digest and Java toolchain digest were pinned, and crAPI service image RepoDigests were pinned as a composite runtime manifest. However, the running WebGoat service could not be attested as aligned with the pinned build artifact, so WebGoat runtime readiness remains blocked. crAPI runtime provenance is attested, but its selected object-access cases still require authenticated ownership/session state that cannot be created under the current GET-only/no-credentials approval.
 
-All six selected tracks remain **BLOCKED**, not confirmed, clean, TP, FP, or FN. WebGoat IDOR requires a prior POST-created `LessonSession`, which is outside the approved GET-only/no-login boundary [1] [2]. WebGoat path traversal has a GET route, but the source-backed handler rejects raw traversal markers and no safe target-local disposable canary injection route was available without broad filesystem risk [3] [4]. crAPI cases require authenticated ownership/session context or a stateful report/object fixture, and the local crAPI runtime image `RepoDigest` could not be collected; therefore no crAPI causal evidence is admitted [5] [6] [7] [8].
+Offline synthetic identities, ownership labels, disposable canary metadata, and in-memory snapshot/restore were implemented and verified. These fixtures never entered either target runtime and therefore are regression evidence only, not target evidence. The runner added a preflight decision that must pass before any socket operation. The subsequent one-off rerun produced six `LAB_NOT_READY / PRECONDITION_BLOCKED` records, with `network_allowed=false` and `network_attempted=false` for every case.
 
-> **No target-backed baseline, candidate, or independent-control observation was collected. Consequently, no causal oracle was evaluated and no ProofBundle was sealed, verified, or replayed.**
+> **No target-backed baseline, candidate, or independent-control observation was collected. Therefore no causal oracle was evaluated and no ProofBundle was created, sealed, verified, or replayed.**
 
 ## Scope and authorization boundary
 
 | Control | Applied value | Result |
 |---|---|---|
-| Targets | WebGoat IDOR/path traversal; crAPI object-access | Approved tracks only |
-| Network | `127.0.0.1` loopback and declared origin only | Enforced by contract; no case socket operation occurred |
-| Methods | `GET` only | Enforced; non-GET rejected in regression tests |
-| Redirects/DNS/external callbacks | Forbidden | Rejected by contract; not attempted |
-| Credentials/login/session bootstrap | Forbidden | IDOR and crAPI auth cases blocked |
-| Application mutation/reset endpoint | Forbidden | Not invoked |
-| Raw bodies/headers/cookies/tokens/personal data | No persistence | Redacted-only model tested |
-| Official P10 / Bug Bounty | Closed | Unchanged |
+| Targets | WebGoat IDOR/path traversal and crAPI object-access only | Approved tracks only |
+| Network | Loopback and declared local origin only | Preflight-enforced; no case socket operation occurred |
+| Methods | `GET` only | Non-GET rejected by contract and regression tests |
+| Redirects and external callbacks | Forbidden | Rejected and not attempted |
+| Credentials, login, sessions, cookies, and tokens | Forbidden | Auth-dependent cases blocked |
+| Application mutation and reset endpoints | Forbidden | Not invoked |
+| Raw response bodies/headers and personal data | Not retained | Redacted model and tests enforced this |
+| Official P10 and Bug Bounty | Closed | Unchanged |
 
-The controlling authorization import is [`LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json`](../owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json). Its source text SHA-256 is `2784b4746e96419a3dadea2e765d58a9dbc719b283bb683b38bbe95c5850230b`; the original decision packet remains `PENDING_OWNER_APPROVAL` and was not modified.
+The controlling authorization is the imported owner directive at [`LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json`](../owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json). Its source-text SHA-256 is `2784b4746e96419a3dadea2e765d58a9dbc719b283bb683b38bbe95c5850230b`. The original decision packet remains `PENDING_OWNER_APPROVAL` and was not modified. The import record is not human independent signoff and does not authorize qualification or Official P10 execution.
 
-## Target provenance
+## Provenance and readiness
 
-| Target | Source revision | Source verification | Runtime status | Evidence consequence |
+| Target | Source revision | Source verification | Runtime provenance | Readiness consequence |
 |---|---|---|---|---|
-| OWASP WebGoat | `7517acca95d9851da706452454c223dd13545ef4` | Declared source files matched their expected hashes | Java version collected; immutable build/runtime digest unavailable | No causal evidence admitted |
-| crAPI | `73d309cc8f28bbdeed31dbb35f05dba8354de3c9` | Declared controller/route files matched their expected hashes | `runtime_digest_unavailable`; Docker `RepoDigest` unavailable | All crAPI cases blocked |
+| OWASP WebGoat | `7517acca95d9851da706452454c223dd13545ef4` | Declared source files matched expected hashes | Build/toolchain digests pinned; service alignment is `not_attested` | WebGoat cases remain blocked before network |
+| crAPI | `73d309cc8f28bbdeed31dbb35f05dba8354de3c9` | Controller and route files matched expected hashes | Composite runtime digest and individual image RepoDigests pinned; alignment `attested` | Auth/ownership fixture restriction still blocks all selected cases |
 
-The machine-readable artifact records every expected and observed source-file hash. It intentionally records no environment variables, process arguments, credentials, tokens, response bodies, or headers.
+The machine-readable artifact contains typed provenance and status fields only. It does not persist environment variables, process arguments, credentials, tokens, cookies, response bodies, or raw headers. Mutable image tags are retained only as image names paired with the pinned RepoDigest; the digest, not the tag, is the reproducibility reference.
+
+## Offline identity and fixture readiness
+
+The fixture implementation under `src/webpent/adapters/local_causal_lab/fixtures.py` models opaque synthetic identities and ownership/canary labels in memory. It supports typed snapshot/restore and state-hash verification. The fixture layer rejects credential/session material, raw canary persistence, application mutation, and application reset endpoints. The runner recorded `offline_snapshot_restore_verified` and stable state hashes for every case.
+
+This result means the offline fixture model is ready for regression testing. It does **not** mean that an equivalent identity, ownership relation, session, or canary exists inside WebGoat or crAPI. Target fixture injection remains unattested and is intentionally treated as a blocker.
+
+## Precondition gate
+
+The target-local preflight gate runs before any network client is allowed to operate. It checks the declared case status, source/runtime readiness, offline snapshot/restore status, loopback origin, exact route and query allowlist, `GET` method, redirect prohibition, auth/session restrictions, target-fixture attestation, and independent-control declaration. If any check fails, the decision contains `network_allowed=false` and the runner stops.
+
+The latest rerun produced the following aggregate result:
+
+| Result | Count |
+|---|---:|
+| Approved-track cases evaluated | 6 |
+| `LAB_NOT_READY / PRECONDITION_BLOCKED` | 6 |
+| Target-backed baseline observations | 0 |
+| Target-backed candidate observations | 0 |
+| Independent-control observations | 0 |
+| Causal confirmations | 0 |
+| ProofBundles created/sealed | 0 |
+| Network case requests | 0 |
 
 ## Case decisions
 
-| Case ID | Source-backed reason | Precondition result | Final classification |
-|---|---|---|---|
-| `webgoat.idor.view_other_profile.v1` | GET profile route depends on prior lesson session established by POST login | Required session/credentials not approved; runtime build digest also unavailable | **BLOCKED** |
-| `webgoat.path_traversal.v1` | GET route exists, but handler rejects unsafe raw markers and target-local canary injection is not safely available | No bounded canary route/fixture; runtime build digest unavailable | **BLOCKED** |
-| `crapi.profile_video_object_access.v1` | Source candidate appears owner-scoped; authenticated ownership fixture unavailable | Login/token/session and runtime digest blockers | **BLOCKED** |
-| `crapi.vehicle_location_bola.v1` | Direct UUID lookup is a source-backed BOLA candidate only | Authenticated synthetic owner/requester pair and runtime digest unavailable | **BLOCKED** |
-| `crapi.community_post_object_access.v1` | GET route is behind authentication middleware; post fixture creation is stateful | Auth/session and mutation/fixture blockers; runtime digest unavailable | **BLOCKED** |
-| `crapi.mechanic_report_object_access.v1` | Retrieval requires a pre-existing report; report creation is stateful | Auth/session and creation/reset blockers; runtime digest unavailable | **BLOCKED** |
+| Case ID | Readiness/precondition result | Final classification |
+|---|---|---|
+| `webgoat.idor.view_other_profile.v1` | Blocked because GET-only approval cannot create the required `LessonSession`; POST login and built-in lesson credentials are not approved. WebGoat service alignment is also not attested. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
+| `webgoat.path_traversal.v1` | GET route exists, but the safe target-local disposable canary injection route is not established. Raw traversal markers remain forbidden, and WebGoat service alignment is not attested. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
+| `crapi.profile_video_object_access.v1` | Runtime provenance is ready, but authenticated ownership/session state is unavailable. Source review also indicates owner-scoped behavior, so no BOLA confirmation is inferred. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
+| `crapi.vehicle_location_bola.v1` | Runtime provenance is ready, but the required authenticated synthetic owner/requester pair and target fixture injection are unavailable under the approval. The source-level UUID lookup remains only a candidate indication. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
+| `crapi.community_post_object_access.v1` | Authentication middleware and stateful post-fixture creation are outside the approved boundary. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
+| `crapi.mechanic_report_object_access.v1` | Authentication and pre-existing report creation/retrieval state are unavailable; creation is stateful and not approved. | **LAB_NOT_READY / PRECONDITION_BLOCKED** |
 
-These decisions are represented in the JSON artifact with a Failure Record, RCA, target-local classification, safety determination, improvement proposal, regression status, and same-condition before/after comparison for every case.
+Each case record includes a Failure Record, RCA, target-local classification, safety determination, improvement proposal, regression status, before/after comparison, preflight errors, cleanup status, and explicit absence of target observations.
 
-## Fixture and reset evidence
+## Candidate/control, oracle, and proof status
 
-A separate in-memory regression fixture was implemented under `src/webpent/adapters/local_causal_lab/fixtures.py`. It uses only opaque identifiers such as `test_subject_a` and semantic canary labels. It does not create application state and does not represent target evidence. Tests verify that the fixture rejects credential/session material, raw canary persistence, application mutation, and application reset endpoint calls. Its state hash remains stable in the safe regression path, and the runner records `verified_no_mutation` with `network_attempted=false` for all case records.
-
-## Causal evaluation and proof status
-
-The central causal cycle was **not entered** for any case because the precondition gate stopped execution. Therefore the result is not a weak confirmation and not an observation-only vulnerability result. It is a safe, auditable blocker result:
+The causal cycle was not entered for any case because no case satisfied the precondition gate. This is neither a detection success nor a detection failure. It is an auditable lab-readiness blocker.
 
 | Evidence component | Result |
 |---|---|
@@ -67,22 +84,25 @@ The central causal cycle was **not entered** for any case because the preconditi
 | Candidate GET | Not run |
 | Independent negative control | Not run |
 | Causal oracle | Not evaluated |
+| Central verification | Not run |
 | ProofBundle | Not created |
 | `verify_seal()` | Not run |
 | Isolated replay | Not run |
-| Cleanup | Verified no mutation; no reset endpoint and no network case request |
+| Cleanup | Offline snapshot/restore verified; no target mutation, reset endpoint, or network case request |
 
-## Validation performed
+No metrics, TP/FP/FN labels, clean labels, confirmation labels, or scoring promotion were produced. `LAB_NOT_READY / PRECONDITION_BLOCKED` is not converted into a detection-quality result.
 
-The focused regression suite passed **25 tests**, covering the approval import, original pending decision packet, loopback and same-origin policy, GET-only enforcement, route/query allowlists, redirect rejection, traversal-marker rejection, raw-response redaction, auth-ready misuse, independent-control requirement, opaque fixture identities, state-hash/reset checks, and runner blocker output.
+## Improvement cycle and remaining gaps
 
-The local runner generated [`OPTION-B-LOCAL-CAUSAL-LAB-RESULT-v1.json`](./OPTION-B-LOCAL-CAUSAL-LAB-RESULT-v1.json), reporting six approved-track records, six blocked cases, zero target-backed causal confirmations, and zero sealed ProofBundles.
+The implemented improvements are target-local readiness infrastructure: immutable provenance validation, offline fixture snapshot/restore, and a preflight gate that stops before the network. No generic core, frozen ground truth, threshold, policy, or authorization gate was changed. The same-condition comparison remains unchanged: all six cases are blocked before and after because target fixture/session prerequisites are still unavailable.
 
-## Improvement cycle and remaining authorization gaps
+The next executable step requires a separately authorized, source-backed, disposable target fixture/session mechanism that does not use real credentials, login, token generation, mutation, or an auth bypass. For WebGoat path traversal, a safe canary route or fixture injection mechanism must also be demonstrated without raw traversal markers or broad filesystem access. WebGoat runtime service-to-artifact alignment must be attested. If any of these conditions cannot be established safely, the affected case must remain blocked.
 
-The implemented improvement is target-local contract and precondition enforcement, not an auth bypass or generic-core change. The same-condition comparison is intentionally unchanged: every case is blocked before and after because the required safe prerequisite remains unavailable. The next executable step would require a **new, explicit owner decision packet** authorizing a non-credential synthetic session/fixture injection mechanism that is source-backed, target-local, disposable, independently resettable, and safe under GET-only candidate execution. Without that separate authorization and immutable runtime/build digests, the cases must remain blocked.
+## Validation and invariant state
 
-No frozen ground truth, scoring thresholds, generic core, official run gate, or qualification state was changed. The project remains:
+The focused readiness suite passed **30 tests** after the preflight, provenance, fixture, and runner changes. Ruff passed on all affected files. The live runner rerun was independently checked for six blocked cases, zero network attempts, zero target observations, and zero ProofBundles.
+
+The project invariants remain:
 
 | State | Value |
 |---|---|

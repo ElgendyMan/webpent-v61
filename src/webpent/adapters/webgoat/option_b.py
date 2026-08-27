@@ -1,8 +1,8 @@
 """WebGoat-specific Option B case contract.
 
-The profile is source-backed but intentionally reports both approved-track and
-runnable-precondition states.  Current GET-only approval cannot establish the
-required IDOR session or inject a target-local canary into the live handler.
+The profile is source-backed and carries an immutable source/build pin.  The
+currently running service is not binary-attested to the newly built artifact, so
+live execution remains fail-closed until alignment is independently verified.
 """
 
 from __future__ import annotations
@@ -13,6 +13,14 @@ from webpent.adapters.local_causal_lab.option_b_contract import OptionBCase
 
 WEBGOAT_ORIGIN = "http://127.0.0.1:8080"
 WEBGOAT_SOURCE_REVISION = "7517acca95d9851da706452454c223dd13545ef4"
+WEBGOAT_RUNTIME_DIGEST_STATUS = "pinned"
+WEBGOAT_RUNTIME_DIGEST = (
+    "7aafbbf408ae618ea0abe59474216950591325968ad995bfce3ed08e4f7ccf07"
+)
+WEBGOAT_TOOLCHAIN_DIGEST = (
+    "2a41998843f23adf80ba13b1e2572a55f7a642d630c640ac561b9de8e3b2b660"
+)
+WEBGOAT_SERVICE_ALIGNMENT_STATUS = "not_attested"
 WEBGOAT_SOURCE_FILES = {
     "idor_view": {
         "path": "src/main/java/org/owasp/webgoat/lessons/idor/IDORViewOtherProfile.java",

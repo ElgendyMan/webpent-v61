@@ -147,3 +147,47 @@ def blocked_precondition(case: OptionBCase) -> dict[str, object]:
         "requires_target_fixture_injection": case.requires_target_fixture_injection,
         "network_attempted": False,
     }
+
+
+def validate_option_b_preconditions(
+    *,
+    case: OptionBCase,
+    method: str,
+    url: str,
+    expected_origin: str,
+    readiness_status: str,
+    fixture_snapshot_status: str,
+    target_fixture_injected: bool = False,
+    followed_redirect: bool = False,
+) -> dict[str, object]:
+    """Return a fail-closed preflight decision before any network operation."""
+    errors = list(case.validate())
+    errors.extend(
+        validate_loopback_get(
+            case=case,
+            method=method,
+            url=url,
+            expected_origin=expected_origin,
+            followed_redirect=followed_redirect,
+        )
+    )
+    if case.precondition_status != "ready":
+        errors.append("case_precondition_declared_blocked")
+    if case.requires_auth:
+        errors.append("approved_boundary_forbids_auth_session_material")
+    if case.requires_target_fixture_injection and not target_fixture_injected:
+        errors.append("target_fixture_injection_not_attested")
+    if readiness_status != "ready":
+        errors.append("lab_runtime_readiness_not_ready")
+    if fixture_snapshot_status != "verified":
+        errors.append("offline_fixture_snapshot_restore_not_verified")
+    if not case.negative_control_roles:
+        errors.append("independent_negative_control_required")
+    unique_errors = tuple(dict.fromkeys(errors))
+    return {
+        "status": "ready" if not unique_errors else "blocked",
+        "runnable": not unique_errors,
+        "network_allowed": not unique_errors,
+        "errors": unique_errors,
+        "network_attempted": False,
+    }
