@@ -134,12 +134,14 @@ def _blocked_crapi(reason: str) -> dict[str, Any]:
     }
 
 
-def run_webgoat_idor() -> dict[str, Any]:
+def run_webgoat_idor(
+    *, campaign_id: str = "b2-target-live-local-v1-20260827"
+) -> dict[str, Any]:
     attestation = attest_webgoat()
     base = {
         "target_id": "owasp_webgoat",
         "case_id": "webgoat.idor.view_other_profile.v1",
-        "campaign_id": "b2-target-live-local-v1-20260827",
+        "campaign_id": campaign_id,
         "target": {
             "origin": WEBGOAT_ORIGIN,
             "source_revision": WEBGOAT_SOURCE_REVISION,
@@ -152,6 +154,16 @@ def run_webgoat_idor() -> dict[str, Any]:
             "owner_id": "opaque-owner-bill",
             "raw_credentials_persisted": False,
             "session_cookie_persisted": False,
+        },
+        "session_bootstrap": {
+            "method": "normal_local_auth",
+            "status": "pending",
+            "session_material_persisted": False,
+        },
+        "ownership_fixture": {
+            "model": "disposable_lesson_profile_fixture",
+            "status": "target_observation_pending",
+            "state_persisted": False,
         },
     }
     if not attestation["service_alignment_attested"]:
@@ -187,6 +199,11 @@ def run_webgoat_idor() -> dict[str, Any]:
                     "precondition": {
                         "status": "blocked",
                         "reason": "local_session_bootstrap_failed",
+                    },
+                    "session_bootstrap": {
+                        "method": "normal_local_auth",
+                        "status": "failed",
+                        "session_material_persisted": False,
                     },
                     "baseline": {"status": "not_run"},
                     "candidate": {"status": "not_run"},
@@ -234,6 +251,16 @@ def run_webgoat_idor() -> dict[str, Any]:
     fingerprint = hashlib.sha256(
         f"{WEBGOAT_SOURCE_REVISION}:{WEBGOAT_JAR_SHA256}".encode()
     ).hexdigest()
+    base["session_bootstrap"] = {
+        "method": "normal_local_auth",
+        "status": "completed_but_lesson_session_unavailable",
+        "session_material_persisted": False,
+    }
+    base["ownership_fixture"] = {
+        "model": "disposable_lesson_profile_fixture",
+        "status": "not_causally_observed",
+        "state_persisted": False,
+    }
     if not oracle["causal_signal"]:
         return {
             **base,
@@ -317,8 +344,15 @@ def run_webgoat_idor() -> dict[str, Any]:
     }
 
 
-def build_result() -> dict[str, Any]:
-    webgoat = run_webgoat_idor()
+def build_result(
+    *, campaign_id: str = "b2-target-live-local-v1-20260827"
+) -> dict[str, Any]:
+    webgoat = run_webgoat_idor(campaign_id=campaign_id)
+    approval_source = (
+        Path("/home/ubuntu/upload/pasted_content_2.txt")
+        if campaign_id.startswith("b2.1")
+        else Path("/home/ubuntu/upload/pasted_content.txt")
+    )
     crapi = _blocked_crapi(
         "requester/owner fixture injection and reset cannot be proven under B2 "
         "without target application state mutation or credential/token material"
@@ -327,7 +361,9 @@ def build_result() -> dict[str, Any]:
         "schema": "webpent-b2-target-live-result-v1",
         "generated_on": date.today().isoformat(),
         "authorization": {
-            "source_artifact": "pasted_content.txt",
+            "source_artifact": approval_source.name,
+            "source_artifact_sha256": sha256_file(approval_source),
+            "raw_approval_content_persisted": False,
             "scope": "B2 local-only synthetic session/fixture injection",
             "official_isolated_p10_runs_authorized": False,
             "p10": "NOT_QUALIFIED",
@@ -369,8 +405,12 @@ def main() -> int:
         type=Path,
         default=ROOT / "reports/evaluation/local_causal_lab/B2-TARGET-LIVE-RESULT-v1.json",
     )
+    parser.add_argument(
+        "--campaign-id",
+        default="b2-target-live-local-v1-20260827",
+    )
     args = parser.parse_args()
-    result = build_result()
+    result = build_result(campaign_id=args.campaign_id)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"written": str(args.output), **result["summary"]}, sort_keys=True))

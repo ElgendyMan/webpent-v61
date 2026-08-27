@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 RESULT = Path("reports/evaluation/local_causal_lab/B2-TARGET-LIVE-RESULT-v1.json")
+B21_RESULT = Path("reports/evaluation/local_causal_lab/B2.1-TARGET-LIVE-RESULT-v1.json")
 
 
 def test_b2_result_is_present_and_global_gates_remain_closed() -> None:
@@ -33,3 +34,14 @@ def test_b2_keeps_crapi_blocked_without_fixture_injection() -> None:
     assert crapi["final_classification"] == "BLOCKED"
     assert crapi["precondition"]["status"] == "blocked"
     assert crapi["proof_bundle"]["status"] == "withheld"
+
+
+def test_b21_isolated_campaign_withholds_inconclusive_proof() -> None:
+    result = json.loads(B21_RESULT.read_text(encoding="utf-8"))
+    webgoat = next(item for item in result["cases"] if item["target_id"] == "owasp_webgoat")
+    assert webgoat["campaign_id"] == "b2.1-webgoat-idor-local-20260827"
+    assert webgoat["session_bootstrap"]["method"] == "normal_local_auth"
+    assert webgoat["session_bootstrap"]["session_material_persisted"] is False
+    assert webgoat["causal_oracle"]["decision"] == "inconclusive"
+    assert webgoat["proof_bundle"]["status"] == "withheld_not_scoring"
+    assert webgoat["proof_bundle"]["seal"] == "not_created"
