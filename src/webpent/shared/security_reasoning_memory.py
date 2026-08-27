@@ -22,6 +22,14 @@ LearningOutcome = Literal[
     "inconclusive",
     "duplicate",
 ]
+ResearcherMemoryCategory = Literal[
+    "investigation_decision",
+    "reasoning_chain",
+    "successful_path",
+    "failed_path",
+    "environment_limitation",
+    "oracle_failure",
+]
 
 
 class SecurityReasoningMemory:
@@ -161,6 +169,73 @@ class SecurityReasoningMemory:
             limit=limit,
         )
 
+    def remember_research(
+        self,
+        *,
+        category: ResearcherMemoryCategory | str,
+        content: str,
+        source_ref: str = "",
+        evidence_refs: Iterable[str] = (),
+        relevance: float = 0.0,
+        metadata: dict[str, object] | None = None,
+    ) -> MemoryRecord | None:
+        """Store a redacted researcher lesson in the exact target scope.
+
+        This is a memory projection only.  It cannot execute a task, change
+        policy, replace an oracle, or promote a hypothesis/finding.
+        """
+        allowed = {
+            "investigation_decision",
+            "reasoning_chain",
+            "successful_path",
+            "failed_path",
+            "environment_limitation",
+            "oracle_failure",
+        }
+        clean_category = str(category).strip()
+        if clean_category not in allowed:
+            raise ValueError("unsupported_researcher_memory_category")
+        merged = dict(metadata or {})
+        merged.update({"researcher_category": clean_category, "advisory_only": True})
+        return self.remember(
+            category=MemoryKind.EXPERIENCE_LESSON,
+            content=content,
+            source_ref=source_ref,
+            evidence_refs=evidence_refs,
+            relevance=relevance,
+            metadata=merged,
+        )
+
+    def researcher_summary(self, query: str = "", *, limit: int | None = None) -> dict[str, object]:
+        """Return categorized, scope-filtered memory for advisory reuse."""
+        retrieval = self.retrieve_learning(query, limit=limit)
+        items = getattr(retrieval, "items", ())
+        grouped: dict[str, list[dict[str, object]]] = {
+            "investigation_decision": [],
+            "reasoning_chain": [],
+            "successful_path": [],
+            "failed_path": [],
+            "environment_limitation": [],
+            "oracle_failure": [],
+        }
+        for item in items:
+            category = str(item.metadata.get("researcher_category", ""))
+            if category in grouped:
+                grouped[category].append(
+                    {
+                        "id": item.id,
+                        "content": item.content,
+                        "evidence_refs": list(item.provenance.evidence_refs),
+                    }
+                )
+        return {
+            "scope": self.scope,
+            "isolated": True,
+            "items": grouped,
+            "authoritative": False,
+            "execution_capability": False,
+        }
+
     def summary(self) -> dict[str, object]:
         return {
             **self._boundary.summary(),
@@ -172,4 +247,4 @@ class SecurityReasoningMemory:
         }
 
 
-__all__ = ["LearningOutcome", "SecurityReasoningMemory"]
+__all__ = ["LearningOutcome", "ResearcherMemoryCategory", "SecurityReasoningMemory"]

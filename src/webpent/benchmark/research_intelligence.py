@@ -19,6 +19,8 @@ class ResearchEvaluationCase(BaseModel):
 
     case_id: str = Field(min_length=1, max_length=160)
     target_id: str = Field(min_length=1, max_length=160)
+    vulnerability_class: str = Field(default="unclassified", min_length=1, max_length=120)
+    ground_truth_source: str | None = Field(default=None, max_length=240)
     hypothesis_generated: bool = False
     rank: int | None = Field(default=None, ge=1)
     expected_rank: int | None = Field(default=None, ge=1)
@@ -28,6 +30,8 @@ class ResearchEvaluationCase(BaseModel):
     ground_truth_outcome: ValidationOutcome | None = None
     proof_complete: bool = False
     requests_used: int = Field(default=0, ge=0)
+    candidate_paths_considered: int = Field(default=0, ge=0)
+    unnecessary_paths_executed: int = Field(default=0, ge=0)
 
 
 class ResearchIntelligenceReport(BaseModel):
@@ -42,6 +46,8 @@ class ResearchIntelligenceReport(BaseModel):
     evidence_quality: float = Field(ge=0.0, le=1.0)
     validation_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
     proof_completeness: float = Field(ge=0.0, le=1.0)
+    unnecessary_exploration_reduction: float = Field(ge=0.0, le=1.0)
+    vulnerability_classes: tuple[str, ...] = Field(default=(), max_length=64)
     requests_used: int = Field(ge=0)
     controlled_experiment: bool = True
     real_world_detection_rate_measured: bool = False
@@ -70,6 +76,8 @@ def evaluate_research_intelligence(
         1.0 if case.validation_outcome == case.ground_truth_outcome else 0.0 for case in grounded
     ]
     total_requests = sum(case.requests_used for case in ordered)
+    considered_paths = sum(case.candidate_paths_considered for case in ordered)
+    unnecessary_paths = sum(case.unnecessary_paths_executed for case in ordered)
     completed = [case for case in ordered if case.validation_outcome != "not_run"]
     efficiency = (
         mean(case.information_gain for case in completed)
@@ -90,6 +98,13 @@ def evaluate_research_intelligence(
         proof_completeness=round(mean(1.0 if case.proof_complete else 0.0 for case in ordered), 6)
         if ordered
         else 0.0,
+        unnecessary_exploration_reduction=round(
+            max(0.0, min(1.0, 1.0 - unnecessary_paths / considered_paths))
+            if considered_paths
+            else 0.0,
+            6,
+        ),
+        vulnerability_classes=tuple(sorted({case.vulnerability_class for case in ordered})),
         requests_used=total_requests,
         cases=ordered,
     )

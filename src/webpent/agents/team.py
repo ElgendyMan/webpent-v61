@@ -24,6 +24,7 @@ class AgentRoleSpec:
     can_execute: bool = False
     can_create_findings: bool = False
     can_override_oracle: bool = False
+    can_override_policy: bool = False
 
 
 ROLE_SPECS: tuple[AgentRoleSpec, ...] = (
@@ -96,6 +97,41 @@ ROLE_SPECS: tuple[AgentRoleSpec, ...] = (
         responsibilities=("rank bounded tasks", "respect budget and route capabilities"),
         required_inputs=("campaign_state", "candidate_tasks"),
         emitted_artifacts=("task_proposal", "planning_rationale"),
+    ),
+    AgentRoleSpec(
+        role="application_analyst",
+        implementation="webpent.agents.asros.application_analyst",
+        responsibilities=("model workflows", "identify business-logic assumptions"),
+        required_inputs=("world_model", "workflow_evidence"),
+        emitted_artifacts=("workflow_model", "business_assumption"),
+    ),
+    AgentRoleSpec(
+        role="authorization_analyst",
+        implementation="webpent.agents.asros.authorization_analyst",
+        responsibilities=("map trust boundaries", "propose identity comparisons"),
+        required_inputs=("world_model", "invariant_evidence"),
+        emitted_artifacts=("trust_boundary", "negative_control_plan"),
+    ),
+    AgentRoleSpec(
+        role="adversarial_reasoner",
+        implementation="webpent.agents.asros.adversarial_reasoner",
+        responsibilities=("generate alternative hypotheses", "challenge causal explanations"),
+        required_inputs=("argument_chain", "observations"),
+        emitted_artifacts=("alternative_hypothesis", "challenge_note"),
+    ),
+    AgentRoleSpec(
+        role="evidence_scientist",
+        implementation="webpent.agents.asros.evidence_scientist",
+        responsibilities=("assess proof completeness", "check redaction and replayability"),
+        required_inputs=("observations", "proof_reference"),
+        emitted_artifacts=("evidence_assessment", "proof_gap"),
+    ),
+    AgentRoleSpec(
+        role="research_manager",
+        implementation="webpent.agents.asros.research_manager",
+        responsibilities=("sequence bounded research", "respect budget and policy gates"),
+        required_inputs=("campaign_state", "quality_reviews", "candidate_tasks"),
+        emitted_artifacts=("research_plan", "priority_rationale"),
     ),
 )
 

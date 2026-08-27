@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **351**.
+Total records: **353**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -174,6 +174,7 @@ Total records: **351**.
 | `src/webpent/agents/validator/structural_checks.py` | 1109 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/agents/waf_detector/agent.py` | 92 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/agents/waf_detector/agent.py` | 93 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/asros/world_model.py` | 175 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/attack_graph/chain_reasoning.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/attack_graph/engine.py` | 204 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/attack_graph/engine.py` | 207 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -322,6 +323,7 @@ Total records: **351**.
 | `src/webpent/shared/safety_gate.py` | 199 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/safety_gate.py` | 201 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/secondary_io_scanner.py` | 18 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/security_reasoning_memory.py` | 212 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/self_critique.py` | 299 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/self_critique.py` | 318 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/self_critique.py` | 337 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

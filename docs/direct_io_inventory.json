@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 282,
+    "dynamic_records": 284,
     "raw_or_boundary_records": 69,
-    "record_count": 351,
+    "record_count": 353,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -2528,6 +2528,19 @@
       "approval_status": "not_applicable",
       "classification": "dynamic_resolution",
       "column": 20,
+      "file": "src/webpent/asros/world_model.py",
+      "kind": "dynamic_resolution",
+      "line": 175,
+      "normalized_symbol": "getattr(value, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 20,
       "file": "src/webpent/attack_graph/chain_reasoning.py",
       "kind": "dynamic_resolution",
       "line": 146,
@@ -4443,6 +4456,19 @@
       "kind": "dynamic_resolution",
       "line": 18,
       "normalized_symbol": "getattr(tokenize, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 17,
+      "file": "src/webpent/shared/security_reasoning_memory.py",
+      "kind": "dynamic_resolution",
+      "line": 212,
+      "normalized_symbol": "getattr(retrieval, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",
