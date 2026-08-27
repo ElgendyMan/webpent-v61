@@ -159,5 +159,12 @@
     "Do not change Generic Core for a Juice Shop-only need",
     "Do not start official isolated P10 runs while authorization is false"
   ],
+  "candidate_review_artifacts": [
+    "reports/evaluation/p10_candidates/CANDIDATE-01-vulnerable-components-diagnosis-and-oracle-proposal-v1.md",
+    "reports/evaluation/p10_candidates/CANDIDATE-02-sql-injection-diagnosis-and-oracle-proposal-v1.md",
+    "reports/evaluation/p10_candidates/CANDIDATE-03-broken-access-control-diagnosis-and-oracle-proposal-v1.md",
+    "reports/evaluation/p10_candidates/CANDIDATE-04-sensitive-document-diagnosis-and-oracle-proposal-v1.md",
+    "reports/evaluation/p10_candidates/README.md"
+  ],
   "next_decision": "Remain fail-closed. Execute only offline candidate-contract design and bounded local read-only feasibility checks; require independent governance review before any new case enters the final scoring set."
 }
