@@ -1,0 +1,71 @@
+{
+  "schema_version": "abhie-v6-gate-summary-v1",
+  "milestone": "ABHIE v6",
+  "timestamp_utc": "2026-08-27T23:07:35Z",
+  "source_head_before_release": "cdb64203badd786ffe34d25af045ed9d086251ee",
+  "focused_tests": {
+    "command": "PYTHONPATH=src:. pytest -q tests/test_abhie_v6.py tests/test_abhie_v6_benchmark.py",
+    "passed": 11,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2173,
+    "failed": 7,
+    "status": "NOT_GREEN",
+    "known_blockers": [
+      "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+      "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+    ]
+  },
+  "static_gates": {
+    "ruff_scoped": "PASS",
+    "compileall": "PASS",
+    "import_smoke": "PASS",
+    "generic_target_neutrality": "PASS",
+    "tracked_secrets": "PASS",
+    "direct_io_scan": "PASS",
+    "direct_io_record_count": 379,
+    "g02": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "benchmark": {
+    "registered_classes": 6,
+    "scorable_classes": 0,
+    "scorable_cases": 0,
+    "blocked_classes": 6,
+    "requests_sent": 0,
+    "valid_ground_truth": false,
+    "production_metrics": {
+      "precision": null,
+      "recall": null,
+      "f1": null,
+      "real_world_detection_rate": null
+    },
+    "blocked_excluded_from_metrics": true,
+    "missing_evidence_is_not_false_negative": true
+  },
+  "architect_review": {
+    "status": "BLOCKED",
+    "advisory_only": true,
+    "finding_created": false,
+    "oracle_overridden": false,
+    "policy_overridden": false,
+    "qualification_approved": false
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10_status": "NOT_QUALIFIED",
+    "p9_status": "NOT_QUALIFIED",
+    "vip_status": "NOT_QUALIFIED",
+    "bug_bounty_status": "BLOCKED",
+    "human_signoff": false,
+    "qualification_effect": false
+  }
+}

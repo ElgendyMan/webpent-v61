@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **377**.
+Total records: **379**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -48,6 +48,8 @@ Total records: **377**.
 | `src/webpent/abhc/exploration.py` | 178 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/abhie/boundaries.py` | 16 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/abhie/brain.py` | 20 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/abhie_v6/contracts.py` | 51 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/abhie_v6/contracts.py` | 204 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/adapters/controlled_target/adapter.py` | 19 | `import` | `urllib.request` | `http_transport` | `approved` |
 | `src/webpent/adapters/controlled_target/adapter.py` | 434 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/adapters/controlled_target/adapter.py` | 757 | `call` | `urllib.request.urlopen` | `http_transport` | `approved` |
