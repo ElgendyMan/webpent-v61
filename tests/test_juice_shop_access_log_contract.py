@@ -1,9 +1,29 @@
 from __future__ import annotations
 
 from webpent.benchmark.juice_shop_target_adapter import JUICE_SHOP_TARGET_REGISTRATION
+from webpent.profiles.juice_shop.cases import (
+    ACCESS_LOG_PATH_TEMPLATE,
+    JUICE_SHOP_SAFE_CASES,
+    canonical_mapping_cases,
+)
 from webpent.shared.semantic_observations import derive_semantic_observation
 
 CASE_ID = "juice.access_log_disclosure.v1"
+
+
+def test_access_log_runtime_path_and_canonical_identity_are_separate() -> None:
+    runtime = next(
+        case for case in JUICE_SHOP_SAFE_CASES if case.case_id == CASE_ID
+    )
+    canonical = next(
+        case for case in canonical_mapping_cases() if case["case_id"] == CASE_ID
+    )
+
+    assert runtime.path.startswith("/support/logs/access.log.")
+    assert runtime.path != ACCESS_LOG_PATH_TEMPLATE
+    assert canonical["path"] == ACCESS_LOG_PATH_TEMPLATE
+    assert canonical["case_id"] == runtime.case_id
+    assert canonical["oracle_id"] == runtime.oracle_id
 
 
 def test_access_log_case_is_bound_to_reviewed_semantic_contract() -> None:

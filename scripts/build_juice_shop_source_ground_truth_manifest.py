@@ -15,7 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from webpent.adapters.juice_shop.oracles import JUICE_ORACLE_CONTRACTS
-from webpent.profiles.juice_shop.cases import JUICE_SHOP_SAFE_CASES
+from webpent.profiles.juice_shop.cases import (
+    JUICE_SHOP_SAFE_CASES,
+    canonical_mapping_cases,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FROZEN_GT = PROJECT_ROOT / "docs" / "juice_shop_p10_ground_truth_v1.json"
@@ -99,7 +102,12 @@ def main() -> int:
         "source_registry": {
             "case_count": len(source_cases),
             "safe_case_count": sum(bool(case["safe_to_execute"]) for case in source_cases),
-            "mapping_sha256": digest(source_cases),
+            "mapping_sha256": digest(canonical_mapping_cases()),
+            "runtime_mapping_sha256": digest(source_cases),
+            "mapping_hash_semantics": (
+                "canonical target-local mapping identity; date-rotated access-log runtime "
+                "path is normalized to /support/logs/access.log.<UTC-date>"
+            ),
             "oracle_contract_sha256": digest(
                 [asdict(JUICE_ORACLE_CONTRACTS[key]) for key in sorted(JUICE_ORACLE_CONTRACTS)]
             ),

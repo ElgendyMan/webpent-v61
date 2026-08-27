@@ -6,7 +6,7 @@ an external reviewer freezes the mapping and oracle contract.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Final, Literal
 from urllib.parse import urlsplit
@@ -59,10 +59,29 @@ _SOURCE_SEARCH = (
 )
 
 
+ACCESS_LOG_PATH_TEMPLATE = "/support/logs/access.log.<UTC-date>"
+
+
 def _current_access_log_path() -> str:
     """Resolve the local Juice Shop's date-rotated access log without I/O."""
     date = datetime.now(timezone.utc).date().isoformat()
     return f"/support/logs/access.log.{date}"
+
+
+def canonical_mapping_cases() -> list[dict[str, object]]:
+    """Return stable mapping identities without changing runtime paths.
+
+    The access log is date-rotated by Juice Shop. Its runtime case keeps the
+    concrete UTC-date path for local execution, while governance hashes use the
+    target-local template so the mapping identity does not change each day.
+    """
+    canonical_cases: list[dict[str, object]] = []
+    for case in JUICE_SHOP_SAFE_CASES:
+        item = asdict(case)
+        if case.case_id == "juice.access_log_disclosure.v1":
+            item["path"] = ACCESS_LOG_PATH_TEMPLATE
+        canonical_cases.append(item)
+    return canonical_cases
 
 
 # These are deliberately read-only candidates. They do not contain payloads,
@@ -218,4 +237,6 @@ __all__ = [
     "get_juice_shop_safe_case",
     "safe_case_ids",
     "safe_case_categories",
+    "ACCESS_LOG_PATH_TEMPLATE",
+    "canonical_mapping_cases",
 ]

@@ -13,7 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from webpent.adapters.juice_shop.oracles import JUICE_ORACLE_CONTRACTS
-from webpent.profiles.juice_shop.cases import JUICE_SHOP_SAFE_CASES
+from webpent.profiles.juice_shop.cases import (
+    JUICE_SHOP_SAFE_CASES,
+    canonical_mapping_cases,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_CANONICAL_MAPPING = (
@@ -133,7 +136,7 @@ def validate(packet_path: Path) -> list[str]:
         errors.append("loopback_runtime_manifest_hash_mismatch")
 
     source_cases = [asdict(case) for case in JUICE_SHOP_SAFE_CASES]
-    current_mapping = canonical_hash(source_cases)
+    current_mapping = canonical_hash(canonical_mapping_cases())
     current_oracle = canonical_hash(
         [asdict(JUICE_ORACLE_CONTRACTS[key]) for key in sorted(JUICE_ORACLE_CONTRACTS)]
     )
