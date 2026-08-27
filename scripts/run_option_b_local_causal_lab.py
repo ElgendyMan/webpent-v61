@@ -39,11 +39,15 @@ from webpent.adapters.local_causal_lab.fixtures import build_regression_fixture
 from webpent.adapters.local_causal_lab.option_b_contract import (
     OptionBCase,
     blocked_precondition,
+    validate_loopback_get,
     validate_option_b_preconditions,
 )
 from webpent.adapters.local_causal_lab.runtime_provenance import (
     RuntimeProvenance,
     readiness_check,
+)
+from webpent.adapters.local_causal_lab.session_harness import (
+    harness_snapshot_restore_check,
 )
 from webpent.adapters.webgoat.option_b import (
     WEBGOAT_RUNTIME_DIGEST,
@@ -202,6 +206,20 @@ def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]
     readiness = runtime["readiness"]
     precondition = blocked_precondition(case)
     fixture_readiness = build_regression_fixture(case.target_id).snapshot_restore_check()
+    network_scope_errors = validate_loopback_get(
+        case=case,
+        method="GET",
+        url=PREFLIGHT_URLS[case.case_id],
+        expected_origin=provenance["origin"],
+    )
+    harness_readiness = harness_snapshot_restore_check(case.target_id)
+    target_live_readiness = {
+        "runtime_digest_verified": runtime_ok and readiness["status"] == "ready",
+        "network_scope_verified": not network_scope_errors,
+        "service_alignment_verified": runtime["service_alignment_status"] == "attested",
+        "target_fixture_injected": False,
+        "auth_session_available": False,
+    }
     preflight = validate_option_b_preconditions(
         case=case,
         method="GET",
@@ -233,6 +251,12 @@ def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]
             "runtime_digest_ok": runtime_ok,
             "runtime_readiness": readiness["status"],
             "service_alignment_status": runtime["service_alignment_status"],
+            "offline_harness_readiness": harness_readiness,
+            "target_live_readiness": target_live_readiness,
+            "target_live_preconditions_ready": preflight["status"] == "ready"
+            and target_live_readiness["runtime_digest_verified"]
+            and target_live_readiness["service_alignment_verified"]
+            and target_live_readiness["auth_session_available"],
             "preflight": preflight,
         },
         "identity_model": {
@@ -244,6 +268,7 @@ def case_record(case: OptionBCase, provenance: dict[str, Any]) -> dict[str, Any]
             "target_fixture_injected": False,
             "reset_endpoint_called": False,
             "snapshot_restore": fixture_readiness,
+            "session_harness": harness_readiness,
         },
         "baseline": {"status": "not_run", "reason": "precondition_blocked"},
         "candidate": {"status": "not_run", "reason": "precondition_blocked"},
@@ -318,7 +343,7 @@ def build_result(
     cases: Iterable[OptionBCase] = (*webgoat_cases(), *crapi_cases())
     records = [case_record(case, provenance[case.target_id]) for case in cases]
     return {
-        "schema": "webpent-option-b-local-causal-lab-result-v1",
+        "schema": "webpent-option-b-local-causal-lab-result-v2",
         "campaign_id": "option-b-local-causal-lab-v1-20260827",
         "generated_on": date.today().isoformat(),
         "authorization_ref": str(import_path.relative_to(ROOT)),
@@ -335,6 +360,52 @@ def build_result(
         },
         "target_provenance": provenance,
         "cases": records,
+        "readiness": {
+            "offline_harness": {
+                "status": "ready"
+                if all(
+                    record["fixture_model"]["session_harness"]["status"] == "ready"
+                    for record in records
+                )
+                else "blocked",
+                "preconditions_ready": all(
+                    record["fixture_model"]["session_harness"]["preconditions_ready"]
+                    for record in records
+                ),
+                "fixture_ready": all(
+                    record["fixture_model"]["session_harness"]["fixture_ready"]
+                    for record in records
+                ),
+                "identity_model_ready": all(
+                    record["fixture_model"]["session_harness"]["identity_model_ready"]
+                    for record in records
+                ),
+                "reset_verified": all(
+                    record["fixture_model"]["session_harness"]["reset_verified"]
+                    for record in records
+                ),
+                "runtime_digest_verified": all(
+                    record["fixture_model"]["session_harness"]["runtime_digest_verified"]
+                    for record in records
+                ),
+                "network_scope_verified": all(
+                    record["fixture_model"]["session_harness"]["network_scope_verified"]
+                    for record in records
+                ),
+            },
+            "target_live": {
+                "status": "ready"
+                if all(
+                    record["runnable_precondition"]["target_live_preconditions_ready"]
+                    for record in records
+                )
+                else "blocked",
+                "preconditions_ready": all(
+                    record["runnable_precondition"]["target_live_preconditions_ready"]
+                    for record in records
+                ),
+            },
+        },
         "summary": {
             "lab_status": "LAB_NOT_READY",
             "precondition_blocked_case_count": len(records),

@@ -50,3 +50,29 @@ def test_option_b_runner_records_runtime_digest_blockers_without_sensitive_mater
         assert case["cleanup"]["network_attempted"] is False
         assert case["identity_model"]["status"] == "offline_opaque_only"
         assert case["fixture_model"]["snapshot_restore"]["status"] == "verified"
+
+
+def test_option_b_runner_exposes_offline_harness_readiness_separately() -> None:
+    result = build_result()
+    assert result["readiness"]["offline_harness"]["status"] == "ready"
+    assert result["readiness"]["offline_harness"]["preconditions_ready"] is True
+    assert result["readiness"]["offline_harness"]["fixture_ready"] is True
+    assert result["readiness"]["offline_harness"]["identity_model_ready"] is True
+    assert result["readiness"]["offline_harness"]["reset_verified"] is True
+    assert result["readiness"]["offline_harness"]["runtime_digest_verified"] is True
+    assert result["readiness"]["offline_harness"]["network_scope_verified"] is True
+    assert result["readiness"]["target_live"]["preconditions_ready"] is False
+    assert all(
+        case["runnable_precondition"]["target_live_preconditions_ready"] is False
+        for case in result["cases"]
+    )
+    assert all(
+        case["fixture_model"]["session_harness"]["preconditions_ready"] is True
+        for case in result["cases"]
+    )
+    assert all(case["baseline"]["status"] == "not_run" for case in result["cases"])
+    assert all(case["candidate"]["status"] == "not_run" for case in result["cases"])
+    assert all(
+        case["independent_negative_control"]["status"] == "not_run"
+        for case in result["cases"]
+    )
