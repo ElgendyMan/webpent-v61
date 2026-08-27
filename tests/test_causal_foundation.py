@@ -150,6 +150,7 @@ def _target_mapping(
     for observation in (result.baseline, result.candidate, result.negative_control):
         values[observation.role] = {
             "target_backed": True,
+            "evidence_origin": "target_runtime",
             "observation_role": observation.role,
             "target_fingerprint": target_fp,
             "request_digest": observation.request_digest,
@@ -192,6 +193,7 @@ def test_vnext_verifier_seals_and_replays_typed_decision():
     assert result.proof_bundle is not None
     assert result.proof_bundle.oracle_decision == "CONFIRMED"
     assert result.proof_bundle.verify_seal() is True
+    replay_context = result.evidence["promotion_guard"]["replay_context"]
     assert (
         result.proof_bundle.replay(
             [
@@ -200,10 +202,27 @@ def test_vnext_verifier_seals_and_replays_typed_decision():
                 result.evidence["negative_control"],
             ],
             result.evidence["negative_control"],
-            replay_context=result.evidence["promotion_guard"]["replay_context"],
+            replay_context=replay_context,
         )
         is True
     )
+
+    changed_oracle = dict(replay_context, oracle_decision="CLEAN")
+    changed_refs = dict(replay_context, evidence_refs=("changed:baseline",))
+    changed_digest = dict(replay_context, sealed_digest="sha256:" + "0" * 64)
+    for changed_context in (changed_oracle, changed_refs, changed_digest):
+        assert (
+            result.proof_bundle.replay(
+                [
+                    result.evidence["baseline"],
+                    result.evidence["candidate"],
+                    result.evidence["negative_control"],
+                ],
+                result.evidence["negative_control"],
+                replay_context=changed_context,
+            )
+            is False
+        )
 
 
 def test_vnext_verifier_withholds_inconclusive_and_blocked():
@@ -249,3 +268,63 @@ def test_vnext_verifier_withholds_inconclusive_and_blocked():
         assert result.passed is False
         assert result.proof_bundle is None
         assert result.reason.startswith("causal_oracle_")
+
+
+def test_target_verifier_rejects_explicit_offline_origin():
+    contract = _contract(candidate_holds=False, candidate_violated=True)
+    oracle_result = OracleEngine.evaluate_experiment(contract)
+    baseline, candidate, control = _target_mapping(contract)
+    for observation in (baseline, candidate, control):
+        observation["evidence_origin"] = "offline_fixture"
+
+    result = verify_replay_evidence(
+        _finding(),
+        baseline=baseline,
+        candidate=candidate,
+        negative_control=control,
+        causal_result=oracle_result,
+        validator_id="fixture.causal.validator",
+        validator_version="2.0",
+        causal_basis=oracle_result.reason,
+        engagement_id="engagement-origin-isolation",
+        scope_context={"allowed_origin": "https://lab.example.test"},
+        identity_context={"session": "synthetic"},
+        require_target_backed=True,
+    )
+
+    assert result.passed is False
+    assert result.proof_bundle is None
+    assert result.reason == "offline_fixture_cannot_be_target_backed"
+
+
+def test_offline_vnext_bundle_cannot_promote():
+    contract = _contract(candidate_holds=False, candidate_violated=True)
+    oracle_result = OracleEngine.evaluate_experiment(contract)
+    from webpent.models.proof_bundle import build_proof_bundle, proof_bundle_promotion_ready
+
+    bundle = build_proof_bundle(
+        engagement_id="engagement-origin-isolation",
+        finding_id="finding-offline",
+        hypothesis_id="hypothesis-offline",
+        target_fingerprint="sha256:" + "a" * 64,
+        evidence=[{"origin": "offline_fixture"}],
+        evidence_refs=["offline:baseline", "offline:candidate", "offline:control"],
+        negative_control={"origin": "offline_fixture"},
+        baseline={"origin": "offline_fixture"},
+        request_evidence=[{"role": "candidate"}],
+        response_evidence=[{"role": "candidate"}],
+        causal_oracle={"causal_signal": True, "negative_control_complete": True},
+        target_backed=False,
+        negative_control_independent=True,
+        validator_id="fixture.causal.validator",
+        validator_version="2.0",
+        replay_metadata={"replayable": True},
+        oracle_decision="CONFIRMED",
+        invariant_analysis=oracle_result.invariant_analysis,
+        validator_result=oracle_result.model_dump(mode="json"),
+        evidence_origin="offline_fixture",
+    ).seal(actor="test")
+
+    assert bundle.evidence_origin == "offline_fixture"
+    assert bundle.verify_seal() is True
+    assert proof_bundle_promotion_ready(bundle) is False

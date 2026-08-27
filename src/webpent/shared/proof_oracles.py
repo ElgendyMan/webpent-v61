@@ -76,6 +76,7 @@ class CausalObservation(BaseModel):
     response_digest: str = Field(min_length=1, max_length=71)
     signals: dict[str, Any] = Field(default_factory=dict, max_length=32)
     target_backed: bool = False
+    evidence_origin: Literal["offline_fixture", "target_runtime"] = "offline_fixture"
 
     @field_validator("observation_ref", "semantic_fingerprint", mode="before")
     @classmethod
@@ -112,6 +113,11 @@ class CausalObservation(BaseModel):
     @property
     def has_meaningful_signal(self) -> bool:
         return bool(self.meaningful_signal_keys)
+
+    @property
+    def is_target_runtime(self) -> bool:
+        """Return whether this observation is explicitly target-runtime evidence."""
+        return self.evidence_origin == "target_runtime"
 
 
 class CausalOracleContract(BaseModel):

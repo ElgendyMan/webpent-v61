@@ -59,11 +59,17 @@ def _target_observation_ok(
     role: str,
     target_fingerprint: str,
 ) -> bool:
-    """Accept only redacted observations carrying transport-level provenance."""
+    """Accept redacted target evidence with transport and origin provenance.
+
+    Older target-backed callers did not emit ``evidence_origin``; absence is
+    accepted for compatibility, while an explicit offline tag is fail-closed.
+    """
     if not isinstance(value, Mapping):
         return False
+    origin = value.get("evidence_origin")
     return bool(
         value.get("target_backed") is True
+        and origin != "offline_fixture"
         and value.get("observation_role") == role
         and value.get("target_fingerprint") == target_fingerprint
         and isinstance(value.get("request_digest"), str)
@@ -130,6 +136,9 @@ def verify_replay_evidence(
 
     evidence["causal_signal"] = bool(causal_signal)
     evidence["negative_control_complete"] = bool(negative_control_complete)
+    evidence["evidence_origin"] = (
+        "target_runtime" if require_target_backed else "offline_fixture"
+    )
     evidence["causal_basis"] = str(causal_basis)[:240]
 
     if baseline is None or candidate is None:
@@ -172,6 +181,20 @@ def verify_replay_evidence(
         return VerificationResult(False, "target_fingerprint_invalid", evidence)
 
     if require_target_backed:
+        if any(
+            isinstance(observation, Mapping)
+            and observation.get("evidence_origin") == "offline_fixture"
+            for observation in (baseline, candidate, negative_control)
+        ):
+            evidence["promotion_guard"] = {
+                "status": "blocked",
+                "reason": "offline_fixture_cannot_be_target_backed",
+            }
+            return VerificationResult(
+                False,
+                "offline_fixture_cannot_be_target_backed",
+                evidence,
+            )
         if not _target_observation_ok(
             baseline, role="baseline", target_fingerprint=expected_target_fingerprint
         ) or not _target_observation_ok(
@@ -186,6 +209,16 @@ def verify_replay_evidence(
                 "target_backed_baseline_and_candidate_required",
                 evidence,
             )
+        if causal_result and any(
+            not isinstance(observation, Mapping)
+            or observation.get("evidence_origin") != "target_runtime"
+            for observation in (baseline, candidate, negative_control)
+        ):
+            evidence["promotion_guard"] = {
+                "status": "blocked",
+                "reason": "target_runtime_origin_required",
+            }
+            return VerificationResult(False, "target_runtime_origin_required", evidence)
         if not _target_observation_ok(
             negative_control,
             role="negative_control",
@@ -290,6 +323,9 @@ def verify_replay_evidence(
         },
         "target_backed": bool(require_target_backed),
         "negative_control_independent": bool(require_target_backed),
+        "evidence_origin": (
+            "target_runtime" if require_target_backed else "offline_fixture"
+        ),
         "validator_id": validator_id,
         "validator_version": validator_version,
         "replay_metadata": {**replay, **(replay_metadata or {})},
@@ -320,6 +356,9 @@ def verify_replay_evidence(
             ),
             "invariant_analysis": causal_result.invariant_analysis,
             "validator_result": causal_result.model_dump(mode="json"),
+            "evidence_origin": (
+                "target_runtime" if require_target_backed else "offline_fixture"
+            ),
         })
 
     bundle = build_proof_bundle(**bundle_kwargs).seal(actor="strict_replay_verifier")
@@ -349,6 +388,14 @@ def verify_replay_evidence(
         replay_context["target_context_hash"] = target_context_hash
     if vulnerability_class:
         replay_context["vulnerability_class"] = vulnerability_class
+    if causal_result:
+        replay_context.update({
+            "oracle_decision": bundle.oracle_decision,
+            "evidence_origin": bundle.evidence_origin,
+            "invariant_analysis": bundle.invariant_analysis,
+            "evidence_refs": bundle.evidence_refs,
+            "sealed_digest": bundle.seal_digest,
+        })
 
     if not proof_bundle_promotion_ready(bundle):
         evidence["promotion_guard"] = {

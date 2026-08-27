@@ -6,6 +6,7 @@ not authorize credentials, sessions, mutations, redirects, or external I/O.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from re import Pattern
@@ -13,6 +14,58 @@ from typing import Literal
 from urllib.parse import parse_qs, unquote, urlsplit
 
 PreconditionStatus = Literal["ready", "blocked"]
+
+
+@dataclass(frozen=True)
+class TargetEvidenceReadiness:
+    """Fail-closed capabilities required before target evidence acquisition."""
+
+    identity_model_available: bool
+    ownership_model_available: bool
+    reset_available: bool
+    oracle_signal_available: bool
+    observable_security_invariant: bool
+    replayable_state_transition: bool
+
+    def validate(self) -> tuple[str, ...]:
+        checks = (
+            ("identity_model_available", self.identity_model_available),
+            ("ownership_model_available", self.ownership_model_available),
+            ("reset_available", self.reset_available),
+            ("oracle_signal_available", self.oracle_signal_available),
+            ("observable_security_invariant", self.observable_security_invariant),
+            ("replayable_state_transition", self.replayable_state_transition),
+        )
+        return tuple(name for name, available in checks if not available)
+
+    @property
+    def ready(self) -> bool:
+        return not self.validate()
+
+
+def validate_target_evidence_readiness(
+    readiness: TargetEvidenceReadiness | Mapping[str, object],
+) -> dict[str, object]:
+    """Return a stable pre-request readiness decision for target evidence."""
+    parsed = (
+        readiness
+        if isinstance(readiness, TargetEvidenceReadiness)
+        else TargetEvidenceReadiness(**readiness)
+    )
+    missing = parsed.validate()
+    return {
+        "status": "ready" if parsed.ready else "blocked",
+        "runnable": parsed.ready,
+        "network_allowed": parsed.ready,
+        "identity_model_available": parsed.identity_model_available,
+        "ownership_model_available": parsed.ownership_model_available,
+        "reset_available": parsed.reset_available,
+        "oracle_signal_available": parsed.oracle_signal_available,
+        "observable_security_invariant": parsed.observable_security_invariant,
+        "replayable_state_transition": parsed.replayable_state_transition,
+        "missing_capabilities": missing,
+        "network_attempted": False,
+    }
 
 
 @dataclass(frozen=True)
@@ -159,6 +212,7 @@ def validate_option_b_preconditions(
     fixture_snapshot_status: str,
     target_fixture_injected: bool = False,
     followed_redirect: bool = False,
+    target_evidence_readiness: TargetEvidenceReadiness | Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Return a fail-closed preflight decision before any network operation."""
     errors = list(case.validate())
@@ -183,6 +237,13 @@ def validate_option_b_preconditions(
         errors.append("offline_fixture_snapshot_restore_not_verified")
     if not case.negative_control_roles:
         errors.append("independent_negative_control_required")
+    if target_evidence_readiness is not None:
+        readiness = validate_target_evidence_readiness(target_evidence_readiness)
+        if readiness["status"] != "ready":
+            errors.extend(
+                f"target_evidence_{name}_unavailable"
+                for name in readiness["missing_capabilities"]
+            )
     unique_errors = tuple(dict.fromkeys(errors))
     return {
         "status": "ready" if not unique_errors else "blocked",

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -91,6 +91,7 @@ class ProofBundle(BaseModel):
     oracle_decision: str | None = Field(default=None, max_length=32)
     invariant_analysis: dict[str, Any] = Field(default_factory=dict)
     validator_result: dict[str, Any] = Field(default_factory=dict)
+    evidence_origin: Literal["offline_fixture", "target_runtime"] = "offline_fixture"
 
     @field_validator(
         "engagement_id",
@@ -215,6 +216,7 @@ class ProofBundle(BaseModel):
             "oracle_decision": self.oracle_decision,
             "invariant_analysis": self.invariant_analysis,
             "validator_result": self.validator_result,
+            "evidence_origin": self.evidence_origin,
         }
         payload.update({k: v for k, v in vnext.items() if v is not None or isinstance(v, dict)})
         return payload
@@ -253,6 +255,7 @@ class ProofBundle(BaseModel):
             "run_id",
             "vulnerability_class",
         )
+        oracle_fields = {"oracle_decision", "evidence_origin"}
         scalar_fields = {
             "engagement_id",
             "finding_id",
@@ -261,8 +264,12 @@ class ProofBundle(BaseModel):
             *package_fields,
             *vnext_fields,
         }
-        metadata_fields = {"scope_context", "identity_context"}
-        allowed_fields = scalar_fields | metadata_fields
+        metadata_fields = {"scope_context", "identity_context", "invariant_analysis"}
+        sequence_fields = {"evidence_refs"}
+        special_fields = {"sealed_digest"}
+        allowed_fields = (
+            scalar_fields | oracle_fields | metadata_fields | sequence_fields | special_fields
+        )
         if set(replay_context) - allowed_fields:
             return False
 
@@ -309,7 +316,13 @@ class ProofBundle(BaseModel):
                 clean_stored, _ = redact_sensitive(stored)
                 if sha256_text(clean_expected) != sha256_text(clean_stored):
                     return False
-            elif field in scalar_fields:
+            elif field in sequence_fields:
+                if tuple(str(item) for item in expected) != tuple(self.evidence_refs):
+                    return False
+            elif field in special_fields:
+                if not self.seal_digest or str(expected) != self.seal_digest:
+                    return False
+            elif field in scalar_fields or field in oracle_fields:
                 stored = getattr(self, field, None)
                 if stored is None or str(expected) != str(stored):
                     return False
@@ -394,6 +407,7 @@ def build_proof_bundle(
     oracle_decision: str | None = None,
     invariant_analysis: dict[str, Any] | None = None,
     validator_result: dict[str, Any] | None = None,
+    evidence_origin: Literal["offline_fixture", "target_runtime"] = "offline_fixture",
 ) -> ProofBundle:
     """Build a redaction-safe bundle from deterministic evidence payloads."""
     clean_evidence = tuple(redact_sensitive(item)[0] for item in evidence)
@@ -455,6 +469,7 @@ def build_proof_bundle(
         oracle_decision=oracle_decision,
         invariant_analysis=invariant_analysis or {},
         validator_result=validator_result or {},
+        evidence_origin=evidence_origin,
     )
 
 
@@ -465,9 +480,13 @@ def proof_bundle_promotion_ready(value: Any) -> bool:
     except Exception:
         return False
 
-    # vNext strict confirmation rule
-    if bundle.oracle_decision and bundle.oracle_decision != "CONFIRMED":
-        return False
+    # vNext strict confirmation and origin rule. Offline confirmations are
+    # engine-validation artifacts only and can never enter scoring promotion.
+    if bundle.oracle_decision:
+        if bundle.oracle_decision != "CONFIRMED":
+            return False
+        if bundle.evidence_origin != "target_runtime" or not bundle.target_backed:
+            return False
 
     return bool(
         validate_proof_bundle(bundle, require_negative_control=True)
