@@ -80,6 +80,8 @@ class SecurityInvariantCandidate(BaseModel):
     asset: str = Field(min_length=1, max_length=240)
     statement: str = Field(min_length=8, max_length=500)
     predicate: str = Field(min_length=8, max_length=500)
+    affected_entities: tuple[str, ...] = Field(min_length=1, max_length=12)
+    validation_method: str = Field(min_length=8, max_length=240)
     source_refs: tuple[str, ...] = Field(min_length=1, max_length=32)
     confidence: float = Field(ge=0.0, le=1.0)
     requires_negative_control: bool = True
@@ -102,16 +104,53 @@ class SecurityInvariantMiner:
             )
             if not contrast:
                 continue
-            statement = (
-                f"{surface.asset} must preserve the authorized identity boundary "
-                "across controlled subjects."
+            invariant = next(
+                (
+                    item
+                    for item in world_model.invariants
+                    if item.protected_resource == surface.asset
+                ),
+                None,
             )
+            if invariant is None:
+                continue
+            intents = tuple(
+                item
+                for item in world_model.business_intents
+                if surface.asset in item.workflow or surface.asset in item.goal
+            )
+            statement = invariant.statement
             predicate = (
                 "candidate and independent negative control differ only in the "
-                f"authorized subject for {surface.asset}."
+                f"authorized subject for {surface.asset}; expected conditions are "
+                f"{', '.join(invariant.allowed_conditions) or 'lineage-defined'}."
+            )
+            affected_entities = tuple(
+                dict.fromkeys(
+                    (
+                        surface.asset,
+                        invariant.subject,
+                        *(item.workflow for item in intents),
+                    )
+                )
+            )
+            validation_method = (
+                "candidate/control comparison with causal oracle, independent "
+                "negative control, and central verifier"
+            )
+            source_refs = tuple(
+                dict.fromkeys(
+                    (*surface.source_refs, *invariant.lineage.evidence_refs)
+                    + tuple(ref for item in intents for ref in item.lineage.evidence_refs)
+                )
             )
             payload = json.dumps(
-                {"asset": surface.asset, "statement": statement},
+                {
+                    "asset": surface.asset,
+                    "statement": statement,
+                    "predicate": predicate,
+                    "source_refs": source_refs,
+                },
                 sort_keys=True,
                 separators=(",", ":"),
             )
@@ -121,7 +160,9 @@ class SecurityInvariantMiner:
                     asset=surface.asset,
                     statement=statement,
                     predicate=predicate,
-                    source_refs=surface.source_refs,
+                    affected_entities=affected_entities,
+                    validation_method=validation_method,
+                    source_refs=source_refs,
                     confidence=surface.stability * 0.8,
                 )
             )

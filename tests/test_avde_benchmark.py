@@ -43,3 +43,25 @@ def test_benchmark_is_offline_and_excludes_blocked_cases() -> None:
     assert result["case_disposition"]["blocked_excluded_from_tp_fp_fn"] is True
     assert result["case_disposition"]["synthetic_proof_bundles_created"] is False
     assert result["governance"]["qualification_effect"] is False
+    assert len(result["class_inventory"]) == 6
+    assert sum(item["status"] == "scorable" for item in result["class_inventory"]) == 1
+    assert all(
+        item["included_in_scoring"] is False
+        for item in result["class_inventory"]
+        if item["class_id"] != "broken_access_control"
+    )
+    assert result["metrics"]["production_precision"] is None
+    assert result["metrics"]["production_recall"] is None
+    assert result["claims"]["production_precision_recall_calculated"] is False
+
+
+def test_multiclass_contracts_are_advisory_and_have_no_execution_surface() -> None:
+    from benchmarks.avde_multiclass_controlled import CONTROLLED_CLASS_CONTRACTS
+
+    assert len(CONTROLLED_CLASS_CONTRACTS) == 6
+    assert all(
+        contract.allowed_methods == ("GET", "HEAD") for contract in CONTROLLED_CLASS_CONTRACTS
+    )
+    assert all(
+        contract.execution_status == "not_executed" for contract in CONTROLLED_CLASS_CONTRACTS
+    )

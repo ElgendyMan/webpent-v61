@@ -36,9 +36,11 @@ class DiscoveryHypothesis(BaseModel):
     hypothesis_id: str = Field(min_length=16, max_length=128)
     engagement_id: str = Field(min_length=1, max_length=200)
     target_id: str = Field(min_length=1, max_length=200)
+    vulnerability_class: str = Field(pattern=r"^[a-z][a-z0-9_]{2,79}$")
     identity_boundary: str = Field(min_length=3, max_length=300)
     affected_asset: str = Field(min_length=1, max_length=240)
     security_assumption: str = Field(min_length=8, max_length=700)
+    reasoning_chain: tuple[str, ...] = Field(min_length=1, max_length=12)
     failure_condition: str = Field(min_length=8, max_length=700)
     validation_strategy: tuple[str, ...] = Field(min_length=1, max_length=8)
     expected_evidence: tuple[str, ...] = Field(min_length=1, max_length=8)
@@ -49,6 +51,7 @@ class DiscoveryHypothesis(BaseModel):
     status: DiscoveryHypothesisStatus = DiscoveryHypothesisStatus.GENERATED
 
     @field_validator(
+        "reasoning_chain",
         "validation_strategy",
         "expected_evidence",
         "source_refs",
@@ -122,6 +125,14 @@ class DiscoveryHypothesisEngine:
             if hypothesis_id in prior_ids:
                 continue
             capability = str(graph_hint.get("required_capability", "analysis"))
+            vulnerability_class = self._vulnerability_class(invariant.kind.value)
+            reasoning_chain = (
+                f"world_model invariant {invariant.invariant_id} defines the boundary",
+                f"security kind {invariant.kind.value} maps to {vulnerability_class}",
+                f"attack_graph_hint_present={bool(graph_hint)}",
+                f"behavioral_deviation_present={related_deviation}",
+                "candidate/control comparison and causal validation are required",
+            )
             confidence = min(
                 0.9, invariant.lineage.confidence + (0.15 if related_deviation else 0.0)
             )
@@ -131,9 +142,11 @@ class DiscoveryHypothesisEngine:
                     hypothesis_id=hypothesis_id,
                     engagement_id=world_model.engagement_id,
                     target_id=world_model.target_id,
+                    vulnerability_class=vulnerability_class,
                     identity_boundary=invariant.subject,
                     affected_asset=invariant.protected_resource,
                     security_assumption=invariant.statement,
+                    reasoning_chain=reasoning_chain,
                     failure_condition=condition,
                     validation_strategy=(
                         "establish safe precondition",
@@ -152,6 +165,16 @@ class DiscoveryHypothesisEngine:
                 )
             )
         return tuple(sorted(generated, key=lambda item: (-item.novelty_score, item.hypothesis_id)))
+
+    @staticmethod
+    def _vulnerability_class(kind: str) -> str:
+        return {
+            "ownership": "broken_access_control",
+            "role_boundary": "privilege_escalation",
+            "transaction": "business_logic_abuse",
+            "data_flow": "data_exposure",
+            "workflow": "business_logic_abuse",
+        }.get(kind, "security_boundary_issue")
 
     @staticmethod
     def _redacted_mapping(value: Mapping[str, Any]) -> dict[str, Any]:

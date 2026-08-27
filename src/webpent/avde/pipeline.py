@@ -15,6 +15,7 @@ from webpent.avde.exploration import (
     ValidationPlan,
 )
 from webpent.avde.review import ReasoningReview, SeniorReasoningReviewer
+from webpent.shared.security_reasoning_memory import SecurityReasoningMemory
 
 
 class AdvisoryDiscoverySession(BaseModel):
@@ -32,6 +33,7 @@ class AdvisoryDiscoverySession(BaseModel):
     creates_findings: bool = False
     executes_transport: bool = False
     overrides_policy: bool = False
+    memory_record_ids: tuple[str, ...] = Field(default=(), max_length=256)
 
 
 class AVDEAdvisoryPipeline:
@@ -45,9 +47,15 @@ class AVDEAdvisoryPipeline:
         attack_graph: Iterable[Mapping[str, object]] = (),
         available_capabilities: Iterable[str] = (),
         max_cost: int = 100,
+        memory: SecurityReasoningMemory | None = None,
     ) -> AdvisoryDiscoverySession:
         if not isinstance(world_model, SecurityWorldModel):
             raise TypeError("security_world_model_required")
+        if memory is not None and (
+            memory.engagement_id != world_model.engagement_id
+            or memory.target_id != world_model.target_id
+        ):
+            raise ValueError("reasoning_memory_scope_mismatch")
         graph_items = tuple(attack_graph)
         hypotheses = DiscoveryHypothesisEngine().generate(
             world_model, observations=observations, attack_graph=graph_items
@@ -72,6 +80,21 @@ class AVDEAdvisoryPipeline:
             reviewer.review(hypothesis, plan)
             for hypothesis, plan in zip(hypotheses, plans, strict=True)
         )
+        memory_record_ids: list[str] = []
+        if memory is not None:
+            for hypothesis, review in zip(hypotheses, reviews, strict=True):
+                record = memory.remember_research(
+                    category="reasoning_chain",
+                    content=(
+                        f"hypothesis={hypothesis.hypothesis_id}; decision={review.decision.value}; "
+                        f"rationale={review.rationale}"
+                    ),
+                    source_ref=f"avde:hypothesis:{hypothesis.hypothesis_id}",
+                    evidence_refs=hypothesis.source_refs,
+                    relevance=hypothesis.confidence,
+                )
+                if record is not None:
+                    memory_record_ids.append(record.id)
         return AdvisoryDiscoverySession(
             engagement_id=world_model.engagement_id,
             target_id=world_model.target_id,
@@ -79,6 +102,7 @@ class AVDEAdvisoryPipeline:
             paths=paths,
             plans=plans,
             reviews=reviews,
+            memory_record_ids=tuple(memory_record_ids),
         )
 
 

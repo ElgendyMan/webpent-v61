@@ -61,6 +61,8 @@ def test_discovery_is_deterministic_and_deduplicates_prior_ids() -> None:
     )
     assert first == second
     assert first[0].hypothesis_id == engine.generate(world(), prior_hypotheses=())[0].hypothesis_id
+    assert first[0].vulnerability_class == "broken_access_control"
+    assert first[0].reasoning_chain[-1].startswith("candidate/control comparison")
     assert engine.generate(world(), prior_hypotheses=first) == ()
     assert "token" not in " ".join(first[0].source_refs).lower()
     assert first[0].status.value == "generated"
@@ -123,7 +125,7 @@ def test_behavior_groups_redacts_and_miner_requires_contrast() -> None:
                 "asset": "record/1",
                 "role": "other",
                 "subject": "s2",
-                "source_refs": ("token=secret",),
+                "source_refs": ("authorization=fixture-marker",),
             },
             {
                 "asset": "record/2",
@@ -140,6 +142,17 @@ def test_behavior_groups_redacts_and_miner_requires_contrast() -> None:
     mined = SecurityInvariantMiner().mine(surfaces, world())
     assert len(mined) == 1
     assert mined[0].requires_negative_control is True
+    assert "record/1" in mined[0].affected_entities
+    assert mined[0].validation_method.startswith("candidate/control comparison")
+    assert mined[0].source_refs
+    empty_world = SecurityWorldModel(
+        engagement_id="eng-1",
+        target_id="target-1",
+        knowledge_hash="b" * 64,
+        business_intents=(),
+        invariants=(),
+    )
+    assert SecurityInvariantMiner().mine(surfaces, empty_world) == ()
 
 
 def test_review_and_competition_are_advisory() -> None:
@@ -164,3 +177,16 @@ def test_review_and_competition_are_advisory() -> None:
     round_ = CompetitionLoop().run([hypothesis], budget=10)
     assert round_.winner_id == hypothesis.hypothesis_id
     assert round_.advisory_only is True
+    assert round_.round_id == CompetitionLoop().run([hypothesis], budget=10).round_id
+    empty_round = CompetitionLoop().run([hypothesis], budget=0)
+    assert empty_round.winner_id is None
+    assert empty_round.advisory_only is True
+    blocked_plan = AutonomousValidationStrategy().choose(
+        hypothesis, [path], available_capabilities=("missing",)
+    )
+    assert SeniorReasoningReviewer().review(hypothesis, blocked_plan).decision.value == "block"
+    with pytest.raises(ValueError, match="hypothesis_plan_mismatch"):
+        SeniorReasoningReviewer().review(
+            hypothesis,
+            plan.model_copy(update={"hypothesis_id": "b" * 64}),
+        )
