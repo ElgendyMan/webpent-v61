@@ -136,7 +136,7 @@
     "docs/WEBPENT_VIP_VALIDATION_20260821.md": "30f194f215bebe0612de2f7d6a3fbd85504446d5e1a96366adabe9f13e77bf81",
     "docs/WebPentSmartAutonomousBugHunter_review_report.md": "e603aa73d5ee9a78362383c1f50ec987047e86d1574b40ff4bb2f3d9f876cf98",
     "docs/WebPent_cumulative_findings_fix_report.md": "35557a2627a0f5da8763a22850c906df125314e3226f03b3c91487662210be32",
-    "docs/adi/ADI-v1-Completion-Report.md": "662ea88d156cf2e52cee111c3a5f52cea1f861cf1662233822ce5227fdb68234",
+    "docs/adi/ADI-v1-Completion-Report.md": "43746e55a96ccf0879efeddec388255896d0a4c719b4ad0e65c33da45671b544",
     "docs/ai_independent_review_owner_approval_policy_v1.md": "d9e518770e5bd506df664fd1d21755aaf5534303d75a3d9273a216c1969b1404",
     "docs/ai_independent_review_owner_approval_status_v1.json": "f5bec57491d5c1f3bd38395cf9b2ba432548391ed882c478f24fb9886f31bc66",
     "docs/anthropic_model_reference_20260821.md": "99965e150e48f1791ff4280e8d31d3a0fd6d3437e6ae6af6490aa82b0044f63b",
@@ -1330,9 +1330,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T20:26:00.009250+00:00",
-  "git_commit": "209e8fdb7acd2cbd37b384bf5a9ea41364af3579",
-  "git_tree": "7a0c647c8abc1e9cd201d706172b07ffaeb9e143",
+  "generated_at": "2026-08-27T20:29:27.188471+00:00",
+  "git_commit": "0478f86f1cdc518fcd99e035e03a77061ea65b67",
+  "git_tree": "420cb4d8af979dac2f8859b9cd0669634c3e5704",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
