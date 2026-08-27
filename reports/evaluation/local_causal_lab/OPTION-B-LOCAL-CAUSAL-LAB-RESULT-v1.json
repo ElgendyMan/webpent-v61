@@ -1,0 +1,577 @@
+{
+  "authorization_ref": "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+  "authorization_status": "IMPORTED_BOUNDED_DIRECTIVE",
+  "campaign_id": "option-b-local-causal-lab-v1-20260827",
+  "cases": [
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "webgoat.idor.view_other_profile.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "webgoat.idor.view_other_profile.v1:precondition",
+        "reason": "Runtime/build digest unavailable: GET-only approval cannot create the required LessonSession; POST login and built-in lesson credentials are not approved.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "GET-only approval cannot create the required LessonSession; POST login and built-in lesson credentials are not approved."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "GET-only approval cannot create the required LessonSession; POST login and built-in lesson credentials are not approved.",
+        "requires_auth": true,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "owasp_webgoat",
+      "track": "idor"
+    },
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "webgoat.path_traversal.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "webgoat.path_traversal.v1:precondition",
+        "reason": "Runtime/build digest unavailable: The live handler seeds its own lesson file and rejects raw traversal markers; no source-backed target-local disposable canary injection route is available without broad filesystem risk.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "The live handler seeds its own lesson file and rejects raw traversal markers; no source-backed target-local disposable canary injection route is available without broad filesystem risk."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "The live handler seeds its own lesson file and rejects raw traversal markers; no source-backed target-local disposable canary injection route is available without broad filesystem risk.",
+        "requires_auth": false,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "owasp_webgoat",
+      "track": "path_traversal"
+    },
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "crapi.profile_video_object_access.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "crapi.profile_video_object_access.v1:precondition",
+        "reason": "Runtime/build digest unavailable: Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source service also appears owner-scoped; no live BOLA confirmation is inferred.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source service also appears owner-scoped; no live BOLA confirmation is inferred."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source service also appears owner-scoped; no live BOLA confirmation is inferred.",
+        "requires_auth": true,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "crapi",
+      "track": "object_access"
+    },
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "crapi.vehicle_location_bola.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "crapi.vehicle_location_bola.v1:precondition",
+        "reason": "Runtime/build digest unavailable: Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. The source-backed direct UUID lookup is a candidate only; no authenticated synthetic owner/requester pair is available.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. The source-backed direct UUID lookup is a candidate only; no authenticated synthetic owner/requester pair is available."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. The source-backed direct UUID lookup is a candidate only; no authenticated synthetic owner/requester pair is available.",
+        "requires_auth": true,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "crapi",
+      "track": "object_access"
+    },
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "crapi.community_post_object_access.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "crapi.community_post_object_access.v1:precondition",
+        "reason": "Runtime/build digest unavailable: Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source route is wrapped in authentication middleware; post creation would also be stateful and is not approved.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source route is wrapped in authentication middleware; post creation would also be stateful and is not approved."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. Source route is wrapped in authentication middleware; post creation would also be stateful and is not approved.",
+        "requires_auth": true,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "crapi",
+      "track": "object_access"
+    },
+    {
+      "approved_track": true,
+      "baseline": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "before_after": {
+        "after": "blocked_under_same_precondition",
+        "before": "blocked_under_same_precondition",
+        "comparison": "No false improvement claimed; no network or state change occurred."
+      },
+      "candidate": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "case_id": "crapi.mechanic_report_object_access.v1",
+      "causal_oracle": {
+        "reason": "no target-backed candidate/control observations",
+        "status": "not_evaluated"
+      },
+      "cleanup": {
+        "network_attempted": false,
+        "reset_invoked": false,
+        "state_hash": null,
+        "status": "verified_no_mutation"
+      },
+      "failure_record": {
+        "code": "OPTION_B_PRECONDITION_BLOCKED",
+        "failure_id": "crapi.mechanic_report_object_access.v1:precondition",
+        "reason": "Runtime/build digest unavailable: Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. A report must be created before retrieval, but report creation is stateful and not approved.",
+        "stage": "precondition"
+      },
+      "final_classification": "BLOCKED",
+      "fixture_model": "disposable fixture/canary declared, but no application fixture or reset endpoint was invoked",
+      "identity_model": "opaque synthetic identity model declared, but no identity/session material was created or persisted",
+      "improvement_proposal": {
+        "implementation": "not_implemented",
+        "proposal": "Request a separate explicit authorization for a non-credential synthetic session/fixture injection mechanism, or retain BLOCKED; do not implement an auth bypass or broaden the generic core.",
+        "regression": "precondition blocker regression added",
+        "status": "proposal_only"
+      },
+      "independent_negative_control": {
+        "reason": "precondition_blocked",
+        "status": "not_run"
+      },
+      "proof_bundle": {
+        "reason": "Proof requires target-backed baseline/candidate/control observations; none were collected.",
+        "replay": "not_run",
+        "seal": "not_created",
+        "status": "withheld_not_applicable",
+        "verify_seal": "not_run"
+      },
+      "quality_metrics": "WITHHELD_NO_ADMITTED_GROUND_TRUTH_OR_TARGET_EVIDENCE",
+      "root_cause_analysis": {
+        "evidence": [
+          "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. A report must be created before retrieval, but report creation is stateful and not approved."
+        ],
+        "generic_or_target_local": "target-local",
+        "root_cause": "target_local prerequisite is unavailable under the approved GET-only/no-credentials boundary",
+        "safety_determination": "safe_stop_before_network"
+      },
+      "runnable_precondition": {
+        "approved_track": true,
+        "network_attempted": false,
+        "reason": "Synthetic authenticated ownership state would require login or token/session injection, which is outside the current GET-only/no-credentials approval; crAPI runtime digest is unavailable. A report must be created before retrieval, but report creation is stateful and not approved.",
+        "requires_auth": true,
+        "requires_target_fixture_injection": true,
+        "runnable": false,
+        "runtime_digest_ok": false,
+        "source_digest_ok": true,
+        "status": "blocked"
+      },
+      "target_id": "crapi",
+      "track": "object_access"
+    }
+  ],
+  "generated_on": "2026-08-27",
+  "non_claims": [
+    "No target-backed causal evidence was collected in this precondition pass.",
+    "Blocked cases are not TP, FP, FN, clean, or confirmed.",
+    "This artifact is not an Official P10 run and does not change scoring or qualification state."
+  ],
+  "schema": "webpent-option-b-local-causal-lab-result-v1",
+  "scope": {
+    "bug_bounty": "BLOCKED",
+    "external_callbacks_or_oast": false,
+    "loopback_only": true,
+    "methods": [
+      "GET"
+    ],
+    "official_isolated_p10_runs_authorized": false,
+    "raw_response_persistence": false,
+    "redirect_following": false,
+    "same_origin_only": true
+  },
+  "summary": {
+    "approved_case_count": 6,
+    "blocked_case_count": 6,
+    "p10": "NOT_QUALIFIED",
+    "p9": "NOT_QUALIFIED",
+    "proof_bundles_sealed": 0,
+    "quality_metrics": "WITHHELD",
+    "target_backed_causal_confirmations": 0,
+    "vip": "NOT_QUALIFIED"
+  },
+  "target_provenance": {
+    "crapi": {
+      "origin": "http://127.0.0.1:8888",
+      "runtime": {
+        "reason": "Docker RepoDigest could not be collected from the local runtime context; no crAPI causal evidence is admitted.",
+        "runtime_digest": null,
+        "runtime_digest_status": "runtime_digest_unavailable"
+      },
+      "source": {
+        "all_files_match": true,
+        "files": [
+          {
+            "actual_sha256": "65200617a05a35c89445e8977be053247dc90b37fe4ebaa060e1ce60e9cd1d3f",
+            "expected_sha256": "65200617a05a35c89445e8977be053247dc90b37fe4ebaa060e1ce60e9cd1d3f",
+            "matches_expected": true,
+            "name": "community_post",
+            "path": "services/community/api/controllers/post_controller.go",
+            "route_actual_sha256": "0c687eaf66beeb128361f9237882f5ce132472d3feca529e60cbeed29cf5fbfe",
+            "route_expected_sha256": "0c687eaf66beeb128361f9237882f5ce132472d3feca529e60cbeed29cf5fbfe",
+            "route_file": "services/community/api/router/routes.go",
+            "route_matches_expected": true
+          },
+          {
+            "actual_sha256": "037f0ebb9045b21a9ee838e5f32fa1be5da17d978f719a8a738f4bbb15426521",
+            "expected_sha256": "037f0ebb9045b21a9ee838e5f32fa1be5da17d978f719a8a738f4bbb15426521",
+            "matches_expected": true,
+            "name": "mechanic_report",
+            "path": "services/workshop/crapi/mechanic/views.py",
+            "route_actual_sha256": "71827f3da6fb806172edd044349890dbe2d3e37e92d2a0657ce5f4eacf756ff9",
+            "route_expected_sha256": "71827f3da6fb806172edd044349890dbe2d3e37e92d2a0657ce5f4eacf756ff9",
+            "route_file": "services/workshop/crapi/mechanic/urls.py",
+            "route_matches_expected": true
+          },
+          {
+            "actual_sha256": "80c357806f390e28d3ca8f32e12c40fa3d063efcf8038249d5ac5593043677b0",
+            "expected_sha256": "80c357806f390e28d3ca8f32e12c40fa3d063efcf8038249d5ac5593043677b0",
+            "matches_expected": true,
+            "name": "profile_video",
+            "path": "services/identity/src/main/java/com/crapi/controller/ProfileController.java"
+          },
+          {
+            "actual_sha256": "c49f5ab14aab7b80386c5e309d6e493360ab86f21d41d939002f1d2961f78789",
+            "expected_sha256": "c49f5ab14aab7b80386c5e309d6e493360ab86f21d41d939002f1d2961f78789",
+            "matches_expected": true,
+            "name": "vehicle_location",
+            "path": "services/identity/src/main/java/com/crapi/controller/VehicleController.java"
+          }
+        ],
+        "source_revision": "73d309cc8f28bbdeed31dbb35f05dba8354de3c9",
+        "source_root": "/tmp/crapi-source"
+      },
+      "target_id": "crapi"
+    },
+    "owasp_webgoat": {
+      "origin": "http://127.0.0.1:8080",
+      "runtime": {
+        "java_version": "openjdk version \"25.0.4\" 2026-07-21",
+        "runtime_digest": null,
+        "runtime_digest_status": "source_revision_pinned_but_build_digest_unavailable"
+      },
+      "source": {
+        "all_files_match": true,
+        "files": [
+          {
+            "actual_sha256": "305cb5c0fc8d63a0b8bb4f48f4ebc6982ee332bc11c7f1dcc0ad248a3f6ac3e6",
+            "expected_sha256": "305cb5c0fc8d63a0b8bb4f48f4ebc6982ee332bc11c7f1dcc0ad248a3f6ac3e6",
+            "matches_expected": true,
+            "name": "idor_view",
+            "path": "src/main/java/org/owasp/webgoat/lessons/idor/IDORViewOtherProfile.java"
+          },
+          {
+            "actual_sha256": "71d8b73188716f253ffafff4de58ec4f9955b75048bf2bdb00ee07362b093ea2",
+            "expected_sha256": "71d8b73188716f253ffafff4de58ec4f9955b75048bf2bdb00ee07362b093ea2",
+            "matches_expected": true,
+            "name": "path_traversal_controller",
+            "path": "src/main/java/org/owasp/webgoat/lessons/pathtraversal/ProfileUploadRetrieval.java"
+          },
+          {
+            "actual_sha256": "d8298e3c3ee511969c34f7611b5047d5563021cba4a944bf09bc8b5bf0280a6d",
+            "expected_sha256": "d8298e3c3ee511969c34f7611b5047d5563021cba4a944bf09bc8b5bf0280a6d",
+            "matches_expected": true,
+            "name": "path_traversal_source",
+            "path": "src/main/java/org/owasp/webgoat/lessons/pathtraversal/PathTraversal.java"
+          }
+        ],
+        "source_revision": "7517acca95d9851da706452454c223dd13545ef4",
+        "source_root": "/tmp/webgoat-source"
+      },
+      "target_id": "owasp_webgoat"
+    }
+  }
+}
