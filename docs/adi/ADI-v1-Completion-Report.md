@@ -23,8 +23,8 @@ The engineering implementation and regression work are complete within the bound
 | 6 | Investigation-chain planning and quality review | Complete | Three registered chain contracts plus AVDE validation planning; blocked paths remain blocked [6](../../benchmarks/adi_multistep_controlled.py) |
 | 7 | Controlled multi-step benchmark and efficiency metrics | Complete | Offline runner and artifact; zero requests by the runner, no synthetic observations or ProofBundles [3](../../reports/evaluation/adi/ADI_CONTROLLED_BENCHMARK_v1.json) [7](../../scripts/run_avde_controlled_benchmark.py) |
 | 8 | Regression suite and quality gates | Complete with documented historical exceptions | 17 focused ADI/AVDE tests passed; scoped Ruff, compileall, neutrality, secret, direct-I/O, G-02, and diff checks passed. Full suite: 2112 passed and 7 pre-existing historical failures. |
-| 9 | Completion report, release manifest, and provenance | Complete for source release | Release workflow is maintained separately from this report; manifest/provenance must be regenerated after the final source commit. |
-| 10 | Delivery ZIP and governing assessment | Pending final packaging | ZIP is created only after the final source, manifest, provenance, and verification commits are complete. |
+| 9 | Completion report, release manifest, and provenance | Complete | Completion report, release manifest, and provenance sidecar were generated and verified in the release workflow. |
+| 10 | Delivery ZIP and governing assessment | Complete | Final delivery ZIP was created after source, manifest, provenance, and verification checks; its SHA-256 is recorded in the delivery record. |
 
 ## Implemented components
 
@@ -96,7 +96,7 @@ Until those prerequisites are met, the correct interpretation is **engineering-c
 
 ## Delivery contents
 
-The release package is expected to include the ADI source package, AVDE compatibility changes, regression tests, controlled benchmark contracts and runner, the recorded benchmark artifact, this completion report, design documentation, release manifest, provenance sidecar, the pasted specification, and final gate logs. Caches, temporary files, secrets, and untracked runtime debris are excluded.
+The release package includes the ADI source package, AVDE compatibility changes, regression tests, controlled benchmark contracts and runner, the recorded benchmark artifact, this completion report, design documentation, release manifest, provenance sidecar, the pasted specification, final gate logs, and a package contents listing. Caches, temporary files, secrets, and untracked runtime debris are excluded.
 
 ## References
 
