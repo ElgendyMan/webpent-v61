@@ -1,8 +1,8 @@
 """Strict evidence verifier for deterministic promotion.
 
-The verifier is deliberately small and side-effect free.  It does not perform
+The verifier is deliberately small and side-effect free. It does not perform
 network I/O and it never promotes a finding by itself; callers must provide
-observations produced by an authorized validator.  It checks that a baseline
+observations produced by an authorized validator. It checks that a baseline
 and a candidate exist, that the validator supplied independent causal and
 negative-control signals, and that the resulting sealed ProofBundle can be
 replayed from the redaction-safe observations.
@@ -23,6 +23,7 @@ from webpent.models.proof_bundle import (
     build_proof_bundle,
     proof_bundle_promotion_ready,
 )
+from webpent.shared.proof_oracles import CausalDecision, CausalOracleResult
 
 
 @dataclass(frozen=True)
@@ -79,8 +80,8 @@ def verify_replay_evidence(
     candidate: dict[str, Any] | None,
     negative_control: dict[str, Any] | None,
     target_fingerprint: str | None = None,
-    causal_signal: bool,
-    negative_control_complete: bool,
+    causal_signal: bool = False,
+    negative_control_complete: bool = False,
     validator_id: str,
     validator_version: str,
     causal_basis: str,
@@ -94,23 +95,43 @@ def verify_replay_evidence(
     target_package_scope_digest: str | None = None,
     target_package_policy_digest: str | None = None,
     require_target_backed: bool = False,
+    # vNext additive parameters
+    causal_result: CausalOracleResult | None = None,
+    campaign_id: str | None = None,
+    run_id: str | None = None,
+    vulnerability_class: str | None = None,
+    target_identity: str | None = None,
+    target_context_hash: str | None = None,
 ) -> VerificationResult:
     """Verify a baseline/candidate replay and create a strict proof bundle.
 
-    ``causal_signal`` and ``negative_control_complete`` are accepted only as
-    deterministic outputs of the class-specific validator.  The verifier still
-    rejects missing observations, missing provenance, missing replay metadata,
-    and any bundle that fails its own promotion contract.  It therefore cannot
-    turn an LLM assertion or a marker-less response into a confirmation.
+    Confirmation requires deterministic causal and negative-control signals.
+    If ``causal_result`` is provided, it must be ``CONFIRMED``. Otherwise,
+    legacy boolean signals are used. The verifier rejects missing observations,
+    missing provenance, and any bundle that fails its promotion contract.
     """
     evidence: dict[str, Any] = {
-        "verifier": "webpent.replay.v1",
-        "causal_signal": bool(causal_signal),
-        "negative_control_complete": bool(negative_control_complete),
-        "causal_basis": str(causal_basis)[:240],
+        "verifier": "webpent.replay.v2",
         "validator_id": str(validator_id)[:120],
         "validator_version": str(validator_version)[:80],
     }
+
+    # Handle vNext vs Legacy signals
+    if causal_result:
+        causal_signal = causal_result.decision == CausalDecision.CONFIRMED
+        negative_control_complete = causal_result.negative_control_observed
+        causal_basis = causal_result.reason
+        decision_value = (
+            causal_result.decision.value
+            if isinstance(causal_result.decision, CausalDecision)
+            else str(causal_result.decision)
+        )
+        evidence["causal_decision"] = decision_value
+
+    evidence["causal_signal"] = bool(causal_signal)
+    evidence["negative_control_complete"] = bool(negative_control_complete)
+    evidence["causal_basis"] = str(causal_basis)[:240]
+
     if baseline is None or candidate is None:
         evidence["promotion_guard"] = {
             "status": "blocked",
@@ -123,16 +144,23 @@ def verify_replay_evidence(
             "reason": "negative_control_required",
         }
         return VerificationResult(False, "negative_control_required", evidence)
+
     if not causal_signal or not negative_control_complete:
+        reason = "causal_signal_and_negative_control_required"
+        if causal_result and causal_result.decision != CausalDecision.CONFIRMED:
+            decision_value = (
+                causal_result.decision.value
+                if isinstance(causal_result.decision, CausalDecision)
+                else str(causal_result.decision)
+            )
+            reason = f"causal_oracle_{decision_value.lower()}"
+
         evidence["promotion_guard"] = {
             "status": "blocked",
-            "reason": "causal_signal_and_negative_control_required",
+            "reason": reason,
         }
-        return VerificationResult(
-            False,
-            "causal_signal_and_negative_control_required",
-            evidence,
-        )
+        return VerificationResult(False, reason, evidence)
+
     expected_target_fingerprint = str(
         target_fingerprint or _target_fingerprint(finding.url)
     ).strip()
@@ -142,6 +170,7 @@ def verify_replay_evidence(
             "reason": "target_fingerprint_invalid",
         }
         return VerificationResult(False, "target_fingerprint_invalid", evidence)
+
     if require_target_backed:
         if not _target_observation_ok(
             baseline, role="baseline", target_fingerprint=expected_target_fingerprint
@@ -181,6 +210,7 @@ def verify_replay_evidence(
                 "reason": "negative_control_must_be_independent",
             }
             return VerificationResult(False, "negative_control_must_be_independent", evidence)
+
     provenance_values = {
         "engagement_id": str(engagement_id or "").strip(),
         "validator_id": str(validator_id or "").strip(),
@@ -220,6 +250,7 @@ def verify_replay_evidence(
     clean_baseline = redact_sensitive(baseline)[0]
     clean_candidate = redact_sensitive(candidate)[0]
     clean_negative_control = redact_sensitive(negative_control)[0]
+
     replay = {
         "replayable": True,
         "sequence": ["baseline", "candidate", "negative_control"],
@@ -228,47 +259,71 @@ def verify_replay_evidence(
         "target_backed": bool(require_target_backed),
         "independent_control": bool(require_target_backed),
     }
-    bundle = build_proof_bundle(
-        engagement_id=engagement_id,
-        finding_id=str(finding.id),
-        hypothesis_id=hypothesis_id or f"finding:{finding.id}",
-        target_fingerprint=expected_target_fingerprint,
-        target_package_id=target_package_id,
-        target_package_sha256=target_package_sha256,
-        target_package_scope_digest=target_package_scope_digest,
-        target_package_policy_digest=target_package_policy_digest,
-        scope_context=clean_scope,
-        identity_context=clean_identity,
-        evidence=[clean_baseline, clean_candidate, clean_negative_control],
-        evidence_refs=(
+
+    # vNext bundle construction
+    bundle_kwargs = {
+        "engagement_id": engagement_id,
+        "finding_id": str(finding.id),
+        "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
+        "target_fingerprint": expected_target_fingerprint,
+        "target_package_id": target_package_id,
+        "target_package_sha256": target_package_sha256,
+        "target_package_scope_digest": target_package_scope_digest,
+        "target_package_policy_digest": target_package_policy_digest,
+        "scope_context": clean_scope,
+        "identity_context": clean_identity,
+        "evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "evidence_refs": (
             f"replay:{validator_id}:baseline",
             f"replay:{validator_id}:candidate",
             f"replay:{validator_id}:negative_control",
         ),
-        negative_control=clean_negative_control,
-        baseline=clean_baseline,
-        request_evidence=[clean_baseline, clean_candidate, clean_negative_control],
-        response_evidence=[clean_baseline, clean_candidate, clean_negative_control],
-        causal_oracle={
+        "negative_control": clean_negative_control,
+        "baseline": clean_baseline,
+        "request_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "response_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "causal_oracle": {
             "causal_signal": True,
             "negative_control_complete": True,
             "requires_target_backed": bool(require_target_backed),
             "basis": str(causal_basis)[:240],
         },
-        target_backed=bool(require_target_backed),
-        negative_control_independent=bool(require_target_backed),
-        validator_id=validator_id,
-        validator_version=validator_version,
-        replay_metadata={**replay, **(replay_metadata or {})},
-        cleanup_status="not_applicable",
-        redaction_manifest=(
+        "target_backed": bool(require_target_backed),
+        "negative_control_independent": bool(require_target_backed),
+        "validator_id": validator_id,
+        "validator_version": validator_version,
+        "replay_metadata": {**replay, **(replay_metadata or {})},
+        "cleanup_status": "not_applicable",
+        "redaction_manifest": (
             "request_body",
             "cookie",
             "authorization",
             "set-cookie",
             "raw_response_body",
         ),
-    ).seal(actor="strict_replay_verifier")
+    }
+
+    if causal_result:
+        bundle_kwargs.update({
+            "campaign_id": campaign_id,
+            "run_id": run_id,
+            "vulnerability_class": vulnerability_class,
+            "target_identity": target_identity,
+            "target_context_hash": target_context_hash,
+            "baseline_evidence_ref": causal_result.baseline.observation_ref,
+            "candidate_evidence_ref": causal_result.candidate.observation_ref,
+            "negative_control_evidence_ref": causal_result.negative_control.observation_ref,
+            "oracle_decision": (
+                causal_result.decision.value
+                if isinstance(causal_result.decision, CausalDecision)
+                else str(causal_result.decision)
+            ),
+            "invariant_analysis": causal_result.invariant_analysis,
+            "validator_result": causal_result.model_dump(mode="json"),
+        })
+
+    bundle = build_proof_bundle(**bundle_kwargs).seal(actor="strict_replay_verifier")
+
     replay_context: dict[str, Any] = {
         "engagement_id": str(engagement_id),
         "finding_id": str(finding.id),
@@ -278,14 +333,23 @@ def verify_replay_evidence(
         "identity_context": clean_identity,
     }
     if target_package_id:
-        replay_context.update(
-            {
-                "target_package_id": target_package_id,
-                "target_package_sha256": target_package_sha256,
-                "target_package_scope_digest": target_package_scope_digest,
-                "target_package_policy_digest": target_package_policy_digest,
-            }
-        )
+        replay_context.update({
+            "target_package_id": target_package_id,
+            "target_package_sha256": target_package_sha256,
+            "target_package_scope_digest": target_package_scope_digest,
+            "target_package_policy_digest": target_package_policy_digest,
+        })
+    if campaign_id:
+        replay_context["campaign_id"] = campaign_id
+    if run_id:
+        replay_context["run_id"] = run_id
+    if target_identity:
+        replay_context["target_identity"] = target_identity
+    if target_context_hash:
+        replay_context["target_context_hash"] = target_context_hash
+    if vulnerability_class:
+        replay_context["vulnerability_class"] = vulnerability_class
+
     if not proof_bundle_promotion_ready(bundle):
         evidence["promotion_guard"] = {
             "status": "blocked",
@@ -312,49 +376,38 @@ def verify_replay_evidence(
     clean_replay_metadata = redact_sensitive(
         {**replay, **(replay_metadata or {}), "replay_verified": True}
     )[0]
-    evidence.update(
-        {
-            "proof_verified": True,
+    evidence.update({
+        "proof_verified": True,
+        "proof_bundle_sealed": True,
+        "target_backed": bool(require_target_backed),
+        "negative_control_independent": bool(require_target_backed),
+        "proof_bundle": bundle.model_dump(mode="json"),
+        "proof_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "baseline": clean_baseline,
+        "candidate": clean_candidate,
+        "negative_control": clean_negative_control,
+        "evidence_refs": bundle_kwargs["evidence_refs"],
+        "request_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "response_evidence": [clean_baseline, clean_candidate, clean_negative_control],
+        "scope_context": clean_scope,
+        "identity_context": clean_identity,
+        "causal_oracle": bundle_kwargs["causal_oracle"],
+        "validator_id": validator_id,
+        "validator_version": validator_version,
+        "cleanup_status": "not_applicable",
+        "finding_id": str(finding.id),
+        "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
+        "target_fingerprint": expected_target_fingerprint,
+        "replay_context": replay_context,
+        "replay_metadata": clean_replay_metadata,
+        "promotion_guard": {
+            "status": "passed",
             "proof_bundle_sealed": True,
-            "target_backed": bool(require_target_backed),
-            "negative_control_independent": bool(require_target_backed),
-            "proof_bundle": bundle.model_dump(mode="json"),
-            "proof_evidence": [clean_baseline, clean_candidate, clean_negative_control],
-            "baseline": clean_baseline,
-            "candidate": clean_candidate,
-            "negative_control": clean_negative_control,
-            "evidence_refs": [
-                f"replay:{validator_id}:baseline",
-                f"replay:{validator_id}:candidate",
-                f"replay:{validator_id}:negative_control",
-            ],
-            "request_evidence": [clean_baseline, clean_candidate, clean_negative_control],
-            "response_evidence": [clean_baseline, clean_candidate, clean_negative_control],
-            "scope_context": clean_scope,
-            "identity_context": clean_identity,
-            "causal_oracle": {
-                "causal_signal": True,
-                "negative_control_complete": True,
-                "requires_target_backed": bool(require_target_backed),
-                "basis": str(causal_basis)[:240],
-            },
-            "validator_id": validator_id,
-            "validator_version": validator_version,
-            "cleanup_status": "not_applicable",
-            "finding_id": str(finding.id),
-            "hypothesis_id": hypothesis_id or f"finding:{finding.id}",
-            "target_fingerprint": expected_target_fingerprint,
+            "replayable": True,
+            "replay_verified": True,
             "replay_context": replay_context,
-            "replay_metadata": clean_replay_metadata,
-            "promotion_guard": {
-                "status": "passed",
-                "proof_bundle_sealed": True,
-                "replayable": True,
-                "replay_verified": True,
-                "replay_context": replay_context,
-            },
-        }
-    )
+        },
+    })
     return VerificationResult(True, "verified_replay", evidence, bundle)
 
 

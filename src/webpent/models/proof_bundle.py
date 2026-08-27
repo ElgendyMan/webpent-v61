@@ -1,6 +1,6 @@
-"""Immutable, replay-oriented proof bundle primitives.
+"""Frozen proof metadata with explicit sealing and deterministic replay.
 
-The bundle stores only redacted references and deterministic digests.  It is a
+The bundle stores only redacted references and deterministic digests. It is a
 proof artifact contract, not a finding promoter: callers still need a
 validator result before claiming confirmation.
 """
@@ -79,6 +79,19 @@ class ProofBundle(BaseModel):
     sealed: bool = False
     seal_digest: str | None = None
 
+    # vNext additive fields
+    target_identity: str | None = Field(default=None, max_length=240)
+    target_context_hash: str | None = Field(default=None, max_length=64)
+    campaign_id: str | None = Field(default=None, max_length=160)
+    run_id: str | None = Field(default=None, max_length=160)
+    vulnerability_class: str | None = Field(default=None, max_length=120)
+    baseline_evidence_ref: str | None = Field(default=None, max_length=240)
+    candidate_evidence_ref: str | None = Field(default=None, max_length=240)
+    negative_control_evidence_ref: str | None = Field(default=None, max_length=240)
+    oracle_decision: str | None = Field(default=None, max_length=32)
+    invariant_analysis: dict[str, Any] = Field(default_factory=dict)
+    validator_result: dict[str, Any] = Field(default_factory=dict)
+
     @field_validator(
         "engagement_id",
         "finding_id",
@@ -90,6 +103,13 @@ class ProofBundle(BaseModel):
         "cleanup_status",
         "evidence_refs",
         "redaction_manifest",
+        "target_identity",
+        "campaign_id",
+        "run_id",
+        "vulnerability_class",
+        "baseline_evidence_ref",
+        "candidate_evidence_ref",
+        "negative_control_evidence_ref",
         mode="before",
     )
     @classmethod
@@ -102,6 +122,8 @@ class ProofBundle(BaseModel):
         "identity_context",
         "causal_oracle",
         "replay_metadata",
+        "invariant_analysis",
+        "validator_result",
         mode="before",
     )
     @classmethod
@@ -113,6 +135,7 @@ class ProofBundle(BaseModel):
         "target_package_sha256",
         "target_package_scope_digest",
         "target_package_policy_digest",
+        "target_context_hash",
         mode="before",
     )
     @classmethod
@@ -121,7 +144,7 @@ class ProofBundle(BaseModel):
             return None
         text = str(value)
         if len(text) != 64:
-            raise ValueError("package digest must be 64 hex characters")
+            raise ValueError("digest must be 64 hex characters")
         int(text, 16)
         return text.lower()
 
@@ -150,7 +173,7 @@ class ProofBundle(BaseModel):
         return text
 
     def _seal_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "bundle_id": self.bundle_id,
             "engagement_id": self.engagement_id,
             "finding_id": self.finding_id,
@@ -179,6 +202,22 @@ class ProofBundle(BaseModel):
             "redaction_manifest": list(self.redaction_manifest),
             "chain_of_custody": [event.model_dump(mode="json") for event in self.chain_of_custody],
         }
+        # Add vNext fields to payload if present
+        vnext = {
+            "target_identity": self.target_identity,
+            "target_context_hash": self.target_context_hash,
+            "campaign_id": self.campaign_id,
+            "run_id": self.run_id,
+            "vulnerability_class": self.vulnerability_class,
+            "baseline_evidence_ref": self.baseline_evidence_ref,
+            "candidate_evidence_ref": self.candidate_evidence_ref,
+            "negative_control_evidence_ref": self.negative_control_evidence_ref,
+            "oracle_decision": self.oracle_decision,
+            "invariant_analysis": self.invariant_analysis,
+            "validator_result": self.validator_result,
+        }
+        payload.update({k: v for k, v in vnext.items() if v is not None or isinstance(v, dict)})
+        return payload
 
     def seal(self, *, actor: str = "system") -> ProofBundle:
         """Return a new sealed bundle; the existing instance is never mutated."""
@@ -207,12 +246,20 @@ class ProofBundle(BaseModel):
             "target_package_scope_digest",
             "target_package_policy_digest",
         )
+        vnext_fields = (
+            "target_identity",
+            "target_context_hash",
+            "campaign_id",
+            "run_id",
+            "vulnerability_class",
+        )
         scalar_fields = {
             "engagement_id",
             "finding_id",
             "hypothesis_id",
             "target_fingerprint",
             *package_fields,
+            *vnext_fields,
         }
         metadata_fields = {"scope_context", "identity_context"}
         allowed_fields = scalar_fields | metadata_fields
@@ -230,6 +277,11 @@ class ProofBundle(BaseModel):
             required.add("scope_context")
         if self.identity_context:
             required.add("identity_context")
+
+        # vNext requirements
+        for field in vnext_fields:
+            if getattr(self, field, None):
+                required.add(field)
 
         for field in required:
             if field not in replay_context:
@@ -330,6 +382,18 @@ def build_proof_bundle(
     replay_metadata: dict[str, Any] | None = None,
     cleanup_status: str = "not_recorded",
     redaction_manifest: tuple[str, ...] | list[str] = (),
+    # vNext fields
+    target_identity: str | None = None,
+    target_context_hash: str | None = None,
+    campaign_id: str | None = None,
+    run_id: str | None = None,
+    vulnerability_class: str | None = None,
+    baseline_evidence_ref: str | None = None,
+    candidate_evidence_ref: str | None = None,
+    negative_control_evidence_ref: str | None = None,
+    oracle_decision: str | None = None,
+    invariant_analysis: dict[str, Any] | None = None,
+    validator_result: dict[str, Any] | None = None,
 ) -> ProofBundle:
     """Build a redaction-safe bundle from deterministic evidence payloads."""
     clean_evidence = tuple(redact_sensitive(item)[0] for item in evidence)
@@ -380,6 +444,17 @@ def build_proof_bundle(
         replay_metadata=replay_metadata or {},
         cleanup_status=cleanup_status,
         redaction_manifest=tuple(redaction_manifest)[:64],
+        target_identity=target_identity,
+        target_context_hash=target_context_hash,
+        campaign_id=campaign_id,
+        run_id=run_id,
+        vulnerability_class=vulnerability_class,
+        baseline_evidence_ref=baseline_evidence_ref,
+        candidate_evidence_ref=candidate_evidence_ref,
+        negative_control_evidence_ref=negative_control_evidence_ref,
+        oracle_decision=oracle_decision,
+        invariant_analysis=invariant_analysis or {},
+        validator_result=validator_result or {},
     )
 
 
@@ -389,6 +464,11 @@ def proof_bundle_promotion_ready(value: Any) -> bool:
         bundle = value if isinstance(value, ProofBundle) else ProofBundle.model_validate(value)
     except Exception:
         return False
+
+    # vNext strict confirmation rule
+    if bundle.oracle_decision and bundle.oracle_decision != "CONFIRMED":
+        return False
+
     return bool(
         validate_proof_bundle(bundle, require_negative_control=True)
         and bundle.hypothesis_id

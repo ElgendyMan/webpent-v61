@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from webpent.models.evidence import redact_sensitive, sha256_text
 
 
 class OracleFamily(str, Enum):
@@ -27,8 +29,167 @@ class OracleFamily(str, Enum):
     JWT_KEY_CONFUSION = "jwt_key_confusion"
 
 
+class CausalDecision(str, Enum):
+    """Closed set of decisions emitted by the vNext causal oracle."""
+
+    CONFIRMED = "CONFIRMED"
+    CLEAN = "CLEAN"
+    INCONCLUSIVE = "INCONCLUSIVE"
+    BLOCKED = "BLOCKED"
+
+
+_RESTRICTED_ONLY_SIGNAL_KEYS = frozenset(
+    {
+        "status",
+        "status_code",
+        "http_status",
+        "redirect",
+        "redirect_location",
+        "route",
+        "route_exists",
+        "source",
+        "source_presence",
+        "source_code_present",
+    }
+)
+
+
+class CausalObservation(BaseModel):
+    """Typed, redacted observation used by the causal experiment contract.
+
+    ``semantic_fingerprint`` and invariant signals are intentionally separate
+    from transport metadata. A status code, redirect, route, or source marker
+    can be retained as context, but cannot be the only oracle signal.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+        use_enum_values=True,
+    )
+
+    observation_ref: str = Field(min_length=1, max_length=240)
+    role: Literal["baseline", "candidate", "negative_control"]
+    semantic_fingerprint: str = Field(min_length=1, max_length=240)
+    request_digest: str = Field(min_length=1, max_length=71)
+    response_digest: str = Field(min_length=1, max_length=71)
+    signals: dict[str, Any] = Field(default_factory=dict, max_length=32)
+    target_backed: bool = False
+
+    @field_validator("observation_ref", "semantic_fingerprint", mode="before")
+    @classmethod
+    def _redact_text(cls, value: Any) -> str:
+        clean, _ = redact_sensitive(str(value or ""))
+        return clean
+
+    @field_validator("request_digest", "response_digest", mode="before")
+    @classmethod
+    def _validate_digest(cls, value: Any) -> str:
+        text = str(value or "")
+        if not text.startswith("sha256:") or len(text) != 71:
+            raise ValueError("observation digest must be sha256:<64 hex characters>")
+        int(text[7:], 16)
+        return text.lower()
+
+    @field_validator("signals", mode="before")
+    @classmethod
+    def _redact_signals(cls, value: Any) -> dict[str, Any]:
+        clean, _ = redact_sensitive(value if isinstance(value, dict) else {})
+        return clean
+
+    @property
+    def meaningful_signal_keys(self) -> tuple[str, ...]:
+        """Return non-transport signal keys available to the oracle."""
+        return tuple(
+            sorted(
+                key
+                for key in self.signals
+                if str(key).lower() not in _RESTRICTED_ONLY_SIGNAL_KEYS
+            )
+        )
+
+    @property
+    def has_meaningful_signal(self) -> bool:
+        return bool(self.meaningful_signal_keys)
+
+
+class CausalOracleContract(BaseModel):
+    """Three-way causal contract: baseline, candidate, and independent control."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+        use_enum_values=True,
+    )
+
+    family: OracleFamily
+    baseline: CausalObservation
+    candidate: CausalObservation
+    negative_control: CausalObservation
+    expected_invariant: str = Field(min_length=1, max_length=500)
+    violated_invariant: str = Field(min_length=1, max_length=500)
+
+    @field_validator("expected_invariant", "violated_invariant", mode="before")
+    @classmethod
+    def _redact_invariant(cls, value: Any) -> str:
+        clean, _ = redact_sensitive(str(value or ""))
+        return clean
+
+
+class CausalOracleResult(BaseModel):
+    """Deterministic, typed decision plus a redacted invariant analysis."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+        use_enum_values=True,
+    )
+
+    family: OracleFamily
+    decision: CausalDecision
+    baseline: CausalObservation
+    candidate: CausalObservation
+    negative_control: CausalObservation
+    expected_invariant: str
+    violated_invariant: str
+    invariant_analysis: dict[str, Any] = Field(default_factory=dict, max_length=32)
+    missing: tuple[str, ...] = Field(default_factory=tuple, max_length=16)
+    reason: str = Field(default="", max_length=300)
+
+    @field_validator("expected_invariant", "violated_invariant", "reason", mode="before")
+    @classmethod
+    def _redact_result_text(cls, value: Any) -> str:
+        clean, _ = redact_sensitive(str(value or ""))
+        return clean
+
+    @field_validator("invariant_analysis", mode="before")
+    @classmethod
+    def _redact_analysis(cls, value: Any) -> dict[str, Any]:
+        clean, _ = redact_sensitive(value if isinstance(value, dict) else {})
+        return clean
+
+    @property
+    def causal_signal(self) -> bool:
+        return self.decision == CausalDecision.CONFIRMED
+
+    @property
+    def negative_control_observed(self) -> bool:
+        return bool(self.invariant_analysis.get("negative_control_invariant_holds"))
+
+    @property
+    def evidence_complete(self) -> bool:
+        return not self.missing
+
+    @property
+    def reviewable(self) -> bool:
+        return self.decision == CausalDecision.CONFIRMED and self.evidence_complete
+
+
 class OracleResult(BaseModel):
-    """Redacted deterministic result consumed by proof/reporter layers."""
+    """Legacy redacted deterministic result consumed by existing callers."""
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
@@ -99,10 +260,103 @@ class OracleEngine:
     """Evaluate typed, redacted observations without performing active actions."""
 
     @staticmethod
+    def evaluate_experiment(
+        contract: CausalOracleContract | Mapping[str, Any],
+    ) -> CausalOracleResult:
+        """Evaluate the three-way contract deterministically.
+
+        Confirmation requires an invariant-preserving owner baseline and
+        independent negative control, a candidate invariant violation, and a
+        semantic candidate delta from both controls. Transport-only or
+        source-only differences result in ``BLOCKED`` rather than promotion.
+        """
+        parsed = (
+            contract
+            if isinstance(contract, CausalOracleContract)
+            else CausalOracleContract.model_validate(contract)
+        )
+        observations = (parsed.baseline, parsed.candidate, parsed.negative_control)
+        missing: list[str] = []
+        if len({item.observation_ref for item in observations}) != 3:
+            missing.append("observation_refs_not_independent")
+        if parsed.candidate.request_digest == parsed.negative_control.request_digest:
+            missing.append("negative_control_request_not_independent")
+        for item in observations:
+            if not item.has_meaningful_signal:
+                missing.append(f"{item.role}_semantic_signal_missing")
+
+        baseline_holds = bool(parsed.baseline.signals.get("invariant_holds"))
+        candidate_holds = bool(parsed.candidate.signals.get("invariant_holds"))
+        candidate_violated = bool(parsed.candidate.signals.get("invariant_violated"))
+        control_holds = bool(parsed.negative_control.signals.get("invariant_holds"))
+
+        baseline_signature = _semantic_signature(parsed.baseline)
+        candidate_signature = _semantic_signature(parsed.candidate)
+        control_signature = _semantic_signature(parsed.negative_control)
+        candidate_differs_from_baseline = candidate_signature != baseline_signature
+        candidate_differs_from_control = candidate_signature != control_signature
+
+        analysis = {
+            "baseline_invariant_holds": baseline_holds,
+            "candidate_invariant_holds": candidate_holds,
+            "candidate_invariant_violated": candidate_violated,
+            "negative_control_invariant_holds": control_holds,
+            "candidate_differs_from_baseline": candidate_differs_from_baseline,
+            "candidate_differs_from_negative_control": candidate_differs_from_control,
+            "transport_only_signals_rejected": True,
+            "semantic_signal_keys": {
+                item.role: list(item.meaningful_signal_keys) for item in observations
+            },
+        }
+
+        if missing:
+            decision = CausalDecision.BLOCKED
+            reason = "causal_contract_structurally_blocked"
+        elif (
+            baseline_holds
+            and control_holds
+            and candidate_violated
+            and candidate_differs_from_baseline
+            and candidate_differs_from_control
+        ):
+            decision = CausalDecision.CONFIRMED
+            reason = "candidate_semantically_differs_and_violates_invariant"
+        elif (
+            baseline_holds
+            and control_holds
+            and candidate_holds
+            and candidate_signature in (control_signature, baseline_signature)
+        ):
+            decision = CausalDecision.CLEAN
+            reason = "candidate_preserves_invariant_with_control_consistent_semantics"
+        else:
+            decision = CausalDecision.INCONCLUSIVE
+            reason = "causal_predicate_not_satisfied"
+
+        return CausalOracleResult(
+            family=parsed.family,
+            decision=decision,
+            baseline=parsed.baseline,
+            candidate=parsed.candidate,
+            negative_control=parsed.negative_control,
+            expected_invariant=parsed.expected_invariant,
+            violated_invariant=parsed.violated_invariant,
+            invariant_analysis=analysis,
+            missing=tuple(dict.fromkeys(missing)),
+            reason=reason,
+        )
+
+    @staticmethod
     def evaluate(
         family: OracleFamily | str,
         evidence: Mapping[str, Any] | None,
     ) -> OracleResult:
+        """Backward-compatible legacy evaluator.
+
+        New code should use :meth:`evaluate_experiment`; this method remains
+        available so existing adapters and historical tests keep their prior
+        ``reviewable``/``inconclusive`` semantics.
+        """
         evidence = evidence if isinstance(evidence, Mapping) else {}
         parsed = family if isinstance(family, OracleFamily) else OracleFamily(str(family))
         missing: list[str] = []
@@ -210,4 +464,28 @@ class OracleEngine:
         )
 
 
-__all__ = ["NegativeControlEngine", "OracleEngine", "OracleFamily", "OracleResult"]
+def _semantic_signature(observation: CausalObservation) -> str:
+    """Create a deterministic signature from semantic fields only."""
+    semantic_signals = {
+        key: observation.signals[key]
+        for key in observation.meaningful_signal_keys
+        if key not in {"invariant_holds", "invariant_violated"}
+    }
+    return sha256_text(
+        {
+            "semantic_fingerprint": observation.semantic_fingerprint,
+            "signals": semantic_signals,
+        }
+    )
+
+
+__all__ = [
+    "CausalDecision",
+    "CausalObservation",
+    "CausalOracleContract",
+    "CausalOracleResult",
+    "NegativeControlEngine",
+    "OracleEngine",
+    "OracleFamily",
+    "OracleResult",
+]

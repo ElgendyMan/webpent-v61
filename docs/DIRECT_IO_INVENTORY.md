@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **341**.
+Total records: **343**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -193,9 +193,10 @@ Total records: **341**.
 | `src/webpent/memory/embeddings.py` | 66 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 121 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/memory/embeddings.py` | 129 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/models/proof_bundle.py` | 238 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/models/proof_bundle.py` | 253 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/models/proof_bundle.py` | 261 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 283 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 290 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 305 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/models/proof_bundle.py` | 313 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/production/qualification.py` | 69 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/action_authority.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 71 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -304,6 +305,7 @@ Total records: **341**.
 | `src/webpent/shared/prioritization.py` | 564 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/prioritization.py` | 732 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/prioritization.py` | 734 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/proof_engine.py` | 541 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/rate_governor.py` | 317 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/rate_governor.py` | 318 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/reference_lookup.py` | 111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |

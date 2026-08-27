@@ -510,9 +510,7 @@ def build_proof_engine_update(state: Mapping[str, Any]) -> dict[str, Any]:
         outcomes=state.get("proof_outcomes") or [],
     )
     ledger_entries = _proof_outcome_ledger_entries(state)
-    coverage_ledger = project_coverage_ledger(
-        {**state, "proof_plan": plan.model_dump(mode="json")}
-    )
+    coverage_ledger = project_coverage_ledger({**state, "proof_plan": plan.model_dump(mode="json")})
     return {
         "proof_gap_assessments": [item.model_dump(mode="json") for item in plan.assessments],
         "proof_plan": plan.model_dump(mode="json"),
@@ -525,8 +523,40 @@ def build_proof_engine_update(state: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_causal_engineering_metrics(
+    experiments: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize only operational causal-foundation counters.
+
+    Non-confirmed decisions are retained as decisions, never converted into
+    findings or quality labels. The returned schema intentionally contains no
+    ground-truth or classifier-quality measurements.
+    """
+    records = [item for item in experiments if isinstance(item, Mapping)]
+    decisions = {"CONFIRMED": 0, "CLEAN": 0, "INCONCLUSIVE": 0, "BLOCKED": 0}
+    scoring_bundles = 0
+    replay_successes = 0
+    for record in records:
+        raw_decision = record.get("oracle_decision", record.get("decision", ""))
+        decision = getattr(raw_decision, "value", raw_decision)
+        decision_key = str(decision).upper()
+        if decision_key in decisions:
+            decisions[decision_key] += 1
+        if decision_key == "CONFIRMED" and bool(record.get("scoring_bundle_created")):
+            scoring_bundles += 1
+        if bool(record.get("replay_success")):
+            replay_successes += 1
+    return {
+        "experiments_executed": len(records),
+        "oracle_decisions": decisions,
+        "scoring_proof_bundles_created": scoring_bundles,
+        "replay_successes": replay_successes,
+    }
+
+
 __all__ = [
     "apply_proof_outcome",
+    "build_causal_engineering_metrics",
     "build_proof_engine_update",
     "build_proof_observability",
     "build_proof_plan",
