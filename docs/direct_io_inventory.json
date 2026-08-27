@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 315,
+    "dynamic_records": 318,
     "raw_or_boundary_records": 69,
-    "record_count": 384,
+    "record_count": 387,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -5379,6 +5379,45 @@
       "kind": "dynamic_resolution",
       "line": 134,
       "normalized_symbol": "getattr(settings, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 22,
+      "file": "src/webpent/vabhfil_v8/contracts.py",
+      "kind": "dynamic_resolution",
+      "line": 76,
+      "normalized_symbol": "getattr(self, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 21,
+      "file": "src/webpent/vabhfil_v8/contracts.py",
+      "kind": "dynamic_resolution",
+      "line": 293,
+      "normalized_symbol": "getattr(self, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 21,
+      "file": "src/webpent/vabhfil_v8/utils.py",
+      "kind": "dynamic_resolution",
+      "line": 19,
+      "normalized_symbol": "getattr(source, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",

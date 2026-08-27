@@ -1,0 +1,67 @@
+{
+  "schema": "vabhfil-v8-gate-summary-v1",
+  "implementation": "VABH-FIL v8",
+  "execution_boundary": "offline recorded-state advisory only",
+  "requests_sent": 0,
+  "mutations_performed": false,
+  "findings_created": false,
+  "qualification_approved": false,
+  "focused_tests": {
+    "command": "PYTHONPATH=src:. pytest -q tests/test_vabhfil_v8.py",
+    "passed": 11,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2192,
+    "failed": 7,
+    "status": "LEGACY_BLOCKERS_ONLY",
+    "blockers": [
+      "Option B approval source-hash mismatch",
+      "WebGoat service/build alignment blocker",
+      "crAPI runtime/source attestation blocker",
+      "Option B runner readiness blocker (three tests)",
+      "Juice Shop source-backed inventory missing challenges.yml"
+    ],
+    "v8_regression_observed": false
+  },
+  "static_gates": {
+    "ruff": "PASS",
+    "ruff_format": "PASS",
+    "compileall": "PASS",
+    "import_smoke": "PASS",
+    "generic_target_neutrality": "PASS",
+    "tracked_secret_scan": "PASS",
+    "direct_io_inventory": {
+      "status": "PASS",
+      "primary_records": 387
+    },
+    "g02": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "benchmark": {
+    "registered_scenario_count": 6,
+    "scorable_case_count": 0,
+    "blocked_case_count": 6,
+    "requests_sent": 0,
+    "production_detection_claim": null,
+    "real_world_detection_rate": null,
+    "status": "BLOCKED"
+  },
+  "readiness_review": {
+    "status": "BLOCKED",
+    "advisory_only": true,
+    "vip_approved": false,
+    "p10_opened": false,
+    "qualification_gates_modified": false
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10": "NOT_QUALIFIED",
+    "p9": "NOT_QUALIFIED",
+    "vip": "NOT_QUALIFIED",
+    "bug_bounty": "BLOCKED",
+    "human_signoff": false
+  }
+}
