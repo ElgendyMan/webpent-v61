@@ -1,0 +1,49 @@
+{
+  "release": "ABHC-v3",
+  "generated_at_utc": "2026-08-27T21:55:10Z",
+  "repository_head_at_gate": "8106ab338abd3af8616a88346caef3b8365ab363",
+  "scope": "bounded in-process offline advisory only",
+  "gates": {
+    "abhc_avrip_avrp_focused_pytest": {"status": "PASS", "result": "21 passed"},
+    "full_pytest": {"status": "KNOWN_FAILURES_OUTSIDE_ABHC", "result": "2141 passed, 7 failed", "failure_ids": [
+      "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+      "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+    ], "reason": "pre-existing approval-boundary hash drift and unavailable local source fixtures; no ABHC test failure"},
+    "compileall": {"status": "PASS"},
+    "ruff_abhc": {"status": "PASS"},
+    "generic_target_neutrality": {"status": "PASS"},
+    "tracked_secrets": {"status": "PASS"},
+    "direct_io_scan": {"status": "PASS"},
+    "g02_check": {"status": "PASS"},
+    "git_diff_check": {"status": "PASS"}
+  },
+  "safety": {
+    "offline": true,
+    "requests_sent": 0,
+    "external_targets_contacted": false,
+    "credentials_used": false,
+    "mutations_performed": false,
+    "executor_or_authority_added": false,
+    "findings_or_qualification_promoted": false
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10_status": "NOT_QUALIFIED",
+    "p9_status": "NOT_QUALIFIED",
+    "vip_status": "NOT_QUALIFIED",
+    "bug_bounty_status": "BLOCKED",
+    "human_independent_signoff": false,
+    "qualification_effect": false
+  },
+  "evidence": {
+    "source_artifacts_modified": false,
+    "historical_benchmark_read_only": true,
+    "synthetic_observations_created": false,
+    "synthetic_proofbundles_created": false
+  }
+}
