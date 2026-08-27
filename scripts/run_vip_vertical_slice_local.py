@@ -18,6 +18,7 @@ from webpent.shared.action_authority import ActionAuthority
 from webpent.shared.campaign_executor import CampaignExecutor
 from webpent.shared.vip_vertical_slice import (
     CaseContract,
+    LifecycleStage,
     TargetSpec,
     VIPAutonomousVerticalSlice,
 )
@@ -208,21 +209,45 @@ def main() -> int:
         },
         "acceptance_checks": {
             "lifecycle_reported": all(
-                campaign.get("lifecycle")
+                campaign.get("lifecycle") for campaign in (fixture, juice_shop)
+            ),
+            "lifecycle_complete": all(
+                [event["stage"] for event in campaign["lifecycle"]]
+                == [stage.value for stage in LifecycleStage]
                 for campaign in (fixture, juice_shop)
             ),
-            "fixture_proof_sealed_verified_replayed": fixture["cases"][0]["proof"]
-            == {
-                **fixture["cases"][0]["proof"],
-                "sealed": True,
-                "verify_seal": True,
-                "replay_status": "passed",
-                "promotion_ready": True,
-            },
+            "fixture_proof_sealed_verified_replayed": all(
+                fixture["cases"][0]["proof"].get(field) == expected
+                for field, expected in (
+                    ("sealed", True),
+                    ("verify_seal", True),
+                    ("replay_status", "passed"),
+                    ("promotion_ready", True),
+                )
+            ),
+            "fixture_failure_record_and_proposal": (
+                fixture["cases"][0]["failure_record"] is not None
+                and fixture["cases"][0]["improvement_proposal"]["status"] == "proposed"
+            ),
+            "juice_shop_owner_packet_gated": (
+                juice_shop["cases"][0]["owner_decision_packet"]["status"]
+                == "pending_owner_approval"
+            ),
+            "owner_packet_schema_complete": {
+                "decision_requested",
+                "why_it_is_needed",
+                "evidence",
+                "options",
+                "risk",
+                "files_or_commits_affected",
+                "rollback",
+                "recommended_decision",
+                "status",
+            }
+            <= juice_shop["cases"][0]["owner_decision_packet"].keys(),
             "fixture_before_after_completed": fixture["cases"][0]["improvement"]["retest"]["status"]
             == "completed",
-            "juice_shop_is_observation_only": juice_shop["cases"][0]["status"]
-            == "inconclusive",
+            "juice_shop_is_observation_only": juice_shop["cases"][0]["status"] == "inconclusive",
             "no_raw_payloads_persisted": all(
                 not case.get("raw_payloads_persisted", True)
                 for campaign in (fixture, juice_shop)
@@ -237,8 +262,7 @@ def main() -> int:
                 for campaign in (fixture, juice_shop)
             ),
             "no_state_mutation": all(
-                campaign["safety"]["state_mutation"] is False
-                for campaign in (fixture, juice_shop)
+                campaign["safety"]["state_mutation"] is False for campaign in (fixture, juice_shop)
             ),
             "official_p10_gate_closed": all(
                 campaign["safety"]["official_isolated_p10_runs_authorized"] is False

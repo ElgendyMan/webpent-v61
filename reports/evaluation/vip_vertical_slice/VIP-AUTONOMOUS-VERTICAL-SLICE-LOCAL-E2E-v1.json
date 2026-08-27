@@ -1,14 +1,18 @@
 {
   "acceptance_checks": {
     "fixture_before_after_completed": true,
+    "fixture_failure_record_and_proposal": true,
     "fixture_proof_sealed_verified_replayed": true,
     "juice_shop_is_observation_only": true,
+    "juice_shop_owner_packet_gated": true,
+    "lifecycle_complete": true,
     "lifecycle_reported": true,
     "no_credentials": true,
     "no_external_contact": true,
     "no_raw_payloads_persisted": true,
     "no_state_mutation": true,
     "official_p10_gate_closed": true,
+    "owner_packet_schema_complete": true,
     "qualification_claim_absent": true
   },
   "campaigns": {
@@ -16,7 +20,34 @@
       "cases": [
         {
           "case_id": "juice-shop-live-observation-only",
+          "failure_record": {
+            "case_id": "juice-shop-live-observation-only",
+            "causal_signal": false,
+            "failure_id": "failure:juice-shop-live-observation-only",
+            "negative_control_complete": true,
+            "observed_status": "inconclusive",
+            "oracle_decision": "inconclusive",
+            "recorded_as": "failure_or_inconclusive_evidence",
+            "target": "http://127.0.0.1:3000"
+          },
           "improvement": null,
+          "improvement_proposal": {
+            "change_class": "generic_candidate_requires_owner_review",
+            "failure_record": {
+              "case_id": "juice-shop-live-observation-only",
+              "causal_signal": false,
+              "failure_id": "failure:juice-shop-live-observation-only",
+              "negative_control_complete": true,
+              "observed_status": "inconclusive",
+              "oracle_decision": "inconclusive",
+              "recorded_as": "failure_or_inconclusive_evidence",
+              "target": "http://127.0.0.1:3000"
+            },
+            "proposed_action": "prepare owner decision packet; do not implement",
+            "root_cause": "missing_or_insufficient_causal_contract_evidence",
+            "safety_scope": "gated change; no implementation without explicit owner approval",
+            "status": "proposed"
+          },
           "oracle": {
             "baseline_present": true,
             "causal_signal": false,
@@ -41,7 +72,7 @@
               "leave blocked/inconclusive",
               "implement bounded local improvement"
             ],
-            "recommended_decision": "keep gate closed until explicit owner approval if the change is gated",
+            "recommended_decision": "keep gate closed until explicit owner approval",
             "risk": [
               "no network escalation",
               "no credentials",
@@ -68,7 +99,7 @@
         }
       ],
       "engagement_id": "juice-shop-loopback-passive-e2e-v1",
-      "hash": "sha256:3d6c664719a877855dc88f1bd5abdb462e9e408fa1657f6996d6db5938ddf600",
+      "hash": "sha256:30c8d7b269cff30e7d04c9775afaa6c23253adff7da77c3c82a018c846a666bb",
       "lifecycle": [
         {
           "engagement_id": "juice-shop-loopback-passive-e2e-v1",
@@ -176,13 +207,23 @@
         },
         {
           "case_id": "juice-shop-live-observation-only",
+          "failure_record": {
+            "case_id": "juice-shop-live-observation-only",
+            "causal_signal": false,
+            "failure_id": "failure:juice-shop-live-observation-only",
+            "negative_control_complete": true,
+            "observed_status": "inconclusive",
+            "oracle_decision": "inconclusive",
+            "recorded_as": "failure_or_inconclusive_evidence",
+            "target": "http://127.0.0.1:3000"
+          },
           "root_cause": "missing_or_insufficient_causal_contract_evidence",
           "stage": "DIAGNOSE_FAILURES",
           "status": "completed"
         },
         {
           "case_id": "juice-shop-live-observation-only",
-          "proposal": {
+          "owner_decision_packet": {
             "decision_requested": "owner approval required for any gated improvement",
             "evidence": [
               "decision:inconclusive",
@@ -196,7 +237,7 @@
               "leave blocked/inconclusive",
               "implement bounded local improvement"
             ],
-            "recommended_decision": "keep gate closed until explicit owner approval if the change is gated",
+            "recommended_decision": "keep gate closed until explicit owner approval",
             "risk": [
               "no network escalation",
               "no credentials",
@@ -209,6 +250,23 @@
             ],
             "status": "pending_owner_approval",
             "why_it_is_needed": "juice-shop-live-observation-only ended as inconclusive; causal evidence was insufficient"
+          },
+          "proposal": {
+            "change_class": "generic_candidate_requires_owner_review",
+            "failure_record": {
+              "case_id": "juice-shop-live-observation-only",
+              "causal_signal": false,
+              "failure_id": "failure:juice-shop-live-observation-only",
+              "negative_control_complete": true,
+              "observed_status": "inconclusive",
+              "oracle_decision": "inconclusive",
+              "recorded_as": "failure_or_inconclusive_evidence",
+              "target": "http://127.0.0.1:3000"
+            },
+            "proposed_action": "prepare owner decision packet; do not implement",
+            "root_cause": "missing_or_insufficient_causal_contract_evidence",
+            "safety_scope": "gated change; no implementation without explicit owner approval",
+            "status": "proposed"
           },
           "stage": "CREATE_IMPROVEMENT_PROPOSAL",
           "status": "completed"
@@ -268,7 +326,7 @@
       "target": {
         "authorization_ref": "[REDACTED]",
         "canonical_origin": "http://127.0.0.1:3000",
-        "expires_at": "2026-08-27T05:04:32.373811+00:00",
+        "expires_at": "2026-08-27T05:18:28.045084+00:00",
         "method_policy": [
           "GET"
         ],
@@ -284,6 +342,16 @@
       "cases": [
         {
           "case_id": "local-fixture-causal-case",
+          "failure_record": {
+            "case_id": "local-fixture-causal-case",
+            "causal_signal": false,
+            "failure_id": "failure:local-fixture-causal-case",
+            "negative_control_complete": true,
+            "observed_status": "inconclusive",
+            "oracle_decision": "inconclusive",
+            "recorded_as": "failure_or_inconclusive_evidence",
+            "target": "http://127.0.0.1:3000"
+          },
           "improvement": {
             "after_oracle": {
               "baseline_present": true,
@@ -322,7 +390,7 @@
                 "verifier_version": "1"
               },
               "proof": {
-                "bundle_id": "proof_bundle_c356b2fb518440aba1f6342ec0f529b6",
+                "bundle_id": "proof_bundle_871d04af35734735bb1ac46d6e32de83",
                 "promotion_ready": true,
                 "replay_status": "passed",
                 "sealed": true,
@@ -334,6 +402,23 @@
             "scoring_promotion": false,
             "status": "completed"
           },
+          "improvement_proposal": {
+            "change_class": "target_local",
+            "failure_record": {
+              "case_id": "local-fixture-causal-case",
+              "causal_signal": false,
+              "failure_id": "failure:local-fixture-causal-case",
+              "negative_control_complete": true,
+              "observed_status": "inconclusive",
+              "oracle_decision": "inconclusive",
+              "recorded_as": "failure_or_inconclusive_evidence",
+              "target": "http://127.0.0.1:3000"
+            },
+            "proposed_action": "implement bounded local improvement and repeat regression/retest",
+            "root_cause": "missing_or_insufficient_causal_contract_evidence",
+            "safety_scope": "bounded local read-only fixture change",
+            "status": "proposed"
+          },
           "oracle": {
             "baseline_present": true,
             "causal_signal": true,
@@ -344,36 +429,9 @@
             "verifier_id": "vip_vertical_slice_central_verifier",
             "verifier_version": "1"
           },
-          "owner_decision_packet": {
-            "decision_requested": "no owner approval requested; safe local improvement may be attempted",
-            "evidence": [
-              "decision:inconclusive",
-              "target:http://127.0.0.1:3000",
-              "case:local-fixture-causal-case"
-            ],
-            "files_or_commits_affected": [
-              "target-local adapter/profile only"
-            ],
-            "options": [
-              "leave blocked/inconclusive",
-              "implement bounded local improvement"
-            ],
-            "recommended_decision": "keep gate closed until explicit owner approval if the change is gated",
-            "risk": [
-              "no network escalation",
-              "no credentials",
-              "no mutation",
-              "no frozen artifact changes"
-            ],
-            "rollback": [
-              "revert isolated commit",
-              "discard metadata-only campaign artifact"
-            ],
-            "status": "safe_local_change_permitted",
-            "why_it_is_needed": "local-fixture-causal-case ended as inconclusive; causal evidence was insufficient"
-          },
+          "owner_decision_packet": null,
           "proof": {
-            "bundle_id": "proof_bundle_c356b2fb518440aba1f6342ec0f529b6",
+            "bundle_id": "proof_bundle_871d04af35734735bb1ac46d6e32de83",
             "promotion_ready": true,
             "replay_status": "passed",
             "sealed": true,
@@ -386,7 +444,7 @@
         }
       ],
       "engagement_id": "vip-local-fixture-e2e-v1",
-      "hash": "sha256:c8e9edaf139a7834dafe70d237f486973f71b9c63a93dfcf2043e512aa747b8f",
+      "hash": "sha256:2e378bbc48ac78b817efc963474dd7b01fd30d8678e793065876d91eb32386bc",
       "lifecycle": [
         {
           "engagement_id": "vip-local-fixture-e2e-v1",
@@ -494,39 +552,39 @@
         },
         {
           "case_id": "local-fixture-causal-case",
+          "failure_record": {
+            "case_id": "local-fixture-causal-case",
+            "causal_signal": false,
+            "failure_id": "failure:local-fixture-causal-case",
+            "negative_control_complete": true,
+            "observed_status": "inconclusive",
+            "oracle_decision": "inconclusive",
+            "recorded_as": "failure_or_inconclusive_evidence",
+            "target": "http://127.0.0.1:3000"
+          },
           "root_cause": "missing_or_insufficient_causal_contract_evidence",
           "stage": "DIAGNOSE_FAILURES",
           "status": "completed"
         },
         {
           "case_id": "local-fixture-causal-case",
+          "owner_decision_packet": null,
           "proposal": {
-            "decision_requested": "no owner approval requested; safe local improvement may be attempted",
-            "evidence": [
-              "decision:inconclusive",
-              "target:http://127.0.0.1:3000",
-              "case:local-fixture-causal-case"
-            ],
-            "files_or_commits_affected": [
-              "target-local adapter/profile only"
-            ],
-            "options": [
-              "leave blocked/inconclusive",
-              "implement bounded local improvement"
-            ],
-            "recommended_decision": "keep gate closed until explicit owner approval if the change is gated",
-            "risk": [
-              "no network escalation",
-              "no credentials",
-              "no mutation",
-              "no frozen artifact changes"
-            ],
-            "rollback": [
-              "revert isolated commit",
-              "discard metadata-only campaign artifact"
-            ],
-            "status": "safe_local_change_permitted",
-            "why_it_is_needed": "local-fixture-causal-case ended as inconclusive; causal evidence was insufficient"
+            "change_class": "target_local",
+            "failure_record": {
+              "case_id": "local-fixture-causal-case",
+              "causal_signal": false,
+              "failure_id": "failure:local-fixture-causal-case",
+              "negative_control_complete": true,
+              "observed_status": "inconclusive",
+              "oracle_decision": "inconclusive",
+              "recorded_as": "failure_or_inconclusive_evidence",
+              "target": "http://127.0.0.1:3000"
+            },
+            "proposed_action": "implement bounded local improvement and repeat regression/retest",
+            "root_cause": "missing_or_insufficient_causal_contract_evidence",
+            "safety_scope": "bounded local read-only fixture change",
+            "status": "proposed"
           },
           "stage": "CREATE_IMPROVEMENT_PROPOSAL",
           "status": "completed"
@@ -567,7 +625,7 @@
               "verifier_version": "1"
             },
             "proof": {
-              "bundle_id": "proof_bundle_c356b2fb518440aba1f6342ec0f529b6",
+              "bundle_id": "proof_bundle_871d04af35734735bb1ac46d6e32de83",
               "promotion_ready": true,
               "replay_status": "passed",
               "sealed": true,
@@ -610,7 +668,7 @@
       "target": {
         "authorization_ref": "[REDACTED]",
         "canonical_origin": "http://127.0.0.1:3000",
-        "expires_at": "2026-08-27T05:04:32.369366+00:00",
+        "expires_at": "2026-08-27T05:18:28.040334+00:00",
         "method_policy": [
           "GET"
         ],
@@ -623,7 +681,7 @@
       }
     }
   },
-  "generated_at": "2026-08-27T04:49:32.382229+00:00",
+  "generated_at": "2026-08-27T05:03:28.054443+00:00",
   "governance": {
     "bug_bounty": "BLOCKED",
     "human_independent_signoff_obtained": false,

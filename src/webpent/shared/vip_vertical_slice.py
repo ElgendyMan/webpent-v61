@@ -257,6 +257,30 @@ class OwnerDecisionPacket:
         }
 
 
+@dataclass(frozen=True)
+class ImprovementProposal:
+    """A proposal is not approval and does not authorize implementation by itself."""
+
+    failure_record: Mapping[str, Any]
+    root_cause: str
+    change_class: str
+    safety_scope: str
+    proposed_action: str
+    status: str = "proposed"
+
+    def as_dict(self) -> dict[str, Any]:
+        return _clean(
+            {
+                "failure_record": dict(self.failure_record),
+                "root_cause": self.root_cause,
+                "change_class": self.change_class,
+                "safety_scope": self.safety_scope,
+                "proposed_action": self.proposed_action,
+                "status": self.status,
+            }
+        )
+
+
 CapabilityProvider = Callable[[TargetSpec], Mapping[str, Any]]
 ReadinessProvider = Callable[[TargetSpec], Mapping[str, Any]]
 ObservationHandler = Callable[[CampaignTask], Mapping[str, Any]]
@@ -446,21 +470,48 @@ class VIPAutonomousVerticalSlice:
             },
         )
 
-    def _improvement_packet(
+    def _improvement_plan(
         self,
         *,
         target: TargetSpec,
         contract: CaseContract,
         status: OutcomeStatus,
         oracle: Mapping[str, Any],
-    ) -> OwnerDecisionPacket | None:
+    ) -> tuple[ImprovementProposal | None, OwnerDecisionPacket | None]:
         if status is OutcomeStatus.CONFIRMED:
-            return None
+            return None, None
         gated = contract.method.upper() not in _READ_METHODS or not contract.target_local
-        return OwnerDecisionPacket(
-            decision_requested="owner approval required for any gated improvement"
-            if gated
-            else "no owner approval requested; safe local improvement may be attempted",
+        failure_record = {
+            "failure_id": f"failure:{contract.case_id}",
+            "case_id": contract.case_id,
+            "observed_status": status.value,
+            "oracle_decision": oracle.get("decision", "unknown"),
+            "causal_signal": oracle.get("causal_signal") is True,
+            "negative_control_complete": oracle.get("negative_control_complete") is True,
+            "target": target.normalized_origin,
+            "recorded_as": "failure_or_inconclusive_evidence",
+        }
+        change_class = "target_local" if not gated else "generic_candidate_requires_owner_review"
+        proposal = ImprovementProposal(
+            failure_record=failure_record,
+            root_cause="missing_or_insufficient_causal_contract_evidence",
+            change_class=change_class,
+            safety_scope=(
+                "bounded local read-only fixture change"
+                if not gated
+                else "gated change; no implementation without explicit owner approval"
+            ),
+            proposed_action=(
+                "implement bounded local improvement and repeat regression/retest"
+                if not gated
+                else "prepare owner decision packet; do not implement"
+            ),
+            status="proposed",
+        )
+        if not gated:
+            return proposal, None
+        packet = OwnerDecisionPacket(
+            decision_requested="owner approval required for any gated improvement",
             why_it_is_needed=(
                 f"{contract.case_id} ended as {status.value}; causal evidence was insufficient"
             ),
@@ -478,11 +529,9 @@ class VIPAutonomousVerticalSlice:
             ),
             files_or_commits_affected=("target-local adapter/profile only",),
             rollback=("revert isolated commit", "discard metadata-only campaign artifact"),
-            recommended_decision=(
-                "keep gate closed until explicit owner approval if the change is gated"
-            ),
-            status="pending_owner_approval" if gated else "safe_local_change_permitted",
+            recommended_decision="keep gate closed until explicit owner approval",
         )
+        return proposal, packet
 
     def run(
         self,
@@ -640,23 +689,25 @@ class VIPAutonomousVerticalSlice:
             before_status = status
             before_oracle = oracle
             before_proof = proof
-            packet = self._improvement_packet(
+            proposal, packet = self._improvement_plan(
                 target=target, contract=contract, status=status, oracle=oracle
             )
             improvement = None
-            if packet is not None:
+            if proposal is not None:
                 events.append(
                     self._event(
                         LifecycleStage.DIAGNOSE_FAILURES,
                         case_id=contract.case_id,
-                        root_cause="missing_or_insufficient_causal_contract_evidence",
+                        failure_record=proposal.failure_record,
+                        root_cause=proposal.root_cause,
                     )
                 )
                 events.append(
                     self._event(
                         LifecycleStage.CREATE_IMPROVEMENT_PROPOSAL,
                         case_id=contract.case_id,
-                        proposal=packet.as_dict(),
+                        proposal=proposal.as_dict(),
+                        owner_decision_packet=packet.as_dict() if packet else None,
                     )
                 )
                 change_class = (
@@ -676,7 +727,7 @@ class VIPAutonomousVerticalSlice:
                                 {
                                     "case_id": contract.case_id,
                                     "change_class": change_class,
-                                    "proposal": packet.as_dict(),
+                                    "proposal": proposal.as_dict(),
                                 }
                             )
                         )
@@ -832,6 +883,8 @@ class VIPAutonomousVerticalSlice:
                     "status": status.value,
                     "oracle": oracle,
                     "proof": proof,
+                    "failure_record": (proposal.failure_record if proposal is not None else None),
+                    "improvement_proposal": proposal.as_dict() if proposal else None,
                     "owner_decision_packet": packet.as_dict() if packet else None,
                     "improvement": improvement,
                     "scoring_promotion": False,
@@ -885,6 +938,7 @@ __all__ = [
     "CaseContract",
     "LifecycleStage",
     "OutcomeStatus",
+    "ImprovementProposal",
     "OwnerDecisionPacket",
     "TargetSpec",
     "VIPAutonomousVerticalSlice",

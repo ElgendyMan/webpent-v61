@@ -145,9 +145,11 @@ def test_vertical_slice_inconclusive_creates_owner_packet_and_keeps_gate_closed(
     assert case["improvement"]["before_status"] == "inconclusive"
     assert case["improvement"]["before_oracle"]["causal_signal"] is False
     assert case["improvement"]["retest"]["proof"]["promotion_ready"] is True
-    packet = case["owner_decision_packet"]
-    assert packet["status"] == "safe_local_change_permitted"
-    assert packet["decision_requested"].startswith("no owner approval requested")
+    assert case["owner_decision_packet"] is None
+    proposal = case["improvement_proposal"]
+    assert proposal["status"] == "proposed"
+    assert proposal["failure_record"]["recorded_as"] == "failure_or_inconclusive_evidence"
+    assert proposal["change_class"] == "target_local"
     assert result["safety"]["official_isolated_p10_runs_authorized"] is False
     assert result["safety"]["qualification_claim"] is None
     assert case["status"] == "confirmed"
@@ -168,6 +170,19 @@ def test_vertical_slice_keeps_non_local_improvement_pending_owner_approval() -> 
     assert case["status"] == "inconclusive"
     assert packet["status"] == "pending_owner_approval"
     assert "owner approval" in packet["decision_requested"]
+    assert {
+        "decision_requested",
+        "why_it_is_needed",
+        "evidence",
+        "options",
+        "risk",
+        "files_or_commits_affected",
+        "rollback",
+        "recommended_decision",
+        "status",
+    } <= packet.keys()
+    assert case["failure_record"]["recorded_as"] == "failure_or_inconclusive_evidence"
+    assert case["improvement_proposal"]["change_class"] == "generic_candidate_requires_owner_review"
     assert case["improvement"] is None
     assert any(
         item["stage"] == LifecycleStage.IMPLEMENT_SAFE_LOCAL_CHANGE.value
@@ -232,6 +247,37 @@ def test_vertical_slice_rejects_credentials_wildcard_and_invalid_methods() -> No
     assert "scope:embedded_credentials_forbidden" in reasons
     assert "scope:wildcard_origin_forbidden" in reasons
     assert "policy:read_only_methods_required" in reasons
+
+
+def test_vertical_slice_blocks_external_contact_or_mutation_readiness() -> None:
+    for readiness in (
+        {"ready": True, "external_contact": True, "mutation": False},
+        {"ready": True, "external_contact": False, "mutation": True},
+    ):
+        called = False
+        slice_ = _build_slice()
+
+        def forbidden_handler(_task: object) -> dict[str, object]:
+            nonlocal called
+            called = True
+            return {}
+
+        slice_.observation_handler = forbidden_handler
+        slice_.readiness_provider = lambda _target, value=readiness: value
+        result = slice_.run(
+            target=_target(),
+            engagement_id="engagement-vip-local-readiness-blocked",
+            contracts=[_contract("fixture-readiness-blocked", confirmed=True)],
+        )
+        assert result["status"] == "blocked"
+        assert result["cases"] == []
+        assert called is False
+        readiness_event = next(
+            item
+            for item in result["lifecycle"]
+            if item["stage"] == LifecycleStage.CHECK_TARGET_READINESS.value
+        )
+        assert readiness_event["status"] == "blocked"
 
 
 def test_vertical_slice_rejects_unavailable_capability_without_execution() -> None:
