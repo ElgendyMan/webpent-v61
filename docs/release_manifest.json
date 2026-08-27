@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1307,
+  "file_count": 1308,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -397,6 +397,7 @@
     "reports/evaluation/arex/controlled_campaign_v1.json": "07019ae9ab9b77d204ccf002eca832cd2e9ad26a72088a0e01246b7ad37d862b",
     "reports/evaluation/asros/asros_advanced_controlled_benchmark_v1.json": "492661ef897822690379be96a320649d704c70a081a03468b79426b9dde563ca",
     "reports/evaluation/avde/AVDE_DISCOVERY_QUALITY_REPORT_v1.md": "d6e2d9d5f4c3601f894361c74aefc970d3860db0836aea7284f33354cf76b623",
+    "reports/evaluation/avde/AVDE_GATE_RESULTS_v1.json": "1bfcf06ecd8c57e8f05bd2117a4b5d38efb4ae41c6176e9a6b3788df9a0087ab",
     "reports/evaluation/avde/avde_controlled_benchmark_v1.json": "e59282ac06f13234ad7023fd94584289a8e52475da674e657daefdb82e11ff9c",
     "reports/evaluation/core_context/CORE-CONTEXT-LAYER-BEFORE-AFTER-v1.md": "7954fc76564ea949003f42782d4c425ed3b8752905ac720ef54299f27596c7e2",
     "reports/evaluation/core_context/CORE-CONTEXT-LAYER-FAILURE-DIAGNOSIS-v1.md": "399a970bf0b89308eaa818d5bf1dbbf17e5f3792bb0566e43cc4ed29d6d9caac",
@@ -1319,9 +1320,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T19:43:12.233932+00:00",
-  "git_commit": "f5e30d68fcc8752e1bdec5d656f5f8b803272f67",
-  "git_tree": "6f4e2d4463b27fdf05cdab337a901ded4a8bfc79",
+  "generated_at": "2026-08-27T19:45:38.758414+00:00",
+  "git_commit": "ae1b3f576a1f0f4897d40c7311e87a252f17990f",
+  "git_tree": "747ba36e2d9dd4d018b709b411f3fb2c4bd519bc",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
