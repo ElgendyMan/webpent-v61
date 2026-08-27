@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 285,
+    "dynamic_records": 286,
     "raw_or_boundary_records": 69,
-    "record_count": 354,
+    "record_count": 355,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -2571,6 +2571,19 @@
       "kind": "dynamic_resolution",
       "line": 207,
       "normalized_symbol": "getattr(kind, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 34,
+      "file": "src/webpent/avrip/cross_domain.py",
+      "kind": "dynamic_resolution",
+      "line": 132,
+      "normalized_symbol": "getattr(assumption_text, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",

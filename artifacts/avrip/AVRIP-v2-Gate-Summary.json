@@ -1,0 +1,58 @@
+{
+  "schema_version": "avrip-v2-gate-summary",
+  "generated_at": "2026-08-27T21:36:35Z",
+  "scope": "AVRIP v2 additive bounded advisory release",
+  "focused_regression": {
+    "command": "PYTHONPATH=src pytest -q tests/test_avrip_v2.py tests/test_avrip_benchmark.py tests/test_avrp.py tests/test_avrp_benchmark.py",
+    "passed": 21,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "gates": {
+    "compileall": {"status": "PASS", "exit_code": 0},
+    "ruff_avrip_scope": {"status": "PASS", "exit_code": 0},
+    "generic_target_neutrality": {"status": "PASS", "exit_code": 0},
+    "tracked_secrets": {"status": "PASS", "exit_code": 0},
+    "direct_io_scan": {"status": "PASS", "exit_code": 0},
+    "g02": {"status": "PASS", "exit_code": 0},
+    "git_diff_check": {"status": "PASS", "exit_code": 0}
+  },
+  "full_regression": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2133,
+    "failed": 7,
+    "total": 2140,
+    "status": "KNOWN_REPOSITORY_BLOCKERS",
+    "failures": [
+      "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+      "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+    ],
+    "classification": "pre-existing approval/source-fixture blockers; no AVRIP failure identified"
+  },
+  "benchmark": {
+    "artifact": "reports/evaluation/avrip/avrip_deep_controlled_benchmark_v2.json",
+    "scenario_count": 5,
+    "scorable_case_count": 1,
+    "blocked_scenario_count": 4,
+    "requests_sent": 0,
+    "external_network": false,
+    "credentials_used": false,
+    "state_mutation": false,
+    "synthetic_observations_created": false,
+    "synthetic_proof_bundles_created": false
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10_status": "NOT_QUALIFIED",
+    "p9_status": "NOT_QUALIFIED",
+    "vip_status": "NOT_QUALIFIED",
+    "bug_bounty_status": "BLOCKED",
+    "human_signoff": false,
+    "qualification_effect": false
+  }
+}
