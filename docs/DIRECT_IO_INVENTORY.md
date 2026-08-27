@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **353**.
+Total records: **354**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -178,6 +178,7 @@ Total records: **353**.
 | `src/webpent/attack_graph/chain_reasoning.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/attack_graph/engine.py` | 204 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/attack_graph/engine.py` | 207 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/avrp/state.py` | 165 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/benchmark/waptlab_target_adapter.py` | 29 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/benchmark/waptlab_target_adapter.py` | 47 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/benchmark/waptlab_target_adapter.py` | 49 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

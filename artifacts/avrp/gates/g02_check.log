@@ -1,0 +1,3 @@
+wrote /tmp/webpent-work/docs/direct_io_inventory.json and /tmp/webpent-work/docs/DIRECT_IO_INVENTORY.md (354 records)
+{"errors": [], "external_target_contacted": false, "passed": true, "primary_records": 354}
+{"errors": [], "external_target_contacted": false, "passed": true}

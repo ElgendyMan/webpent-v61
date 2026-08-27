@@ -1,0 +1,86 @@
+{
+  "schema_version": "avrp-v1-gate-summary",
+  "generated_at_utc": "2026-08-27T21:06:48Z",
+  "repository": {
+    "head_before_avrp_commit": "38e4b1f5a23dde32793c82a4b98f55e481ea038d",
+    "origin_master_before_avrp_commit": "38e4b1f5a23dde32793c82a4b98f55e481ea038d",
+    "preflight_parity": true
+  },
+  "focused_avrp": {
+    "command": "PYTHONPATH=src:. pytest -q tests/test_avrp.py tests/test_avrp_benchmark.py",
+    "passed": 10,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "gates": {
+    "compileall": {"status": "PASS", "command": "python3 -m compileall -q src benchmarks tests"},
+    "generic_target_neutrality": {"status": "PASS", "command": "python3 scripts/check_generic_target_neutrality.py"},
+    "tracked_secrets": {"status": "PASS", "command": "python3 scripts/check_tracked_secrets.py"},
+    "direct_io_scan": {"status": "PASS", "command": "PYTHONPATH=src python3 scripts/scan_direct_io.py", "records": 354},
+    "g02": {"status": "PASS", "command": "make g02-check"},
+    "git_diff_check": {"status": "PASS", "command": "git diff --check"}
+  },
+  "full_regression": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2122,
+    "failed": 7,
+    "status": "FAIL_WITH_PREEXISTING_BLOCKERS",
+    "new_avrp_failures": 0,
+    "failures": [
+      {
+        "test": "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+        "reason": "approval_source_hash_mismatch"
+      },
+      {
+        "test": "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes",
+        "reason": "source evidence file missing: /tmp/juice-shop-source/data/static/challenges.yml"
+      }
+    ],
+    "policy": "These failures are not converted to passes and no fixture, approval hash, frozen ground truth, or threshold was changed."
+  },
+  "artifact_policy": {
+    "external_network": false,
+    "requests_sent_by_avrp_runner": 0,
+    "credentials_or_login": false,
+    "state_mutation": false,
+    "synthetic_observations": false,
+    "synthetic_proof_bundles": false,
+    "official_isolated_p10_runs_authorized": false,
+    "p10_status": "NOT_QUALIFIED",
+    "p9_status": "NOT_QUALIFIED",
+    "vip_status": "NOT_QUALIFIED",
+    "bug_bounty_status": "BLOCKED",
+    "human_signoff": false,
+    "qualification_effect": false
+  },
+  "log_files": [
+    "artifacts/avrp/gates/compileall.log",
+    "artifacts/avrp/gates/diff_check.log",
+    "artifacts/avrp/gates/direct_io.log",
+    "artifacts/avrp/gates/focused_pytest.log",
+    "artifacts/avrp/gates/full_pytest.log",
+    "artifacts/avrp/gates/g02_check.log",
+    "artifacts/avrp/gates/generic_neutrality.log",
+    "artifacts/avrp/gates/tracked_secrets.log"
+  ]
+}
