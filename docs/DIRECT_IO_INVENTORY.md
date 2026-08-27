@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **379**.
+Total records: **384**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -394,6 +394,11 @@ Total records: **379**.
 | `src/webpent/tools/utils/subprocess.py` | 288 | `call` | `subprocess.Popen` | `subprocess` | `approved` |
 | `src/webpent/utils/compliance.py` | 154 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/utils/task_crypto.py` | 134 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhic_v7/contracts.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhic_v7/contracts.py` | 234 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhic_v7/contracts.py` | 345 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhic_v7/utils.py` | 12 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhic_v7/utils.py` | 22 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/workers/pentest_worker.py` | 113 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/workers/pentest_worker.py` | 127 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/workers/pentest_worker.py` | 146 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
