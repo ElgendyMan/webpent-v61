@@ -9,10 +9,19 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable
+from typing import Literal
 
 from webpent.models.evidence import redact_sensitive
 from webpent.models.memory import MemoryBudget, MemoryKind, MemoryRecord
 from webpent.shared.memory_boundary import MemoryBoundary
+
+LearningOutcome = Literal[
+    "supported",
+    "rejected",
+    "blocked",
+    "inconclusive",
+    "duplicate",
+]
 
 
 class SecurityReasoningMemory:
@@ -90,6 +99,68 @@ class SecurityReasoningMemory:
             memory_id, status, reviewer="ai_technical_review", note=note
         )
 
+    def learn_from_outcome(
+        self,
+        *,
+        hypothesis_id: str,
+        outcome: LearningOutcome | str,
+        rationale: str,
+        evidence_refs: Iterable[str] = (),
+        relevance: float = 0.0,
+    ) -> MemoryRecord | None:
+        """Store a scoped lesson without changing hypothesis or finding status.
+
+        This is learning support only: the resulting lesson cannot authorize a
+        request, replace a causal oracle, or promote a finding.  Outcomes that
+        lack proof are deliberately mapped to ``needs_more_evidence`` feedback.
+        """
+        clean_hypothesis, _ = redact_sensitive(hypothesis_id)
+        clean_outcome, _ = redact_sensitive(str(outcome))
+        clean_rationale, _ = redact_sensitive(rationale)
+        allowed: set[str] = {
+            "supported",
+            "rejected",
+            "blocked",
+            "inconclusive",
+            "duplicate",
+        }
+        if clean_outcome not in allowed:
+            raise ValueError("unsupported_learning_outcome")
+        content = (
+            f"hypothesis={clean_hypothesis}; outcome={clean_outcome}; rationale={clean_rationale}"
+        )
+        record = self.remember(
+            category=MemoryKind.EXPERIENCE_LESSON,
+            content=content,
+            source_ref=f"hypothesis:{clean_hypothesis}",
+            evidence_refs=evidence_refs,
+            relevance=relevance,
+            metadata={
+                "learning_outcome": clean_outcome,
+                "hypothesis_id": clean_hypothesis,
+                "advisory_only": True,
+            },
+        )
+        if record is None:
+            return None
+        status = {
+            "supported": "accepted",
+            "rejected": "rejected",
+            "duplicate": "duplicate",
+            "blocked": "needs_more_evidence",
+            "inconclusive": "needs_more_evidence",
+        }[clean_outcome]
+        self.record_feedback(record.id, status, note=clean_rationale)
+        return record
+
+    def retrieve_learning(self, query: str, *, limit: int | None = None):
+        """Retrieve only scoped experience lessons for advisory reuse."""
+        return self.retrieve(
+            query,
+            kinds=[MemoryKind.EXPERIENCE_LESSON],
+            limit=limit,
+        )
+
     def summary(self) -> dict[str, object]:
         return {
             **self._boundary.summary(),
@@ -101,4 +172,4 @@ class SecurityReasoningMemory:
         }
 
 
-__all__ = ["SecurityReasoningMemory"]
+__all__ = ["LearningOutcome", "SecurityReasoningMemory"]

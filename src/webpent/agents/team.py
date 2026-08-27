@@ -20,6 +20,10 @@ class AgentRoleSpec:
     responsibilities: tuple[str, ...]
     required_inputs: tuple[str, ...]
     emitted_artifacts: tuple[str, ...]
+    advisory_only: bool = True
+    can_execute: bool = False
+    can_create_findings: bool = False
+    can_override_oracle: bool = False
 
 
 ROLE_SPECS: tuple[AgentRoleSpec, ...] = (
@@ -58,6 +62,41 @@ ROLE_SPECS: tuple[AgentRoleSpec, ...] = (
         required_inputs=("validation_result", "negative_control"),
         emitted_artifacts=("review_decision", "review_evidence_ref"),
     ),
+    AgentRoleSpec(
+        role="arex_recon_researcher",
+        implementation="webpent.agents.arex.recon_researcher",
+        responsibilities=("propose bounded loopback observations", "deduplicate surface evidence"),
+        required_inputs=("campaign_state", "scope_digest"),
+        emitted_artifacts=("observation_proposal", "evidence_ref"),
+    ),
+    AgentRoleSpec(
+        role="arex_authorization_researcher",
+        implementation="webpent.agents.arex.authorization_researcher",
+        responsibilities=("propose authorization comparisons", "identify safe negative controls"),
+        required_inputs=("hypothesis", "target_knowledge"),
+        emitted_artifacts=("authorization_proposal", "negative_control_plan"),
+    ),
+    AgentRoleSpec(
+        role="arex_business_logic_researcher",
+        implementation="webpent.agents.arex.business_logic_researcher",
+        responsibilities=("propose read-only workflow comparisons", "record bounded preconditions"),
+        required_inputs=("hypothesis", "workflow_state"),
+        emitted_artifacts=("workflow_proposal", "precondition_ref"),
+    ),
+    AgentRoleSpec(
+        role="arex_evidence_reviewer",
+        implementation="webpent.agents.arex.evidence_reviewer",
+        responsibilities=("review evidence completeness", "flag missing causal gates"),
+        required_inputs=("observations", "negative_control", "proof_reference"),
+        emitted_artifacts=("evidence_review", "review_evidence_ref"),
+    ),
+    AgentRoleSpec(
+        role="arex_planner",
+        implementation="webpent.agents.arex.planner",
+        responsibilities=("rank bounded tasks", "respect budget and route capabilities"),
+        required_inputs=("campaign_state", "candidate_tasks"),
+        emitted_artifacts=("task_proposal", "planning_rationale"),
+    ),
 )
 
 _ROLE_BY_NAME = {spec.role: spec for spec in ROLE_SPECS}
@@ -73,10 +112,23 @@ def team_manifest() -> list[dict[str, Any]]:
     return [asdict(spec) for spec in ROLE_SPECS]
 
 
+_FORBIDDEN_ARTIFACT_KEYS = {
+    "execute",
+    "execution_request",
+    "finding",
+    "finding_id",
+    "oracle_override",
+    "policy_override",
+    "scope_override",
+}
+
+
 def validate_role_artifact(role: str, artifact: Any) -> bool:
-    """Accept only a mapping with the role's declared artifact keys."""
+    """Accept only declared, advisory artifacts without authority-shaped keys."""
     spec = get_role_spec(role)
-    if spec is None or not isinstance(artifact, dict):
+    if spec is None or not isinstance(artifact, dict) or not spec.advisory_only:
+        return False
+    if any(key in artifact for key in _FORBIDDEN_ARTIFACT_KEYS):
         return False
     declared = set(spec.emitted_artifacts)
     return any(key in artifact and artifact[key] not in (None, "", [], {}) for key in declared)
