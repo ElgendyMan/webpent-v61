@@ -209,6 +209,23 @@ class TargetKnowledgeV2(BaseModel):
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
+    def to_snapshot_json(self) -> str:
+        """Serialize a canonical, redacted snapshot for persistence or replay."""
+        return json.dumps(self.as_dict(), sort_keys=True, separators=(",", ":"))
+
+    @classmethod
+    def from_snapshot_json(cls, snapshot: str) -> TargetKnowledgeV2:
+        """Restore a validated snapshot without adding execution authority."""
+        if not isinstance(snapshot, str) or not snapshot.strip():
+            raise ValueError("knowledge_snapshot_required")
+        try:
+            payload = json.loads(snapshot)
+        except json.JSONDecodeError as exc:
+            raise ValueError("knowledge_snapshot_invalid_json") from exc
+        if not isinstance(payload, dict) or payload.get("schema_version") != 2:
+            raise ValueError("knowledge_snapshot_schema_mismatch")
+        return cls.model_validate(payload)
+
     def entities_of_kind(self, kind: KnowledgeEntityKind | str) -> tuple[KnowledgeEntity, ...]:
         value = kind.value if isinstance(kind, KnowledgeEntityKind) else str(kind)
         return tuple(entity for entity in self.entities.values() if entity.kind.value == value)

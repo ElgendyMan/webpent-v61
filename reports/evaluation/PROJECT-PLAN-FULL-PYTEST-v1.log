@@ -1,0 +1,109 @@
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 10%]
+........................................................................ [ 14%]
+........................................................................ [ 17%]
+........................................................................ [ 21%]
+.................F...................................................... [ 24%]
+..........FFF........................................................... [ 28%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 42%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 67%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 99%]
+..................                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_option_b_import_validates_and_original_packet_stays_pending _______
+
+    def test_option_b_import_validates_and_original_packet_stays_pending() -> None:
+>       assert validate(IMPORT, PACKET, INVENTORY, APPROVAL) == []
+E       AssertionError: assert ['approval_so...ash_mismatch'] == []
+E         
+E         Left contains one more item: 'approval_source_hash_mismatch'
+E         Use -v to get more diff
+
+tests/test_local_causal_lab_option_b_approval.py:27: AssertionError
+___________ test_option_b_runner_emits_only_redacted_blocked_records ___________
+
+    def test_option_b_runner_emits_only_redacted_blocked_records() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+_ test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material _
+
+    def test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+______ test_option_b_runner_exposes_offline_harness_readiness_separately _______
+
+    def test_option_b_runner_exposes_offline_harness_readiness_separately() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately
+4 failed, 2030 passed in 110.35s (0:01:50)

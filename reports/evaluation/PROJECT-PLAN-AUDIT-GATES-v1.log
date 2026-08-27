@@ -1,0 +1,211 @@
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 10%]
+........................................................................ [ 14%]
+........................................................................ [ 17%]
+........................................................................ [ 21%]
+.................F...................................................... [ 24%]
+..........FFF........................................................... [ 28%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 42%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 67%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 99%]
+..................                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_option_b_import_validates_and_original_packet_stays_pending _______
+
+    def test_option_b_import_validates_and_original_packet_stays_pending() -> None:
+>       assert validate(IMPORT, PACKET, INVENTORY, APPROVAL) == []
+E       AssertionError: assert ['approval_so...ash_mismatch'] == []
+E         
+E         Left contains one more item: 'approval_source_hash_mismatch'
+E         Use -v to get more diff
+
+tests/test_local_causal_lab_option_b_approval.py:27: AssertionError
+___________ test_option_b_runner_emits_only_redacted_blocked_records ___________
+
+    def test_option_b_runner_emits_only_redacted_blocked_records() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+_ test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material _
+
+    def test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+______ test_option_b_runner_exposes_offline_harness_readiness_separately _______
+
+    def test_option_b_runner_exposes_offline_harness_readiness_separately() -> None:
+>       result = build_result()
+                 ^^^^^^^^^^^^^^
+
+tests/test_option_b_local_causal_lab_runner.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+import_path = PosixPath('/tmp/webpent-work/reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json')
+
+    def build_result(
+        import_path: Path = ROOT
+        / "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json",
+    ) -> dict[str, Any]:
+        approval_errors = validate_approval(import_path=import_path)
+        if approval_errors:
+>           raise ValueError("approval_boundary_failed:" + ",".join(approval_errors))
+E           ValueError: approval_boundary_failed:approval_source_hash_mismatch
+
+scripts/run_option_b_local_causal_lab.py:339: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material
+FAILED tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately
+4 failed, 2030 passed in 110.51s (0:01:50)
+
+=== RUFF ===
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0msrc/webpent/benchmark/__init__.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """Deterministic benchmark metrics for WebPent lab evaluations."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from webpent.benchmark.golden import (
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m     GoldenBenchmarkCase,
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m     GoldenBenchmarkResult,
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m     default_golden_cases,
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m     run_golden_benchmark,
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m from webpent.benchmark.metrics import BenchmarkReport, evaluate
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m from webpent.benchmark.profiles import (
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m     OfflineTargetProfile,
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m     build_offline_target_profile,
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m     default_offline_target_profiles,
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from webpent.benchmark.research_intelligence import (
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m     ResearchEvaluationCase,
+[1m[94m17[0m [1m[94m|[0m [1m[91m|[0m     ResearchIntelligenceReport,
+[1m[94m18[0m [1m[94m|[0m [1m[91m|[0m     evaluate_research_intelligence,
+[1m[94m19[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m20[0m [1m[94m|[0m [1m[91m|[0m from webpent.benchmark.qualification import (
+[1m[94m21[0m [1m[94m|[0m [1m[91m|[0m     GroundTruthCase,
+[1m[94m22[0m [1m[94m|[0m [1m[91m|[0m     QualificationMatrix,
+[1m[94m23[0m [1m[94m|[0m [1m[91m|[0m     QualificationRun,
+[1m[94m24[0m [1m[94m|[0m [1m[91m|[0m     build_qualification_matrix,
+[1m[94m25[0m [1m[94m|[0m [1m[91m|[0m )
+[1m[94m26[0m [1m[94m|[0m [1m[91m|[0m from webpent.benchmark.vip_v2 import VIPV2Metrics, measure_vip_v2, qualify_vip_v2
+   [1m[94m|[0m [1m[91m|_________________________________________________________________________________^[0m
+[1m[94m27[0m [1m[94m|[0m
+[1m[94m28[0m [1m[94m|[0m   __all__ = [
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m )
+[1m[94m  [0m [1m[31m-[0m [31mfrom webpent.benchmark.research_intelligence import (
+[0m[1m[94m  [0m [1m[31m-[0m [31m    ResearchEvaluationCase,
+[0m[1m[94m  [0m [1m[31m-[0m [31m    ResearchIntelligenceReport,
+[0m[1m[94m  [0m [1m[31m-[0m [31m    evaluate_research_intelligence,
+[0m[1m[94m  [0m [1m[31m-[0m [31m)
+[0m[1m[94m15[0m [1m[94m|[0m from webpent.benchmark.qualification import (
+--------------------------------------------------------------------------------
+[1m[94m20[0m [1m[94m|[0m )
+[1m[94m21[0m [1m[32m+[0m [32mfrom webpent.benchmark.research_intelligence import (
+[0m[1m[94m22[0m [1m[32m+[0m [32m    ResearchEvaluationCase,
+[0m[1m[94m23[0m [1m[32m+[0m [32m    ResearchIntelligenceReport,
+[0m[1m[94m24[0m [1m[32m+[0m [32m    evaluate_research_intelligence,
+[0m[1m[94m25[0m [1m[32m+[0m [32m)
+[0m[1m[94m26[0m [1m[94m|[0m from webpent.benchmark.vip_v2 import VIPV2Metrics, measure_vip_v2, qualify_vip_v2
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP037[0m [[1m[96m*[0m][1m Remove quotes from type annotation[0m
+   [1m[94m--> [0msrc/webpent/knowledge/model_v2.py:217:51
+    [1m[94m|[0m
+[1m[94m216[0m [1m[94m|[0m     @classmethod
+[1m[94m217[0m [1m[94m|[0m     def from_snapshot_json(cls, snapshot: str) -> "TargetKnowledgeV2":
+    [1m[94m|[0m                                                   [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m218[0m [1m[94m|[0m         """Restore a validated snapshot without adding execution authority."""
+[1m[94m219[0m [1m[94m|[0m         if not isinstance(snapshot, str) or not snapshot.strip():
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove quotes[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m216[0m [1m[94m|[0m     @classmethod
+[1m[94m   [0m [1m[31m-[0m [31m    def from_snapshot_json(cls, snapshot: str) -> [0m[1m[31m"TargetKnowledgeV2":[0m[0m[31m
+[0m[1m[94m217[0m [1m[32m+[0m [32m    def from_snapshot_json(cls, snapshot: str) -> [0m[1m[32mTargetKnowledgeV2:[0m[0m[32m
+[0m[1m[94m218[0m [1m[94m|[0m         """Restore a validated snapshot without adding execution authority."""
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mE501[0m[1m Line too long (105 > 100)[0m
+   [1m[94m--> [0msrc/webpent/shared/direct_io_inventory.py:156:101
+    [1m[94m|[0m
+[1m[94m154[0m [1m[94m|[0m     "src/webpent/agents/request_smuggling/agent.py": "scoped_raw_tcp_validator",
+[1m[94m155[0m [1m[94m|[0m     "src/webpent/agents/subdomain_takeover/agent.py": "scoped_dns_resolution_validator",
+[1m[94m156[0m [1m[94m|[0m     "src/webpent/adapters/controlled_target/adapter.py": "loopback_only_controlled_target_http_boundary",
+    [1m[94m|[0m                                                                                                     [1m[91m^^^^^[0m
+[1m[94m157[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+Found 3 errors.
+[[36m*[0m] 2 fixable with the `--fix` option.
+
+=== COMPILEALL ===
+
+=== DIFF CHECK ===
+
+=== NEUTRALITY ===
+generic_target_neutrality_passed files=227 roots=5
+
+=== SECRET SCAN ===
+secret scan passed: no high-confidence secrets in tracked source/config
+
+=== G02 ===
+{"errors": [], "external_target_contacted": false, "passed": true, "primary_records": 349}
+[1;32mAll checks passed![0m
+.........................                                                [100%]
+25 passed in 2.85s
+generic_target_neutrality_passed files=227 roots=5
+secret scan passed: no high-confidence secrets in tracked source/config
+{"errors": ["artifact records drift from current source scan"], "external_target_contacted": false, "passed": false, "primary_records": 349}

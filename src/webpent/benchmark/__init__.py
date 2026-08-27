@@ -12,16 +12,16 @@ from webpent.benchmark.profiles import (
     build_offline_target_profile,
     default_offline_target_profiles,
 )
-from webpent.benchmark.research_intelligence import (
-    ResearchEvaluationCase,
-    ResearchIntelligenceReport,
-    evaluate_research_intelligence,
-)
 from webpent.benchmark.qualification import (
     GroundTruthCase,
     QualificationMatrix,
     QualificationRun,
     build_qualification_matrix,
+)
+from webpent.benchmark.research_intelligence import (
+    ResearchEvaluationCase,
+    ResearchIntelligenceReport,
+    evaluate_research_intelligence,
 )
 from webpent.benchmark.vip_v2 import VIPV2Metrics, measure_vip_v2, qualify_vip_v2
 

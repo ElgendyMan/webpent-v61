@@ -153,7 +153,9 @@ APPROVED_DIRECT_FILES = {
     "src/webpent/cli/__init__.py": "bounded_playwright_preflight",
     "src/webpent/agents/request_smuggling/agent.py": "scoped_raw_tcp_validator",
     "src/webpent/agents/subdomain_takeover/agent.py": "scoped_dns_resolution_validator",
-    "src/webpent/adapters/controlled_target/adapter.py": "loopback_only_controlled_target_http_boundary",
+    "src/webpent/adapters/controlled_target/adapter.py": (
+        "loopback_only_controlled_target_http_boundary"
+    ),
 }
 
 # Structured approvals are intentionally symbol-scoped.  A file-level entry

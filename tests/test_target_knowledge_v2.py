@@ -110,3 +110,37 @@ def test_v2_upgrade_preserves_legacy_entities() -> None:
     assert upgraded.entities["node:1"].canonical_key == "object:1"
     assert upgraded.entities["node:1"].source_observation == "legacy:node:1"
     assert upgraded.observations["legacy:node:1"].evidence_refs == ("evidence:1",)
+
+
+def test_v2_snapshot_round_trip_is_canonical_and_validated() -> None:
+    model = build_target_knowledge_v2(
+        engagement_id="engagement-snapshot",
+        target_id="target-snapshot",
+        observations=[
+            {
+                "observation_id": "obs-1",
+                "source": "controlled",
+                "facts": {"Authorization": "Bearer should-not-persist", "route": "/safe"},
+            }
+        ],
+        entities=[
+            {
+                "kind": "resource",
+                "canonical_key": "invoice",
+                "source_observation": "obs-1",
+                "metadata": {"owner": "synthetic-owner"},
+            }
+        ],
+    )
+    snapshot = model.to_snapshot_json()
+    restored = TargetKnowledgeV2.from_snapshot_json(snapshot)
+    assert restored.content_hash() == model.content_hash()
+    assert snapshot == restored.to_snapshot_json()
+    assert "should-not-persist" not in snapshot
+
+
+def test_v2_snapshot_restore_rejects_invalid_or_wrong_schema() -> None:
+    with pytest.raises(ValueError, match="knowledge_snapshot_invalid_json"):
+        TargetKnowledgeV2.from_snapshot_json("not-json")
+    with pytest.raises(ValueError, match="knowledge_snapshot_schema_mismatch"):
+        TargetKnowledgeV2.from_snapshot_json('{"schema_version": 1}')
