@@ -19,6 +19,9 @@
   "corrected_provenance": {
     "source_manifest_generated_from_webpent_commit": "88991a96d2f02d98aa652bc452ad33bf30b17615",
     "source_manifest_generated_from_webpent_tree": "74f1f9730fd8f58b9d3349347319824321d6767e",
+    "release_manifest_provenance_sidecar": "docs/release_manifest_provenance_v1.json",
+    "release_manifest_source_revision_relationship": "release_manifest.git_commit and git_tree identify the pre-manifest inventory source revision; the sidecar records the manifest commit and verifies that its parent/tree match those fields",
+    "release_manifest_self_reference_policy": "release_manifest.json and its sidecar are excluded from the inventory hash set to avoid recursive self-reference; the sidecar still locks the current manifest bytes",
     "archive_verification_required": true,
     "archive_verification_method": "compare the extracted project archive to git archive of the recorded commit and tree",
     "self_approval_not_claimed": true
@@ -116,7 +119,7 @@
     "source_ground_truth_manifest_sha256": "sha256:1ad18256e8d0b42041bc9b008ece8de7573603a21c8a898f639d1049ec2b5575",
     "loopback_runtime_manifest_sha256": "sha256:cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524",
     "release_manifest_hash_lock": "excluded_to_avoid_recursive_self_reference",
-    "hash_interpretation": "Canonical mapping/oracle values are prior review locks. Current source mapping/oracle hashes identify the source presently awaiting human reconfirmation. Document, snapshot, source-to-ground-truth manifest, and runtime manifest hashes identify exact local inputs. The frozen ground truth was not modified to hide drift."
+    "hash_interpretation": "Canonical mapping/oracle values are prior review locks. Current source mapping/oracle hashes identify the source presently awaiting human reconfirmation. Document, snapshot, source-to-ground-truth manifest, and runtime manifest hashes identify exact local inputs. Release manifest provenance is verified by the non-recursive sidecar. The frozen ground truth was not modified to hide drift."
   },
   "run_gate": {
     "official_isolated_p10_runs_authorized": false,

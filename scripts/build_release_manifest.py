@@ -34,6 +34,7 @@ EXCLUDED_NAMES = {
     "lessons.db.migration.lock",
     "audit_summary_current.txt",
     "plan_verification_summary.txt",
+    "release_manifest_provenance_v1.json",
 }
 EXCLUDED_SUFFIXES = {
     ".pyc",
@@ -46,9 +47,7 @@ EXCLUDED_SUFFIXES = {
     ".log",
 }
 EXCLUDED_NAME_SUFFIXES = (".db.migration.lock",)
-EXCLUDED_RELATIVE_PREFIXES = (
-    "docs/live_waptlab_output_",
-)
+EXCLUDED_RELATIVE_PREFIXES = ("docs/live_waptlab_output_",)
 
 
 def _is_excluded_relative(relative: Path) -> bool:
@@ -65,11 +64,9 @@ def _is_excluded_relative(relative: Path) -> bool:
         return True
     relative_text = relative.as_posix()
     return any(
-        relative_text == prefix.rstrip("/")
-        or relative_text.startswith(prefix)
+        relative_text == prefix.rstrip("/") or relative_text.startswith(prefix)
         for prefix in EXCLUDED_RELATIVE_PREFIXES
     )
-
 
 
 def _git_revision(argument: str) -> str | None:
@@ -244,6 +241,11 @@ def main() -> int:
             "archive_verification_method": (
                 "compare extracted archive tree/files to git archive of git_commit"
             ),
+            "inventory_revision_relationship": (
+                "git_commit and git_tree identify the pre-manifest source revision; "
+                "the release_manifest commit is recorded by the separate provenance sidecar"
+            ),
+            "provenance_sidecar": "docs/release_manifest_provenance_v1.json",
         },
         "file_count": len(files),
         "files": dict(files),
