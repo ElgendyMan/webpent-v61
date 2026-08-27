@@ -1,0 +1,64 @@
+{
+  "artifact": "ABHIP-v5-Gate-Summary",
+  "version": "v5",
+  "recorded_at": "2026-08-27T22:41:45+00:00",
+  "baseline_head_before_changes": "d68c3d5b9902a492c8826cd25042124097ea1f6f",
+  "focused_tests": {
+    "command": "PYTHONPATH=src:. pytest -q tests/test_abhip_v5.py tests/test_abhip_benchmark.py",
+    "passed": 10,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2162,
+    "failed": 7,
+    "status": "KNOWN_BLOCKERS_NOT_GREEN",
+    "known_blockers": [
+      "approval_source_hash_mismatch in local causal lab Option B approval/provenance tests",
+      "WebGoat service/build alignment remains blocked",
+      "crAPI runtime/source attestation remains blocked",
+      "missing /tmp/juice-shop-source/data/static/challenges.yml"
+    ]
+  },
+  "static_gates": {
+    "ruff_scoped": "PASS",
+    "compileall": "PASS",
+    "import_smoke": "PASS",
+    "generic_target_neutrality": "PASS",
+    "tracked_secret_scan": "PASS",
+    "direct_io_scan": "PASS",
+    "direct_io_inventory_records": 377,
+    "g02": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "benchmark": {
+    "registered_class_count": 6,
+    "scorable_class_count": 1,
+    "scorable_case_count": 1,
+    "blocked_class_count": 5,
+    "scorable_class": "idor",
+    "readiness_coverage": 0.166667,
+    "requests_sent": 0,
+    "credentials_used": false,
+    "mutations_performed": false,
+    "external_targets_contacted": false,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "production_detection_rate": null,
+    "production_metrics_available": false,
+    "evidence_delta_vs_abhie_v4": 0.0,
+    "quality_claim": "recorded_research_capability_coverage_only"
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10": "NOT_QUALIFIED",
+    "p9": "NOT_QUALIFIED",
+    "vip": "NOT_QUALIFIED",
+    "bug_bounty": "BLOCKED",
+    "human_independent_signoff": false,
+    "qualification_effect": false
+  },
+  "release_status": "PENDING_SOURCE_COMMIT"
+}

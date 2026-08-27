@@ -1,0 +1,11 @@
+ABHIP v5 gate execution
+focused=PASS (10 passed)
+full=KNOWN_BLOCKERS_NOT_GREEN (2162 passed, 7 failed)
+ruff=PASS
+compile=PASS
+neutrality=PASS
+secrets=PASS
+direct_io=PASS (377 records)
+g02=PASS
+diff_check=PASS
+known blockers: approval_source_hash_mismatch; WebGoat alignment; crAPI attestation; missing /tmp/juice-shop-source/data/static/challenges.yml
