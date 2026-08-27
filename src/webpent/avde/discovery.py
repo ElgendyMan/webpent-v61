@@ -49,6 +49,11 @@ class DiscoveryHypothesis(BaseModel):
     novelty_score: float = Field(ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)
     status: DiscoveryHypothesisStatus = DiscoveryHypothesisStatus.GENERATED
+    expected_impact: float = Field(default=0.0, ge=0.0, le=1.0)
+    validation_cost: int = Field(default=0, ge=0, le=1000)
+    supporting_evidence: tuple[str, ...] = Field(default=(), max_length=32)
+    contradicting_evidence: tuple[str, ...] = Field(default=(), max_length=32)
+    priority_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
     @field_validator(
         "reasoning_chain",
@@ -56,6 +61,8 @@ class DiscoveryHypothesis(BaseModel):
         "expected_evidence",
         "source_refs",
         "required_capabilities",
+        "supporting_evidence",
+        "contradicting_evidence",
     )
     @classmethod
     def _clean_items(cls, values: tuple[str, ...]) -> tuple[str, ...]:
@@ -86,12 +93,16 @@ class DiscoveryHypothesisEngine:
         observations: Iterable[Mapping[str, Any]] = (),
         attack_graph: Iterable[Mapping[str, Any]] = (),
         prior_hypotheses: Iterable[DiscoveryHypothesis] = (),
+        historical_evidence: Iterable[Mapping[str, Any]] = (),
+        previous_failures: Iterable[Mapping[str, Any]] = (),
     ) -> tuple[DiscoveryHypothesis, ...]:
         if not isinstance(world_model, SecurityWorldModel):
             raise TypeError("security_world_model_required")
         prior_ids = {item.hypothesis_id for item in prior_hypotheses}
         graph = tuple(self._redacted_mapping(item) for item in attack_graph)
         observed = tuple(self._redacted_mapping(item) for item in observations)
+        history = tuple(self._redacted_mapping(item) for item in historical_evidence)
+        failures = tuple(self._redacted_mapping(item) for item in previous_failures)
         generated: list[DiscoveryHypothesis] = []
         for invariant in world_model.invariants:
             related_deviation = any(
@@ -104,15 +115,6 @@ class DiscoveryHypothesisEngine:
                 and behaviour.status.value == "deviation"
                 for behaviour in world_model.behaviours
             )
-            graph_hint = next(
-                (
-                    item
-                    for item in graph
-                    if str(item.get("asset", item.get("resource", "")))
-                    == invariant.protected_resource
-                ),
-                {},
-            )
             condition = (
                 f"{invariant.statement} is false for a subject outside the allowed "
                 "condition under a controlled candidate/control comparison."
@@ -121,6 +123,28 @@ class DiscoveryHypothesisEngine:
                 target_id=world_model.target_id,
                 asset=invariant.protected_resource,
                 condition=condition,
+            )
+            supporting = self._evidence_for_asset(
+                history, invariant.protected_resource, positive=True
+            )
+            contradicting = self._evidence_for_asset(
+                history, invariant.protected_resource, positive=False
+            )
+            failed_paths = sum(
+                1
+                for item in failures
+                if str(item.get("hypothesis_id", "")) == hypothesis_id
+                or str(item.get("asset", item.get("protected_resource", "")))
+                == invariant.protected_resource
+            )
+            graph_hint = next(
+                (
+                    item
+                    for item in graph
+                    if str(item.get("asset", item.get("resource", "")))
+                    == invariant.protected_resource
+                ),
+                {},
             )
             if hypothesis_id in prior_ids:
                 continue
@@ -134,9 +158,25 @@ class DiscoveryHypothesisEngine:
                 "candidate/control comparison and causal validation are required",
             )
             confidence = min(
-                0.9, invariant.lineage.confidence + (0.15 if related_deviation else 0.0)
+                0.95,
+                invariant.lineage.confidence
+                + (0.15 if related_deviation else 0.0)
+                + min(0.1, 0.02 * len(supporting)),
             )
-            novelty = 0.85 if related_deviation else 0.7
+            novelty = max(0.0, min(1.0, (0.85 if related_deviation else 0.7) - 0.08 * failed_paths))
+            expected_impact = self._impact_for_kind(invariant.kind.value)
+            validation_cost = max(1, int(graph_hint.get("validation_cost", 3)))
+            priority_score = max(
+                0.0,
+                min(
+                    1.0,
+                    0.35 * novelty
+                    + 0.3 * confidence
+                    + 0.25 * expected_impact
+                    + 0.1 * (1.0 / (1.0 + validation_cost))
+                    - min(0.25, 0.04 * failed_paths),
+                ),
+            )
             generated.append(
                 DiscoveryHypothesis(
                     hypothesis_id=hypothesis_id,
@@ -162,9 +202,50 @@ class DiscoveryHypothesisEngine:
                     required_capabilities=(capability,),
                     novelty_score=novelty,
                     confidence=confidence,
+                    expected_impact=expected_impact,
+                    validation_cost=validation_cost,
+                    supporting_evidence=supporting,
+                    contradicting_evidence=contradicting,
+                    priority_score=priority_score,
                 )
             )
-        return tuple(sorted(generated, key=lambda item: (-item.novelty_score, item.hypothesis_id)))
+        return tuple(
+            sorted(
+                generated,
+                key=lambda item: (
+                    -item.priority_score,
+                    -item.novelty_score,
+                    item.hypothesis_id,
+                ),
+            )
+        )
+
+    @staticmethod
+    def _evidence_for_asset(
+        evidence: tuple[dict[str, Any], ...], asset: str, *, positive: bool
+    ) -> tuple[str, ...]:
+        refs: list[str] = []
+        for item in evidence:
+            item_asset = str(item.get("asset", item.get("protected_resource", "")))
+            if item_asset != asset:
+                continue
+            outcome = str(item.get("outcome", item.get("status", ""))).lower()
+            is_positive = outcome in {"evidence", "supported", "confirmed", "success"}
+            if is_positive == positive:
+                ref = str(item.get("evidence_ref", item.get("source_ref", ""))).strip()
+                if ref:
+                    refs.append(ref[:240])
+        return tuple(dict.fromkeys(refs))[:32]
+
+    @staticmethod
+    def _impact_for_kind(kind: str) -> float:
+        return {
+            "transaction": 0.95,
+            "ownership": 0.9,
+            "role_boundary": 0.85,
+            "workflow": 0.8,
+            "data_flow": 0.75,
+        }.get(kind, 0.5)
 
     @staticmethod
     def _vulnerability_class(kind: str) -> str:

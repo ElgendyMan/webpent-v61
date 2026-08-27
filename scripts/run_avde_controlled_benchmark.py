@@ -12,6 +12,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from benchmarks.adi_multistep_controlled import (
+    build_chain_inventory,
+    compute_adi_efficiency_metrics,
+)
 from benchmarks.avde_multiclass_controlled import (
     CANONICAL_CLASSES,
     build_class_inventory,
@@ -79,7 +83,9 @@ def evaluate(source: dict[str, Any]) -> dict[str, Any]:
         sum(int(case.get("rank", 0)) for case in scorable) / len(scorable) if scorable else None
     )
     inventory = build_class_inventory(mapping_cases)
+    adi_inventory = build_chain_inventory(mapping_cases)
     internal_metrics = compute_internal_metrics(mapping_cases, inventory)
+    adi_metrics = compute_adi_efficiency_metrics(mapping_cases, adi_inventory)
     return {
         "schema_version": "avde-controlled-benchmark-v2",
         "source_schema_version": source.get("schema_version"),
@@ -110,6 +116,8 @@ def evaluate(source: dict[str, Any]) -> dict[str, Any]:
             "average_selected_rank": average_rank,
             "requests_used_for_scorable_cases": requests_used,
             "duplicate_case_ids_detected": duplicate_ids,
+            "adi_chain_inventory": list(adi_inventory),
+            "adi_efficiency_metrics": adi_metrics,
             **internal_metrics,
         },
         "case_disposition": {
