@@ -1,0 +1,70 @@
+{
+  "artifact_id": "ABHIE-v4-gate-summary",
+  "generated_at_utc": "2026-08-27T22:20:14Z",
+  "source_head_before_release_commit": "6becbd9390f87de420178186f147064ec34e5f53",
+  "focused_tests": {
+    "command": "PYTHONPATH=src:.:integrations/bbscout/src pytest -q tests/test_abhie_v4.py tests/test_abhie_benchmark.py",
+    "passed": 11,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2152,
+    "failed": 7,
+    "status": "KNOWN_BLOCKERS_NOT_GREEN",
+    "failures": [
+      "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+      "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+    ],
+    "classification": "known_non_abhie_blockers; no ABHIE-focused failure observed",
+    "source_evidence_blocker": "/tmp/juice-shop-source/data/static/challenges.yml is missing"
+  },
+  "static_gates": {
+    "scoped_ruff": "PASS",
+    "compileall": "PASS",
+    "import_smoke": "PASS",
+    "generic_target_neutrality": "PASS",
+    "tracked_secret_scan": "PASS",
+    "direct_io_inventory": "PASS; 377 records",
+    "g02_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "benchmark": {
+    "registered_classes": 6,
+    "scorable_classes": 1,
+    "blocked_classes": 5,
+    "scorable_recorded_cases": 1,
+    "scorable_case_ids": ["controlled.idor.owner_resource.v1"],
+    "blocked_classes_list": [
+      "privilege_escalation",
+      "business_logic_authorization_failure",
+      "tenant_isolation",
+      "workflow_abuse",
+      "sensitive_information_exposure"
+    ],
+    "requests_sent": 0,
+    "credentials_used": false,
+    "mutations_performed": false,
+    "external_targets_contacted": false,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "real_world_detection_rate": null,
+    "quality_claim": "recorded_evidence_coverage_only"
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "p10_status": "NOT_QUALIFIED",
+    "p9_status": "NOT_QUALIFIED",
+    "vip_status": "NOT_QUALIFIED",
+    "bug_bounty_status": "BLOCKED",
+    "human_signoff": false,
+    "qualification_effect": false
+  }
+}

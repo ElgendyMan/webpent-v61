@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 306,
+    "dynamic_records": 308,
     "raw_or_boundary_records": 69,
-    "record_count": 375,
+    "record_count": 377,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -855,6 +855,32 @@
       "kind": "dynamic_resolution",
       "line": 178,
       "normalized_symbol": "getattr(coverage, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 12,
+      "file": "src/webpent/abhie/boundaries.py",
+      "kind": "dynamic_resolution",
+      "line": 16,
+      "normalized_symbol": "getattr(value, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 12,
+      "file": "src/webpent/abhie/brain.py",
+      "kind": "dynamic_resolution",
+      "line": 20,
+      "normalized_symbol": "getattr(value, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",
