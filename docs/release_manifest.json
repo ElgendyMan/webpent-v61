@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1192,
+  "file_count": 1196,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -394,6 +394,8 @@
     "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OPTION-B-OWNER-APPROVAL-IMPORT-v1.json": "71b696f70b8c0d0db1191756819caba52d6d3cb4b8d26a9adcf6e7b4399f18dd",
     "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OWNER-DECISION-PACKET-v1.json": "e16a16b0dfaaba38b5d0c5f72b5a7fee405a12ce4ba00f91fc3df48d54a3b04c",
     "reports/evaluation/owner_decision/LOCAL-CAUSAL-LAB-OWNER-DECISION-PACKET-v1.md": "282b1f49fd30f1c01aa2ce13c24f3313be1e83ab3ad001d3357771f0cb6e446d",
+    "reports/evaluation/owner_decision/TARGET-LIVE-FIXTURE-SESSION-INJECTION-OWNER-DECISION-PACKET-v1.json": "4f9bf24b75a4d901ce8853c865c82344b9700b71e210a3cf4edbdef2bfccac34",
+    "reports/evaluation/owner_decision/TARGET-LIVE-FIXTURE-SESSION-INJECTION-OWNER-DECISION-PACKET-v1.md": "d3953d3ca7c07d924e47ad8a9ab018d3543bce1e63874b6ec1bc73d3df6fd2c4",
     "reports/evaluation/p10_candidates/CANDIDATE-01-vulnerable-components-diagnosis-and-oracle-proposal-v1.md": "69c87bf66690fc238decb5509c129dff56782388651e3380529050c8ffd95478",
     "reports/evaluation/p10_candidates/CANDIDATE-02-sql-injection-diagnosis-and-oracle-proposal-v1.md": "39b422edd7ea0a35a2612b3cc4c32d70ea756ed28ca8a9f97e8317afe5f74cc6",
     "reports/evaluation/p10_candidates/CANDIDATE-03-broken-access-control-diagnosis-and-oracle-proposal-v1.md": "ba8f1117acf68341f074559cfb8f5f82811de9e4526e78e1509e15e3b158e9fb",
@@ -474,6 +476,7 @@
     "scripts/check_scoring_readiness_packages.py": "5642d14ea396a78ab1e2cb84f9f38f9fb634efc893b2232f2705063b55e0828a",
     "scripts/check_source_backed_candidate_inventory.py": "b1a9a8be204a576cc6f4c196cf2c3c5ed601afa09c22d1f83aeaf4ffc3159eff",
     "scripts/check_target_adapter_review_packet.py": "2abbc4571c534b3e2cb2d2889d29137e045c23e8f34b92410b873c672f3db86f",
+    "scripts/check_target_live_fixture_session_injection_packet.py": "0065827af9531685289e5a518adaefd5642b98d92b4beba4da75d1a06d1f3ef6",
     "scripts/check_tracked_secrets.py": "4183bf0acdc57f062e9e3d03e3176a81031bbf7394e93e2eeb8659d71abb04c4",
     "scripts/compare_waptlab_matrix_runs.py": "a4f55bea6675e50585270f43964848c54de7998e7ac41c93ada898e27529162b",
     "scripts/doctor.py": "7ebcb9e6aca6f5527626d8ffa3990558857fa7aa5448894ecf6b17c0d018c478",
@@ -1057,6 +1060,7 @@
     "tests/test_target_backed_differential.py": "f6e79233e679c0ec6817e5ca07a515aa0d58d3a1ad9b1a4b0717c5bfe62f4dc5",
     "tests/test_target_brain.py": "64df8c02aa685fedd5f9c61bc31666d2031b5b0d922affdb3527839349f4ad9b",
     "tests/test_target_isolation.py": "5694e8018ad018c3dc873fd892a111a368fd0b6c6cadf57abdab1937664d4602",
+    "tests/test_target_live_fixture_session_injection_packet.py": "90390df9c5a688ef597bb869ed0e8a4abddc47ac3328581345151c59c159cb8b",
     "tests/test_target_package_integration.py": "6de7ac36121cf7f77824ce9c7e78093f3d3b27a36a8ea033e37b4ef5bd989611",
     "tests/test_target_package_v2_hardening.py": "e00b8a616ed79a4713fb9d9b3be84593665f38767179642a059e967d8fb1f815",
     "tests/test_target_spec_contract.py": "ffb0af17b1f7ab8ebf33a1d2a254cc275e41672aa07b6b9fcd607cb6ca2ce507",
@@ -1204,9 +1208,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T10:46:19.428082+00:00",
-  "git_commit": "6aad6a12074763f36df71cc77b0de64c3521c15b",
-  "git_tree": "e5333b66bf16c11a8a75de39416471b56a083aa6",
+  "generated_at": "2026-08-27T11:58:39.762742+00:00",
+  "git_commit": "9dbf2e726d0165a44936560fab6e182658fa1270",
+  "git_tree": "a65f38f5d39b81e2dfd135b2567468b934dab0d7",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
