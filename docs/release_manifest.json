@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1118,
+  "file_count": 1119,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -376,6 +376,7 @@
     "pip-audit-v63-locked.json": "37f9acb25013d4aa95afd36af65dfb9619480692c45b46b38f96ef63d9a4cee7",
     "pyproject.toml": "32734f7622bb4233d93f569fb991b4a6b7ba067e948cb73f1e12a65a47b2e428",
     "reports/evaluation/JUICE-SHOP-P10-COVERAGE-GAP-EXECUTION-v1.md": "2e97ad5828d385f174dab7003a4c2fe7da2cbb5e2d96dcd5b6b3685284645814",
+    "reports/evaluation/JUICE-SHOP-P10-COVERAGE-GAP-EXECUTION-v2.md": "b262e51c4af1b519faa30e7f45d5caf5b3e523ee82e9ede04da94c0975165d2b",
     "reports/evaluation/JUICE-SHOP-P10-expansion-feasibility-v1.md": "dd8a6aefbb557852ab1cd5c212c14f0dd57f3a075e53145526785efcd2156554",
     "reports/evaluation/JUICE-SHOP-unscored-case-decisions-v1.md": "ee04d6dc7bcef58b187478821d44a9feb3148b553f634b5e9a771dd1821d5a27",
     "reports/evaluation/WEBPENT-runbook-execution-v1.md": "b1942313a9da3c8211968caeebbeede302cc6218537910ea9cf4dbf50bcc1e85",
@@ -1130,9 +1131,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T01:51:19.434128+00:00",
-  "git_commit": "f06af2253f3aee28efb83e23d2fda50134b33fff",
-  "git_tree": "14a0de5784bbb9ced984861b337f6ec221571ac0",
+  "generated_at": "2026-08-27T01:54:40.991724+00:00",
+  "git_commit": "815ec7350fe4be5e45c6787bd12f00240185d908",
+  "git_tree": "6b23476b547aeb0aae932dad9b2cfd72ca6b6fd8",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
