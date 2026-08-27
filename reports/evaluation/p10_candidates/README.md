@@ -12,6 +12,8 @@ This directory contains the diagnosis and oracle-contract proposal for every can
 | SQL injection read-only probe | Injection | Causal query influence requires crafted input outside the current no-payload contract | Blocked; no safe contract | No |
 | Broken access control state boundary | Broken Access Control | Controlled identity/ownership boundary and safe reset are absent | Blocked; precondition or mutation required | No |
 | Sensitive document static resource | Sensitive Data Exposure | Exact runtime mapping and sensitivity predicate are not proven; reachability is insufficient | Blocked pending mapping/oracle review | No |
+| Permissive CORS and limited security middleware | Security Misconfiguration | Source configuration does not prove an unauthorized sensitive cross-origin read or browser security impact | Blocked pending causal predicate and authorized control | No |
+| Redirect allowlist boundary | Unvalidated Redirects | Source route semantics are visible, but causal proof needs a controlled destination outside the current local-only boundary | Blocked pending safe destination oracle | No |
 
 ## Required gates for any future promotion
 
@@ -21,7 +23,7 @@ A candidate may be promoted only after an independent mapping and oracle decisio
 
 No candidate in this directory is promoted. No candidate changes the approved set, the case count, the class count, the scoring denominator, or the Official P10 run gate. The current approved set remains 3 cases / 3 classes and the theoretical gap remains 7 cases / 3 classes.
 
-The SQL injection and broken-access-control tracks are not executed because doing so would require payloads, credentials, cross-user identity, bypass, or mutation outside the authorized local read-only scope. The static-resource tracks are not executed because source presence or route reachability alone cannot satisfy a semantic vulnerability oracle.
+The SQL injection and broken-access-control tracks are not executed because doing so would require payloads, credentials, cross-user identity, bypass, or mutation outside the authorized local read-only scope. The static-resource tracks are not executed because source presence or route reachability alone cannot satisfy a semantic vulnerability oracle. The additional CORS/header and redirect surfaces were analyzed from source metadata only and remain blocked because no approved causal predicate and safe control exist within the current scope.
 
 ## Evidence handling
 
@@ -37,3 +39,4 @@ Each document contains a reviewer decision field. It must be completed by a real
 - `CANDIDATE-02-sql-injection-diagnosis-and-oracle-proposal-v1.md`
 - `CANDIDATE-03-broken-access-control-diagnosis-and-oracle-proposal-v1.md`
 - `CANDIDATE-04-sensitive-document-diagnosis-and-oracle-proposal-v1.md`
+- `JUICE-SHOP-ADDITIONAL-CANDIDATES-ANALYSIS-v1.md`
