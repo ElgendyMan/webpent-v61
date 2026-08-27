@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1111,
+  "file_count": 1114,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -221,7 +221,7 @@
     "docs/integration/vip_gap_analysis_20260822.md": "e6fce61e0f6a3825c8e8c5aafc58b82411495b1b3016a1455e6436172b05a56f",
     "docs/integration_decision_matrix.md": "53286abc9676678126eca7ba60916bf695384e8d78846337c6efd2d0869a3eba",
     "docs/juice_shop_execution_evidence.json": "993360a11479c19c53354cb4e61bfff92598d851e79ccedb2fe02c2ebbef5adb",
-    "docs/juice_shop_governance_decision_v1.json": "d873c0a25c6b496db167f5f654afce7dcd3ba5ccd733f49efbb96202fd4423cb",
+    "docs/juice_shop_governance_decision_v1.json": "1dab1e6ede3b7e5d8884c435466757a07ff8c3cecd8680e2a2d80ad4753eb759",
     "docs/juice_shop_loopback_runtime_manifest_v1.json": "cbe1c85fe8e7393449595d59de03d84cb45692f020709d30f4516e9c8995a524",
     "docs/juice_shop_oracle_semantics_review_v1.md": "cb4fe0a8f996955760c97ee03e79f09f55b0f4040d18d902aa1d92bfb2b9388b",
     "docs/juice_shop_p10_evaluation_v1.json": "1053dd7ad55343a104b29b5eac046b15d35281ed3b1f63f47668b57275a051c3",
@@ -405,7 +405,8 @@
     "scripts/build_plan4_traceability.py": "4954c3869a81a7015adeeff5e75381e9bc0e971b770e88b4f93d9c6ac9c3adb3",
     "scripts/build_preflight_report.py": "d4067d930977db7c9ba21976d8b56b61345d501ed5a157a8c8e9a8e1c76d8444",
     "scripts/build_python_environment_inventory.py": "3115e56d626bec64bbafdb7f2b6a1b196b87488f50825363eacb88d070650b84",
-    "scripts/build_release_manifest.py": "6cb9f69f4d2d4058e0844503350bf267fe02f64245445c0faf917af9f0d87ac4",
+    "scripts/build_release_manifest.py": "61bbf712fa6a76c5bcd7ee1813e4ce3becfd4f9b138f199267f63ab118f91410",
+    "scripts/build_release_manifest_provenance.py": "72c5ef6afd78686b1415dc1e6c453010d7361da9990b336717886a3671c01a90",
     "scripts/build_source_archive.py": "e8b809097f733f9c609ba65ad4de43ea457647191c7b5841320d1fc12fd2f2da",
     "scripts/build_superagentic_scorecard.py": "2d6454046b29d72c6d6d960f52f1744c152eb6d32bdbb76330a5cb4d67d25f10",
     "scripts/build_waptlab_coverage_ledger.py": "0ab44105f52b65a1c074e2220f33fa56e2553f78201d20ba16c14b893087c1d3",
@@ -416,6 +417,7 @@
     "scripts/check_generic_target_neutrality.py": "06447471f494fe58a3cc7560caf1cb56a3c85efbe044a710db02280aa15db932",
     "scripts/check_juice_shop_governance_packet.py": "787c5ae8d36081d492e20efd34b9639bbb6fdc78ecba4fffb93f1aca9710b35c",
     "scripts/check_juice_shop_p10_expansion_plan.py": "dded2ec80355896254177664c7226090c16b88dcef999c71f517b8ceeecb74ce",
+    "scripts/check_release_manifest_provenance.py": "1b89f455b58d7d6629836d5e822d83f74b6de6a3f7c8fc08aa83c6635c3dc1f2",
     "scripts/check_target_adapter_review_packet.py": "2abbc4571c534b3e2cb2d2889d29137e045c23e8f34b92410b873c672f3db86f",
     "scripts/check_tracked_secrets.py": "4183bf0acdc57f062e9e3d03e3176a81031bbf7394e93e2eeb8659d71abb04c4",
     "scripts/compare_waptlab_matrix_runs.py": "a4f55bea6675e50585270f43964848c54de7998e7ac41c93ada898e27529162b",
@@ -944,6 +946,7 @@
     "tests/test_rag_knowledge_pack.py": "57af28896b5b82c0f2af8721c856723c4e2c6577b7e9e4857d6448039d08c255",
     "tests/test_reflection_no_llm.py": "c78c998ca827d763c904f3a7e32d8f9a0b61fde5d98a0465df41b2e309d7fd8a",
     "tests/test_release_artifact_audit.py": "e4edf03ce49088415ed9161a9e1db23adddb00322d5af3d91ce85c2ddc1a3e7d",
+    "tests/test_release_manifest_provenance.py": "462e0e43e925cb0e7b09ee7025d19b435f19eb9dcc874b93b5f2d72be95cefe9",
     "tests/test_release_manifest_qualification_scope.py": "f9f94ec4ded6b36eeddad232caea1466c77963a943511d488912abc5872d0c6e",
     "tests/test_report_hash_integrity.py": "efd6036b220cab86f6ffff13e2cdca3c319056119d5a9c9dd755a0edd2bce341",
     "tests/test_research_engine_core.py": "06f30acf0991d2a5176c35f7b174aaf10a3d3026b1a06b749a5a70ff4d0805d3",
@@ -1123,14 +1126,16 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-26T22:00:06.244278+00:00",
-  "git_commit": "783713797e7da14686335c8d94a0fdbbd3b3729a",
-  "git_tree": "3c0132d76cacb4ca4893e0986424ca5d65d9ab49",
+  "generated_at": "2026-08-27T01:32:57.129523+00:00",
+  "git_commit": "9a0427283278df72f60e132be81d759f081124c3",
+  "git_tree": "0a33a1be0746929086e1cde8fd4863f033dacbd4",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
     "commit_and_tree_are_source_revision_evidence": true,
-    "manifest_path_excluded_from_file_hashes": true
+    "inventory_revision_relationship": "git_commit and git_tree identify the pre-manifest source revision; the release_manifest commit is recorded by the separate provenance sidecar",
+    "manifest_path_excluded_from_file_hashes": true,
+    "provenance_sidecar": "docs/release_manifest_provenance_v1.json"
   },
   "qualification": {
     "artifact": "waptlab_live_smoke_2cb9024.json",
@@ -1175,6 +1180,7 @@
       "lessons.db",
       "lessons.db.migration.lock",
       "plan_verification_summary.txt",
+      "release_manifest_provenance_v1.json",
       "webpent.db",
       "webpent.db.migration.lock"
     ],
