@@ -9,7 +9,7 @@
     "docs/waptlab_mock_reproducibility.json": "aea65866f909efc13dff6bb7be5458f9a101d41fb9e6abee85c0f88ebea62bcc",
     "docs/waptlab_regression.json": "9826debc140064e8f13c8e6b09a7ff5fafc6743bd7e05281d4e5f713f0094ca2"
   },
-  "file_count": 1148,
+  "file_count": 1149,
   "files": {
     ".dockerignore": "2d79cd61b9ecabb0f7a13c7856488d85709522569a6edaa17efe0bb8fb81d910",
     ".env.example": "31873180948017a6f23d45db349e55f9ebc4758d73635ff2a70d21588994a10b",
@@ -404,6 +404,7 @@
     "reports/evaluation/vip_vertical_slice/VIP-MULTI-TARGET-LOCAL-MANIFEST-v1.json": "a566f5b077d5ccab10696b421f905942dd468b83eb6051d6cc6fa3d02d210ad0",
     "reports/evaluation/vip_vertical_slice/VIP-MULTI-TARGET-OBSERVATION-ONLY-BEFORE-AFTER-v1.md": "5a1b9839594fa10b416dd7dab0d12341a1df086df41d8bc430c4c7cad7c81a1a",
     "reports/evaluation/vip_vertical_slice/VIP-MULTI-TARGET-QUALITY-PORTABILITY-GAPS-v1.md": "2a7de817b6926a5fa2844d537a9a2d3d6f4d3960ef6c31719955b6c08c56446c",
+    "reports/evaluation/vip_vertical_slice/VIP-REAL-LOCAL-AUTONOMOUS-VALIDATION-FINAL-AUDIT-v1.md": "828f5adc4c70bac1f67b71ed5252337ffadcaf235dddcf121f7fe21598126635",
     "reports/failures/MOCK-FN-001.md": "bf030d83a60357897a3ab51335c5632362ed6dad20910058bdbad81597c9e187",
     "reports/improvements/JUICE-SHOP-ACCESS-LOG-001_comparison.md": "3bc28efdedd6a54d86dfe0a1a0f78d52802ad92dd5458a32d1a9d6461ea62417",
     "reports/improvements/JUICE-SHOP-ACCESS-LOG-001_proposal.md": "594890931f3807a3c41fcf79278f793bf99a2fd542283f65dec6d282c38fc3be",
@@ -1160,9 +1161,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-27T05:48:57.479496+00:00",
-  "git_commit": "e2e3e445d04a9ffb9ecd38c5724e6111306979a3",
-  "git_tree": "ed46af78903056f386ea5a9ddda9c2a1f0c5a7aa",
+  "generated_at": "2026-08-27T05:52:26.597575+00:00",
+  "git_commit": "8ebbe0fdb4f939dbdda42f176e371a385ed7b4a5",
+  "git_tree": "4104e1b28931d317991c88d9b2589271154bea54",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
