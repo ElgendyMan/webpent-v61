@@ -4,7 +4,7 @@
     "frozen_semantics": "legacy /ftp/access.log mapping",
     "paths_match": false,
     "required_action": "Independent reviewer must decide whether to revise the frozen mapping in a separately governed change; this manifest does not revise it.",
-    "source_current_path": "/support/logs/access.log.2026-08-26",
+    "source_current_path": "/support/logs/access.log.2026-08-27",
     "source_semantics": "UTC-date-rotated /support/logs/access.log.<date>",
     "status": "mismatch_explicitly_preserved_for_independent_review"
   },
@@ -52,7 +52,7 @@
     "mapping_approved_case_count": 11,
     "oracle_approved_case_count": 3
   },
-  "generated_at_utc": "2026-08-26T20:39:16.359631+00:00",
+  "generated_at_utc": "2026-08-27T01:39:46.995609+00:00",
   "non_scoring_count_resolution": {
     "blocked_and_out_of_scope_are_not_fn": true,
     "engineering_reviewed_non_scoring_case_count": 8,
@@ -93,8 +93,8 @@
     "frozen_ground_truth_was_not_modified": true,
     "oracle_registry_module": "src/webpent/adapters/juice_shop/oracles.py",
     "source_registry_module": "src/webpent/profiles/juice_shop/cases.py",
-    "webpent_git_commit": "88991a96d2f02d98aa652bc452ad33bf30b17615",
-    "webpent_git_tree": "74f1f9730fd8f58b9d3349347319824321d6767e"
+    "webpent_git_commit": "c63f2d7def0ab3857db1366e6d596f4a52bb2a9f",
+    "webpent_git_tree": "78ad98369ced8e473098d21334e01bb311a9be93"
   },
   "safety": {
     "official_isolated_p10_runs_authorized": false,
@@ -103,10 +103,6 @@
     "target_origin": "http://127.0.0.1:3000"
   },
   "schema_version": "juice_shop.source_to_ground_truth_manifest.v1",
-  "snapshot_input": {
-    "path": "audit/juice_shop_ground_truth_snapshot_v1.json",
-    "sha256": "sha256:4bc02c4664aa06230b6617085134ba12080e99767f457c82ddd917c48f471963"
-  },
   "source_registry": {
     "case_count": 13,
     "case_ids": [
@@ -124,8 +120,10 @@
       "juice.security_policy.v1",
       "juice.well_known_security_policy.v1"
     ],
-    "mapping_sha256": "sha256:db72b2b70ab3b05ef5d93f82376d21c69b10058f3cac026ee2f60bf45c51069a",
+    "mapping_hash_semantics": "canonical target-local mapping identity; date-rotated access-log runtime path is normalized to /support/logs/access.log.<UTC-date>",
+    "mapping_sha256": "sha256:825cd6a96d35ddf117fb1ad4fa3af12dc85345bb6c03c79205816ffff3225436",
     "oracle_contract_sha256": "sha256:63977f8451f0709abff5671d1ac24943abe35b0bb0a4f399791e2c1f66aeb71c",
+    "runtime_mapping_sha256": "sha256:d3dcdd42e8619355714147d4c0ea96a7166ebfc9d63a10585af5dd9a685286a1",
     "safe_case_count": 11
   }
 }
