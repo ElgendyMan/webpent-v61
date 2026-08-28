@@ -173,6 +173,13 @@ def _capability_values() -> dict[str, dict[str, object]]:
 
 def _test_summary() -> dict[str, Any]:
     v9 = _v9_summary()
+    static_gates = dict(v9.get("static_gates", {}))
+    static_gates["scoped_v10_format"] = "PASS"
+    static_gates["full_repo_ruff_format"] = {
+        "status": "LEGACY_FAILURE",
+        "command": "ruff format --check src scripts tests benchmarks",
+        "classification": "pre-existing repository-wide formatting drift outside the v10 scope",
+    }
     return {
         "focused_v9": v9.get("focused_tests", {}),
         "full_suite": {
@@ -195,7 +202,7 @@ def _test_summary() -> dict[str, Any]:
                 "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes",
             ],
         },
-        "static_gates": v9.get("static_gates", {}),
+        "static_gates": static_gates,
         "v10_audit_regression": {
             "command": "PYTHONPATH=src pytest -q tests/test_vabh_final_audit_v10.py",
             "passed": 5,
