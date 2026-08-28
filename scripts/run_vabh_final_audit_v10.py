@@ -302,8 +302,9 @@ def _write_markdown(report: dict[str, Any], scorecard: dict[str, Any]) -> None:
                 f"{report['test_summary']['full_suite'].get('failed', 'unknown')} failed`; "
                 "failures remain explicitly classified as legacy blockers. The v10 audit "
                 f"regression has `{report['test_summary']['v10_audit_regression']['passed']} "
-                "passed`. Static gates are retained in the v9 gate summary and must be "
-                "rerun after source changes."
+                "passed`. Scoped v10 Ruff/format, compile, import, neutrality, secret, "
+                "direct-I/O, G-02, and release gates passed; the repo-wide Ruff format "
+                "check remains a pre-existing legacy failure outside the v10 scope."
             ),
             "",
             "## Benchmark results",
