@@ -61,7 +61,7 @@
 |---|---|
 | Core/v9 focused regression | `32 passed` |
 | v10 audit regression | `5 passed` |
-| Full regression | `2223 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
+| Full regression | `2224 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
 | Scoped Ruff check | `PASS` |
 | Scoped v10 format | `PASS` |
 | compileall | `PASS` |

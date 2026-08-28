@@ -69,7 +69,7 @@
 | Gate | Current result |
 |---|---|
 | Core/confirmation/decision/v9 focused suite | `32 passed` |
-| Full regression | `2223 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
+| Full regression | `2224 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
 | Scoped Ruff | `PASS` |
 | Scoped Ruff format | `PASS` |
 | G-02 direct-I/O inventory | `PASS`, 392 records |
