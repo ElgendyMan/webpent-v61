@@ -31,7 +31,7 @@
     "PHASE0_BASELINE_NOTES.md": "39e8585714f4c2b28408352a9b40a658782a57351b2bda33c06277074593eac4",
     "PROJECT_BASELINE_AR.md": "c3bdbcf819f532985edb0f043b1b29120d74cf3c727bb44affd15196730219d4",
     "RAG_KNOWLEDGE_PACK_NOTES.md": "0ef05f0d3be0c965930599599180f68c80148a3cc7d67b9913c41a1cbffd29d4",
-    "README.md": "ca814249f4d1ac7f826174f548e2af8066332e05192c97abc6a04dd1a273e634",
+    "README.md": "166e68e5d6b2e01dfefbed31b13e1a1f4be6f73d25fd2109e9f3583a1daf05d7",
     "REVIEW_REPORT_2026-08-15.md": "d18c9fc0f60aebd4ebda3900f0dffc8abd7cc4533c71b5809c847765432ab1bd",
     "V95_PHASE5_DELIVERY.md": "d9b2772a2e19d07de9f1f559854d2542f0c39e41d12c9844866bc0aa86719f9e",
     "WebPent_v60_Audit_Report_extracted.txt": "a365e9da5666a1ec0ccf914f76ca733b1ffea797bea07e34215a81e0a0ef8f4e",
@@ -1519,9 +1519,9 @@
     "webpent_archive_baseline.sha256": "de04b969170e1d79fb2883e033af2a03ec3c7a3572a63847664cec6ea4a519e6",
     "worker.py": "639bb06963a2c29a43b6729520f07c82f976a095ca321c6036382dbfffaf0b33"
   },
-  "generated_at": "2026-08-28T00:28:18.934234+00:00",
-  "git_commit": "11f6f7b3fd63e7cb4d8bbe828657180b8e30ce63",
-  "git_tree": "85b18ac4a05b9b26fb385ff030a3ce5cd2b0c5f7",
+  "generated_at": "2026-08-28T00:32:15.390877+00:00",
+  "git_commit": "a8f414fbb5f541c61e24d7710f099af7a75ad189",
+  "git_tree": "6976a43c7b3d0ed8a5a0fef3270237f7f89e65fc",
   "project": "WebPent",
   "provenance": {
     "archive_verification_method": "compare extracted archive tree/files to git archive of git_commit",
