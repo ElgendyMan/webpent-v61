@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **387**.
+Total records: **389**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -397,6 +397,8 @@ Total records: **387**.
 | `src/webpent/vabhfil_v8/contracts.py` | 76 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhfil_v8/contracts.py` | 293 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhfil_v8/utils.py` | 19 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhfqr_v9/contracts.py` | 102 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhfqr_v9/core.py` | 25 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 234 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 345 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

@@ -1,0 +1,59 @@
+{
+  "benchmark": {
+    "blocked_cases": 8,
+    "metrics": {
+      "f1": null,
+      "precision": null,
+      "recall": null
+    },
+    "registered_classes": 8,
+    "requests_sent": 0,
+    "scorable_cases": 0
+  },
+  "focused_tests": {
+    "command": "PYTHONPATH=src:. pytest -q tests/test_vabhfqr_v9.py",
+    "passed": 10,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+    "passed": 2202,
+    "failed": 7,
+    "status": "PASS_WITH_LEGACY_BLOCKERS",
+    "failure_classification": {
+      "option_b_approval_boundary": 4,
+      "runtime_or_source_attestation": 2,
+      "source_backed_fixture_missing": 1
+    },
+    "failures": [
+      "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+      "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+      "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+      "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+    ]
+  },
+  "static_gates": {
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "compileall": "PASS",
+    "import_smoke": "PASS",
+    "generic_target_neutrality": "PASS",
+    "tracked_secrets": "PASS",
+    "direct_io_scan": "PASS",
+    "direct_io_records": 389,
+    "g02_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "governance": {
+    "bug_bounty": "BLOCKED",
+    "human_signoff": false,
+    "official_isolated_p10_runs_authorized": false,
+    "p10_qualification": "NOT_QUALIFIED",
+    "vip_gate": "NOT_QUALIFIED"
+  },
+  "schema": "vabh-fqr-v9-gate-summary-v1"
+}
