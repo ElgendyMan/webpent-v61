@@ -272,6 +272,46 @@ class VIPReadinessAssessmentV9:
 
 
 @dataclass(frozen=True, slots=True)
+class UnifiedIntelligenceSnapshotV9:
+    """Proposal-only composition result for the generic research core."""
+
+    engagement_id: str
+    target_id: str
+    hypothesis_ids: tuple[str, ...]
+    hypothesis_classes: tuple[str, ...]
+    queue_task_ids: tuple[str, ...]
+    selected_task_id: str | None
+    decision_status: str
+    decision_stage: str
+    confirmation_posture: str
+    confirmation_score: float | None
+    engineering_confirmed: bool
+    scoring_eligible: bool
+    recommendations: tuple[str, ...]
+    requests_sent: int = 0
+    execution_allowed: bool = False
+    mutation_allowed: bool = False
+    finding_created: bool = False
+    qualification_effect: bool = False
+
+    def __post_init__(self) -> None:
+        if self.requests_sent != 0:
+            raise ValueError("unified_snapshot_must_send_zero_requests")
+        if (
+            self.execution_allowed
+            or self.mutation_allowed
+            or self.finding_created
+            or self.qualification_effect
+        ):
+            raise ValueError("unified_snapshot_cannot_execute_or_promote")
+        if self.confirmation_score is not None and not 0.0 <= self.confirmation_score <= 1.0:
+            raise ValueError("confirmation_score_out_of_range")
+
+    def digest(self) -> str:
+        return _hash(asdict(self))
+
+
+@dataclass(frozen=True, slots=True)
 class VABHFQRV9Result:
     engagement_id: str
     target_id: str
@@ -311,6 +351,7 @@ __all__ = [
     "SecurityArchitectureMapV9",
     "SecurityHypothesisV9",
     "V9Status",
+    "UnifiedIntelligenceSnapshotV9",
     "VABHFQRV9Result",
     "VIPBenchmarkCaseV9",
     "VIPReadinessAssessmentV9",

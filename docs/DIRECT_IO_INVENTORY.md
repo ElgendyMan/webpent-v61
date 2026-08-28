@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **389**.
+Total records: **392**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -252,6 +252,7 @@ Total records: **389**.
 | `src/webpent/shared/capability_manifest.py` | 145 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/causal_research.py` | 29 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/confidence.py` | 369 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/shared/confirmation_intelligence.py` | 94 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/control_plane_spine.py` | 194 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/differential_workflow.py` | 160 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/direct_io_inventory.py` | 543 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
@@ -398,7 +399,9 @@ Total records: **389**.
 | `src/webpent/vabhfil_v8/contracts.py` | 293 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhfil_v8/utils.py` | 19 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhfqr_v9/contracts.py` | 102 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
-| `src/webpent/vabhfqr_v9/core.py` | 25 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhfqr_v9/core.py` | 34 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhfqr_v9/core.py` | 316 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/vabhfqr_v9/core.py` | 320 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 74 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 234 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/vabhic_v7/contracts.py` | 345 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

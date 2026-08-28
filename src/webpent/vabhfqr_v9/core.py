@@ -3,6 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
+
+from webpent.attack_graph.engine import AttackGraph
+from webpent.knowledge.model_v2 import TargetKnowledgeV2
+from webpent.research.decision_loop import DecisionLoopContext, decide_next_step
+from webpent.research.hypothesis_generator import HypothesisGenerator
+from webpent.research.planner import ResearchPlanner
+from webpent.shared.confirmation_intelligence import evaluate_confirmation
 
 from .contracts import (
     EvidenceDisposition,
@@ -13,6 +21,7 @@ from .contracts import (
     ResearchMemorySnapshotV9,
     SecurityArchitectureMapV9,
     SecurityHypothesisV9,
+    UnifiedIntelligenceSnapshotV9,
     VABHFQRV9Result,
 )
 
@@ -190,6 +199,131 @@ class VABHFQRV9Core:
             evidence=evidence,
             memory_snapshot=snapshot,
             loop_steps=steps,
+        )
+
+    def build_unified_intelligence(
+        self,
+        *,
+        knowledge: TargetKnowledgeV2,
+        graph: AttackGraph,
+        engagement_id: str,
+        target_id: str,
+        available_capabilities: tuple[str, ...] = (),
+        scope_verified: bool = False,
+        policy_allows_proposal: bool = True,
+        remaining_budget: int = 0,
+        completed_steps: int = 0,
+        max_steps: int = 1,
+        attempted_task_ids: tuple[str, ...] = (),
+        attempted_hypothesis_ids: tuple[str, ...] = (),
+        completed_task_ids: tuple[str, ...] = (),
+        available_evidence: tuple[str, ...] = (),
+        required_evidence: tuple[str, ...] = (),
+        negative_control_complete: bool = False,
+        replay_verified: bool = False,
+        confirmation_contract: Any | None = None,
+        proof_bundle: Any | None = None,
+        evidence_payloads: tuple[Any, ...] = (),
+        negative_control_payload: Any = None,
+        replay_context: dict[str, Any] | None = None,
+    ) -> UnifiedIntelligenceSnapshotV9:
+        """Compose generic discovery, planning, decision, and confirmation.
+
+        The method consumes recorded knowledge/graph/evidence only.  It never
+        performs transport, mutates state, creates findings, or changes
+        qualification state.  Missing scope, evidence, controls, or replay
+        remain visible as blocked/replan decisions.
+        """
+        if not isinstance(knowledge, TargetKnowledgeV2) or not isinstance(graph, AttackGraph):
+            return UnifiedIntelligenceSnapshotV9(
+                engagement_id=engagement_id,
+                target_id=target_id,
+                hypothesis_ids=(),
+                hypothesis_classes=(),
+                queue_task_ids=(),
+                selected_task_id=None,
+                decision_status="blocked",
+                decision_stage="discovery",
+                confirmation_posture="not_evaluated",
+                confirmation_score=None,
+                engineering_confirmed=False,
+                scoring_eligible=False,
+                recommendations=("typed_recorded_knowledge_and_graph_required",),
+            )
+        hypotheses = HypothesisGenerator().generate(knowledge, graph)
+        capabilities = tuple(available_capabilities)
+        if not capabilities:
+            capabilities = tuple(sorted({str(item.required_capability) for item in hypotheses}))
+        planner = ResearchPlanner()
+        queue = planner.build_queue(
+            hypotheses,
+            engagement_id=engagement_id,
+            target_id=target_id,
+            available_capabilities=capabilities,
+            completed_task_ids=completed_task_ids,
+            attempted_hypothesis_ids=attempted_hypothesis_ids,
+        )
+        decision = decide_next_step(
+            queue,
+            DecisionLoopContext(
+                scope_verified=scope_verified,
+                policy_allows_proposal=policy_allows_proposal,
+                remaining_budget=remaining_budget,
+                attempted_task_ids=frozenset(attempted_task_ids),
+                available_evidence=frozenset(available_evidence),
+                required_evidence=frozenset(required_evidence),
+                negative_control_complete=negative_control_complete,
+                replay_verified=replay_verified,
+                max_steps=max_steps,
+                completed_steps=completed_steps,
+            ),
+        )
+
+        assessment = None
+        if confirmation_contract is not None:
+            assessment = evaluate_confirmation(
+                confirmation_contract,
+                proof_bundle=proof_bundle,
+                evidence_payloads=evidence_payloads,
+                negative_control_payload=negative_control_payload,
+                replay_context=replay_context,
+            )
+        posture = "not_evaluated"
+        score = None
+        engineering_confirmed = False
+        scoring_eligible = False
+        recommendations = list(decision.rationale)
+        missing_evidence = sorted(set(required_evidence).difference(available_evidence))
+        recommendations.extend(missing_evidence)
+        if assessment is not None:
+            posture_value = (
+                assessment.posture.value
+                if hasattr(assessment.posture, "value")
+                else assessment.posture
+            )
+            posture = str(posture_value)
+            score = float(assessment.score)
+            engineering_confirmed = posture == "engineering_confirmed"
+            scoring_eligible = bool(assessment.scoring_eligible)
+            recommendations.extend(assessment.missing)
+            recommendations.extend(assessment.reasons)
+        recommendations = tuple(dict.fromkeys(str(item) for item in recommendations))
+        return UnifiedIntelligenceSnapshotV9(
+            engagement_id=engagement_id,
+            target_id=target_id,
+            hypothesis_ids=tuple(str(item.id) for item in hypotheses),
+            hypothesis_classes=tuple(
+                str(getattr(item.vuln_class, "value", item.vuln_class)) for item in hypotheses
+            ),
+            queue_task_ids=tuple(str(item.task_id) for item in queue.tasks),
+            selected_task_id=decision.selected_task_id,
+            decision_status=str(getattr(decision.status, "value", decision.status)),
+            decision_stage=decision.stage,
+            confirmation_posture=posture,
+            confirmation_score=score,
+            engineering_confirmed=engineering_confirmed,
+            scoring_eligible=scoring_eligible,
+            recommendations=recommendations,
         )
 
     @staticmethod

@@ -484,9 +484,9 @@
     }
   ],
   "coverage": {
-    "dynamic_records": 320,
+    "dynamic_records": 323,
     "raw_or_boundary_records": 69,
-    "record_count": 389,
+    "record_count": 392,
     "unapproved_records": 0,
     "unknown_family_records": 49
   },
@@ -3541,6 +3541,19 @@
     {
       "approval_status": "not_applicable",
       "classification": "dynamic_resolution",
+      "column": 14,
+      "file": "src/webpent/shared/confirmation_intelligence.py",
+      "kind": "dynamic_resolution",
+      "line": 94,
+      "normalized_symbol": "getattr(value, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
       "column": 17,
       "file": "src/webpent/shared/control_plane_spine.py",
       "kind": "dynamic_resolution",
@@ -5442,8 +5455,34 @@
       "column": 20,
       "file": "src/webpent/vabhfqr_v9/core.py",
       "kind": "dynamic_resolution",
-      "line": 25,
+      "line": 34,
       "normalized_symbol": "getattr(source, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 21,
+      "file": "src/webpent/vabhfqr_v9/core.py",
+      "kind": "dynamic_resolution",
+      "line": 316,
+      "normalized_symbol": "getattr(item.vuln_class, ... )",
+      "reason": "dynamic attribute access observed without a transport signal",
+      "symbol": "getattr",
+      "transport": "dynamic_resolution",
+      "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "not_applicable",
+      "classification": "dynamic_resolution",
+      "column": 33,
+      "file": "src/webpent/vabhfqr_v9/core.py",
+      "kind": "dynamic_resolution",
+      "line": 320,
+      "normalized_symbol": "getattr(decision.status, ... )",
       "reason": "dynamic attribute access observed without a transport signal",
       "symbol": "getattr",
       "transport": "dynamic_resolution",
