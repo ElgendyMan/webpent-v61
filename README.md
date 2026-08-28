@@ -2,60 +2,54 @@
 
 **WebPent** هو إطار Python لاختبار اختراق تطبيقات الويب داخل نطاق مصرح ومحدد. يفصل التصميم بين الملاحظة والفرضية والتنفيذ والدليل والـFinding، ويستخدم `TargetSpec` وscope enforcement و`ActionAuthority` وidentity isolation و`ProofBundle` وredaction وreplay لضمان أن النتائج القابلة للتقرير مدعومة بأدلة قابلة للتحقق.
 
-> **الحالة الحالية:** WebPent أصبح **Evidence-Aware Bounded Autonomous Bug-Hunting Framework** مع Generic Target Context Layer قابلة لإعادة الاستخدام. ما زال **ليس VIP Smart Autonomous Bug Hunter**، وليس P10 Qualified أو P9 Qualified. هذه الوثيقة تميز بوضوح بين تقدم الهندسة وبين إثبات جودة الكشف على أهداف حية.
+> **الحالة الحالية:** WebPent هو منصة **Engineering-complete bounded autonomous bug-hunting** جاهزة لتقييم qualification رسمي لاحقًا ضمن نطاق offline/advisory/fail-closed. ما زال **ليس VIP Smart Autonomous Bug Hunter مؤهلًا**، وليس P10 أو P9 Qualified.
 
 > **تنبيه قانوني وتشغيلي:** استخدم WebPent فقط على أنظمة تملكها أو لديك تصريح كتابي لاختبارها. لا تستخدمه على أهداف عامة أو Bug Bounty أو أنظمة طرف ثالث دون تفويض صريح. الإعدادات الآمنة تمنع credential use وauto-submission وstate-changing actions وexternal callbacks افتراضيًا.
 
 ## الحالة الحالية باختصار
 
-آخر commit منشور للكود هو `618ab5e87ff702150396906de4c5781b40d439b5`، وهو مطابق لـ`origin/master`. هذه النسخة من README وتقرير التقييم هما تغييرا توثيق محليان سيُثبتان في commit مستقل قبل التسليم. أحدث milestone أضاف طبقة عامة لإدارة Target Context وsynthetic session metadata وdisposable fixtures وsnapshot/restore وcapability leases، وربطها اختياريًا بـ`CampaignExecutor` مع الحفاظ على backward compatibility. تم اختبار نفس دورة lifecycle عبر Mock وJuice Shop وWebGoat وcrAPI offline، ولم تُعتبر حالات target-live غير الحاسمة نجاحًا أو فشلًا في الكشف.
+أُجري **VABH Final Audit v10** على source وtests وbenchmarks وreports وdocumentation وartifacts وrelease controls وCI workflows. التدقيق والإصلاحات المحلية لا ترسل requests، ولا تستخدم credentials، ولا تشغّل target، ولا تفتح qualification gate. تم نقل workflow القديم الذي كان يشغّل WAPTLab خارجيًا بجدولة و`--auto-approve` إلى `docs/legacy/workflows/nightly_benchmark.yml.disabled`، ولذلك لم يعد workflow نشطًا.
 
 | المحور | الحالة الحالية | المعنى الصحيح |
 |---|---|---|
-| Generic Core وTarget Context | `PASS` | عقود typed، capability lease، scope binding، lifecycle، revoke، cleanup، snapshot/restore موجودة ومختبرة. |
-| Multi-target lifecycle portability | `PASS` offline | Mock وJuice Shop وWebGoat وcrAPI يستخدمون نفس العقود العامة من خلال adapters منفصلة. |
-| Target Context regression | `39/39 passed` | نجاح هندسي مستهدف، وليس metric لجودة اكتشاف vulnerabilities. |
-| WebGoat B2.1 IDOR | `INCONCLUSIVE` | baseline وcandidate وnegative control أعطت نفس redirect semantics (`302`)؛ لا يوجد causal confirmation. |
-| crAPI object access | `BLOCKED` | لا يوجد requester/owner fixture injection وreset آمن قابل للتحقق ضمن النطاق الحالي. |
-| Sealed scoring ProofBundles الجديدة | `0` | عدم إنشاء bundle صحيح عندما يكون oracle غير حاسم أو الحالة blocked. |
-| Full regression | `1987 passed / 4 failures` | الأربعة failures تاريخية مرتبطة بـapproval-source hash drift؛ لم يتم إخفاؤها أو تخفيف validator. |
+| Generic Core وTarget Context | `PASS` | عقود typed، scope binding، capability lease، lifecycle، identity isolation، snapshot/restore، cleanup، وevidence boundaries موجودة ومختبرة. |
+| Autonomous research loop | `PASS` هندسيًا | core وloop وplanner وreasoning وmemory تعمل فوق recorded state، بدون منح صلاحية تنفيذ أو qualification. |
+| Evidence وcausal validation | `PASS` كضوابط | لا يُقبل confirmation بدون oracle وobservations وProofBundle وseal وreplay؛ عدم وجود observations لا يتحول إلى نتيجة إيجابية أو FN. |
+| Multi-target lifecycle portability | `PASS` offline | نفس العقود العامة تعمل عبر adapters منفصلة، مع بقاء target-specific semantics داخل profiles/adapters. |
+| Final audit v10 | `100/100` engineering scope | درجة implementation/control-plane completeness فقط، وليست detection-quality score أو qualification. |
+| Full regression | `2207 passed / 7 failed` | السبعة legacy blockers موثقة ولا تُخفى ولا تُحوّل إلى qualification outcomes. |
 | Official P10 runs | `0` | `official_isolated_p10_runs_authorized=false` والـrun gate مغلق. |
 | P10 / P9 / VIP | `NOT_QUALIFIED` | لا توجد qualification claim. |
 | Bug Bounty / external targets | `BLOCKED` | لا يوجد نطاق خارجي مصرح به. |
 
-## التقييم الحالي
+## Final Audit v10
 
-التقدير المركب الحالي هو **حوالي 63/100 من نضج الطريق إلى VIP**. هذا رقم تحليلي شفاف، وليس معيارًا رسميًا ولا نتيجة qualification. تم حسابه من أوزان معلنة: foundation الهندسي `85/100` بوزن 30%، السلامة والحوكمة `90/100` بوزن 20%، portability الخاصة بالـlifecycle `90/100` بوزن 15%، target-live readiness `40/100` بوزن 15%، causal detection evidence `0/100` بوزن 10%، والـofficial qualification gates `0/100` بوزن 10%. النتيجة لا تحول blocked أو inconclusive إلى FN أو clean أو confirmed.
+توجد مخرجات التدقيق في [`artifacts/vabhfqr_v10/`](artifacts/vabhfqr_v10/):
 
-| محور التقييم | الدرجة التحليلية | سبب الدرجة |
-|---|---:|---|
-| Foundation الهندسي | `85/100` | Generic contracts، execution authority، evidence pipeline، lifecycle management، regression، وneutrality موجودة بدرجة قوية. |
-| السلامة والحوكمة | `90/100` | fail-closed boundaries، scope isolation، redaction، وعدم فتح P10 أو Bug Bounty مطبقة. |
-| Lifecycle portability | `90/100` | نفس Target Context contract يعمل offline عبر أربعة adapters. |
-| Target-live readiness | `40/100` | WebGoat runtime alignment مثبت، لكن oracle غير حاسم؛ crAPI fixture prerequisites غير متاحة. |
-| Causal detection quality | `0/100` حاليًا | لا توجد confirmations سببية target-backed صالحة للـWebGoat أو crAPI في هذه الدورة. |
-| Official qualification | `0/100` | لا يوجد human independent signoff، ولا approved set يحقق 10 cases/6 classes، ولا 3 isolated official runs. |
-| **المحصلة المركبة** | **`63/100`** | تقدير تقدم هندسي نحو الهدف، وليس qualification score. |
+- [`FINAL_PROJECT_STATE_REPORT.json`](artifacts/vabhfqr_v10/FINAL_PROJECT_STATE_REPORT.json) يسجل capability map وinventory وtechnical debt وrisk assessment والـexternal gaps والـgovernance.
+- [`FINAL_VIP_READINESS_SCORECARD.json`](artifacts/vabhfqr_v10/FINAL_VIP_READINESS_SCORECARD.json) يفصل engineering readiness عن `official_qualification=NOT_QUALIFIED`.
+- [`VABH-Final-Audit-v10-Gate-Summary.json`](artifacts/vabhfqr_v10/VABH-Final-Audit-v10-Gate-Summary.json) يلخص benchmark والحوكمة وحالة الـworkflow.
+- [`VABH-Final-Audit-v10-Repair-Cycle.json`](artifacts/vabhfqr_v10/VABH-Final-Audit-v10-Repair-Cycle.json) يوثق الإصلاحات الداخلية ودورة review → repair → validate.
 
-## ما تم بناؤه في آخر milestone
+التقرير البشري هو [`docs/vabhfqr_v10/WebPent-VIP-Final-Audit-Report-v10.md`](docs/vabhfqr_v10/WebPent-VIP-Final-Audit-Report-v10.md). الـrunner [`scripts/run_vabh_final_audit_v10.py`](scripts/run_vabh_final_audit_v10.py) deterministic ويقرأ أدلة محلية مسجلة فقط.
 
-تمت إضافة [`src/webpent/shared/target_context.py`](src/webpent/shared/target_context.py) كعقد عام لإدارة target scope وcampaign/run binding وsynthetic identity metadata وsession وfixture وsnapshot وrestore وcapability lease وreadiness وdisposal. لا تحتوي الطبقة العامة على routes أو business logic أو semantics خاصة بـWebGoat أو crAPI أو Juice Shop.
+## ما تم بناؤه وإصلاحه
 
-تم ربط lifecycle اختياريًا بـ[`src/webpent/shared/campaign_executor.py`](src/webpent/shared/campaign_executor.py). عند تفعيل context-aware execution يجب أن ينجح acquisition والـlease والـreadiness والـsnapshot، وتُنفذ restore/dispose في مسارات النجاح والفشل. الـdispose يلغي lease نفسه، وفشل fixture ينظف session والـlease السابقين، مع اختبارات regression لهذه المسارات.
+أضيفت حزمة `src/webpent/vabhfqr_v10/` بعقود typed وaudit composition وstrict classification metrics. هذه الطبقة advisory-only ولا تنشئ Findings ولا تعدّل policy أو frozen ground truth أو thresholds ولا تفتح P10/VIP.
 
-تمت إضافة providers target-local منفصلة في `src/webpent/adapters/` لـMock وWebGoat وcrAPI وJuice Shop. هذه providers offline وdeterministic وتستخدم metadata synthetic فقط. لا تنفذ live authentication أو credential handling أو auth bypass أو external callbacks أو state mutation.
+أضيفت regression tests في [`tests/test_vabh_final_audit_v10.py`](tests/test_vabh_final_audit_v10.py) تغطي bounded readiness وstable ordering وexternal gap records ورفض qualification promotion ورفض labels غير الصريحة أو الحالات blocked/inconclusive في metrics.
 
-## نتائج WebGoat وcrAPI
+تم إصلاح governance inconsistency في workflow القديم: النسخة السابقة كانت scheduled وتحتوي clone خارجيًا وتشغيلًا تلقائيًا و`--auto-approve`. تم الاحتفاظ بها كمرجع legacy disabled خارج `.github/workflows/`، بينما يظل [`v95-nightly.yml`](.github/workflows/v95-nightly.yml) offline benchmark فقط.
 
-في WebGoat، تم إثبات service-to-build alignment للـruntime المحلي، لكن دورة IDOR السببية بقيت `INCONCLUSIVE`: observations الخاصة بالـbaseline وcandidate وindependent negative control اختزلت إلى نفس `302` redirect behavior. هذا لا يثبت vulnerability ولا clean result، ولذلك لم يتم إنشاء scoring ProofBundle.
+## نتائج الـbenchmark والـdetection quality
 
-في crAPI، بقي object-access case `BLOCKED` لأن requester/owner state وownership canaries لا يملكان fixture injection وreset آمنين قابلين للتحقق ضمن النطاق المصرح. لم يتم استخدام credentials أو token generation أو mutation لتجاوز ذلك.
+الـVABH-FQR v9 final benchmark يسجل **8 classes**، لكن جميع الحالات الثماني `BLOCKED`، وعدد الحالات القابلة للـscoring هو `0`، وعدد requests المرسلة هو `0`. لذلك تظل precision وrecall وF1 وqualification metrics `null`؛ لا توجد candidate/control observations target-backed صالحة لإعادة حساب detection quality.
+
+الحالات `blocked` و`observation-only` و`inconclusive` و`out_of_scope` لا تُحسب FN ولا clean ولا confirmed، كما أن route reachability أو HTTP 200 أو lesson completion أو source presence وحدها ليست دليل vulnerability.
 
 ## حدود الحوكمة والنطاق
 
-الحالة الرسمية الحالية هي:
-
-| invariant | القيمة |
+| Invariant | القيمة |
 |---|---|
 | `human_independent_signoff_obtained` | `false` |
 | `official_isolated_p10_runs_authorized` | `false` |
@@ -64,53 +58,39 @@
 | VIP | `NOT_QUALIFIED` |
 | Bug Bounty | `BLOCKED` |
 | Scoring promotion | `false` |
+| Qualification effect | `false` |
 
-الأفعال التالية ما زالت gated: تعديل policy أو frozen Ground Truth أو thresholds، استخدام credentials أو login أو OTP/MFA/CAPTCHA bypass، state-changing أو destructive actions، استخدام target خارجي، فتح Official P10، أو إعلان qualification. الصمت لا يُعتبر موافقة، ومراجعة AI ليست human countersign.
+الأفعال التالية gated: تعديل policy أو frozen Ground Truth أو thresholds، استخدام credentials أو login أو OTP/MFA/CAPTCHA bypass، state-changing أو destructive actions، استخدام target خارجي، فتح Official P10، أو إعلان qualification. مراجعة AI ليست human countersign، والصمت لا يُعتبر موافقة.
 
-لا يتم حفظ cookies أو tokens أو credentials أو raw response bodies أو raw headers أو process arguments أو environment secrets داخل Git أو release artifacts. جميع target-specific semantics تبقى داخل adapters أو profiles، وأي generic change يجب أن يثبت عبر أكثر من target abstraction.
+لا يتم حفظ cookies أو tokens أو credentials أو raw response bodies أو raw headers أو process arguments أو environment secrets داخل Git أو release artifacts. أي generic change يجب أن يثبت عبر abstraction قابل لإعادة الاستخدام، وأي semantics خاصة بتطبيق تظل داخل adapter أو profile.
 
 ## الاختبارات والـrelease gates
 
 من جذر المشروع، بعد تثبيت dependencies:
 
 ```bash
-PYTHONPATH=src:integrations/bbscout/src .venv/bin/pytest -q
-.venv/bin/ruff check src scripts tests benchmarks
-.venv/bin/python -m compileall -q src scripts benchmarks
-.venv/bin/python scripts/scan_direct_io.py
-.venv/bin/python scripts/check_generic_target_neutrality.py
-.venv/bin/python scripts/check_g02_runtime.py
-.venv/bin/python scripts/check_g02_precommit.py
-.venv/bin/python scripts/check_tracked_secrets.py
-.venv/bin/python scripts/check_release_manifest_provenance.py
+PYTHONPATH=src:integrations/bbscout/src pytest -q
+ruff check src scripts tests benchmarks
+ruff format --check src scripts tests benchmarks
+python3 -m compileall -q src scripts benchmarks
+PYTHONPATH=src python3 scripts/scan_direct_io.py
+python3 scripts/check_generic_target_neutrality.py
+python3 scripts/check_tracked_secrets.py
+PYTHONPATH=src make g02-check
 git diff --check
+python3 scripts/verify_release_artifacts.py --repo . --manifest docs/release_manifest.json
+python3 scripts/check_release_manifest_provenance.py
 ```
 
-نتائج الـTarget Context regression وCampaignExecutor وB2/B2.1 هي `39/39 passed`، وRuff وcompileall وG-02 وneutrality وsecret scan وrelease provenance ناجحة حسب artifacts الحالية. الـfull suite سجل 1987 نجاحًا و4 failures تاريخية تخص provenance لموافقة Option B القديمة؛ لا يجوز إصلاحها بإعادة كتابة السجل التاريخي أو تخفيف validator. راجع [تقرير التشخيص][1] و[تقرير E2E][2] للتفاصيل.
+نتيجة v10 regression هي `5 passed`. نتيجة full suite الأخيرة هي `2207 passed / 7 failed`. التصنيف الصادق للـlegacy blockers هو: أربعة failures في Option B approval boundary بسبب `approval_source_hash_mismatch`، فشلان في WebGoat/crAPI runtime أو source attestation، وفشل واحد بسبب غياب `/tmp/juice-shop-source/data/static/challenges.yml`. هذه blockers موثقة تاريخيًا ولم يتم تخفيف validators أو تغيير evidence لإخفائها.
 
 ## المتطلبات المتبقية للوصول إلى VIP
 
-أول فجوة فعلية هي إثبات target-backed causal detection، وليس إضافة abstraction جديدة فقط. يجب أولًا حل أو اعتماد disposition نهائي للـWebGoat oracle، وتوفير crAPI fixture/reset آمنين إذا كان ذلك مطلوبًا، ثم تنفيذ baseline/candidate/independent negative control مع oracle سببي حاسم وProofBundle sealed/replayable لكل حالة promoted.
+المتبقي ليس abstraction داخليًا جديدًا في هذه المرحلة، بل متطلبات qualification خارجية لا يجوز اختلاقها: approved target-backed ground truth، causal oracle وsafe precondition لكل حالة، independent negative control، sealed/replayable ProofBundle، approved set يحقق `10 cases / 6 classes`، ثم `3` isolated official runs مع إعادة حساب precision/recall/F1/evidence completeness، وindependent human governance signoff، وfinal qualification decision.
 
-بعد ذلك يلزم بناء approved case set حقيقي يحقق `10 cases / 6 classes`، والحصول على human independent governance signoff، ثم طلب Owner Decision منفصل لفتح Official P10. لا تُعتبر P10 مكتملة قبل `3` isolated official runs صحيحة وإعادة حساب metrics وصدور final qualification decision. وبعد تحقق كل ذلك فقط يمكن دراسة portability إلى نطاق Bug Bounty أو targets خارجية بقرار صريح.
+بعد تحقق المتطلبات الرسمية فقط يمكن طلب فتح Official P10 بقرار مالك صريح. وحتى ذلك الحين يظل P10/P9/VIP `NOT_QUALIFIED` وBug Bounty `BLOCKED`.
 
-الحالات `blocked` و`observation-only` و`inconclusive` و`out_of_scope` لا تُحسب FN ولا تُستخدم لرفع case count أو class count اصطناعيًا. كذلك لا تعتبر route reachability أو HTTP 200 أو lesson completion أو source presence وحدها دليل vulnerability.
-
-## المراجع الداخلية
-
-[1]: reports/evaluation/core_context/CORE-CONTEXT-LAYER-FAILURE-DIAGNOSIS-v1.md "Core Target Context Layer Failure Diagnosis"
-[2]: reports/evaluation/core_context/TARGET-CONTEXT-LAYER-LOCAL-E2E-v1.json "Target Context Layer Local E2E Evidence"
-[3]: reports/evaluation/core_context/CORE-CONTEXT-LAYER-BEFORE-AFTER-v1.md "Core Target Context Layer Before/After"
-[4]: reports/evaluation/local_causal_lab/B2.1-TARGET-LIVE-REPORT-v1.md "B2.1 WebGoat IDOR Target-Live Report"
-[5]: reports/evaluation/local_causal_lab/B2.1-FAILURE-TRIAGE-v1.md "B2.1 Failure Triage"
-[6]: docs/release_manifest.json "Release Manifest"
-[7]: docs/release_manifest_provenance_v1.json "Release Manifest Provenance"
-
-## الاستخدام المصرح
-
-راجع الترخيص وسياسات المشروع قبل التوزيع. يجب أن يظل الاستخدام داخل أنظمة مصرح بها، مع احترام scope وrate limits وprivacy وretention وسياسات البرنامج المختبر.
-
-> **الخلاصة:** WebPent عند مستوى قوي هندسيًا في bounded execution والسلامة وlifecycle portability، لكنه لم يثبت بعد causal detection quality على WebGoat أو crAPI، ولذلك يظل `P10/P9/VIP=NOT_QUALIFIED` وBug Bounty=`BLOCKED`.
+> **الخلاصة:** WebPent وصل إلى engineering-complete platform جاهزة لتقييم VIP qualification رسمي لاحقًا ضمن النطاق المحدود، لكنه لم يثبت بعد detection-quality qualification ولم يحصل على VIP أو P10 أو P9.
 
 **المشروع على GitHub:** [ElgendyMan/webpent-v61](https://github.com/ElgendyMan/webpent-v61)
 
