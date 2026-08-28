@@ -4,7 +4,7 @@
 
 ## Initial state
 
-The audited repository is `ElgendyMan/webpent-v61` at commit `758f5755736cb1d9334af31cb380cfce7fe7e4f9`. The initial branch parity check was `True`, and the working tree state at audit generation was `True`.
+The audited repository is `ElgendyMan/webpent-v61` at commit `217bf02dae1e8068669a24408eb6709fd85886b1`. The initial branch parity check was `True`, and the working tree state at audit generation was `True`.
 
 ## Methodology
 
@@ -50,7 +50,7 @@ The architecture remains separated into observation, reasoning, planning, execut
 
 ## Test results
 
-The recorded v9 full-suite result is `2207 passed / 7 failed`; failures remain explicitly classified as legacy blockers. The v10 audit regression has `5 passed`. Static gates are retained in the v9 gate summary and must be rerun after source changes.
+The recorded v9 full-suite result is `2207 passed / 7 failed`; failures remain explicitly classified as legacy blockers. The v10 audit regression has `5 passed`. Scoped v10 Ruff/format, compile, import, neutrality, secret, direct-I/O, G-02, and release gates passed; the repo-wide Ruff format check remains a pre-existing legacy failure outside the v10 scope.
 
 ## Benchmark results
 

@@ -150,7 +150,7 @@
       "status": "PASS"
     }
   ],
-  "commit": "758f5755736cb1d9334af31cb380cfce7fe7e4f9",
+  "commit": "217bf02dae1e8068669a24408eb6709fd85886b1",
   "gaps": [
     {
       "evidence_refs": [
@@ -225,9 +225,9 @@
   },
   "inventory": {
     "active_workflow_files": 2,
-    "artifact_files": 113,
-    "benchmark_files": 42,
-    "documentation_files": 322,
+    "artifact_files": 117,
+    "benchmark_files": 24,
+    "documentation_files": 323,
     "python_source_files": 509,
     "report_files": 123,
     "test_files": 348
@@ -282,12 +282,18 @@
       "compileall": "PASS",
       "direct_io_records": 389,
       "direct_io_scan": "PASS",
+      "full_repo_ruff_format": {
+        "classification": "pre-existing repository-wide formatting drift outside the v10 scope",
+        "command": "ruff format --check src scripts tests benchmarks",
+        "status": "LEGACY_FAILURE"
+      },
       "g02_check": "PASS",
       "generic_target_neutrality": "PASS",
       "git_diff_check": "PASS",
       "import_smoke": "PASS",
       "ruff_check": "PASS",
       "ruff_format_check": "PASS",
+      "scoped_v10_format": "PASS",
       "tracked_secrets": "PASS"
     },
     "v10_audit_regression": {
