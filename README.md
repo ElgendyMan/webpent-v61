@@ -14,8 +14,8 @@
 | Autonomous research intelligence | `PASS` داخل recorded/offline state | توجد طبقات loop وplanner وreasoning وhypothesis وmemory؛ الـcore v2 يكتشف 10 patterns generic على synthetic graph facts، بدون صلاحية مستقلة لفتح targets أو منح qualification. |
 | Causal evidence وProofBundle | `PASS` كضوابط | لا يتم اعتماد confirmation بدون oracle وobservations وproof وseal وreplay. |
 | Generic/target-neutral boundary | `PASS` | منطق التطبيقات الخاصة يظل في adapters/profiles، ولا توجد routes خاصة بالتطبيقات داخل generic audit core. |
-| Detection-quality proof | `NOT ESTABLISHED` | لا توجد حاليًا candidate/control observations target-backed صالحة لحساب precision/recall/F1. |
-| Benchmark scoring | `BLOCKED` | benchmark v9 التاريخي: 8 classes مسجلة، 8 blocked و0 scorable و0 requests؛ benchmark core v2: 10/10 pattern paths و7 classes على synthetic facts فقط، و0 scoring-eligible. |
+| Detection-quality proof | `FIXTURE-BOUNDED` | توجد الآن candidate/control observations داخل 3 disposable in-process fixtures؛ field/production detection quality ما زالت `NOT ESTABLISHED`. |
+| Benchmark scoring | `FIXTURE-BOUNDED` | DCVU v1: 18 accepted fixture cases، 13 TP و5 TN و0 FP/FN؛ النتائج offline engineering-only وليست official scoring. benchmark v9 التاريخي ما زال 8 blocked و0 scorable. |
 | Engineering readiness | `100%` bounded scope | اكتمال implementation وcontrol-plane فقط، وليس نسبة نجاح في العالم الحقيقي. |
 | Official P10/VIP | `NOT_QUALIFIED` | الـofficial run gate غير مصرح، ولا يوجد final qualification decision. |
 
@@ -55,13 +55,19 @@
 
 الـsynthetic benchmark حقق `10/10` pattern coverage و7 vulnerability classes، مع حالة engineering confirmation واحدة مكتملة offline؛ لكن `requests=0` و`findings=0` و`scoring_eligible=false` و`official qualification=false`. هذه أرقام code-path/fixture coverage وليست detection quality ميدانية أو qualification.
 
+## DCVU v1 — Detection Capability Validation Upgrade
+
+أضيفت حزمة DCVU v1 تحت [`src/webpent/dcvu/`](src/webpent/dcvu/) لبناء controlled vulnerable-target benchmark بثلاثة disposable in-process fixtures. الحزمة تفصل surface discovery عن independent ground truth، وتطبق baseline/candidate/negative-control causal evaluation مع redacted proof seal/replay، ثم تحسب TP/FP/FN/TN وprecision/recall/F1/class coverage/proof completeness.
+
+شغّل نفس autonomous campaign على `fixture-a` و`fixture-b` و`fixture-c` بدون network أو credentials أو login أو state mutation. النتيجة: `18` case attempted/scored، `13 TP`، `5 TN`، `0 FP`، `0 FN`، و`1.00` precision/recall/F1 في هذا fixture benchmark. هذه **fixture-backed engineering metrics** وليست field detection quality، ولا تمنح qualification؛ التقرير machine-readable موجود في [`reports/evaluation/dcvu_v1_capability_report.json`](reports/evaluation/dcvu_v1_capability_report.json)، والتقرير التفصيلي في [`docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md`](docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md).
+
 ## الاختبارات والـgates
 
 | Gate | النتيجة |
 |---|---|
 | Core/v9 focused regression | `32 passed` |
 | v10 audit regression | `5 passed` |
-| Full regression | `2224 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
+| Full regression | `2244 passed / 7 failed` — `PASS_WITH_LEGACY_BLOCKERS` |
 | Scoped Ruff check | `PASS` |
 | Scoped v10 format | `PASS` |
 | compileall | `PASS` |
@@ -75,7 +81,7 @@
 | release provenance verifier | `PASS` |
 | Full-repo Ruff format | `LEGACY_FAILURE` موثق، بسبب formatting drift قديم خارج نطاق v10 |
 
-الفشل السباعي في full suite موثق ولم يتم تخفيف validators لإخفائه: أربعة failures في Option B approval boundary بسبب `approval_source_hash_mismatch`، فشلان في WebGoat/crAPI runtime أو source attestation، وفشل واحد بسبب غياب `/tmp/juice-shop-source/data/static/challenges.yml`. هذه ليست نتائج detection-quality ولا تم تحويلها إلى TP أو FN أو clean أو confirmed. أضيف إلى ذلك focused regression خاص بالـcore/confirmation/decision loop ونتيجته الحالية `32 passed`.
+الفشل السباعي في full suite موثق ولم يتم تخفيف validators لإخفائه: أربعة failures في Option B approval boundary بسبب `approval_source_hash_mismatch`، فشلان في WebGoat/crAPI runtime أو source attestation، وفشل واحد بسبب غياب `/tmp/juice-shop-source/data/static/challenges.yml`. هذه ليست نتائج detection-quality ولا تم تحويلها إلى TP أو FN أو clean أو confirmed. أضيف إلى ذلك focused regression خاص بالـcore/confirmation/decision loop ونتيجته الحالية `32 passed`، إضافة إلى DCVU focused suite بنتيجة `20 passed`.
 
 أوامر التحقق الأساسية من جذر المشروع:
 
@@ -127,6 +133,9 @@ python3 scripts/check_release_manifest_provenance.py
 - [`scripts/run_vabh_final_audit_v10.py`](scripts/run_vabh_final_audit_v10.py) — deterministic audit runner محلي فقط.
 - [`docs/vabhfqr_v9/VABH-Core-Intelligence-Upgrade-v2.md`](docs/vabhfqr_v9/VABH-Core-Intelligence-Upgrade-v2.md) — تقرير core v2 بالأرقام والحدود.
 - [`reports/evaluation/vabh_core_intelligence_v2.json`](reports/evaluation/vabh_core_intelligence_v2.json) — نتيجة benchmark machine-readable.
+- [`reports/evaluation/dcvu_v1_capability_report.json`](reports/evaluation/dcvu_v1_capability_report.json) — DCVU v1 campaign and fixture-backed metrics.
+- [`docs/dcvu/DCVU-v1-Validation-Contracts.md`](docs/dcvu/DCVU-v1-Validation-Contracts.md) — contracts and governance boundaries.
+- [`docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md`](docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md) — capability report and limitations.
 
 ## Previous v10 delivery (historical)
 
