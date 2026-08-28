@@ -1,0 +1,33 @@
+{
+  "advisory_only": true,
+  "audit_version": "vabh-final-audit-v10",
+  "blockers": [
+    "complete causal benchmark evidence is unavailable",
+    "official isolated qualification runs are not authorized",
+    "independent human governance signoff is absent"
+  ],
+  "component_scores": {
+    "architecture_maturity": 100.0,
+    "autonomous_intelligence": 100.0,
+    "benchmark_maturity": 100.0,
+    "detection_capability": 100.0,
+    "evidence_quality": 100.0,
+    "governance_readiness": 100.0,
+    "reliability": 100.0
+  },
+  "engineering_claim": "engineering-complete for formal qualification evaluation within the bounded, offline, advisory-only scope",
+  "engineering_readiness_percentage": 100.0,
+  "external_requirements": [
+    "10 approved cases across 6 approved classes",
+    "causal oracle and safe precondition per case",
+    "independent negative control per case",
+    "sealed and replayable ProofBundle per case",
+    "3 valid isolated official runs",
+    "metrics recomputation and final qualification decision",
+    "independent human governance signoff"
+  ],
+  "methodology": "Weighted capability maturity from recorded implementation and gate evidence; no blocked, inconclusive, observation-only, or external qualification result is promoted to a positive detection metric.",
+  "official_qualification": "NOT_QUALIFIED",
+  "p10_completed": false,
+  "vip_qualified": false
+}

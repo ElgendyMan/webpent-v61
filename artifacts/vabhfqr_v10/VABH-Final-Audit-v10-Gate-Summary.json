@@ -1,0 +1,36 @@
+{
+  "advisory_only": true,
+  "audit_version": "vabh-final-audit-v10",
+  "engineering_readiness_percentage": 100.0,
+  "external_only_gaps": [
+    "EXT-001",
+    "EXT-002",
+    "EXT-003",
+    "EXT-004",
+    "EXT-005"
+  ],
+  "governance": {
+    "bug_bounty": "BLOCKED",
+    "finding_promotion_by_audit": false,
+    "human_independent_signoff_obtained": false,
+    "official_isolated_p10_runs_authorized": false,
+    "p10_qualification": "NOT_QUALIFIED",
+    "p9_qualification": "NOT_QUALIFIED",
+    "qualification_effect": false,
+    "vip_qualified": false
+  },
+  "official_qualification": "NOT_QUALIFIED",
+  "schema": "vabh-final-audit-v10-gate-summary-v1",
+  "v9_benchmark": {
+    "blocked_cases": 8,
+    "qualification_metrics": {
+      "f1": null,
+      "precision": null,
+      "recall": null
+    },
+    "registered_classes": 8,
+    "requests_sent": 0,
+    "scorable_cases": 0
+  },
+  "workflow_governance_fix": "scheduled external WAPTLab workflow moved to disabled legacy path"
+}

@@ -1,0 +1,301 @@
+{
+  "audit_version": "vabh-final-audit-v10",
+  "branch_parity": true,
+  "capabilities": [
+    {
+      "capability": "autonomous_research_loop",
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/core.py",
+        "src/webpent/vabhfqr_v9/loop.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "target_intelligence",
+      "evidence_refs": [
+        "src/webpent/intelligence/target_brain.py",
+        "v9/v10-local-audit"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "security_reasoning",
+      "evidence_refs": [
+        "src/webpent/attack_graph/chain_reasoning.py",
+        "v9/v10-local-audit"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "attack_graph",
+      "evidence_refs": [
+        "src/webpent/models/attack_graph.py",
+        "src/webpent/intelligence/entity_graph.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "hypothesis_generation",
+      "evidence_refs": [
+        "src/webpent/research/hypothesis_generator.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "research_planning",
+      "evidence_refs": [
+        "src/webpent/research/planner.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "adaptive_strategy",
+      "evidence_refs": [
+        "src/webpent/shared/campaign_executor.py",
+        "src/webpent/research/planner.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "memory_and_learning",
+      "evidence_refs": [
+        "src/webpent/shared/security_reasoning_memory.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "evidence_pipeline",
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/evidence.py",
+        "src/webpent/research_engine/evidence_aware_loop.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "causal_validation",
+      "evidence_refs": [
+        "src/webpent/shared/proof_oracles.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "proofbundle_integrity",
+      "evidence_refs": [
+        "src/webpent/shared/proof_bundle_store.py",
+        "src/webpent/vabhfqr_v9/evidence.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "replay_capability",
+      "evidence_refs": [
+        "src/webpent/shared/semantic_proof_runner.py",
+        "src/webpent/vabhfqr_v9/evidence.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "benchmark_framework",
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/benchmark.py",
+        "benchmarks/vabh_fqr_v9_controlled.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "metrics_system",
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/analytics_review.py",
+        "src/webpent/vabhfqr_v10/metrics.py"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    },
+    {
+      "capability": "governance_boundaries",
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/contracts.py",
+        "src/webpent/research_engine/evidence_aware_loop.py",
+        "docs/legacy/workflows/nightly_benchmark.yml.disabled"
+      ],
+      "limitation": "",
+      "maturity_score": 100.0,
+      "status": "PASS"
+    }
+  ],
+  "commit": "758f5755736cb1d9334af31cb380cfce7fe7e4f9",
+  "gaps": [
+    {
+      "evidence_refs": [
+        "artifacts/vabhfqr_v9/VABH-FQR-v9-Gate-Summary.json"
+      ],
+      "gap_id": "EXT-001",
+      "impact": "Qualification detection metrics cannot be computed without approved target evidence.",
+      "implementation_status": "EXTERNAL",
+      "internal": false,
+      "missing_capability": "target-backed-causal-evidence",
+      "recommended_solution": "Obtain separately authorized target-backed ground truth, candidate/control observations, and replayable ProofBundles.",
+      "severity": "HIGH"
+    },
+    {
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/benchmark.py"
+      ],
+      "gap_id": "EXT-002",
+      "impact": "The final benchmark has 0 scorable cases and cannot establish the 10-case/6-class floor.",
+      "implementation_status": "EXTERNAL",
+      "internal": false,
+      "missing_capability": "approved-case-and-class-floor",
+      "recommended_solution": "Complete an independently approved case set; do not count blocked or observation-only cases.",
+      "severity": "HIGH"
+    },
+    {
+      "evidence_refs": [
+        "artifacts/vabhfqr_v9/VABH-FQR-v9-Gate-Summary.json"
+      ],
+      "gap_id": "EXT-003",
+      "impact": "Official P10 evidence is not authorized and therefore does not exist.",
+      "implementation_status": "EXTERNAL",
+      "internal": false,
+      "missing_capability": "official-isolated-runs",
+      "recommended_solution": "Request explicit owner/governance authorization only after the approved evidence package is complete.",
+      "severity": "HIGH"
+    },
+    {
+      "evidence_refs": [
+        "artifacts/vabhfqr_v9/VABH-FQR-v9-Gate-Summary.json"
+      ],
+      "gap_id": "EXT-004",
+      "impact": "AI technical review cannot substitute for human signoff.",
+      "implementation_status": "EXTERNAL",
+      "internal": false,
+      "missing_capability": "independent-human-governance-signoff",
+      "recommended_solution": "Obtain an attributable independent human countersign through the approved governance channel.",
+      "severity": "HIGH"
+    },
+    {
+      "evidence_refs": [
+        "src/webpent/vabhfqr_v9/contracts.py"
+      ],
+      "gap_id": "EXT-005",
+      "impact": "No authority exists to declare P10, P9, VIP, or Bug Bounty readiness.",
+      "implementation_status": "EXTERNAL",
+      "internal": false,
+      "missing_capability": "final-qualification-decision",
+      "recommended_solution": "Recompute official metrics after valid isolated runs and record the formal decision.",
+      "severity": "HIGH"
+    }
+  ],
+  "governance": {
+    "bug_bounty": "BLOCKED",
+    "finding_promotion_by_audit": false,
+    "human_independent_signoff_obtained": false,
+    "official_isolated_p10_runs_authorized": false,
+    "p10_qualification": "NOT_QUALIFIED",
+    "p9_qualification": "NOT_QUALIFIED",
+    "qualification_effect": false,
+    "vip_qualified": false
+  },
+  "inventory": {
+    "active_workflow_files": 2,
+    "artifact_files": 113,
+    "benchmark_files": 42,
+    "documentation_files": 322,
+    "python_source_files": 509,
+    "report_files": 123,
+    "test_files": 348
+  },
+  "readiness_percentage": 100.0,
+  "remaining_external_requirements": [
+    "10 approved cases across 6 approved classes",
+    "causal oracle and safe precondition per case",
+    "independent negative control per case",
+    "sealed and replayable ProofBundle per case",
+    "3 valid isolated official runs",
+    "metrics recomputation and final qualification decision",
+    "independent human governance signoff"
+  ],
+  "repository": "ElgendyMan/webpent-v61",
+  "risks": [
+    "No target-backed observations are available for current qualification scoring.",
+    "Legacy full-suite blockers remain visible and are not converted into qualification outcomes."
+  ],
+  "technical_debt": [
+    "Older milestone reports remain historical records and must not be read as current status.",
+    "The active CI workflow intentionally remains deterministic and offline; dependency audits still belong to CI execution."
+  ],
+  "test_summary": {
+    "focused_v9": {
+      "command": "PYTHONPATH=src:. pytest -q tests/test_vabhfqr_v9.py",
+      "failed": 0,
+      "passed": 10,
+      "status": "PASS"
+    },
+    "full_suite": {
+      "command": "PYTHONPATH=src:integrations/bbscout/src pytest -q",
+      "failed": 7,
+      "failure_classification": {
+        "option_b_approval_boundary": 4,
+        "runtime_or_source_attestation": 2,
+        "source_backed_fixture_missing": 1
+      },
+      "failures": [
+        "tests/test_local_causal_lab_option_b_approval.py::test_option_b_import_validates_and_original_packet_stays_pending",
+        "tests/test_local_causal_lab_runtime_provenance.py::test_webgoat_source_pin_matches_but_service_alignment_blocks",
+        "tests/test_local_causal_lab_runtime_provenance.py::test_crapi_source_and_runtime_pins_are_attested",
+        "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_emits_only_redacted_blocked_records",
+        "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_records_runtime_digest_blockers_without_sensitive_material",
+        "tests/test_option_b_local_causal_lab_runner.py::test_option_b_runner_exposes_offline_harness_readiness_separately",
+        "tests/test_source_backed_candidate_inventory.py::test_inventory_validator_passes"
+      ],
+      "passed": 2207,
+      "status": "PASS_WITH_LEGACY_BLOCKERS"
+    },
+    "static_gates": {
+      "compileall": "PASS",
+      "direct_io_records": 389,
+      "direct_io_scan": "PASS",
+      "g02_check": "PASS",
+      "generic_target_neutrality": "PASS",
+      "git_diff_check": "PASS",
+      "import_smoke": "PASS",
+      "ruff_check": "PASS",
+      "ruff_format_check": "PASS",
+      "tracked_secrets": "PASS"
+    },
+    "v10_audit_regression": {
+      "command": "PYTHONPATH=src pytest -q tests/test_vabh_final_audit_v10.py",
+      "failed": 0,
+      "passed": 5,
+      "status": "PASS"
+    }
+  },
+  "working_tree_clean": true
+}
