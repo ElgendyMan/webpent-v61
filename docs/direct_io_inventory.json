@@ -485,10 +485,10 @@
   ],
   "coverage": {
     "dynamic_records": 323,
-    "raw_or_boundary_records": 69,
-    "record_count": 392,
+    "raw_or_boundary_records": 71,
+    "record_count": 394,
     "unapproved_records": 0,
-    "unknown_family_records": 49
+    "unknown_family_records": 51
   },
   "dynamic_import_allowlist": [
     {
@@ -3290,6 +3290,32 @@
       "symbol": "getattr",
       "transport": "dynamic_resolution",
       "transport_family": "non_transport"
+    },
+    {
+      "approval_status": "approved",
+      "classification": "http_sync",
+      "column": 14,
+      "file": "src/webpent/rta/auth_campaign.py",
+      "kind": "safe_boundary_call",
+      "line": 153,
+      "normalized_symbol": "webpent.shared.http.make_safe_httpx_client",
+      "reason": "central hardened wrapper call",
+      "symbol": "make_safe_httpx_client",
+      "transport": "http_sync",
+      "transport_family": "unknown"
+    },
+    {
+      "approval_status": "approved",
+      "classification": "http_sync",
+      "column": 14,
+      "file": "src/webpent/rta/discovery.py",
+      "kind": "safe_boundary_call",
+      "line": 111,
+      "normalized_symbol": "webpent.shared.http.make_safe_httpx_client",
+      "reason": "central hardened wrapper call",
+      "symbol": "make_safe_httpx_client",
+      "transport": "http_sync",
+      "transport_family": "unknown"
     },
     {
       "approval_status": "not_applicable",

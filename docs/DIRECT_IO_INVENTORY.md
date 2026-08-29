@@ -22,7 +22,7 @@
 
 ## Source-level records
 
-Total records: **392**.
+Total records: **394**.
 
 | File | Line | Kind | Symbol | Transport | Approval |
 |---|---:|---|---|---|---|
@@ -233,6 +233,8 @@ Total records: **392**.
 | `src/webpent/production/qualification.py` | 69 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/research_engine/campaign_state.py` | 151 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/research_engine/feedback_loop.py` | 199 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
+| `src/webpent/rta/auth_campaign.py` | 153 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
+| `src/webpent/rta/discovery.py` | 111 | `safe_boundary_call` | `make_safe_httpx_client` | `http_sync` | `approved` |
 | `src/webpent/shared/action_authority.py` | 159 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 71 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |
 | `src/webpent/shared/adaptive_hunt.py` | 79 | `dynamic_resolution` | `getattr` | `dynamic_resolution` | `not_applicable` |

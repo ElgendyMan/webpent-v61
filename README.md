@@ -61,6 +61,12 @@
 
 شغّل نفس autonomous campaign على `fixture-a` و`fixture-b` و`fixture-c` بدون network أو credentials أو login أو state mutation. النتيجة: `18` case attempted/scored، `13 TP`، `5 TN`، `0 FP`، `0 FN`، و`1.00` precision/recall/F1 في هذا fixture benchmark. هذه **fixture-backed engineering metrics** وليست field detection quality، ولا تمنح qualification؛ التقرير machine-readable موجود في [`reports/evaluation/dcvu_v1_capability_report.json`](reports/evaluation/dcvu_v1_capability_report.json)، والتقرير التفصيلي في [`docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md`](docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md).
 
+## RTA v1 — Realistic Target Assessment
+
+أضيفت حزمة RTA v1 تحت [`src/webpent/rta/`](src/webpent/rta/) لنقل التحقق من in-process fixtures إلى ثلاث local applications disposable تعمل عبر real loopback HTTP، FastAPI، SQLite، synthetic users/roles/sessions/tenants، وread-only authorization/business-rule surfaces. المسار أصبح: HTTP discovery ثم API mapping ثم synthetic permission graph ثم baseline/candidate/negative-control ثم semantic redaction وcausal validation وproof seal/replay.
+
+اكتشف runner عدد `8` surfaces و`6` path parameters في كل target، وشغّل `21` حالة HTTP-backed: `16 TP` و`5 TN` و`0 FP` و`0 FN`، مع precision/recall/F1 = `1.00` وpositive proof completeness = `1.00`. هذه نتائج realistic disposable local fixtures وليست field detection quality؛ لم تُستخدم real credentials أو login أو state mutation أو external callbacks، ولم تُفتح أي qualification gate. التقرير machine-readable موجود في [`reports/evaluation/rta_v1_real_http_capability_report.json`](reports/evaluation/rta_v1_real_http_capability_report.json)، والتقرير التفصيلي في [`docs/rta/RTA-v1-Realistic-Target-Assessment-Report.md`](docs/rta/RTA-v1-Realistic-Target-Assessment-Report.md).
+
 ## الاختبارات والـgates
 
 | Gate | النتيجة |
@@ -136,6 +142,9 @@ python3 scripts/check_release_manifest_provenance.py
 - [`reports/evaluation/dcvu_v1_capability_report.json`](reports/evaluation/dcvu_v1_capability_report.json) — DCVU v1 campaign and fixture-backed metrics.
 - [`docs/dcvu/DCVU-v1-Validation-Contracts.md`](docs/dcvu/DCVU-v1-Validation-Contracts.md) — contracts and governance boundaries.
 - [`docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md`](docs/dcvu/DCVU-v1-Autonomous-Bug-Hunter-Capability-Report.md) — capability report and limitations.
+- [`reports/evaluation/rta_v1_real_http_capability_report.json`](reports/evaluation/rta_v1_real_http_capability_report.json) — RTA v1 real loopback HTTP campaign and metrics.
+- [`docs/rta/RTA-v1-Contracts.md`](docs/rta/RTA-v1-Contracts.md) — RTA scope, synthetic auth, and safety contracts.
+- [`docs/rta/RTA-v1-Realistic-Target-Assessment-Report.md`](docs/rta/RTA-v1-Realistic-Target-Assessment-Report.md) — RTA discovery, validation, stress coverage, and remaining gaps.
 
 ## Previous v10 delivery (historical)
 
