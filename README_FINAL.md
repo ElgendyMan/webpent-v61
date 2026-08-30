@@ -1,43 +1,33 @@
-# WebPent IRTA v2 — Autonomous Research Hardening
+# WebPent Post-IRTA v2 — Full System Audit
 
-## What changed
+This delivery is an **audit package**, not a feature release. It records what WebPent actually contains after IRTA v2, which capabilities are proven, which are partial or unverified, and what prevents VIP qualification.
 
-This release adds an independent deterministic target generator, adversarial auth/response mutations, a bounded evidence-aware research loop, false-positive suppression with clean-reason bundles, disposable stateful business-logic workflows, difficulty tiers, benchmark construction, and cross-run learning measurements. All additions are isolated under `src/webpent/irta/`.
+The audit preserves all historical modules, tests, reports, validators, ground truth, thresholds, and governance gates. It adds only audit scripts and documentation. The complete report is `FINAL_PROJECT_AUDIT_2026.md`.
 
-## What was not changed
+## Current truth
 
-No existing feature was deleted. Existing validators, frozen ground truth, qualification thresholds, RTA transport constraints, and official governance gates were not modified. The Generic Core contains no target-specific logic.
+The repository has verified bounded local discovery, DCVU/RTA validation infrastructure, IRTA target-generation and mutation contracts, bounded research planning, negative-intelligence suppression, and disposable business-logic workflows. It does **not** yet prove live independent multi-target detection quality, longitudinal learning improvement, broad browser/JavaScript capability, official isolated-run performance, external portability, or VIP qualification.
 
-## Tests
+The full regression baseline is **2,270 passed and 7 preserved failures**. Ruff and compileall pass. The seven failures remain recorded as local-lab/attestation blockers. Test count and implementation count are not treated as capability proof.
 
-The focused IRTA suite contains 13 tests and passes. Ruff and compileall pass for the new code. The complete repository run is recorded in `reports/IRTA-v2-Autonomous-Research-Hardening-Report.md` and retains seven legacy/local-lab failures without masking or reclassifying them.
+## Governance
 
-## Metrics
+`NOT_QUALIFIED` remains authoritative. `official_isolated_p10_runs_authorized=false`; P10/P9/VIP remain closed, Bug Bounty remains blocked, and no external target, real credential, destructive action, or policy bypass was used.
 
-The independent benchmark constructs 10 generated targets, 4 difficulty tiers, and 160 planned case slots. Unexecuted cases are fail-closed and remain blocked; they are not counted as TP, TN, FP, or FN. Existing RTA metrics remain historical local evidence and do not represent official qualification.
+## Audit contents
 
-## Known limitations
+The package includes repository inventory, feature traceability, claim validation, architecture and ownership review, capability map, test-quality matrix, benchmark-integrity review, dead-code review, before/after regression results, the final truth report, existing reports/metrics/docs/release/provenance, and `SHA256SUMS.txt`.
 
-The generated targets are executable specifications, not live servers. Live loopback adapters still require separate authorized fixture work and independent causal ground truth. Adversarial mutations are modeled at the contract level and require same-condition live validation before any detection-quality claim. The seven legacy blockers remain documented.
-
-## Governance status
-
-The project remains **NOT_QUALIFIED**. `official_isolated_p10_runs_authorized=false` remains in force. P10, P9, VIP qualification, Bug Bounty access, external targets, real credentials, destructive actions, and policy changes remain closed.
-
-## Reproduction steps
+## Reproduction
 
 ```bash
 cd /tmp/webpent-work
-PYTHONPATH=src pytest -q tests/irta
-ruff check src/webpent/irta tests/irta
-python3 -m compileall -q src/webpent/irta tests/irta
-PYTHONPATH=src python3 -c "from webpent.irta.metrics import IrtaBenchmark; print(IrtaBenchmark().build(tuple(range(10))))"
-```
-
-The full repository verification is reproducible with:
-
-```bash
-PYTHONPATH=src:integrations/bbscout/src pytest -q
+python3 scripts/audit_repository_inventory.py
+python3 scripts/audit_architecture_scan.py
+python3 scripts/audit_test_quality.py
 ruff check .
-python3 -m compileall -q src tests benchmarks
+python3 -m compileall -q src tests benchmarks scripts
+PYTHONPATH=src:integrations/bbscout/src pytest -q
 ```
+
+The expected full-suite interpretation is seven known failures retained without masking or reclassification.
