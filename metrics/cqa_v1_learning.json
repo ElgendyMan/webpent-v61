@@ -1,0 +1,19 @@
+{
+  "blocked_cases": 50,
+  "false_positive_delta": null,
+  "learning_status": "NOT_ESTABLISHED",
+  "planning_efficiency": null,
+  "reason": "No scored causal ProofBundles were available in either run.",
+  "recall_delta": null,
+  "run_a": {
+    "cases": 50,
+    "eligible": 0,
+    "name": "cold_memory"
+  },
+  "run_b": {
+    "cases": 50,
+    "eligible": 0,
+    "name": "learned_patterns"
+  },
+  "schema": "cqa-v1-learning-scorecard"
+}

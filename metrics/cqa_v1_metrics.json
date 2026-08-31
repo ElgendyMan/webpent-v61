@@ -1,0 +1,21 @@
+{
+  "schema": "webpent-cqa-v1-metrics",
+  "targets": 5,
+  "cases": 50,
+  "classes": 6,
+  "baseline_observations": 50,
+  "candidate_observations": 50,
+  "negative_control_observations": 50,
+  "causal_results": 0,
+  "proof_bundles": 0,
+  "replay_verified": 0,
+  "tp": 0,
+  "fp": 0,
+  "fn": 0,
+  "blocked": 50,
+  "proof_completeness": 0.0,
+  "learning_status": "NOT_ESTABLISHED",
+  "qualification_status": "NOT_QUALIFIED",
+  "official_isolated_p10_runs_authorized": false,
+  "interpretation": "No case entered scoring because no complete causal ProofBundle with verified replay was available. Blocked is not FN, clean, confirmed, or a quality pass."
+}
