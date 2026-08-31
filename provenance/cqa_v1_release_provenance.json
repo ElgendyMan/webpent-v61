@@ -1,0 +1,23 @@
+{
+  "schema": "webpent-cqa-v1-provenance",
+  "source_commit": "35ba55df368dcbb8d0daaaabd0740a73ec74a6cf",
+  "manifest": "release/cqa_v1_release_manifest.json",
+  "evidence": [
+    "reports/cqa_v1/baseline/",
+    "reports/cqa_v1/campaign_observations.json",
+    "reports/cqa_v1/final/",
+    "metrics/cqa_v1_metrics.json",
+    "metrics/cqa_v1_learning.json"
+  ],
+  "verification": {
+    "focused_tests": "22 passed",
+    "ruff": "passed",
+    "compileall": "passed",
+    "external_scope_scan": "passed",
+    "full_regression": "2288 passed, 11 preserved failures"
+  },
+  "governance": {
+    "official_isolated_p10_runs_authorized": false,
+    "qualification_status": "NOT_QUALIFIED"
+  }
+}
