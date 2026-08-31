@@ -1,0 +1,21 @@
+{
+  "milestone": "IRTA v3",
+  "status": "ENGINEERING_COMPLETE_NOT_QUALIFIED",
+  "targets": 5,
+  "cases": 50,
+  "classes": 6,
+  "tp": 0,
+  "fp": 0,
+  "fn": 0,
+  "blocked": 50,
+  "proof_complete": 0,
+  "proof_completeness_percent": 0.0,
+  "quality_scoring_authorized": false,
+  "focused_v3_tests_passed": 19,
+  "full_suite_passed": 2285,
+  "full_suite_failures": 11,
+  "full_suite_failures_are_preserved": true,
+  "official_isolated_p10_runs_authorized": false,
+  "governance": "NOT_QUALIFIED",
+  "interpretation": "The v3 independent target, blind boundary, local campaign, stress, ProofBundle, and 50-case inventory contracts are implemented. No TP/FP/FN claim is made because no case has a complete baseline, candidate, independent control, causal proof, seal, and replay observation set."
+}
