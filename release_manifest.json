@@ -1,0 +1,40 @@
+{
+  "release": "WebPent-IRTA-v3-Full",
+  "milestone": "IRTA v3 — Independent Real Target Validation Layer",
+  "source_commit": "56cc8d267f444e59e8b3ed81907dcd4837a4d91f",
+  "scope": "additive local-only independent target, blind evaluation, campaign, stress, proof, and scoring contracts",
+  "targets": 5,
+  "cases": 50,
+  "classes": 6,
+  "metrics": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "blocked": 50,
+    "proof_completeness_percent": 0.0
+  },
+  "verification": {
+    "focused_v3_tests": "19 passed",
+    "ruff": "pass",
+    "compileall": "pass",
+    "full_suite": "2285 passed, 11 preserved failures"
+  },
+  "governance": {
+    "status": "NOT_QUALIFIED",
+    "official_isolated_p10_runs_authorized": false,
+    "p10": "CLOSED",
+    "p9": "CLOSED",
+    "vip": "CLOSED",
+    "bug_bounty": "BLOCKED"
+  },
+  "safety": {
+    "loopback_only": true,
+    "read_only_methods": ["GET", "HEAD", "OPTIONS"],
+    "real_credentials": false,
+    "external_targets": false,
+    "destructive_actions": false,
+    "legacy_validators_modified": false,
+    "frozen_ground_truth_modified": false,
+    "thresholds_modified": false
+  }
+}
